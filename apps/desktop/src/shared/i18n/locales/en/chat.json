@@ -293,7 +293,11 @@
 			"prepareFailed": "Unable to read dropped files",
 			"commitFailed": "File transfer failed",
 			"failedCount": "{{count}} item(s) failed to transfer"
-		}
+		},
+		"openWorkspaceWithAppNoWorkspace": "Open in external app (no workspace bound yet)",
+		"loadingApplications": "Detecting installed apps…",
+		"openWithDefaultApp": "Open with system default",
+		"openWorkspaceWithAppFailed": "Could not open with the selected app"
 	},
 	"fileEditor": {
 		"loading": "Opening file…",

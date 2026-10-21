@@ -2,10 +2,14 @@ import type { Transport } from "@astravia/ai";
 import type { GitToolStatus, RuntimeStatus, RuntimesStatus, RuntimeType } from "../../main/runtimes/types.js";
 import type { UserMessageClipboardPasteResult, UserMessageClipboardWriteRequest } from "../../shared/clipboard.js";
 
+export type ExternalApplicationKind = "editor" | "file-manager" | "terminal" | "other";
+
 export interface ExternalApplication {
 	id: string;
 	name: string;
 	applicationPath: string;
+	/** 用途分类：菜单据此排序并挑图标。 */
+	kind: ExternalApplicationKind;
 	isDefault: boolean;
 }
 
@@ -13,10 +17,15 @@ export interface DesktopShellApi {
 	showInFolder(fullPath: string): Promise<void>;
 	showItemInFolder(fullPath: string): Promise<void>;
 	openExternal(url: string): Promise<void>;
-	/** 列出能打开指定路径的外部应用（macOS / Windows / Linux 三平台均支持）。 */
-	listExternalApplications(targetPath: string): Promise<ExternalApplication[]>;
-	/** 用指定应用打开路径。 */
-	openPathWithApplication(targetPath: string, appId: string): Promise<void>;
+	/**
+	 * 列出能打开指定路径的外部应用（macOS / Windows / Linux 三平台均支持）。
+	 * `targetPath` 为 null 时只返回本机装了哪些编辑器/终端/文件管理器。
+	 */
+	listExternalApplications(targetPath: string | null): Promise<ExternalApplication[]>;
+	/** 用指定应用打开路径；`targetPath` 为 null 时只启动该应用。 */
+	openPathWithApplication(targetPath: string | null, appId: string, kind: ExternalApplicationKind): Promise<void>;
+	/** 用系统默认应用打开路径。 */
+	openPathWithDefaultApplication(targetPath: string): Promise<void>;
 }
 
 export interface DesktopClipboardApi {

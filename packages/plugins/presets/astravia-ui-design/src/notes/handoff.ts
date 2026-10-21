@@ -1,7 +1,7 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useEffect, useRef, useState } from "react";
 import { getPluginCtx, notify } from "../plugin-context";
-import type { NotesStore } from "./notes-store";
+import { noteDispatchKey, type NotesStore } from "./notes-store";
 import { pendingNotes } from "./types";
 
 /**
@@ -26,18 +26,33 @@ export interface NotesHandoff {
 	blocked: NotesHandoffBlock | null;
 	/** null = 可以发送；否则是禁用原因（已本地化，直接展示）。 */
 	blockedReason: string | null;
+	/**
+	 * 当前活跃会话的 runtimeId。自动派活靠它判定「这条备注是哪次会话里落下的」，
+	 * 见 useNotesAutoDispatch 里的 bindingsRef。
+	 */
+	sessionId: string | null;
+	/** 当前活跃会话是否就在画布这个 cwd 里。 */
+	inWorkspace: boolean;
 	sendAll(): void;
 	sendOne(noteId: string): void;
 }
 
 export function useNotesHandoff(cwd: string | null): NotesHandoff {
 	const { t } = useTranslation();
-	const [conversation, setConversation] = useState<{ cwd: string | null; isStreaming: boolean } | null>(null);
+	const [conversation, setConversation] = useState<{
+		id: string | null;
+		cwd: string | null;
+		isStreaming: boolean;
+	} | null>(null);
 
 	useEffect(() => {
 		const handle = getPluginCtx().conversation.on((event) => {
 			if (event.type === "conversation-changed") {
-				setConversation({ cwd: event.conversation.cwd, isStreaming: event.conversation.isStreaming });
+				setConversation({
+					id: event.conversation.id,
+					cwd: event.conversation.cwd,
+					isStreaming: event.conversation.isStreaming,
+				});
 			} else if (event.type === "turn-start") {
 				setConversation((current) => (current ? { ...current, isStreaming: true } : current));
 			} else if (event.type === "turn-end") {
@@ -89,6 +104,8 @@ export function useNotesHandoff(cwd: string | null): NotesHandoff {
 	return {
 		blocked,
 		blockedReason,
+		sessionId: conversation?.id ?? null,
+		inWorkspace: cwd !== null && conversation?.cwd === cwd,
 		// 派活 prompt 面向模型，不走 i18n：与工具 description、附件 instructions 同类，
 		// 一律英文。备注内容本身是用户写的，agent 用什么语言回复跟着它走。
 		sendAll: () => send(dispatchAllPrompt()),
@@ -146,7 +163,18 @@ const AUTO_DISPATCH_DEBOUNCE_MS = 1_500;
  */
 export function useNotesAutoDispatch(notes: NotesStore, cwd: string | null): void {
 	const handoff = useNotesHandoff(cwd);
-	const { blocked } = handoff;
+	const { blocked, inWorkspace, sessionId } = handoff;
+	/**
+	 * 每条备注是在哪一次会话里落下的（`noteDispatchKey` → sessionId）。
+	 *
+	 * 画布是项目级的，同一个项目的多个会话共用它；只按 cwd 判定「可以派」，就会把
+	 * 在会话 A 贴的备注派进会话 B——用户正在 B 里聊的正事凭空多出一条设计稿派活
+	 * 消息，干扰到 B 的任务。所以派活只回落到落下这条备注的那次会话。
+	 *
+	 * 值为 null = 落备注的那一刻活跃会话不在本 cwd（或根本没有会话），无从绑定，
+	 * 沿用旧行为：谁进来这个项目就跟谁说。
+	 */
+	const bindingsRef = useRef(new Map<string, string | null>());
 	/**
 	 * sendAll / sendOne 每次渲染都是新函数。放进下面的依赖里，计时器就会被一次次清掉
 	 * 重设，防抖永远等不到头——所以走 ref。
@@ -163,6 +191,18 @@ export function useNotesAutoDispatch(notes: NotesStore, cwd: string | null): voi
 		const pending = pendingNotes(notes.notes);
 		const fresh = pending.filter((note) => !notes.isDispatched(note));
 		if (fresh.length === 0) return;
+		// 先把这一批备注钉到当前会话（哪怕下面因为忙/别的 workspace 派不出去），
+		// 否则切一次会话就会把旧备注认成「新会话的备注」。
+		const bindings = bindingsRef.current;
+		for (const note of fresh) {
+			const key = noteDispatchKey(note);
+			if (!bindings.has(key)) bindings.set(key, inWorkspace ? sessionId : null);
+		}
+		const mine = fresh.filter((note) => {
+			const bound = bindings.get(noteDispatchKey(note)) ?? null;
+			return bound === null || bound === sessionId;
+		});
+		if (mine.length === 0) return;
 		if (blocked === "streaming") {
 			/**
 			 * agent 就在跑，这些备注已经在它的射程内：记成已交付，等它收尾自检时自己
@@ -171,7 +211,7 @@ export function useNotesAutoDispatch(notes: NotesStore, cwd: string | null): voi
 			 *
 			 * 万一它真漏了：待处理角标一直亮着，抽屉里的手动按钮可以再催一次。
 			 */
-			notes.markDispatched(fresh);
+			notes.markDispatched(mine);
 			return;
 		}
 		// 会话在别的 workspace（或画布连 cwd 都没有）：没有人会来自检，所以留着不动，
@@ -181,11 +221,11 @@ export function useNotesAutoDispatch(notes: NotesStore, cwd: string | null): voi
 		// 依赖里的 version 每次落备注都会变，于是这个计时器被清掉重设——连着放几条
 		// 就自然合并成最后那一次派活。
 		const timer = window.setTimeout(() => {
-			notes.markDispatched(fresh);
+			notes.markDispatched(mine);
 			// 一律走全量，哪怕此刻只有一条：带 id 的那条 prompt 会把 agent 的视野锁死在
 			// 那一条上（它就照着 ids 查，再不看别的），而用户随时可能在它干活期间再贴。
 			handoffRef.current.sendAll();
 		}, AUTO_DISPATCH_DEBOUNCE_MS);
 		return () => window.clearTimeout(timer);
-	}, [blocked, notes, version]);
+	}, [blocked, inWorkspace, notes, sessionId, version]);
 }

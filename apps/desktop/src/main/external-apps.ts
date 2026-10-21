@@ -1,75 +1,215 @@
-import { execFile } from "node:child_process";
-import { readdir, readFile } from "node:fs/promises";
+import { execFile, spawn } from "node:child_process";
+import { access, readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { promisify } from "node:util";
+import type { ExternalApplication, ExternalApplicationKind } from "../preload/api-types/system.js";
 
 const execFileAsync = promisify(execFile);
 
-/**
- * 一个可用于打开某个路径（文件或目录）的外部应用。
- */
-export interface ExternalApplication {
-	/** 应用的唯一标识：macOS 为 bundle identifier，其它平台为可执行文件路径。 */
-	id: string;
-	/** 展示给用户的名称。 */
+/** 内置候选应用：在系统里装了才出现在菜单里。 */
+interface KnownApplication {
 	name: string;
-	/** 应用可执行文件或 .app 包的路径。 */
-	applicationPath: string;
-	/** 是否为系统默认应用。 */
-	isDefault: boolean;
+	kind: ExternalApplicationKind;
+	/** 依次尝试的安装位置，取第一个存在的。 */
+	paths: string[];
 }
+
+const KIND_ORDER: Record<ExternalApplicationKind, number> = {
+	editor: 0,
+	"file-manager": 1,
+	terminal: 2,
+	other: 3,
+};
 
 /**
  * 列出能够打开指定路径的外部应用。
  *
- * - macOS: 通过 osascript 调用 NSWorkspace，返回所有声明能打开该路径的应用。
- * - Windows: 查询注册表 HKCR\Directory\shell 下注册的目录打开方式。
- * - Linux: 解析系统与用户目录下能处理 inode/directory 的 .desktop 文件。
+ * 菜单要先有「代码编辑器」，所以不再只信系统登记的打开方式——macOS 上 VS Code
+ * 之类不一定登记为目录处理程序，只问 NSWorkspace 经常只回一个 Finder。这里先探测
+ * 一队已知的编辑器/终端/文件管理器，再把系统登记的应用补在后面。
+ *
+ * - macOS: 标准应用目录 + osascript 调 NSWorkspace。
+ * - Windows: 常见安装路径 + HKCR\Directory\shell 登记。
+ * - Linux: .desktop 文件 + xdg-mime。
+ *
+ * `targetPath` 为 null（会话没绑定工作区）时只探测本机装了哪些应用。
  */
-export async function listExternalApplications(targetPath: string): Promise<ExternalApplication[]> {
-	if (process.platform === "darwin") {
-		return listApplicationsMacOS(targetPath);
+export async function listExternalApplications(targetPath: string | null): Promise<ExternalApplication[]> {
+	const known = await listKnownApplications();
+	const declared = targetPath === null ? [] : await listDeclaredApplications(targetPath);
+	const merged = known.slice();
+	// 系统登记的应用按名称收敛成稳定顺序，接在内置候选后面。
+	for (const app of declared.sort((a, b) => a.name.localeCompare(b.name))) {
+		if (merged.some((candidate) => sameApplication(candidate, app))) continue;
+		merged.push(app);
 	}
-	if (process.platform === "win32") {
-		return listApplicationsWindows(targetPath);
-	}
-	return listApplicationsLinux(targetPath);
+	// 同名只留一行：`ChatGPT.app` 和它的副本是两份文件，但在菜单里点了效果一样，
+	// 并列两行只会让人不知道该选哪个。
+	const seen = new Set<string>();
+	const unique = merged.filter((app) => {
+		const key = app.name.trim().toLowerCase();
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+	// 稳定排序：同分类内保持「内置声明顺序」，VS Code 这类最常用的入口仍在最前。
+	return unique.sort(compareApplications);
 }
 
-/**
- * 用指定应用打开路径。
- *
- * - macOS: `open -b <bundleId> <path>`（通过 bundle identifier 定位应用）
- * - Windows: `Start-Process <exePath> <path>`（通过 powershell）
- * - Linux: `gtk-launch <desktopId>` 或直接执行 .desktop 中的 Exec
- */
-export async function openPathWithApplication(targetPath: string, appId: string): Promise<void> {
+/** 用指定应用打开路径。`targetPath` 为 null 时只把应用启动起来。 */
+export async function openPathWithApplication(
+	targetPath: string | null,
+	appId: string,
+	kind: ExternalApplicationKind,
+): Promise<void> {
 	if (process.platform === "darwin") {
-		await execFileAsync("open", ["-b", appId, targetPath]);
+		await openWithMacOS(targetPath, appId, kind);
 		return;
 	}
 	if (process.platform === "win32") {
-		// appId 在 Windows 上是可执行文件路径
-		await execFileAsync("powershell", [
-			"-NoProfile",
-			"-Command",
-			`Start-Process -FilePath '${escapeSingleQuotes(appId)}' -ArgumentList '${escapeSingleQuotes(targetPath)}'`,
-		]);
+		await openWithWindows(targetPath, appId);
 		return;
 	}
-	// Linux: appId 是可执行文件路径或 desktop 文件 id
 	await openWithLinux(targetPath, appId);
 }
 
-function escapeSingleQuotes(s: string): string {
-	return s.replace(/'/g, "''");
+/** 用系统默认应用打开（探测不到合适应用时的兜底入口）。 */
+export async function openPathWithDefaultApplication(targetPath: string): Promise<void> {
+	if (process.platform === "darwin") {
+		await execFileAsync("open", [targetPath]);
+		return;
+	}
+	if (process.platform === "win32") {
+		// explorer.exe 打开成功也返回非零退出码（这是它的既有行为，不是失败），
+		// 用 execFile 会被当成异常，于是选「用系统默认应用打开」几乎每次都会
+		// 弹一次「打开失败」。这里只关心进程有没有起来。
+		await runWindowsShellCommand([targetPath]);
+		return;
+	}
+	await execFileAsync("xdg-open", [targetPath]);
+}
+
+/**
+ * 按名称推断用途。系统登记的应用没有分类信息，只能靠名字认——认不出来就归到
+ * 「其它」，不假装它是编辑器。
+ */
+export function inferApplicationKind(name: string): ExternalApplicationKind {
+	const lower = name.toLowerCase();
+	if (/(iterm|terminal|warp|ghostty|alacritty|kitty|wezterm|konsole|tilix|xterm|hyper)/.test(lower)) {
+		return "terminal";
+	}
+	if (
+		/(finder|file explorer|nautilus|dolphin|thunar|nemo|caja|pcmanfm|double commander|total commander)/.test(lower)
+	) {
+		return "file-manager";
+	}
+	if (
+		/(visual studio code|vs ?code|vscodium|cursor|trae|qoder|codebuddy|sublime|zed|windsurf|nova|xcode|webstorm|intellij|pycharm|goland|phpstorm|rider|datagrip|rubymine|android studio|fleet|emacs|neovim|vim|textmate|bbedit|gedit|kate)/.test(
+			lower,
+		)
+	) {
+		return "editor";
+	}
+	return "other";
+}
+
+/** 只按分类排；同分类内保持传入顺序（内置候选的声明顺序）。 */
+function compareApplications(a: ExternalApplication, b: ExternalApplication): number {
+	return KIND_ORDER[a.kind] - KIND_ORDER[b.kind];
+}
+
+function sameApplication(a: ExternalApplication, b: ExternalApplication): boolean {
+	if (process.platform === "win32" || process.platform === "darwin") {
+		return a.applicationPath.toLowerCase() === b.applicationPath.toLowerCase();
+	}
+	return a.id === b.id;
+}
+
+async function pathExists(path: string): Promise<boolean> {
+	try {
+		await access(path);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+async function firstExisting(paths: readonly string[]): Promise<string | null> {
+	for (const path of paths) {
+		if (await pathExists(path)) return path;
+	}
+	return null;
+}
+
+async function listKnownApplications(): Promise<ExternalApplication[]> {
+	const candidates = knownCandidates();
+	const resolved = await Promise.all(
+		candidates.map(async (candidate) => ({ candidate, path: await firstExisting(candidate.paths) })),
+	);
+	return resolved
+		.filter((entry): entry is { candidate: KnownApplication; path: string } => entry.path !== null)
+		.map(({ candidate, path }) => ({
+			id: path,
+			name: candidate.name,
+			applicationPath: path,
+			kind: candidate.kind,
+			isDefault: false,
+		}));
+}
+
+function knownCandidates(): KnownApplication[] {
+	if (process.platform === "darwin") return macCandidates();
+	if (process.platform === "win32") return windowsCandidates();
+	return [];
 }
 
 // ─── macOS 实现 ─────────────────────────────────────────────────────
 
+const MAC_APP_DIRS = () => [
+	"/Applications",
+	join(homedir(), "Applications"),
+	"/System/Applications",
+	"/System/Applications/Utilities",
+];
+
+const MAC_FINDER_APP = "/System/Library/CoreServices/Finder.app";
+
+function macCandidates(): KnownApplication[] {
+	const editors = [
+		"Visual Studio Code",
+		"Cursor",
+		"Trae",
+		"Trae CN",
+		"Qoder IDE",
+		"CodeBuddy CN",
+		"Windsurf",
+		"Sublime Text",
+		"Zed",
+		"Nova",
+		"Xcode",
+		"WebStorm",
+		"IntelliJ IDEA",
+		"PyCharm",
+		"GoLand",
+		"Android Studio",
+	];
+	const terminals = ["Terminal", "iTerm", "Warp", "Ghostty", "Alacritty", "kitty", "WezTerm", "Hyper"];
+	const dirs = MAC_APP_DIRS();
+	const candidates: KnownApplication[] = [
+		{ name: "Finder", kind: "file-manager", paths: [MAC_FINDER_APP] },
+		...editors.map((name) => ({ name, kind: "editor" as const, paths: dirs.map((dir) => join(dir, `${name}.app`)) })),
+		...terminals.map((name) => ({
+			name,
+			kind: "terminal" as const,
+			paths: dirs.map((dir) => join(dir, `${name}.app`)),
+		})),
+	];
+	return candidates;
+}
+
 /**
- * 通过 JXA 脚本调用 NSWorkspace，枚举可以打开指定路径的应用。
+ * 通过 JXA 脚本调用 NSWorkspace，枚举系统登记为可打开该路径的应用。
  * 脚本输入：路径；输出：JSON 数组。
  */
 const MACOS_LIST_APPS_SCRIPT = `
@@ -101,6 +241,12 @@ function run(argv) {
 }
 `;
 
+async function listDeclaredApplications(targetPath: string): Promise<ExternalApplication[]> {
+	if (process.platform === "darwin") return listApplicationsMacOS(targetPath);
+	if (process.platform === "win32") return listApplicationsWindows(targetPath);
+	return listApplicationsLinux(targetPath);
+}
+
 async function listApplicationsMacOS(targetPath: string): Promise<ExternalApplication[]> {
 	try {
 		const { stdout } = await execFileAsync(
@@ -126,9 +272,10 @@ async function listApplicationsMacOS(targetPath: string): Promise<ExternalApplic
 					typeof app.applicationPath === "string",
 			)
 			.map((app) => ({
-				id: app.identity,
+				id: app.applicationPath,
 				name: app.name,
 				applicationPath: app.applicationPath,
+				kind: inferApplicationKind(app.name),
 				isDefault: Boolean(app.isDefault),
 			}));
 	} catch {
@@ -136,12 +283,102 @@ async function listApplicationsMacOS(targetPath: string): Promise<ExternalApplic
 	}
 }
 
+async function openWithMacOS(targetPath: string | null, appPath: string, kind: ExternalApplicationKind): Promise<void> {
+	// 文件管理器交给系统默认的目录处理程序（macOS 上是访达），
+	// 免得 `open -a` 把 Finder 当成可启动的应用再判一次。
+	if (kind === "file-manager" && targetPath !== null) {
+		await execFileAsync("open", [targetPath]);
+		return;
+	}
+	await execFileAsync("open", targetPath === null ? ["-a", appPath] : ["-a", appPath, targetPath]);
+}
+
 // ─── Windows 实现 ───────────────────────────────────────────────────
+
+function windowsCandidates(): KnownApplication[] {
+	const localAppData = process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local");
+	const programFiles = process.env.ProgramFiles ?? "C:\\Program Files";
+	const programFilesX86 = process.env["ProgramFiles(x86)"] ?? "C:\\Program Files (x86)";
+	const systemRoot = process.env.SystemRoot ?? "C:\\Windows";
+	const programs = (name: string): string => join(localAppData, "Programs", name);
+
+	return [
+		{
+			name: "File Explorer",
+			kind: "file-manager",
+			paths: [join(systemRoot, "explorer.exe"), "C:\\Windows\\explorer.exe"],
+		},
+		{
+			name: "Visual Studio Code",
+			kind: "editor",
+			paths: [
+				join(programs("Microsoft VS Code"), "Code.exe"),
+				join(programFiles, "Microsoft VS Code", "Code.exe"),
+				join(programFilesX86, "Microsoft VS Code", "Code.exe"),
+			],
+		},
+		{
+			name: "Visual Studio Code Insiders",
+			kind: "editor",
+			paths: [
+				join(programs("Microsoft VS Code Insiders"), "Code - Insiders.exe"),
+				join(programFiles, "Microsoft VS Code Insiders", "Code - Insiders.exe"),
+			],
+		},
+		{
+			name: "Cursor",
+			kind: "editor",
+			paths: [
+				join(programs("cursor"), "Cursor.exe"),
+				join(programFiles, "Cursor", "Cursor.exe"),
+				join(programFilesX86, "Cursor", "Cursor.exe"),
+			],
+		},
+		{
+			name: "Trae",
+			kind: "editor",
+			paths: [join(programs("Trae"), "Trae.exe"), join(programs("Trae CN"), "Trae CN.exe")],
+		},
+		{
+			name: "Windsurf",
+			kind: "editor",
+			paths: [join(programs("Windsurf"), "Windsurf.exe")],
+		},
+		{
+			name: "Zed",
+			kind: "editor",
+			paths: [join(programs("Zed"), "Zed.exe")],
+		},
+		{
+			name: "Sublime Text",
+			kind: "editor",
+			paths: [
+				join(programFiles, "Sublime Text", "sublime_text.exe"),
+				join(programFiles, "Sublime Text 3", "sublime_text.exe"),
+				join(programFilesX86, "Sublime Text", "sublime_text.exe"),
+			],
+		},
+		{
+			name: "Windows Terminal",
+			kind: "terminal",
+			paths: [join(localAppData, "Microsoft", "WindowsApps", "wt.exe")],
+		},
+		{
+			name: "PowerShell",
+			kind: "terminal",
+			paths: [join(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")],
+		},
+		{
+			name: "Command Prompt",
+			kind: "terminal",
+			paths: [join(systemRoot, "System32", "cmd.exe")],
+		},
+	];
+}
 
 /**
  * 通过 reg query 枚举 HKCR\Directory\shell 下的子键，每个子键通常对应一个
  * 「在此处打开」的应用。提取 command 默认值中的可执行文件路径作为 appId。
- * 默认应用通过查询 HKCR\Directory\shell 的默认值判断。
  */
 async function listApplicationsWindows(_targetPath: string): Promise<ExternalApplication[]> {
 	try {
@@ -172,6 +409,7 @@ async function listApplicationsWindows(_targetPath: string): Promise<ExternalApp
 							id: exePath,
 							name: displayName,
 							applicationPath: exePath,
+							kind: inferApplicationKind(displayName),
 							isDefault: false,
 						});
 					}
@@ -192,8 +430,8 @@ function prettifyWindowsAppName(registryKey: string): string {
 		explore: "File Explorer",
 		git_shell: "Git Bash",
 		git_gui: "Git GUI",
-		Code: "VS Code",
-		vscode: "VS Code",
+		Code: "Visual Studio Code",
+		vscode: "Visual Studio Code",
 		terminal: "Terminal",
 		wt: "Windows Terminal",
 	};
@@ -212,6 +450,43 @@ function prettifyWindowsAppName(registryKey: string): string {
 	return cleaned || registryKey;
 }
 
+/**
+ * 起一个 Windows 程序，且不把它的退出码当失败。
+ *
+ * explorer.exe 与部分 shell 宿主在成功完成时也返回非零，用 execFileAsync 会 reject；
+ * 但我们只关心「有没有把手上的活交出去」，所以只听 spawn 失败（ENOENT 之类）。
+ */
+function runWindowsShellCommand(args: string[], command = "explorer.exe"): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const child = spawn(command, args, { detached: true, stdio: "ignore", windowsHide: true });
+		child.once("error", reject);
+		child.once("spawn", () => {
+			child.unref();
+			resolve();
+		});
+	});
+}
+
+async function openWithWindows(targetPath: string | null, appPath: string): Promise<void> {
+	// 直接起可执行文件，不经 powershell：参数由 execFile 处理，不必再拼一段
+	// 带单引号转义的命令行。
+	if (targetPath === null) {
+		await execFileAsync(appPath, []);
+		return;
+	}
+	// Windows Terminal 用 -d 指定起始目录，把路径当参数丢给它只会被当成待执行命令。
+	if (basename(appPath).toLowerCase() === "wt.exe") {
+		await execFileAsync(appPath, ["-d", targetPath]);
+		return;
+	}
+	// 文件管理器条目（explorer.exe）同样会返回非零退出码，不能按失败处理。
+	if (basename(appPath).toLowerCase() === "explorer.exe") {
+		await runWindowsShellCommand([targetPath], appPath);
+		return;
+	}
+	await execFileAsync(appPath, [targetPath]);
+}
+
 // ─── Linux 实现 ─────────────────────────────────────────────────────
 
 interface DesktopEntry {
@@ -222,7 +497,7 @@ interface DesktopEntry {
 	handlesDirectory: boolean;
 }
 
-const LINUX_DESKTOP_DIRS = [
+const LINUX_DESKTOP_DIRS = () => [
 	join(homedir(), ".local", "share", "applications"),
 	"/usr/share/applications",
 	"/usr/local/share/applications",
@@ -234,7 +509,7 @@ const LINUX_DESKTOP_DIRS = [
  */
 async function listApplicationsLinux(_targetPath: string): Promise<ExternalApplication[]> {
 	const entries: DesktopEntry[] = [];
-	for (const dir of LINUX_DESKTOP_DIRS) {
+	for (const dir of LINUX_DESKTOP_DIRS()) {
 		try {
 			const files = await readdir(dir);
 			for (const file of files) {
@@ -268,6 +543,7 @@ async function listApplicationsLinux(_targetPath: string): Promise<ExternalAppli
 		id: entry.exec,
 		name: entry.name,
 		applicationPath: entry.exec,
+		kind: inferApplicationKind(entry.name),
 		isDefault: entry.id === defaultId,
 	}));
 }
@@ -304,16 +580,14 @@ function parseDesktopEntry(filename: string, content: string): DesktopEntry | nu
 	};
 }
 
-async function openWithLinux(targetPath: string, appId: string): Promise<void> {
+async function openWithLinux(targetPath: string | null, appId: string): Promise<void> {
 	// appId 是清理过的 Exec 命令（不含 %f 占位符）；把目标路径作为参数传入
 	const parts = appId.split(/\s+/).filter(Boolean);
 	if (parts.length === 0) {
 		throw new Error("Invalid application command");
 	}
-	try {
-		await execFileAsync(parts[0], [...parts.slice(1), targetPath], { timeout: 5000 });
-	} catch {
-		// 回退到默认程序
-		await execFileAsync("xdg-open", [targetPath], { timeout: 5000 });
-	}
+	const args = targetPath === null ? parts.slice(1) : [...parts.slice(1), targetPath];
+	// 失败就照实报错，不回退到 xdg-open：用户点了 Zed，结果悄悄用别的程序打开，
+	// 比明确告诉他没打开更让人困惑。
+	await execFileAsync(parts[0], args, { timeout: 5000 });
 }

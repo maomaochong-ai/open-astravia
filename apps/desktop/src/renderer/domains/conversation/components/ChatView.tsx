@@ -120,10 +120,7 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 	}, [headerActions, setHeaderRightSlot]);
 
 	// 「在外部应用中打开工作区」占顶栏工具位，渲染在页面自身动作（导出、置顶等）的左侧。
-	const workspaceAppButton = useMemo(
-		() => (model.cwd ? <OpenWorkspaceWithAppButton rootDir={model.cwd} /> : null),
-		[model.cwd],
-	);
+	const workspaceAppButton = useMemo(() => <OpenWorkspaceWithAppButton rootDir={model.cwd} />, [model.cwd]);
 	// 优先级 0：对话页自己的工作区最相关；活动面板的文件标签作为低优先级备选。
 	usePageHeaderUtilitySlot("conversation", 0, workspaceAppButton);
 
