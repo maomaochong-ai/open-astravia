@@ -164,6 +164,8 @@
       "codeHint": "Can’t scan? Choose “Connect with a Code” on the phone:",
       "codePreparing": "Preparing a connection code…",
       "codeFailed": "Relay unreachable — no connection code. You can still pair by scanning on the same Wi-Fi.",
+      "codeNoMailbox": "This relay is too old to hold connection codes. Upgrade the relay to use them; scanning on the same Wi-Fi works now.",
+      "codeUnreachable": "Can’t reach the relay, so there is no connection code. Check the network or the relay address in settings; scanning on the same Wi-Fi still works.",
       "manualTitle": "Enter an address on the same Wi-Fi"
     },
     "cloud": {

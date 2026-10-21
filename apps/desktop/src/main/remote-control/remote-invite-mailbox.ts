@@ -12,6 +12,18 @@ export interface RemoteInviteMailbox {
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
+/** The relay answered and refused the invite; `status` is its HTTP status. Kept typed so callers
+ *  can tell "no such route" (the relay predates codes) from "this invite was refused". */
+export class RemoteInviteMailboxError extends Error {
+	readonly status: number;
+
+	constructor(status: number) {
+		super(`invite mailbox refused the invite (${status})`);
+		this.name = "RemoteInviteMailboxError";
+		this.status = status;
+	}
+}
+
 export function createRemoteInviteMailbox(fetchImpl: typeof fetch = fetch): RemoteInviteMailbox {
 	return {
 		async publish(boxUrl, token, envelope, ttlMs) {
@@ -21,7 +33,7 @@ export function createRemoteInviteMailbox(fetchImpl: typeof fetch = fetch): Remo
 				body: JSON.stringify({ envelope, ttlMs }),
 				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
-			if (!response.ok) throw new Error(`invite mailbox refused the invite (${response.status})`);
+			if (!response.ok) throw new RemoteInviteMailboxError(response.status);
 		},
 		async withdraw(boxUrl, token) {
 			await fetchImpl(boxUrl, {

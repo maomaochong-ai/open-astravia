@@ -164,6 +164,8 @@
       "codeHint": "不方便扫码？在手机上选「用连接码连接」：",
       "codePreparing": "正在生成连接码…",
       "codeFailed": "中继不可达，连接码暂不可用；同一 Wi-Fi 下仍可扫码配对。",
+      "codeNoMailbox": "这个中继还不支持连接码（版本较旧）。升级中继服务后即可用；同一 Wi-Fi 下现在就能扫码配对。",
+      "codeUnreachable": "连不上中继，连接码暂不可用。检查网络或设置里的中继地址；同一 Wi-Fi 下仍可扫码配对。",
       "manualTitle": "同一 Wi-Fi 下手动输入地址"
     },
     "cloud": {

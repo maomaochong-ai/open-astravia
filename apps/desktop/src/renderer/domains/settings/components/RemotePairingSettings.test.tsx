@@ -133,6 +133,39 @@ describe("远程连接设置", () => {
 		expect(screen.getByRole("button", { name: "remote.pairing.cancel" }).hasAttribute("disabled")).toBe(true);
 	});
 
+	it("中继不支持连接码时提示升级中继，而不是说中继不可达", async () => {
+		const failed = inviteState();
+		installRemotePairing({
+			initial: {
+				...failed,
+				invite: {
+					...failed.invite!,
+					code: { code: "K7Q2-9MXD", password: "482913", status: "failed", failure: "noInviteCodes" },
+				},
+			},
+		});
+		render(<RemotePairingSettings />);
+
+		expect(await screen.findByText("remote.pairing.codeNoMailbox")).toBeTruthy();
+		expect(screen.queryByText("remote.pairing.codeFailed")).toBeNull();
+	});
+
+	it("中继连不上时提示检查网络或中继地址", async () => {
+		const failed = inviteState();
+		installRemotePairing({
+			initial: {
+				...failed,
+				invite: {
+					...failed.invite!,
+					code: { code: "K7Q2-9MXD", password: "482913", status: "failed", failure: "unreachable" },
+				},
+			},
+		});
+		render(<RemotePairingSettings />);
+
+		expect(await screen.findByText("remote.pairing.codeUnreachable")).toBeTruthy();
+	});
+
 	it("刷新时保持二维码和连接码的位置，并立刻收起即将作废的码", async () => {
 		const ready = {
 			...inviteState(),

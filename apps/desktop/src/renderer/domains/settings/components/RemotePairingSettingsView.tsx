@@ -175,8 +175,18 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 	const [manualOpen, setManualOpen] = useState(false);
 	const { pairing, labels } = model;
 	const code = pairing.code;
+	// A relay with no mailbox route and a relay that does not answer are different problems:
+	// the first needs a newer relay, the second needs the network or the address fixed.
 	const codeStatus =
-		code?.status === "preparing" ? labels.pairing.codePreparing : code?.status === "ready" ? undefined : labels.pairing.codeFailed;
+		code?.status === "preparing"
+			? labels.pairing.codePreparing
+			: code?.status === "ready"
+				? undefined
+				: code?.failure === "noInviteCodes"
+					? labels.pairing.codeNoMailbox
+					: code?.failure === "unreachable"
+						? labels.pairing.codeUnreachable
+						: labels.pairing.codeFailed;
 	// While a refresh is in flight the current code is already being withdrawn.
 	const showLiveQr = Boolean(pairing.qrDataUrl) && !pairing.renewing;
 	const showPreparing = !showLiveQr && (pairing.preparing || pairing.renewing);

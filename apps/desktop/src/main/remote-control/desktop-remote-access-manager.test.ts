@@ -26,6 +26,7 @@ import type { DesktopRemoteLanServerOptions } from "./desktop-remote-lan-server.
 import type { DesktopRemoteMirror } from "./desktop-remote-mirror.js";
 import type { DesktopRemoteRelayLinkOptions } from "./desktop-remote-relay-link.js";
 import { RemoteDeviceStore } from "./remote-device-store.js";
+import { RemoteInviteMailboxError } from "./remote-invite-mailbox.js";
 import type { RemoteRelayProbeResult } from "./remote-relay-probe.js";
 
 function key(ref: CredentialRef): string {
@@ -80,7 +81,8 @@ function harness(
 	const mailbox = {
 		published: [] as Array<{ boxUrl: string; token: string; envelope: RemoteInviteEnvelope; ttlMs: number }>,
 		withdrawn: [] as string[],
-		refuse: false,
+		/** `false` to accept; an HTTP status the relay answers with; "offline" for no answer at all. */
+		refuse: false as false | number | "offline",
 		/** Keeps a publish waiting until it settles. */
 		hold: undefined as Promise<void> | undefined,
 	};
@@ -173,7 +175,8 @@ function harness(
 		inviteMailbox: {
 			publish: async (boxUrl, token, envelope, ttlMs) => {
 				await mailbox.hold;
-				if (mailbox.refuse) throw new Error("relay not deployed");
+				if (mailbox.refuse === "offline") throw new TypeError("fetch failed");
+				if (mailbox.refuse !== false) throw new RemoteInviteMailboxError(mailbox.refuse);
 				mailbox.published.push({ boxUrl, token, envelope, ttlMs });
 			},
 			withdraw: async (boxUrl) => {
@@ -417,7 +420,7 @@ describe("DesktopRemoteAccessManager", () => {
 
 	it("keeps the QR code when the relay cannot take the connection code, and withdraws a discarded one", async () => {
 		const { manager, mailbox } = harness();
-		mailbox.refuse = true;
+		mailbox.refuse = 500;
 		await manager.createInvite();
 		await vi.waitFor(() => expect(manager.getState().invite?.code?.status).toBe("failed"));
 		expect(manager.getState().invite?.inviteUri).toBeTruthy();
@@ -431,13 +434,33 @@ describe("DesktopRemoteAccessManager", () => {
 		await manager.shutdown();
 	});
 
-	it("does not offer a connection code without the relay", async () => {
+	// 中继“没有连接码邮箱”与“完全连不上”是两回事：前者要升级中继，后者要查网络或地址。
+	it("records why the connection code failed, so the panel can name the right problem", async () => {
+		const { manager, mailbox } = harness();
+
+		mailbox.refuse = 404;
+		await manager.createInvite();
+		await vi.waitFor(() => expect(manager.getState().invite?.code?.failure).toBe("noInviteCodes"));
+
+		mailbox.refuse = "offline";
+		await manager.createInvite();
+		await vi.waitFor(() => expect(manager.getState().invite?.code?.failure).toBe("unreachable"));
+
+		mailbox.refuse = 503;
+		await manager.createInvite();
+		await vi.waitFor(() => expect(manager.getState().invite?.code?.failure).toBe("rejected"));
+
+		await manager.shutdown();
+	});
+
+	// 无中继时连接码立即可用：同一局域网下手机凭码和密码直接向本机 LAN 服务认证，不需要中继信封。
+	it("offers the connection code without the relay, for a phone on this LAN", async () => {
 		const { manager, mailbox } = harness();
 		await manager.setCloudEnabled(false);
 		await manager.createInvite();
 		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(manager.getState().invite?.code).toBeUndefined();
-		expect(manager.getState().invite?.qrText).toBe(manager.getState().invite?.inviteUri);
+		expect(manager.getState().invite?.code?.status).toBe("ready");
+		expect(manager.getState().invite?.qrText).toBeTruthy();
 		expect(mailbox.published).toHaveLength(0);
 		await manager.shutdown();
 	});

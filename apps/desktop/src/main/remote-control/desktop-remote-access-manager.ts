@@ -33,7 +33,11 @@ import { DesktopRemoteRelayLink } from "./desktop-remote-relay-link.js";
 import { pairingIdOf } from "./remote-device-pairings.js";
 import type { RemoteDeviceStore } from "./remote-device-store.js";
 import { RemoteOperationError, toRemoteError } from "./remote-error-mapping.js";
-import { createRemoteInviteMailbox, type RemoteInviteMailbox } from "./remote-invite-mailbox.js";
+import {
+	createRemoteInviteMailbox,
+	type RemoteInviteMailbox,
+	RemoteInviteMailboxError,
+} from "./remote-invite-mailbox.js";
 import { listLanEndpoints } from "./remote-lan-endpoints.js";
 import { probeRemoteRelay, type RemoteRelayProbeResult } from "./remote-relay-probe.js";
 import { RemoteScreenShare, type ScreenSharePermissions } from "./remote-screen-share.js";
@@ -70,7 +74,16 @@ export interface RemoteAccessInviteCodeView {
 	readonly password: string;
 	/** Being sealed and left on the relay; ready once a phone can fetch it; failed when the relay refused. */
 	readonly status: "preparing" | "ready" | "failed";
+	/**
+	 * Why it failed, so the panel can tell "this relay is not reachable" from "this relay is
+	 * too old to hold codes" — two problems with different owners (network vs. relay deploy).
+	 */
+	readonly failure?: InviteCodeFailure;
 }
+
+/** `unreachable`: nothing answered. `noInviteCodes`: the relay has no mailbox route (404/405/501).
+ *  `rejected`: the relay answered and refused (other 4xx/5xx, or a malformed answer). */
+export type InviteCodeFailure = "unreachable" | "noInviteCodes" | "rejected";
 
 interface InviteCode {
 	readonly code: string;
@@ -78,6 +91,7 @@ interface InviteCode {
 	readonly boxUrl?: string;
 	readonly token?: string;
 	readonly status: RemoteAccessInviteCodeView["status"];
+	readonly failure?: InviteCodeFailure;
 }
 
 export interface RemoteAccessApprovalView {
@@ -445,9 +459,10 @@ export class DesktopRemoteAccessManager {
 			token: relayBaseUrl ? randomToken(32) : undefined,
 			status: "preparing",
 		};
-		const settle = (status: InviteCode["status"]): void => {
+		const settle = (status: InviteCode["status"], failure?: InviteCodeFailure): void => {
 			const current = this.invite;
-			if (current?.pairingId === pairingId) this.invite = { ...current, code: { ...code, status } };
+			if (current?.pairingId !== pairingId) return;
+			this.invite = { ...current, code: { ...code, status, ...(failure ? { failure } : {}) } };
 		};
 		settle("preparing");
 		try {
@@ -470,7 +485,7 @@ export class DesktopRemoteAccessManager {
 			settle("ready");
 		} catch (error) {
 			log.warn("remote invite code publish failed", { error: describe(error) });
-			settle("failed");
+			settle("failed", classifyInviteFailure(error));
 		}
 	}
 
@@ -1248,7 +1263,16 @@ export class DesktopRemoteAccessManager {
 			expiresAt,
 			inviteUri,
 			...(qrText ? { qrText } : {}),
-			...(code ? { code: { code: formatInviteCode(code.code), password: code.password, status: code.status } } : {}),
+			...(code
+				? {
+						code: {
+							code: formatInviteCode(code.code),
+							password: code.password,
+							status: code.status,
+							...(code.failure ? { failure: code.failure } : {}),
+						},
+					}
+				: {}),
 		};
 	}
 
@@ -1257,6 +1281,14 @@ export class DesktopRemoteAccessManager {
 			if (this.invite?.pairingId === pairingId) await this.discardInvite();
 		});
 	}
+}
+
+/** `fetch` throwing (DNS, refusal, timeout) means nothing answered; a typed mailbox error means the
+ *  relay answered and refused. Its 404/405/501 family is the "this relay has no mailbox route"
+ *  case, which needs a relay upgrade rather than a network fix. */
+function classifyInviteFailure(error: unknown): InviteCodeFailure {
+	if (!(error instanceof RemoteInviteMailboxError)) return "unreachable";
+	return error.status === 404 || error.status === 405 || error.status === 501 ? "noInviteCodes" : "rejected";
 }
 
 function describe(error: unknown): string {

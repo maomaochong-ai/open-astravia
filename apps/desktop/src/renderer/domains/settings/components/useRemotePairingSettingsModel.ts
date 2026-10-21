@@ -69,6 +69,10 @@ export interface RemotePairingSettingsModel {
 			readonly cancel: string;
 			readonly code: string;
 			readonly codeFailed: string;
+			/** The relay is too old to hold codes: deploying a newer relay fixes it, not the network. */
+			readonly codeNoMailbox: string;
+			/** The relay did not answer at all: the address or the network is wrong. */
+			readonly codeUnreachable: string;
 			readonly codeHint: string;
 			readonly codePreparing: string;
 			readonly password: string;
@@ -103,6 +107,8 @@ export interface RemotePairingSettingsModel {
 			readonly code: string;
 			readonly password: string;
 			readonly status: "preparing" | "ready" | "failed";
+			/** Why it failed: no answer, a relay without the mailbox route, or a refusal. */
+			readonly failure?: "unreachable" | "noInviteCodes" | "rejected";
 		};
 	};
 	readonly actions: {
@@ -268,6 +274,8 @@ export function useRemotePairingSettingsModel(): RemotePairingSettingsModel {
 				codeHint: t("remote.pairing.codeHint"),
 				codePreparing: t("remote.pairing.codePreparing"),
 				codeFailed: t("remote.pairing.codeFailed"),
+				codeNoMailbox: t("remote.pairing.codeNoMailbox"),
+				codeUnreachable: t("remote.pairing.codeUnreachable"),
 			},
 			cloud: {
 				title: t("remote.cloud.title"),

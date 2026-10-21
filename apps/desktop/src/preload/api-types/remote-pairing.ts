@@ -24,6 +24,11 @@ export interface RemotePairingInvite {
 		code: string;
 		password: string;
 		status: "preparing" | "ready" | "failed";
+		/**
+		 * Why it failed. `unreachable` = nothing answered; `noInviteCodes` = the relay has no
+		 * mailbox route and needs upgrading; `rejected` = the relay answered and refused.
+		 */
+		failure?: "unreachable" | "noInviteCodes" | "rejected";
 	};
 }
 
