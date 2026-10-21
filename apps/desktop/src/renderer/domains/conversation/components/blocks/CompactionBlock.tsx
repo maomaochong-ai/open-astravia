@@ -15,8 +15,10 @@ const LABEL_KEYS = {
 } as const;
 
 /** 压缩摘要是模型写的叙述，按 Markdown 预览而不是原文墙展示；引用要稳定，否则每帧重建整棵 Markdown 树。 */
-function renderSummaryMarkdown(text: string) {
-	return <MarkdownContent text={text} />;
+function renderSummaryMarkdown(text: string, streaming: boolean) {
+	// 运行中摘要每 100ms 长一截：交给流式尾块管线（节流快照 + 已闭合块冻结），
+	// 否则每次增量都整篇重解析，表格/代码块反复重建。
+	return <MarkdownContent text={text} isStreamingTail={streaming} />;
 }
 
 /** Automatic compaction as a step of the reply; opens to the summary that replaced earlier context. */

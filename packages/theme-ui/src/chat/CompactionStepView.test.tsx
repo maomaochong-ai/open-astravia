@@ -75,4 +75,38 @@ describe("CompactionStepView", () => {
 		expect(markup).toContain("compaction-summary");
 		expect(markup).not.toContain("text-[12px]");
 	});
+
+	it("tells the host whether the summary is still growing", () => {
+		// 增长中的正文必须走宿主的流式管线；宿主拿不到这个信号，就只能每次增量把整篇重解析一遍。
+		const seen: boolean[] = [];
+		const renderSummary = (summary: string, streaming: boolean) => {
+			seen.push(streaming);
+			return <div>{summary}</div>;
+		};
+
+		renderToStaticMarkup(
+			<CompactionStepView status="running" label="Compacting context…" summary="partial" renderSummary={renderSummary} />,
+		);
+		renderToStaticMarkup(
+			<CompactionStepView
+				status="success"
+				label="Context compacted"
+				summary="settled"
+				expanded
+				renderSummary={renderSummary}
+			/>,
+		);
+		// 导出拿的是静态快照，流式渲染只会给出已放出的那一段，所以导出时不算增长。
+		renderToStaticMarkup(
+			<CompactionStepView
+				status="running"
+				label="Compacting context…"
+				summary="partial"
+				exportMode
+				renderSummary={renderSummary}
+			/>,
+		);
+
+		expect(seen).toEqual([true, false, false]);
+	});
 });

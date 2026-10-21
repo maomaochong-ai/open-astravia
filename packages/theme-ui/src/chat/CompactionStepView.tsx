@@ -13,7 +13,7 @@ export interface CompactionStepViewProps {
 	 * 摘要正文的渲染器。宿主传入时用 Markdown 等富文本渲染，缺省按纯文本展示——
 	 * 主题包不认识宿主的 Markdown 管线，只提供注入点。
 	 */
-	readonly renderSummary?: (summary: string) => ReactNode;
+	readonly renderSummary?: (summary: string, streaming: boolean) => ReactNode;
 	readonly expanded?: boolean;
 	readonly onToggle?: () => void;
 	readonly exportMode?: boolean;
@@ -91,7 +91,10 @@ export function CompactionStepView({
 					<div className="ml-4 border-primary/25 border-l pb-1 pl-3">
 						<div className="compaction-summary max-h-72 overflow-y-auto break-words py-1 text-muted-foreground/80">
 							{summary === undefined ? null : renderSummary ? (
-								renderSummary(summary)
+								// `streaming`：这段文本还在增长。增长中的正文必须走宿主的流式渲染管线，
+								// 否则每次增量都要把整篇重解析一遍、整棵 Markdown 树重建一次。
+								// 导出快照要的是完整正文，流式渲染只会给出已放出的那一段，所以这里排除导出。
+								renderSummary(summary, status === "running" && !exportMode)
 							) : (
 								<div className="whitespace-pre-wrap">{summary}</div>
 							)}
