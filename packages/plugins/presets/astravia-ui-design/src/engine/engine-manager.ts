@@ -346,9 +346,9 @@ export function ensureEngine(
 		onProgress({ phase: "checking" });
 		const engineRoot = await engineRootDir(ctx, route);
 		if (await engineReady(ctx, engineRoot, route)) {
-			await pruneOldEngines(ctx, route).catch(() => {
-				// 清不掉只是占着磁盘，不该拦住画布。
-			});
+			// 回收旧版本要真的删掉一份 90M+ 的 node_modules，用户等的是画布，不是磁盘。
+			// 丢到后台跑：删不掉只是占着磁盘，下次打开再试一次。
+			void pruneOldEngines(ctx, route).catch(() => undefined);
 			return engineRoot;
 		}
 		onProgress({ phase: "materializing" });
@@ -361,9 +361,7 @@ export function ensureEngine(
 		if (!(await engineReady(ctx, engineRoot, route))) {
 			throw new Error("engine install incomplete (vite missing after npm install)");
 		}
-		await pruneOldEngines(ctx, route).catch(() => {
-			// 同上：新版本已经能跑了，回收失败不值得让整条链路失败。
-		});
+		void pruneOldEngines(ctx, route).catch(() => undefined);
 		return engineRoot;
 	};
 	const pending = run().catch((error: unknown) => {

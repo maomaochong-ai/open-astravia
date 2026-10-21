@@ -671,18 +671,25 @@ export function DesignCanvas({
 			const changedFrames = new Set<string>();
 			let sharedChanged = false;
 
-			for (const file of files) {
-				if (disposed) return;
+			// 一次变更通知要 stat 上百个源文件，而每一次 stat 都是一趟 IPC 往返。
+			// 串行 await 会把这些往返排成一队，在收到通知的那一刻把主线程按住；
+			// 只为比对 mtime，彼此之间没有先后关系，并发发出去即可。
+			const hits = files.flatMap((file) => {
 				const rel = normalizeRelative(file.relPath);
 				const impact = classifySource(rel);
-				if (impact.kind === "none") continue;
-				const stat = await ctx.fs.stat(file.path).catch(() => null);
+				return impact.kind === "none" ? [] : [{ file, rel, impact }];
+			});
+			const stats = await Promise.all(hits.map((hit) => ctx.fs.stat(hit.file.path).catch(() => null)));
+
+			for (const [index, hit] of hits.entries()) {
+				if (disposed) return;
+				const stat = stats[index];
 				if (!stat) continue;
-				const previous = sourceMtimesRef.current.get(rel);
-				sourceMtimesRef.current.set(rel, stat.modifiedAt);
+				const previous = sourceMtimesRef.current.get(hit.rel);
+				sourceMtimesRef.current.set(hit.rel, stat.modifiedAt);
 				if (seedOnly || previous === undefined || previous === stat.modifiedAt) continue;
 				// 影响面判定与活动态浮层共用（astravia-design/bundle-paths），两边不能有两套说法。
-				if (impact.kind === "frame") changedFrames.add(impact.frameId);
+				if (hit.impact.kind === "frame") changedFrames.add(hit.impact.frameId);
 				else sharedChanged = true;
 			}
 
