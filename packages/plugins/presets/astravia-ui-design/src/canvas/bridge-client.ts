@@ -3,6 +3,7 @@
  * DOM inspection happens inside it (engine/src/bridge.ts) and this hub routes
  * postMessage traffic per frame iframe.
  */
+import { isBridgeMessage, withBridgeMarker } from "../../engine/src/bridge-protocol";
 import { parseStorageEntries, type StorageEntries } from "../../engine/src/storage-sync";
 
 export interface SelectedElementPayload {
@@ -88,8 +89,8 @@ export class BridgeHub {
 	private readonly ready = new Set<string>();
 	private readonly readyWaiters = new Map<string, Set<() => void>>();
 	private readonly onMessage = (event: MessageEvent): void => {
-		const data = event.data as Record<string, unknown> | null;
-		if (!data || data.astravia-design !== true) return;
+		const data: unknown = event.data;
+		if (!isBridgeMessage(data)) return;
 		const frameId = this.frameIdForWindow(event.source);
 		switch (data.type) {
 			case "ready": {
@@ -277,7 +278,7 @@ export class BridgeHub {
 
 	private post(frameId: string, message: Record<string, unknown>): void {
 		const iframe = this.frames.get(frameId);
-		iframe?.contentWindow?.postMessage({ astraviaDesign: true, ...message }, "*");
+		iframe?.contentWindow?.postMessage(withBridgeMarker(message), "*");
 	}
 
 	/**

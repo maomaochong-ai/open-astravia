@@ -144,6 +144,9 @@ export const FRAME_READY_EXPRESSION = `((${FRAME_PAINTED_EXPRESSION}) || (${FRAM
 /**
  * 页面里切到目标帧的语句片段（供切帧与分块翻页脚本共用，调用处需先定义变量 `ID`）。
  * 记下出发时的历史 key，让 {@link FRAME_PAINTED_EXPRESSION} 能认出切帧是否已经发生。
+ *
+ * 这里是注入页面执行的源码字符串，取不到插件里的常量；`astraviaDesign: true` 必须与
+ * `engine/src/bridge-protocol.ts` 的 `BRIDGE_MARKER` 一致（`test/bridge-protocol.test.ts` 盯着它）。
  */
 export const NAVIGATE_TO_FRAME_STATEMENTS = `window.__astraviaDesignPainted = null;
 	window.__astraviaDesignBuildFailed = null;

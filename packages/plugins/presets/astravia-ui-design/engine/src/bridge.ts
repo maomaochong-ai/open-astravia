@@ -5,7 +5,7 @@
  * needs real DOM access: hover highlight, Figma-style drill selection,
  * data-astravia-design-source extraction and full-frame screenshots.
  *
- * Message contract (both directions carry `{ astraviaDesign: true }`):
+ * Message contract (both directions carry the shared marker envelope, see ./bridge-protocol):
  *   parent → iframe: set-mode | show-frame | navigate | reload | clear-selection | capture
  *                    | resolve-element
  *   iframe → parent: ready | rendered | selected | exit-inspect | captured | hmr-updated
@@ -13,6 +13,7 @@
  *                    | storage
  */
 import { toJpeg, toPng } from "html-to-image";
+import { isBridgeMessage, withBridgeMarker } from "./bridge-protocol";
 import { pathOfFrame } from "./routes";
 import { watchLocalStorage } from "./storage-sync";
 
@@ -33,7 +34,7 @@ export interface SelectedElementPayload {
 }
 
 function post(message: Record<string, unknown>): void {
-	window.parent.postMessage({ astraviaDesign: true, ...message }, "*");
+	window.parent.postMessage(withBridgeMarker(message), "*");
 }
 
 function cssPath(element: Element): string {
@@ -532,8 +533,8 @@ export function installBridge(host: BridgeHost): void {
 	);
 
 	window.addEventListener("message", (event: MessageEvent) => {
-		const data = event.data as Record<string, unknown> | null;
-		if (!data || data.astravia-design !== true) return;
+		const data: unknown = event.data;
+		if (!isBridgeMessage(data)) return;
 		switch (data.type) {
 			case "set-mode":
 				setMode(data.mode === "inspect" ? "inspect" : "off");

@@ -6,6 +6,7 @@
  * rendered 信号被当成画布的交接点）。预览要的东西也少得多——导航，仅此而已。
  */
 import { type RefObject, useCallback, useEffect, useState } from "react";
+import { isBridgeMessage, withBridgeMarker } from "../../engine/src/bridge-protocol";
 
 export interface PreviewNavState {
 	/** 当前地址，如 `/login`。 */
@@ -33,8 +34,8 @@ export function usePreviewBridge(iframeRef: RefObject<HTMLIFrameElement | null>)
 		const onMessage = (event: MessageEvent): void => {
 			// 画布上的每个 frame 也在往同一个 window 发消息，来源过滤是必须的。
 			if (event.source !== iframeRef.current?.contentWindow) return;
-			const data = event.data as Record<string, unknown> | null;
-			if (!data || data.astravia-design !== true || data.type !== "navigated") return;
+			const data: unknown = event.data;
+			if (!isBridgeMessage(data) || data.type !== "navigated") return;
 			setNav({
 				path: typeof data.path === "string" ? data.path : "/",
 				frameId: typeof data.frameId === "string" ? data.frameId : null,
@@ -48,7 +49,7 @@ export function usePreviewBridge(iframeRef: RefObject<HTMLIFrameElement | null>)
 
 	const post = useCallback(
 		(message: Record<string, unknown>): void => {
-			iframeRef.current?.contentWindow?.postMessage({ astraviaDesign: true, ...message }, "*");
+			iframeRef.current?.contentWindow?.postMessage(withBridgeMarker(message), "*");
 		},
 		[iframeRef],
 	);

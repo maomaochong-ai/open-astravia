@@ -1,5 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { type CSSProperties, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { withBridgeMarker } from "../../engine/src/bridge-protocol";
 import { fitViewport, useViewport } from "../canvas/use-viewport";
 import type { AstraviaDesignFrameEntry, AstraviaDesignManifest } from "../astravia-design/manifest-types";
 
@@ -151,7 +152,7 @@ function SnapshotFrame({ html, frameId, onLoaded }: { html: string; frameId: str
 			sandbox="allow-scripts"
 			className="pointer-events-none h-full w-full border-0 bg-white"
 			onLoad={() => {
-				ref.current?.contentWindow?.postMessage({ astraviaDesign: true, type: "show-frame", id: frameId }, "*");
+				ref.current?.contentWindow?.postMessage(withBridgeMarker({ type: "show-frame", id: frameId }), "*");
 				onLoaded();
 			}}
 		/>
