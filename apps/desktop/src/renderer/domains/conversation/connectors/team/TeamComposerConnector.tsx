@@ -27,8 +27,13 @@ import {
 import { useExecutionModeSelectorModel } from "../../hooks/useExecutionModeSelectorModel";
 import type { TeamAttachmentViewModel, TeamChatActions, TeamComposerViewModel } from "./teamChatModel";
 import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
-
-const ASTRAVIA_PATH_MIME = "application/astravia-path";
+import {
+	ASTRAVIA_PATH_MIME,
+	type DropDragKind,
+	detectDropKind,
+	parseFileUriList,
+	readDropSnapshot,
+} from "../../drop-payload";
 
 function attachmentFromPath(path: string): TeamAttachmentViewModel {
 	return {
@@ -227,12 +232,7 @@ export function TeamComposerConnector({
 	);
 	const bottomPanelPills = useBottomPanelPills(workSurface);
 
-	const detectDragKind = useCallback((event: DragEvent): "files" | "internal" | null => {
-		const types = Array.from(event.dataTransfer.types);
-		if (types.includes(ASTRAVIA_PATH_MIME)) return "internal";
-		if (types.includes("Files")) return "files";
-		return null;
-	}, []);
+	const detectDragKind = useCallback((event: DragEvent): DropDragKind | null => detectDropKind(readDropSnapshot(event)), []);
 	const onDragEnter = useCallback((event: DragEvent<Element>) => {
 		const kind = detectDragKind(event);
 		if (!kind || !model.editorEnabled) return;
@@ -254,17 +254,27 @@ export function TeamComposerConnector({
 		setDragKind(null);
 	}, []);
 	const onDrop = useCallback((event: DragEvent<Element>) => {
+		// 与 useSessionDropZoneModel 同理：先拦住，避免编辑器把路径当纯文本插进去。
+		if (model.editorEnabled) {
+			event.preventDefault();
+			event.stopPropagation();
+		}
 		const kind = detectDragKind(event);
 		setDragKind(null);
 		if (!kind || !model.editorEnabled) return;
-		event.preventDefault();
-		event.stopPropagation();
 		if (kind === "internal") {
 			const path = event.dataTransfer.getData(ASTRAVIA_PATH_MIME);
 			if (path) actions.addAttachments([attachmentFromPath(path)]);
 			return;
 		}
-		const additions = Array.from(event.dataTransfer.files)
+		const files = Array.from(event.dataTransfer.files);
+		if (files.length === 0) {
+			// Windows 原生拖拽拿不到 File 对象时退回 URI 列表。
+			const uriPaths = parseFileUriList(event.dataTransfer.getData("text/uri-list"));
+			if (uriPaths.length > 0) actions.addAttachments(uriPaths.map(attachmentFromPath));
+			return;
+		}
+		const additions = files
 			.map((file) => window.astravia.fs.pathForFile(file))
 			.filter((path): path is string => Boolean(path))
 			.map(attachmentFromPath);

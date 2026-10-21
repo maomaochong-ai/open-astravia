@@ -15,7 +15,7 @@ export interface SessionDropZoneViewLabels {
 export interface SessionDropZoneViewProps
 	extends Omit<
 		ComponentPropsWithoutRef<"div">,
-		"children" | "onDragEnter" | "onDragOver" | "onDragLeave" | "onDrop"
+		"children" | "onDragEnter" | "onDragOver" | "onDragLeave" | "onDrop" | "onDropCapture"
 	> {
 	/** Should be the same box as the visual input card (padding/max-width outside). */
 	children: ReactNode;
@@ -30,6 +30,10 @@ export interface SessionDropZoneViewProps
 
 /**
  * Drag-and-drop shell whose overlay matches this element's box (use on the input card).
+ *
+ * `onDrop` is wired to the capture phase: the editor inside is a drop target too, and a
+ * bubbling handler here would only see the payload after the editor already turned it into
+ * plain text.
  */
 export const SessionDropZoneView = forwardRef<HTMLDivElement, SessionDropZoneViewProps>(
 	function SessionDropZoneView(
@@ -57,7 +61,7 @@ export const SessionDropZoneView = forwardRef<HTMLDivElement, SessionDropZoneVie
 			onDragEnter={onDragEnter}
 			onDragOver={onDragOver}
 			onDragLeave={onDragLeave}
-			onDrop={onDrop}
+			onDropCapture={onDrop}
 			{...props}
 		>
 			{children}

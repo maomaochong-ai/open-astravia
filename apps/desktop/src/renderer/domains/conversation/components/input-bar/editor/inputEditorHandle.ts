@@ -102,6 +102,18 @@ export function insertFileToken(path: string, isDirectory = false, options?: Ins
 	insert(() => [$createFileTokenNode(path, isDirectory)], options);
 }
 
+/**
+ * 一次 Lexical transaction 插入多个文件 token。
+ * 拖入几十个文件时逐项调 insertFileToken 会各触发一次投影 atom 与 React commit，
+ * 输入框里已有很多文本时尤其明显，这里合并成一次更新。
+ */
+export function insertFileTokens(entries: readonly { path: string; isDirectory: boolean }[]): void {
+	if (entries.length === 0) return;
+	current?.update(() => {
+		$insertTokenNodes(entries.map((entry) => $createFileTokenNode(entry.path, entry.isDirectory)));
+	});
+}
+
 export function insertImageToken(path: string, options?: InsertTokenOptions): void {
 	insert(() => [$createImageTokenNode(path)], options);
 }

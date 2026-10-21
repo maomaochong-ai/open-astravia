@@ -6,20 +6,17 @@ import { activeSessionAtom, type MentionedFile, mentionedFilesAtom } from "@shar
 import { useAtomValue } from "jotai";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { insertFileToken, insertImageToken } from "../components/input-bar/editor/inputEditorHandle";
+import { insertFileTokens, insertImageToken } from "../components/input-bar/editor/inputEditorHandle";
 import { persistImageFiles } from "../components/input-bar/editor/persistImages";
+import {
+	ASTRAVIA_PATH_MIME,
+	type DropDragKind,
+	detectDropKind,
+	parseFileUriList,
+	readDropSnapshot,
+} from "../drop-payload";
 
-const ASTRAVIA_PATH_MIME = "application/astravia-path";
 const ASTRAVIA_PATH_META_MIME = "application/astravia-path-meta";
-
-type DragKind = "files" | "internal";
-
-function detectKind(e: React.DragEvent): DragKind | null {
-	const types = Array.from(e.dataTransfer.types);
-	if (types.includes(ASTRAVIA_PATH_MIME)) return "internal";
-	if (types.includes("Files")) return "files";
-	return null;
-}
 
 export interface SessionDropZoneModel extends Omit<SessionDropZoneViewProps, "children"> {}
 
@@ -29,13 +26,13 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 	const rootDirectory = cwdOverride ?? activeSession?.cwd ?? null;
 	// 只读投影：用来跳过已经在输入框里的路径，避免重复插 token。
 	const mentionedFiles = useAtomValue(mentionedFilesAtom);
-	const [dragKind, setDragKind] = useState<DragKind | null>(null);
+	const [dragKind, setDragKind] = useState<DropDragKind | null>(null);
 
 	const enabled = Boolean(activeSession) || Boolean(cwdOverride);
 
 	const handleDragEnter = useCallback(
 		(e: React.DragEvent) => {
-			const kind = detectKind(e);
+			const kind = detectDropKind(readDropSnapshot(e));
 			if (!kind || !enabled) return;
 			e.preventDefault();
 			e.stopPropagation();
@@ -47,7 +44,7 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 
 	const handleDragOver = useCallback(
 		(e: React.DragEvent) => {
-			const kind = detectKind(e);
+			const kind = detectDropKind(readDropSnapshot(e));
 			if (!kind || !enabled) return;
 			e.preventDefault();
 			e.stopPropagation();
@@ -80,14 +77,19 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 			if (entries.length === 0) return;
 			const seen = new Set(mentionedFiles.map((f) => f.path));
 			const additions: MentionedFile[] = [];
+			const fileTokens: { path: string; isDirectory: boolean }[] = [];
+			const imagePaths: string[] = [];
 			for (const ent of entries) {
 				if (!ent.path || seen.has(ent.path)) continue;
 				seen.add(ent.path);
 				additions.push(ent);
-				if (isImagePath(ent.path)) insertImageToken(ent.path);
-				else insertFileToken(ent.path, ent.isDirectory);
+				if (isImagePath(ent.path)) imagePaths.push(ent.path);
+				else fileTokens.push({ path: ent.path, isDirectory: ent.isDirectory });
 			}
 			if (additions.length === 0) return;
+			// 文件 token 合并成一次编辑器更新：拖几十个文件时逐个插会卡住输入框。
+			insertFileTokens(fileTokens);
+			for (const path of imagePaths) insertImageToken(path);
 			recordInputFilesAdded("drop", additions);
 		},
 		[mentionedFiles],
@@ -95,11 +97,15 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 
 	const handleDrop = useCallback(
 		async (e: React.DragEvent) => {
-			const kind = detectKind(e);
+			// 先无条件拦住：dragover 没被 preventDefault 时浏览器根本不会派发 drop，
+			// 能走到这里的都是已被放行的文件类拖拽。拦晚了编辑器会把路径当纯文本插进来。
+			if (enabled) {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+			const kind = detectDropKind(readDropSnapshot(e));
 			resetDrag();
 			if (!kind || !enabled) return;
-			e.preventDefault();
-			e.stopPropagation();
 
 			if (kind === "internal") {
 				const path = e.dataTransfer.getData(ASTRAVIA_PATH_MIME);
@@ -122,6 +128,15 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 
 			const items = Array.from(e.dataTransfer.items);
 			const files = Array.from(e.dataTransfer.files);
+
+			// Windows 原生拖拽拿不到 File 对象时退回 URI 列表，否则整次拖拽会被丢掉。
+			if (files.length === 0) {
+				const uriPaths = parseFileUriList(e.dataTransfer.getData("text/uri-list"));
+				if (uriPaths.length > 0) {
+					pushMentioned(uriPaths.map((path) => ({ path, name: pathBasename(path), isDirectory: false })));
+				}
+				return;
+			}
 
 			const imageFiles: File[] = [];
 			const otherEntries: MentionedFile[] = [];
