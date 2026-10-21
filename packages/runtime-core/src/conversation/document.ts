@@ -265,12 +265,19 @@ export function isConversationDocumentEntryEvent(event: StoredSessionEvent): eve
 	return conversationDocumentEntryPersistence(event) !== "none";
 }
 
-/** Apply one persisted Kernel event to the independent conversation read model. */
+/**
+ * Apply one persisted Kernel event to the independent conversation read model.
+ *
+ * `knownEntryIds` 是 `document.entries` 的 id 索引：批量折叠长会话时逐条线性扫 entries
+ * 是平方级成本，调用方可传入并在循环中复用。传入即视为与 `document.entries` 完全一致，
+ * 本函数会把新 entry 的 id 加进去；不传时仍按原语义自行扫描。
+ */
 export function applyStoredEventToConversationDocument(
 	document: ConversationDocument,
 	event: StoredSessionEvent,
 	sequence: number,
 	reference?: ConversationDocumentEntryReference,
+	knownEntryIds?: Set<string>,
 ): ConversationDocument {
 	if (event.sessionId !== document.identity.sessionId) {
 		throw new Error(`Conversation document ${document.identity.sessionId} cannot apply event for ${event.sessionId}`);
@@ -289,12 +296,15 @@ export function applyStoredEventToConversationDocument(
 			parentId: document.activeLeafId,
 			timestamp: new Date(event.timestamp).toISOString(),
 		} satisfies ConversationDocumentEntryReference);
-	if (document.entries.some((entry) => entry.id === entryReference.id)) {
+	const hasEntry = (id: string): boolean =>
+		knownEntryIds ? knownEntryIds.has(id) : document.entries.some((entry) => entry.id === id);
+	if (hasEntry(entryReference.id)) {
 		throw new Error(`Conversation document entry already exists: ${entryReference.id}`);
 	}
-	if (entryReference.parentId && !document.entries.some((entry) => entry.id === entryReference.parentId)) {
+	if (entryReference.parentId && !hasEntry(entryReference.parentId)) {
 		throw new Error(`Conversation document parent does not exist: ${entryReference.parentId}`);
 	}
+	knownEntryIds?.add(entryReference.id);
 	if (isPersistentCompactionEvent(event)) {
 		const activeBranchIds = new Set(selectBranchIds(document));
 		if (!activeBranchIds.has(event.record.firstKeptEntryId)) {

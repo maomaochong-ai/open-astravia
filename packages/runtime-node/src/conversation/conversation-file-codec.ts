@@ -399,6 +399,9 @@ export function applyConversationRecords(
 	if (records.length === 0) return document;
 	try {
 		let projected = document;
+		// 逐条插入 entry 时如果每次都线性扫 entries 查重，长会话的投影就是平方级：
+		// 27MB 会话近八成的投影耗时在这一处。命令会改写 entry 集合，执行后重建索引。
+		let knownEntryIds = new Set(projected.entries.map((entry) => entry.id));
 		for (const record of records) {
 			if (record.recordType === "conversation.event") {
 				const reference = record.schemaVersion === CONVERSATION_SCHEMA_VERSION ? record.documentEntry : undefined;
@@ -407,12 +410,14 @@ export function applyConversationRecords(
 					record.event,
 					record.sequence,
 					reference ?? undefined,
+					knownEntryIds,
 				);
 				continue;
 			}
 			const result = applyConversationDocumentCommand(projected, record.command, record.revision);
 			if (!result.changed) throw new Error(`Document operation ${record.revision} is a persisted no-op`);
 			projected = result.document;
+			knownEntryIds = new Set(projected.entries.map((entry) => entry.id));
 		}
 		return projected;
 	} catch (error) {
