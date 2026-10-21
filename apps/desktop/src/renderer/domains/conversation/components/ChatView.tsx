@@ -66,6 +66,7 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 	const headerActions = useMemo(
 		() => (
 			<>
+				{model.cwd && <OpenWorkspaceWithAppButton rootDir={model.cwd} />}
 				<BackgroundTasksBadge runtimeIds={runtimeIds} activityWorkspaceId={workspace.id} />
 				<SandboxGrantsBadge runtimeIds={runtimeIds} />
 				<ChatHeaderActions.Export
