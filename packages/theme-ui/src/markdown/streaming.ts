@@ -88,6 +88,19 @@ function estimateRate(samples: readonly ArrivalSample[], now: number): number {
 }
 
 /**
+ * 逐字 reveal 的长度上限。超过这个长度（上下文压缩摘要能到 20k–72k 字符）不再逐字推进：
+ * reveal 每 100ms 推进一次就等于把整篇 markdown 重新解析、重新提交一次，长文本压缩卡片
+ * 在这条路径上会把渲染推成嵌套更新循环（React error #185，Maximum update depth exceeded）。
+ * 旁路后仍然走快照节流，长文本按帧到达而不是逐字浮现。
+ */
+export const STREAM_ANIMATE_MAX_CHARS = 12_000;
+
+/** 这段尾块是否走逐字 reveal：流式中，且文本没超过上限。 */
+export function shouldRevealStreamingTail(text: string, isStreamingTail: boolean): boolean {
+	return isStreamingTail && text.length <= STREAM_ANIMATE_MAX_CHARS;
+}
+
+/**
  * 流式尾块：把显示文本匀速追向宿主文本（节奏见 streaming-reveal），配合 rehype 分段做「最新短语略暗」。
  * 放出由 `text` 变化（宿主每 100ms 一次的增量刷新）驱动，在布局效果里同步更新，与那次渲染落在同一帧；
  * 没有新文本时由兜底 tick 收尾。尾部未写完的词、未闭合的行内语法先扣着；流结束后按节奏放完再撤掉分段。

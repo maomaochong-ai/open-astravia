@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { HastElement, HastRoot, HastText } from "./nodes";
-import { rehypeStreamingChunks } from "./streaming";
+import { rehypeStreamingChunks, STREAM_ANIMATE_MAX_CHARS, shouldRevealStreamingTail } from "./streaming";
 
 function text(value: string): HastText {
 	return { type: "text", value } as HastText;
@@ -53,5 +53,24 @@ describe("rehypeStreamingChunks", () => {
 			["streaming-chunk", "streaming-chunk-recent"],
 			["streaming-chunk", "streaming-chunk-latest"],
 		]);
+	});
+});
+
+describe("shouldRevealStreamingTail", () => {
+	test("a streaming tail inside the limit still animates", () => {
+		expect(shouldRevealStreamingTail("short reply", true)).toBe(true);
+		expect(shouldRevealStreamingTail("x".repeat(STREAM_ANIMATE_MAX_CHARS), true)).toBe(true);
+	});
+
+	// 压缩摘要能到 20k–72k 字符；逐字 reveal 会把整篇 markdown 每 100ms 重解析一次，
+	// 长摘要压缩卡片在这条路径上会抛 React #185。超过上限就必须直接给全文。
+	test("a long streaming tail skips reveal instead of re-parsing the whole document every tick", () => {
+		expect(shouldRevealStreamingTail("x".repeat(STREAM_ANIMATE_MAX_CHARS + 1), true)).toBe(false);
+		expect(shouldRevealStreamingTail("x".repeat(72_767), true)).toBe(false);
+	});
+
+	test("a settled block never animates, whatever its length", () => {
+		expect(shouldRevealStreamingTail("short reply", false)).toBe(false);
+		expect(shouldRevealStreamingTail("x".repeat(STREAM_ANIMATE_MAX_CHARS + 1), false)).toBe(false);
 	});
 });
