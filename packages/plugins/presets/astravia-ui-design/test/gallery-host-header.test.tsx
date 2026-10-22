@@ -113,22 +113,28 @@ async function mountGallery(): Promise<void> {
 }
 
 describe("画廊与宿主页头", () => {
-	it("首页声明沉浸式页头（浮在画廊之上），不往页头塞工具栏", async () => {
+	it("首页把工具栏交给宿主页头，页头不沉浸（自己占一行）", async () => {
 		await mountGallery();
 
 		const header = lastHeader();
 		expect(header?.hideTitle).toBe(true);
-		expect(header?.immersive).toBe(true);
-		expect(header?.left).toBeUndefined();
-		expect(header?.right).toBeUndefined();
+		// 沉浸式会把内容顶到窗口第一像素，于是滚起来的卡片从工具栏后面穿过；
+		// 工具栏要常驻，页头就必须自己占一行。
+		expect(header?.immersive).not.toBe(true);
+		expect(header?.left).toBeTruthy();
+		expect(header?.right).toBeTruthy();
+		expect(headerHost.querySelector('input[aria-label="gallery.search"]')).not.toBeNull();
 		act(() => root.unmount());
 	});
 
-	it("首页的搜索框长在 Hero 里，并驱动画廊过滤", async () => {
+	it("页头搜索框驱动画廊过滤（搜索框不在滚动容器里）", async () => {
 		await mountGallery();
 		expect(host.querySelectorAll("[data-card]")).toHaveLength(3);
 
-		const input = host.querySelector<HTMLInputElement>('input[aria-label="gallery.search"]');
+		// 首页自己的 DOM 里不该再出现搜索框：滚走就点不到的东西不能当主入口。
+		expect(host.querySelector('input[aria-label="gallery.search"]')).toBeNull();
+
+		const input = headerHost.querySelector<HTMLInputElement>('input[aria-label="gallery.search"]');
 		expect(input).not.toBeNull();
 		await act(async () => {
 			const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
@@ -141,8 +147,11 @@ describe("画廊与宿主页头", () => {
 		act(() => root.unmount());
 	});
 
-	it("进「全部设计」后工具栏回到页头", async () => {
+	it("进「全部设计」后工具栏仍在页头，并多了返回键与计数", async () => {
 		await mountGallery();
+		// 首页不显示计数也不显示返回键。
+		expect(headerHost.textContent).not.toContain("gallery.count");
+		expect(headerHost.querySelector('[aria-label="gallery.projects.back"]')).toBeNull();
 
 		const more = [...host.querySelectorAll("button")].find((button) =>
 			button.textContent?.includes("gallery.section.more"),
@@ -155,11 +164,12 @@ describe("画廊与宿主页头", () => {
 
 		const header = lastHeader();
 		expect(header?.hideTitle).toBe(true);
-		// 列表页有自己的工具栏行，页头必须回到常规堆叠，否则工具栏会压在内容上。
 		expect(header?.immersive).not.toBe(true);
 		expect(header?.left).toBeTruthy();
 		expect(header?.right).toBeTruthy();
 		expect(headerHost.querySelector('input[aria-label="gallery.search"]')).not.toBeNull();
+		expect(headerHost.querySelector('[aria-label="gallery.projects.back"]')).not.toBeNull();
+		expect(headerHost.textContent).toContain("gallery.count");
 		act(() => root.unmount());
 	});
 

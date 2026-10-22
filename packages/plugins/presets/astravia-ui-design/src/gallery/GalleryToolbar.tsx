@@ -43,7 +43,9 @@ export function GalleryToolbarLeft({ view, count, keyword, onKeywordChange, onBa
 					{t("gallery.count", { count })}
 				</span>
 			) : null}
-			<div className="relative ml-1">
+			{/* 页头里没有第二行可以回退：窗口窄到塞不下时让搜索框缩，而不是把右侧
+			    的刷新/导入/新建挤出可视区。13rem 是宽窗口下的上限。 */}
+			<div className="relative ml-1 min-w-0 max-w-[13rem] flex-1">
 				<svg
 					viewBox="0 0 24 24"
 					className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
@@ -60,7 +62,7 @@ export function GalleryToolbarLeft({ view, count, keyword, onKeywordChange, onBa
 					onChange={(event) => onKeywordChange(event.target.value)}
 					placeholder={t("gallery.search")}
 					aria-label={t("gallery.search")}
-					className="w-52 rounded-lg border border-transparent bg-accent/60 py-1.5 pl-8 pr-2.5 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-card"
+					className="w-full rounded-lg border border-transparent bg-accent/60 py-1.5 pl-8 pr-2.5 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-card"
 				/>
 			</div>
 		</div>
@@ -78,7 +80,7 @@ export interface GalleryToolbarRightProps {
 export function GalleryToolbarRight({ loading, busy, onRefresh, onImport, onCreate }: GalleryToolbarRightProps) {
 	const { t } = useTranslation();
 	return (
-		<div className="no-drag flex items-center gap-1.5">
+		<div className="no-drag flex shrink-0 items-center gap-1.5">
 			<button
 				type="button"
 				onClick={onRefresh}

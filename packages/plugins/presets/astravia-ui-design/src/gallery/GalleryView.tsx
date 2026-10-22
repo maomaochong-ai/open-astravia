@@ -253,20 +253,17 @@ export function GalleryView() {
 	}, []);
 
 	/**
-	 * 页头接管。首页把工具栏长在 Hero 里（见 GalleryHero 的说明），页头因此只需要
-	 * 收掉宿主标题、留作窗口拖拽区；「全部设计」列表页没有 Hero，工具栏回到页头。
+	 * 页头接管：两个视图都把工具栏交给宿主页头。
+	 *
+	 * 页头在滚动容器之外，因此搜索/新建/导入/刷新永远够得着；Hero 只是页面顶部，
+	 * 会随内容滚走。曾经把工具栏长在 Hero 里（借 immersive 让 Hero 顶到窗口第一像素），
+	 * 代价是往下滚一段就再也点不到「新建设计」，不是一个能接受的取舍。
 	 *
 	 * 刻意不写依赖数组——节点闭包着 keyword / loading / busy 等每次渲染都可能变的
 	 * 状态，漏一个依赖就会让页头里的搜索框停在旧值上。写入是幂等的 store.set，
 	 * 且页头不会反过来触发本组件重渲染，不存在循环。
 	 */
 	useEffect(() => {
-		if (view !== "projects") {
-			// immersive：页头浮在画廊之上，Hero 从窗口第一像素开始铺，
-			// 不再被 44px 页头推出一条谁也画不了的空带。
-			getPluginCtx().ui.setWorkspaceViewHeader(GALLERY_VIEW_ID, { hideTitle: true, immersive: true });
-			return;
-		}
 		getPluginCtx().ui.setWorkspaceViewHeader(GALLERY_VIEW_ID, {
 			hideTitle: true,
 			left: (
@@ -299,13 +296,6 @@ export function GalleryView() {
 			projectCount={cards.length}
 			designCount={designCount}
 			empty={empty}
-			loading={loading}
-			busy={busy}
-			keyword={keyword}
-			onKeywordChange={setKeyword}
-			onRefresh={() => void refresh({ forceCatalog: true })}
-			onImport={() => void onPickImport()}
-			onCreate={() => setCreating(true)}
 			onBrowseStyles={() => stylesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
 		/>
 	);

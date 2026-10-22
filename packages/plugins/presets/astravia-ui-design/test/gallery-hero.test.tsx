@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * 画廊 Hero：门面同时是两条主入口。这里钉住的是它的行为契约——
- * 数字只反映真实存在的东西（空库不吹「0 个项目」）、两个按钮各自回调、busy 时不可点。
+ * 画廊 Hero：只负责门面与真实统计。动作（搜索/新建/导入/刷新）在宿主页头，
+ * 这里钉住的是：数字只反映真实存在的东西（空库不吹「0 个项目」），
+ * 以及 Hero 不再自己长出工具栏——那会让滚走后再也点不到新建。
  */
 
 vi.mock("@astravia-org/plugin-sdk", () => {
@@ -39,30 +40,13 @@ afterEach(() => {
 });
 
 function mount(props: Partial<React.ComponentProps<typeof GalleryHero>> = {}) {
-	const onCreate = vi.fn();
 	const onBrowseStyles = vi.fn();
-	const onKeywordChange = vi.fn();
-	const onRefresh = vi.fn();
-	const onImport = vi.fn();
 	act(() => {
 		root.render(
-			<GalleryHero
-				projectCount={4}
-				designCount={9}
-				empty={false}
-				loading={false}
-				busy={false}
-				keyword=""
-				onKeywordChange={onKeywordChange}
-				onRefresh={onRefresh}
-				onImport={onImport}
-				onCreate={onCreate}
-				onBrowseStyles={onBrowseStyles}
-				{...props}
-			/>,
+			<GalleryHero projectCount={4} designCount={9} empty={false} onBrowseStyles={onBrowseStyles} {...props} />,
 		);
 	});
-	return { onCreate, onBrowseStyles, onKeywordChange, onRefresh, onImport };
+	return { onBrowseStyles };
 }
 
 function buttonWith(text: string): HTMLButtonElement | undefined {
@@ -95,43 +79,15 @@ describe("画廊 Hero", () => {
 		expect(host.querySelectorAll("li")).toHaveLength(0);
 	});
 
-	it("Hero 自带首页工具栏：搜索、刷新、导入各自回调", () => {
-		const { onKeywordChange, onRefresh, onImport } = mount();
+	it("不再自己渲染搜索/新建/导入/刷新，只留「逛逛风格库」", () => {
+		const { onBrowseStyles } = mount();
 
-		const input = host.querySelector<HTMLInputElement>('input[aria-label="gallery.search"]');
-		expect(input).not.toBeNull();
-		act(() => {
-			const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-			setter?.call(input, "alpha");
-			input?.dispatchEvent(new Event("input", { bubbles: true }));
-		});
-		expect(onKeywordChange).toHaveBeenCalledWith("alpha");
+		expect(host.querySelector('input[aria-label="gallery.search"]')).toBeNull();
+		expect(host.querySelector('[aria-label="gallery.action.refresh"]')).toBeNull();
+		expect(buttonWith("gallery.action.import")).toBeUndefined();
+		expect(buttonWith("gallery.hero.create")).toBeUndefined();
 
-		act(() => host.querySelector<HTMLButtonElement>('[aria-label="gallery.action.refresh"]')?.click());
-		expect(onRefresh).toHaveBeenCalledOnce();
-
-		act(() => buttonWith("gallery.action.import")?.click());
-		expect(onImport).toHaveBeenCalledOnce();
-	});
-
-	it("刷新中不可重复点，按钮进入 loading 态", () => {
-		const { onRefresh } = mount({ loading: true });
-		const refresh = host.querySelector<HTMLButtonElement>('[aria-label="gallery.action.refresh"]');
-		expect(refresh?.disabled).toBe(true);
-		act(() => refresh?.click());
-		expect(onRefresh).not.toHaveBeenCalled();
-	});
-
-	it("两个按钮各自回调，busy 时新建不可点", () => {
-		const { onCreate, onBrowseStyles } = mount();
-		act(() => buttonWith("gallery.hero.create")?.click());
 		act(() => buttonWith("gallery.hero.browseStyles")?.click());
-		expect(onCreate).toHaveBeenCalledOnce();
 		expect(onBrowseStyles).toHaveBeenCalledOnce();
-
-		const busy = mount({ busy: true });
-		expect(buttonWith("gallery.hero.create")?.disabled).toBe(true);
-		act(() => buttonWith("gallery.hero.create")?.click());
-		expect(busy.onCreate).not.toHaveBeenCalled();
 	});
 });
