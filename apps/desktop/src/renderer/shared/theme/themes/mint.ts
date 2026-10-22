@@ -1,60 +1,95 @@
 import type { ThemeDef } from "../tokens";
 import { defaultTheme } from "./default";
 
-// 「薄荷」主题：青绿主色 + 淡绿表面。
-// 浅色画布偏淡绿，深色画布近黑绿；边框与输入框带青绿调。
+// 「薄荷」主题：青绿主色 + 冷调表面。
+//
+// 浅色画布带一层薄荷灰（不是纯白），卡面比画布更亮，muted/secondary 依次加深；
+// 深色画布是近黑的冷绿，卡面与浮层逐级提亮。
+// chart 取青绿一族 + 一枚冷蓝，避免图表区域显出一块不属于主题的颜色。
 
-const PRIMARY_LIGHT = "#4fa98f";
+const PRIMARY_LIGHT = "#297a65";
 const PRIMARY_DARK = "#62c9a8";
-const PRIMARY_FG = "#ffffff";
+const PRIMARY_FG_LIGHT = "#ffffff";
+const PRIMARY_FG_DARK = "#04150f";
+
+const LIGHT_BG = "#eef7f3";
+const LIGHT_FG = "#0f221e";
+const LIGHT_CARD = "#fbfefd";
+const LIGHT_MUTED = "#e4f2ec";
+const LIGHT_SECONDARY = "#daeee7";
+const LIGHT_ACCENT = "#dcefe9";
+const LIGHT_BORDER = "#c8dfd6";
+const LIGHT_INPUT = "#d3e7df";
+const LIGHT_MUTED_FG = "#557069";
+
+const DARK_BG = "#08110f";
+const DARK_FG = "#e0f0ea";
+const DARK_CARD = "#0f1d19";
+const DARK_POPOVER = "#142420";
+const DARK_MUTED = "#0c1614";
+const DARK_SECONDARY = "#182722";
+const DARK_ACCENT = "#1c2e28";
+const DARK_BORDER = "#263f39";
+const DARK_INPUT = "#2e4a43";
+const DARK_MUTED_FG = "#82a29a";
 
 export const mintTheme: ThemeDef = {
 	id: "mint",
 	label: "Mint",
 	dark: {
 		...defaultTheme.dark,
-		background: "#0b110e",
-		foreground: "#eaf3ef",
-		card: "#0a0f0d",
-		cardForeground: "#eaf3ef",
-		popover: "#0a0f0d",
-		popoverForeground: "#eaf3ef",
+		background: DARK_BG,
+		foreground: DARK_FG,
+		card: DARK_CARD,
+		cardForeground: DARK_FG,
+		popover: DARK_POPOVER,
+		popoverForeground: DARK_FG,
 		primary: PRIMARY_DARK,
-		primaryForeground: PRIMARY_FG,
-		secondary: "#232e29",
-		secondaryForeground: "#eaf3ef",
-		muted: "#1a2420",
-		mutedForeground: "#788f85",
-		accent: "#27332e",
-		accentForeground: "#eaf3ef",
+		primaryForeground: PRIMARY_FG_DARK,
+		secondary: DARK_SECONDARY,
+		secondaryForeground: DARK_FG,
+		muted: DARK_MUTED,
+		mutedForeground: DARK_MUTED_FG,
+		accent: DARK_ACCENT,
+		accentForeground: DARK_FG,
 		destructive: "#ff8a8e",
-		destructiveForeground: PRIMARY_FG,
-		border: "#394a42",
-		input: "#314039",
-		inputBarBg: "#0a0f0d",
+		destructiveForeground: "#1a0d0e",
+		border: DARK_BORDER,
+		input: DARK_INPUT,
+		inputBarBg: DARK_CARD,
 		ring: PRIMARY_DARK,
+		chart1: "#62c9a8",
+		chart2: "#3d9d85",
+		chart3: "#8fe0c8",
+		chart4: "#4a90c0",
+		chart5: "#7f9b94",
 	},
 	light: {
 		...defaultTheme.light,
-		background: "#f9fbf9",
-		foreground: "#2f4b2d",
-		card: "#ffffff",
-		cardForeground: "#2f4b2d",
+		background: LIGHT_BG,
+		foreground: LIGHT_FG,
+		card: LIGHT_CARD,
+		cardForeground: LIGHT_FG,
 		popover: "#ffffff",
-		popoverForeground: "#2f4b2d",
+		popoverForeground: LIGHT_FG,
 		primary: PRIMARY_LIGHT,
-		primaryForeground: PRIMARY_FG,
-		secondary: "#e1eee9",
-		secondaryForeground: "#2f4b2d",
-		muted: "#f6f6f6",
-		mutedForeground: "#737f76",
-		accent: "#e1eee9",
-		accentForeground: "#2f4b2d",
-		destructive: "#e04b53",
-		destructiveForeground: PRIMARY_FG,
-		border: "#afcbc1",
-		input: "#d1e4dd",
+		primaryForeground: PRIMARY_FG_LIGHT,
+		secondary: LIGHT_SECONDARY,
+		secondaryForeground: LIGHT_FG,
+		muted: LIGHT_MUTED,
+		mutedForeground: LIGHT_MUTED_FG,
+		accent: LIGHT_ACCENT,
+		accentForeground: LIGHT_FG,
+		destructive: "#c0453f",
+		destructiveForeground: "#ffffff",
+		border: LIGHT_BORDER,
+		input: LIGHT_INPUT,
 		inputBarBg: "#ffffff",
 		ring: PRIMARY_LIGHT,
+		chart1: "#2f8a74",
+		chart2: "#17604f",
+		chart3: "#6fc3ab",
+		chart4: "#4a90c0",
+		chart5: "#9fb3ad",
 	},
 };

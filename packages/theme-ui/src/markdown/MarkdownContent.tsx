@@ -25,7 +25,7 @@ import { InlineTokenChip } from "./InlineTokenChip";
 import { WebsiteIcon } from "./WebsiteIcon";
 import { useRenderSnapshot } from "./use-render-snapshot";
 import { chatUrlTransform, classifyMarkdownLink, normalizeLocalFileLinksInMarkdown } from "./markdown-link";
-import { useStreamingDisplayText, rehypeStreamingChunks } from "./streaming";
+import { shouldRevealStreamingTail, useStreamingDisplayText, rehypeStreamingChunks } from "./streaming";
 import { rehypeKeepPairedPunctuation } from "./em-dash";
 import {
 	INLINE_TOKEN_TAG,
@@ -164,7 +164,8 @@ export const MarkdownContent = memo(function MarkdownContent({
 	const definition = definitionOverride ?? inheritedDefinition;
 	const definitionRef = useRef(definition);
 	definitionRef.current = definition;
-	const { displayText, animateChunks } = useStreamingDisplayText(text, isStreamingTail);
+	// 长文本直接给出全文，不走 reveal（见 STREAM_ANIMATE_MAX_CHARS）。
+	const { displayText, animateChunks } = useStreamingDisplayText(text, shouldRevealStreamingTail(text, isStreamingTail));
 	const chunkedRef = useRef(false);
 	if (animateChunks) chunkedRef.current = true;
 	const frozenBlocksRef = useRef(false);
@@ -387,8 +388,12 @@ export const MarkdownContent = memo(function MarkdownContent({
 	const tail = split ? split.tail : renderText;
 	const showTail = !split || tail.length > 0 || committed.length === 0;
 
+	// overflow-wrap:anywhere 而不是 break-words（break-word）：两者都能在行尾断开超长词，
+	// 但只有 anywhere 会同时收缩元素的 min-content 宽度。sha256、URL、base64 这类没有断点的串
+	// 在以内容定宽的祖先里（表格单元格、行内 code、max-w 气泡）会把盒子撑开再溢出到旁人身上，
+	// 表现就是「文字叠到旁边的列里」。
 	return (
-		<MarkdownHostProvider host={host}><div className={cn("markdown-body break-words", animateChunks && "markdown-streaming-tail", className)}>
+		<MarkdownHostProvider host={host}><div className={cn("markdown-body [overflow-wrap:anywhere]", animateChunks && "markdown-streaming-tail", className)}>
 			{committed.map((block, index) => (
 				<MarkdownDocument
 					key={`committed-${index}`}

@@ -130,6 +130,42 @@ describe("feed error blocks", () => {
 		expect(block.attempts).toBeUndefined();
 	});
 
+	it("按产品失败码归类：截断不再落到通用 unknown", () => {
+		// coding-agent 的 model-length 续接放弃时给出的码；文案是上游自报的英文诊断，
+		// 归类只能靠码（用户看到的中文由 kind 决定）。
+		const block = errorBlocksOf(
+			feedWith(
+				feedError("Provider reported a length stop before any visible output (reported output: 1 tokens).", {
+					turnId: "turn-1",
+					details: { code: "coding_agent_length_stop_without_output", origin: "runtime" },
+				}),
+			).items,
+		).at(-1) as ErrorBlock;
+
+		expect(block.kind).toBe("truncated");
+		expect(block.text).toContain("length stop before any visible output");
+	});
+
+	it("失败码晚于错误块到达时重算一次归类", () => {
+		const blocks = errorBlocksOf(
+			feedWith(
+				feedError("Model response remained truncated after 3 automatic continuation attempts", {
+					turnId: "turn-1",
+				}),
+				feedError("Model response remained truncated after 3 automatic continuation attempts", {
+					turnId: "turn-1",
+					details: { code: "coding_agent_length_truncation_unrecoverable", origin: "runtime" },
+				}),
+			).items,
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0]).toMatchObject({
+			kind: "truncated",
+			details: { code: "coding_agent_length_truncation_unrecoverable" },
+		});
+	});
+
 	it("同一 turn 重放错误事件时保持单个错误块", () => {
 		const twice = feedWith(
 			feedError("503 unavailable", { turnId: "turn-1" }),
@@ -171,6 +207,30 @@ describe("fullHistoryToChat error entries", () => {
 		]);
 
 		expect(errorBlocksOf(messages)).toEqual([expect.objectContaining({ text: overflow })]);
+	});
+
+	it("keeps the truncation kind across a session restore", () => {
+		// 码写在会话文件的 turn.failed 里，回放同样要走码而不是英文原文。
+		const messages = fullHistoryToChat([
+			{ type: "message", message: { role: "user", content: "write the file", timestamp: 1 } },
+			{
+				type: "error",
+				entryId: "error-1",
+				turnId: "turn-1",
+				code: "coding_agent_length_stop_without_output",
+				retryable: false,
+				origin: "runtime",
+				message: "Provider reported a length stop before any visible output (reported output: 1 tokens).",
+				timestamp: "2026-10-22T00:00:00.000Z",
+			},
+		]);
+
+		expect(errorBlocksOf(messages)).toEqual([
+			expect.objectContaining({
+				kind: "truncated",
+				details: { code: "coding_agent_length_stop_without_output", origin: "runtime", retryable: false },
+			}),
+		]);
 	});
 
 	it("renders a durable turn failure as an error card", () => {

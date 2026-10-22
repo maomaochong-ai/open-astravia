@@ -1105,42 +1105,45 @@ a {
 
 
 /* ── 主题专属侧栏配色 ──────────────────────────────────────────────
-   forest / bee / mint / parchment 四套主题的侧栏底色与主画布不同
-   （复刻原应用的侧栏色调）。open-astravia 的侧栏面板使用 bg-muted，
-   这里按 data-theme 在侧栏子树内覆盖 --muted，使侧栏呈现独立色调。
-   data-mode 区分明暗，覆盖侧栏底色使其与主画布拉开层次。 */
+   forest / bee / mint / parchment 四套主题的侧栏底色比主画布更深/更亮一档，
+   让侧栏先读成一条独立的「脊」，再读成画布的一部分。
+   open-astravia 的侧栏面板使用 bg-muted，这里按 data-theme 在侧栏子树内
+   覆盖 --muted；data-mode 区分明暗。
+   --border 取该主题 border 与侧栏底色的混色（对比度 1.09–1.22）：侧栏里
+   分隔线与卡片边框密度远高于主画布，直接用主题原色会在整片面板上连成一圈亮线。
+   需要更重的分隔时用 bg-* 叠色，不要回头加深这个 token。 */
 :root[data-theme="forest"][data-mode="dark"] .sidebar-surface {
-	--muted: #14261c;
-	--border: #2a4a38;
+	--muted: #17241c;
+	--border: #26332b;
 }
 :root[data-theme="forest"][data-mode="light"] .sidebar-surface {
-	--muted: #e6f0e9;
-	--border: #c2d4c9;
+	--muted: #dcebe2;
+	--border: #d4e1d8;
 }
 
 :root[data-theme="bee"][data-mode="dark"] .sidebar-surface {
-	--muted: #2e2916;
-	--border: #5a4f28;
+	--muted: #221d10;
+	--border: #2f2a19;
 }
 :root[data-theme="bee"][data-mode="light"] .sidebar-surface {
-	--muted: #f3efe0;
-	--border: #d6cfb8;
+	--muted: #f0e6cc;
+	--border: #e4d9bc;
 }
 
 :root[data-theme="mint"][data-mode="dark"] .sidebar-surface {
-	--muted: #122a24;
-	--border: #2a5a4a;
+	--muted: #12241f;
+	--border: #1d332d;
 }
 :root[data-theme="mint"][data-mode="light"] .sidebar-surface {
-	--muted: #dcefe6;
-	--border: #a8d4c4;
+	--muted: #dcefe8;
+	--border: #cfe5dc;
 }
 
 :root[data-theme="parchment"][data-mode="dark"] .sidebar-surface {
-	--muted: #321f19;
-	--border: #5a3a2e;
+	--muted: #291e17;
+	--border: #362b22;
 }
 :root[data-theme="parchment"][data-mode="light"] .sidebar-surface {
-	--muted: #ede6db;
-	--border: #d4c8b4;
+	--muted: #f0e4d2;
+	--border: #e4d6c4;
 }

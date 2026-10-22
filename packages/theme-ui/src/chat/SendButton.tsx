@@ -6,6 +6,8 @@ import "./send-button.css";
 export interface SendButtonLabels {
 	sendMessage: string;
 	stopGenerating: string;
+	/** 已发出停止请求、等运行时真正收线。缺失时退回 stopGenerating。 */
+	stopping?: string;
 }
 
 export interface SendButtonProps {
@@ -99,9 +101,18 @@ export const SendButton = memo(function SendButton({
 				onClick={externalPending || abortPending ? undefined : isStreaming ? handleAbort : onSend}
 				disabled={Boolean(externalPending) || abortPending || (!isStreaming && !canSend)}
 				aria-busy={Boolean(externalPending) || abortPending}
+				aria-label={abortPending ? (labels.stopping ?? labels.stopGenerating) : undefined}
 				className="send-button relative z-10 flex h-8 min-w-8 items-center justify-center overflow-hidden rounded-full transition-shadow disabled:cursor-not-allowed"
 				data-icon-state={iconState}
-				title={externalPending ? externalPending.label : isStreaming ? labels.stopGenerating : labels.sendMessage}
+				title={
+					abortPending
+						? (labels.stopping ?? labels.stopGenerating)
+						: externalPending
+							? externalPending.label
+							: isStreaming
+								? labels.stopGenerating
+								: labels.sendMessage
+				}
 			>
 				{externalPending ? (
 					<span className="send-button-pending">
@@ -129,6 +140,11 @@ export const SendButton = memo(function SendButton({
 					<span className="send-button-side send-button-side-left" />
 					<span className="send-button-side send-button-side-right" />
 				</span>
+				{abortPending ? (
+					<span aria-hidden className="send-button-stopping">
+						<span className="send-button-stopping-icon icon-[mdi--loading]" />
+					</span>
+				) : null}
 			</button>
 		</span>
 	);

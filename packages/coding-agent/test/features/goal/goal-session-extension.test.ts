@@ -267,6 +267,47 @@ describe("CodingAgentGoalRuntime persistence and accounting", () => {
 		expect(fixture.runtime.readState()?.statusDetail).toContain("three consecutive goal continuations");
 	});
 
+	it("counts a failed automatic turn as no progress even when a tool succeeded", async () => {
+		// 真实故障形态：goal 自动续跑的每一轮都读到了文件、跑成功了工具，但结尾被 length
+		// 截断，以 turn.failed 收场。旧实现把「有过的成功工具」当成进展，于是 goal 永远
+		// 续下去，用户看到的是会话一直「运行中」+ 同一条错误重复弹出。
+		const fixture = createRuntime(createEmptyConversationDocument({ sessionId: "s", createdAt: 1 }));
+		fixture.runtime.create("Stop repeating the same truncated turn");
+		for (let index = 0; index < 3; index += 1) {
+			fixture.runtime.recordContinuation();
+			await fixture.runtime.onSessionEvent({ type: "turn.started", turnId: `turn-${index}` } as never);
+			await fixture.runtime.onSessionEvent({
+				type: "message.appended",
+				turnId: `turn-${index}`,
+				message: { role: "toolResult", isError: false },
+			} as never);
+			await fixture.runtime.onSessionEvent({ type: "turn.failed", turnId: `turn-${index}` } as never);
+		}
+		expect(fixture.runtime.readState()).toMatchObject({ status: "blocked" });
+	});
+
+	it("does not take thinking for progress", async () => {
+		// 预算全烧在 thinking 上、正文零产出，是 length 截断最常见的形态。thinking 不能
+		// 算进展，否则空转守卫永远不会触发。
+		const fixture = createRuntime(createEmptyConversationDocument({ sessionId: "s", createdAt: 1 }));
+		fixture.runtime.create("Produce something visible");
+		for (let index = 0; index < 3; index += 1) {
+			fixture.runtime.recordContinuation();
+			await fixture.runtime.onSessionEvent({ type: "turn.started", turnId: `turn-${index}` } as never);
+			await fixture.runtime.onSessionEvent({
+				type: "message.appended",
+				turnId: `turn-${index}`,
+				message: {
+					role: "assistant",
+					content: [{ type: "thinking", thinking: "still reasoning" }],
+					usage: { totalTokens: 10, input: 1, output: 9, cacheRead: 0, cacheWrite: 0 },
+				},
+			} as never);
+			await fixture.runtime.onSessionEvent({ type: "turn.completed", turnId: `turn-${index}` } as never);
+		}
+		expect(fixture.runtime.readState()).toMatchObject({ status: "blocked" });
+	});
+
 	it("requires three new failures after a successful tool result resets the failure audit", async () => {
 		const fixture = createRuntime(createEmptyConversationDocument({ sessionId: "s", createdAt: 1 }));
 		fixture.runtime.create("Recover from intermittent failures");

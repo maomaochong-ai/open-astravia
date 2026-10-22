@@ -298,3 +298,33 @@
 		transition: none;
 	}
 }
+
+/* 停止请求发出后，运行时最长还要两秒才把回合收线。这期间必须马上有可见变化：
+   方块图标换成一个转圈，否则按钮看着像点了没反应。 */
+.send-button-wrap[data-aborting="true"] .send-button-icon,
+.send-button-wrap[data-aborting="true"] .send-button-outgoing-arrow {
+	opacity: 0;
+}
+
+.send-button-stopping {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+}
+
+/* 转圈沿用仓库既有做法：图标 + animate-spin，不额外画环。 */
+.send-button-stopping-icon {
+	display: block;
+	width: 16px;
+	height: 16px;
+}
+
+/* 减动效时只保留图标换形（方块 → 转圈符号），不再转。 */
+@media (prefers-reduced-motion: reduce) {
+	.send-button-stopping .send-button-stopping-icon {
+		animation: none;
+	}
+}

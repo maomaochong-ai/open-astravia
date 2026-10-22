@@ -41,6 +41,12 @@ const SAMPLES: ReadonlyArray<{ text: string; kind: ChatErrorKind }> = [
 	{ text: "TypeError: fetch failed", kind: "network" },
 	{ text: "connect ECONNREFUSED 127.0.0.1:8080", kind: "network" },
 	{ text: "terminated", kind: "network" },
+	// truncated：模型撞上输出上限，自动续接也救不回来
+	{
+		text: "Provider reported a length stop before any visible output (reported output: 1 tokens). Automatic continuation cannot recover this.",
+		kind: "truncated",
+	},
+	{ text: "Model response remained truncated after 3 automatic continuation attempts", kind: "truncated" },
 	// unknown
 	{ text: "Assistant response ended with error", kind: "unknown" },
 	{ text: "", kind: "unknown" },
@@ -52,6 +58,15 @@ describe("classifyChatError", () => {
 			expect(classifyChatError(text)).toBe(kind);
 		});
 	}
+
+	it("按产品失败码分类，不看文案", () => {
+		// 码由 coding-agent 声明；即使原文换了措辞、或本地化后完全不含英文，也要归对。
+		expect(classifyChatError("", "coding_agent_length_stop_without_output")).toBe("truncated");
+		expect(classifyChatError("本地化后的文案", "coding_agent_length_truncation_unrecoverable")).toBe("truncated");
+		// 未登记的码回落文本分类，而不是一律 unknown。
+		expect(classifyChatError("429 Too Many Requests", "some_unknown_code")).toBe("rate_limit");
+		expect(classifyChatError("", "some_unknown_code")).toBe("unknown");
+	});
 
 	it("配额类必须与 retry-controller 的「不可重试」一致", () => {
 		for (const { text, kind } of SAMPLES) {

@@ -715,6 +715,29 @@ describe("runAgentTurn", () => {
 		expect(result.messages).toEqual([durableView, assistant([{ type: "text", text: "done" }])]);
 	});
 
+	it("keeps the code of a failure thrown by the continuation collector", async () => {
+		// 续接策略（如 coding-agent 的 model-length）用带 code 的错误报出可预期的放弃：
+		// 宿主靠这个码选本地化文案，所以 run result 必须原样保留它。
+		const failure = Object.assign(new Error("Provider reported a length stop before any visible output"), {
+			code: "coding_agent_length_stop_without_output",
+		});
+		const run = runAgentTurn({
+			...request([successResponse(assistant([{ type: "text", text: "partial" }]))]),
+			takeContinuationMessages: async () => {
+				throw failure;
+			},
+		});
+		const result = await within(run.result);
+
+		expect(result).toMatchObject({
+			status: "failed",
+			failure: {
+				code: "coding_agent_length_stop_without_output",
+				message: "Provider reported a length stop before any visible output",
+			},
+		});
+	});
+
 	it("isolates observer failures and emits diagnostics", async () => {
 		const run = runAgentTurn({
 			...request([successResponse(assistant([]))]),

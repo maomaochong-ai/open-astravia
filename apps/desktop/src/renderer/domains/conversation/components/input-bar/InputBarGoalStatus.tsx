@@ -9,6 +9,7 @@ import { cn } from "@shared/lib/utils";
 import type { CodingAgentGoalStatus } from "@astravia/coding-agent/session-extensions";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { goalStatusDetailKey } from "../../services/goal-status-detail";
 import type { InputBarGoalModel } from "./types";
 
 const STATUS_KEYS = {
@@ -48,6 +49,7 @@ export function InputBarGoalStatus({
 	const canResume =
 		state.status === "paused" || state.status === "blocked" || state.status === "usage_limited";
 	const statusLabel = t(STATUS_KEYS[state.status]);
+	const detailKey = goalStatusDetailKey(state.statusDetail);
 
 	return (
 		<div className={cn("flex min-w-0 justify-start px-1 pt-1.5", className)}>
@@ -104,7 +106,7 @@ export function InputBarGoalStatus({
 						</p>
 						{state.statusDetail ? (
 							<p className="mt-1.5 whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">
-								{state.statusDetail}
+								{detailKey ? t(detailKey) : state.statusDetail}
 							</p>
 						) : null}
 						<p className="mt-2 tabular-nums text-[10px] text-muted-foreground">

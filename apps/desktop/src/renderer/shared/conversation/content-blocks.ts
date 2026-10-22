@@ -1,7 +1,15 @@
 import type { CardDescriptor } from "@astravia-org/plugin-sdk";
 import type { DesktopMcpAppAttachment } from "@preload/api";
 
-export type ChatErrorKind = "rate_limit" | "quota" | "network" | "auth" | "server" | "unknown";
+export type ChatErrorKind =
+	| "rate_limit"
+	| "quota"
+	| "network"
+	| "auth"
+	| "server"
+	// 模型撞上输出上限且自动续接失败：不是网络/服务方故障，用户需要换模型或拆小任务。
+	| "truncated"
+	| "unknown";
 
 export interface TextBlock {
 	type: "text";
