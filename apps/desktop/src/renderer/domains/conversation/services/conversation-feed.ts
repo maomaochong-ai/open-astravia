@@ -632,6 +632,9 @@ function appendFeedError(
 		blocks[existingIndex] = {
 			...existing,
 			text: action.message,
+			// 持久化的 assistant 错误先到时只有原文，分类靠正则；turn.failed 随后把产品
+			// 失败码补上，这时以码为准重算一次。
+			...(action.details?.code ? { kind: classifyChatError(action.message, action.details.code) } : {}),
 			...(action.attempts ? { attempts: action.attempts } : {}),
 			...(action.details ? { details: { ...existing.details, ...action.details } } : {}),
 		};
@@ -644,7 +647,7 @@ function appendFeedError(
 			id: `${target.id}:error:${blocks.length}`,
 			...(action.turnId ? { turnId: action.turnId } : {}),
 			text: action.message,
-			kind: classifyChatError(action.message),
+			kind: classifyChatError(action.message, action.details?.code),
 			...(action.attempts ? { attempts: action.attempts } : {}),
 			...(action.details ? { details: action.details } : {}),
 		});

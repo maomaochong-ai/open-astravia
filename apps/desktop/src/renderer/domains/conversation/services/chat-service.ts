@@ -416,6 +416,7 @@ function pushHistoryError(
 		const existing = blocks.find((block) => block.type === "error" && block.turnId === turnId);
 		if (existing?.type === "error") {
 			existing.text = errorMessage;
+			if (details?.code) existing.kind = classifyChatError(errorMessage, details.code);
 			if (details) existing.details = { ...existing.details, ...details };
 			return;
 		}
@@ -426,11 +427,12 @@ function pushHistoryError(
 		const pending = blocks.at(-1);
 		if (pending?.type === "error" && pending.turnId === undefined && pending.text === errorMessage) {
 			pending.turnId = turnId;
+			if (details?.code) pending.kind = classifyChatError(errorMessage, details.code);
 			if (details) pending.details = { ...pending.details, ...details };
 			return;
 		}
 	}
-	const kind = classifyChatError(errorMessage);
+	const kind = classifyChatError(errorMessage, details?.code);
 	const last = blocks.at(-1);
 	if (last?.type === "error" && last.kind === kind) {
 		last.repeated = (last.repeated ?? 1) + 1;

@@ -28,7 +28,12 @@ export class CodingAgentGoalRuntime {
 	private activeTurnGoalId: string | undefined;
 	private pendingAutomaticGoalId: string | undefined;
 	private activeTurnIsAutomatic = false;
-	private activeTurnHasActivity = false;
+	/**
+	 * 本轮是否留下了用户可验证的成果（正文、工具调用、工具结果）。thinking 不计：
+	 * 只烧推理预算、正文一个 token 都没产出的自动续跑经常是截断或空转，把它算成
+	 * 进展会让 goal 永远续下去，并反复撞上同一个失败。
+	 */
+	private activeTurnHasVisibleProgress = false;
 	private activeTurnHasSuccessfulTool = false;
 	private consecutiveEmptyTurns = 0;
 	private consecutiveExecutionFailures = 0;
@@ -131,20 +136,20 @@ export class CodingAgentGoalRuntime {
 			this.activeTurnGoalId = this.state?.status === "active" ? this.state.goalId : undefined;
 			this.activeTurnIsAutomatic = this.pendingAutomaticGoalId === this.activeTurnGoalId;
 			this.pendingAutomaticGoalId = undefined;
-			this.activeTurnHasActivity = false;
+			this.activeTurnHasVisibleProgress = false;
 			this.activeTurnHasSuccessfulTool = false;
 			if (this.activeTurnGoalId) this.activeSince = this.options.now();
 			return;
 		}
 		if (event.type === "message.appended" && event.message.role === "assistant") {
-			if (assistantHasActivity(event.message)) this.activeTurnHasActivity = true;
+			if (assistantHasVisibleProgress(event.message)) this.activeTurnHasVisibleProgress = true;
 			this.recordUsage(event.message);
 			this.schedulePendingSnapshot();
 			await this.latestPersistence;
 			return;
 		}
 		if (event.type === "message.appended" && event.message.role === "toolResult") {
-			this.activeTurnHasActivity = true;
+			this.activeTurnHasVisibleProgress = true;
 			if (!event.message.isError) this.activeTurnHasSuccessfulTool = true;
 			this.schedulePendingSnapshot();
 			await this.latestPersistence;
@@ -156,7 +161,7 @@ export class CodingAgentGoalRuntime {
 			this.activeTurn = false;
 			this.activeTurnGoalId = undefined;
 			this.activeTurnIsAutomatic = false;
-			this.activeTurnHasActivity = false;
+			this.activeTurnHasVisibleProgress = false;
 			this.activeTurnHasSuccessfulTool = false;
 			this.schedulePendingSnapshot();
 			await this.latestPersistence;
@@ -221,17 +226,22 @@ export class CodingAgentGoalRuntime {
 			this.consecutiveEmptyTurns = 0;
 			return;
 		}
-		if (this.activeTurnHasActivity) {
-			this.consecutiveEmptyTurns = 0;
+		// 自动续跑轮以失败收尾时，中途跑过多少个成功工具都不算进展：这一轮没把 goal
+		// 往前推，而 goal 还在 active，下一轮会立刻重复同一套动作，所以必须让它计数。
+		if (type === "turn.failed" || !this.activeTurnHasVisibleProgress) {
+			this.recordEmptyAutomaticTurn(current);
 			return;
 		}
+		this.consecutiveEmptyTurns = 0;
+	}
+
+	private recordEmptyAutomaticTurn(current: CodingAgentGoalState): void {
 		this.consecutiveEmptyTurns += 1;
-		if (this.consecutiveEmptyTurns >= 3) {
-			this.blockCurrentGoal(
-				current,
-				"No observable progress was produced for three consecutive goal continuations; review the goal before resuming",
-			);
-		}
+		if (this.consecutiveEmptyTurns < 3) return;
+		this.blockCurrentGoal(
+			current,
+			"No observable progress was produced for three consecutive goal continuations; review the goal before resuming",
+		);
 	}
 
 	private blockCurrentGoal(current: CodingAgentGoalState, statusDetail: string): void {
@@ -297,11 +307,12 @@ export class CodingAgentGoalRuntime {
 	}
 }
 
-function assistantHasActivity(message: Extract<Message, { role: "assistant" }>): boolean {
+/** thinking 不是可验证的成果：只烧推理预算、正文与工具都没产出的轮次算空转。 */
+function assistantHasVisibleProgress(message: Extract<Message, { role: "assistant" }>): boolean {
 	return (
 		message.content?.some((item) => {
 			if (item.type === "text") return item.text.trim().length > 0;
-			if (item.type === "thinking") return item.thinking.trim().length > 0;
+			if (item.type === "thinking") return false;
 			return true;
 		}) ?? false
 	);

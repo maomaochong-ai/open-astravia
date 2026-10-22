@@ -4,6 +4,32 @@ import type { CodingAgentContinuationSource } from "../../runtime-contracts/inde
 
 export const DEFAULT_CODING_AGENT_LENGTH_CONTINUATION_ATTEMPTS = 3;
 
+/**
+ * Length 续接的失败码。宿主按这些码生成面向用户的本地化文案，因此它们是对外
+ * 稳定的合同：改动会同时影响 Desktop 的错误卡映射（见
+ * `apps/desktop/src/renderer/domains/conversation/services/classifyChatError.ts`）。
+ */
+export const CODING_AGENT_LENGTH_FAILURE_CODES = {
+	/** 模型在产出任何可见内容之前就被判 length：没有可续接的半截结果。 */
+	STOP_WITHOUT_OUTPUT: "coding_agent_length_stop_without_output",
+	/** 已用满自动续接预算，模型仍然停在截断处。 */
+	TRUNCATION_UNRECOVERABLE: "coding_agent_length_truncation_unrecoverable",
+} as const;
+
+/**
+ * 续接策略的失败。`code` 会被 agent 运行时投影成 `turn.failed.error.code`，
+ * `message` 保留上游自报的原始数据供诊断与复制，不作为用户可读文案。
+ */
+export class CodingAgentContinuationFailure extends Error {
+	readonly code: string;
+
+	constructor(code: string, message: string) {
+		super(message);
+		this.name = code;
+		this.code = code;
+	}
+}
+
 export interface CodingAgentLengthContinuationSourceOptions {
 	readonly now?: () => number;
 	readonly maxAttempts?: number;
@@ -46,7 +72,8 @@ export class CodingAgentLengthContinuationSource implements CodingAgentContinuat
 			// 正文一个 token 都没产出就被判 length：无处可续接，重来一遍只会再被截断。
 			// 报出上游自报的输出量——它常常远小于模型上限，因为这类网关既不上报隐藏的
 			// 推理 token，也会在参数流式输出中途被截断时整块丢掉未完成的工具调用。
-			throw new Error(
+			throw new CodingAgentContinuationFailure(
+				CODING_AGENT_LENGTH_FAILURE_CODES.STOP_WITHOUT_OUTPUT,
 				`Provider reported a length stop before any visible output (reported output: ${latestAssistant.usage.output} tokens). ` +
 					"Automatic continuation cannot recover this. If the reported count is far below the model's output limit, " +
 					"the provider is not reporting hidden reasoning tokens or truncated the stream itself. " +
@@ -54,7 +81,10 @@ export class CodingAgentLengthContinuationSource implements CodingAgentContinuat
 			);
 		}
 		if (this.attempts >= this.maxAttempts) {
-			throw new Error(`Model response remained truncated after ${this.maxAttempts} automatic continuation attempts`);
+			throw new CodingAgentContinuationFailure(
+				CODING_AGENT_LENGTH_FAILURE_CODES.TRUNCATION_UNRECOVERABLE,
+				`Model response remained truncated after ${this.maxAttempts} automatic continuation attempts`,
+			);
 		}
 
 		this.attempts += 1;

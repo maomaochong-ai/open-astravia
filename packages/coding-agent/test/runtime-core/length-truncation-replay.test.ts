@@ -3,7 +3,10 @@ import { fileURLToPath } from "node:url";
 import type { Message } from "@astravia/ai";
 import type { ContinuationPolicyContext } from "@astravia/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
-import { CodingAgentLengthContinuationSource } from "../../src/composition/turn/length-continuation-source.js";
+import {
+	CODING_AGENT_LENGTH_FAILURE_CODES,
+	CodingAgentLengthContinuationSource,
+} from "../../src/composition/turn/length-continuation-source.js";
 
 /**
  * 真实故障回放：astravia-go / ominiroute-antigravity 网关在高思考档下，把整个输出
@@ -36,8 +39,10 @@ describe("length truncation replay", () => {
 	it("never injects a fake user turn for that capture", async () => {
 		const source = new CodingAgentLengthContinuationSource();
 
-		await expect(source.collect(continuationContext(CAPTURE.messages))).rejects.toThrow(
-			"Provider reported a length stop before any visible output (reported output: 3748 tokens)",
-		);
+		// code 是宿主选本地化文案的依据，比英文原文稳定，必须一起断言。
+		await expect(source.collect(continuationContext(CAPTURE.messages))).rejects.toMatchObject({
+			code: CODING_AGENT_LENGTH_FAILURE_CODES.STOP_WITHOUT_OUTPUT,
+			message: expect.stringContaining("reported output: 3748 tokens"),
+		});
 	});
 });

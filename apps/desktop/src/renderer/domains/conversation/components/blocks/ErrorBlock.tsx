@@ -12,6 +12,7 @@ const ICON_BY_KIND: Record<ChatErrorKind, string> = {
 	network: "icon-[mdi--wifi-off]",
 	auth: "icon-[mdi--key-outline]",
 	server: "icon-[mdi--server-network-off]",
+	truncated: "icon-[mdi--content-cut]",
 	unknown: "icon-[mdi--alert-circle-outline]",
 };
 

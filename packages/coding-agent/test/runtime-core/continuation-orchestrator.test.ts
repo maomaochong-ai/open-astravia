@@ -2,7 +2,10 @@ import type { Api, Message, Model, UserMessage } from "@astravia/ai";
 import type { ContinuationPolicyContext } from "@astravia/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentContinuationOrchestrator } from "../../src/composition/turn/continuation-orchestrator.js";
-import { CodingAgentLengthContinuationSource } from "../../src/composition/turn/length-continuation-source.js";
+import {
+	CODING_AGENT_LENGTH_FAILURE_CODES,
+	CodingAgentLengthContinuationSource,
+} from "../../src/composition/turn/length-continuation-source.js";
 import { CodingAgentStopHookContinuationSource } from "../../src/extensions/runtime/stop-hook-continuation-source.js";
 import type { TodoItem } from "../../src/features/todo/index.js";
 import { CodingAgentTodoContinuationSource } from "../../src/features/todo/todo-continuation-source.js";
@@ -97,9 +100,10 @@ describe("CodingAgentLengthContinuationSource", () => {
 		expect(messageText(first[0])).toContain("Continue the response from where you stopped");
 		expect(first[0]?.timestamp).toBe(77);
 		expect(await source.collect(context)).toEqual(first);
-		await expect(source.collect(context)).rejects.toThrow(
-			"Model response remained truncated after 2 automatic continuation attempts",
-		);
+		await expect(source.collect(context)).rejects.toMatchObject({
+			code: CODING_AGENT_LENGTH_FAILURE_CODES.TRUNCATION_UNRECOVERABLE,
+			message: "Model response remained truncated after 2 automatic continuation attempts",
+		});
 
 		expect(await source.collect(continuationContext("turn-2", [assistantMessage("partial", "length")]))).toEqual(
 			first,
@@ -115,9 +119,12 @@ describe("CodingAgentLengthContinuationSource", () => {
 			content: [{ type: "thinking" as const, thinking: "..." }],
 		};
 
-		await expect(source.collect(continuationContext("turn-1", [truncated]))).rejects.toThrow(
-			"Provider reported a length stop before any visible output (reported output: 1 tokens)",
-		);
+		await expect(source.collect(continuationContext("turn-1", [truncated]))).rejects.toMatchObject({
+			code: CODING_AGENT_LENGTH_FAILURE_CODES.STOP_WITHOUT_OUTPUT,
+			message: expect.stringContaining(
+				"Provider reported a length stop before any visible output (reported output: 1 tokens)",
+			),
+		});
 	});
 
 	it("resets the attempt budget once the model stops truncating", async () => {

@@ -872,6 +872,10 @@
 					"title": "The service is having trouble",
 					"hint": "It usually recovers within minutes — try again shortly."
 				},
+				"truncated": {
+					"title": "The reply was cut off at the output limit",
+					"hint": "The model couldn't finish within its output limit, and automatic continuation stopped at the same point. Try a model with a larger output limit, a lower thinking level, or splitting large file writes into several smaller ones."
+				},
 				"unknown": {
 					"title": "This reply was interrupted",
 					"hint": "Try sending again; if it keeps happening, copy the details to us."
@@ -1037,6 +1041,13 @@
 			"groupLabel": "Current goal",
 			"usage": "{{tokens}} tokens · {{seconds}} sec · {{count}} continuations"
 		},
+		"statusDetail": {
+			"restored": "Restored after the session stopped — resume it manually to continue.",
+			"executionFailed": "Execution failed for three consecutive goal turns. Review the failure before resuming.",
+			"noProgress": "Three consecutive goal continuations produced no usable result — they came back empty or ended in failure. Review the goal before resuming.",
+			"sessionStartFailed": "The session could not start.",
+			"sessionResumeFailed": "The session could not resume."
+		},
 		"status": {
 			"active": "Active",
 			"blocked": "Blocked",
@@ -1063,7 +1074,8 @@
 	},
 	"sendButton": {
 		"sendMessage": "Send message",
-		"stopGenerating": "Stop generating"
+		"stopGenerating": "Stop generating",
+		"stopping": "Stopping…"
 	},
 	"session": {
 		"emptyMessageLabel": "(image)"

@@ -872,6 +872,10 @@
 					"title": "服务方暂时出了点问题",
 					"hint": "通常几分钟内会自行恢复，稍后再发一次。"
 				},
+				"truncated": {
+					"title": "回复在上限处被截断了",
+					"hint": "模型在输出上限内没能写完，自动续接也停在同一处。可以换一个输出上限更大的模型、降低思考等级，或把大段文件写入拆成几次。"
+				},
 				"unknown": {
 					"title": "本次回复中断了",
 					"hint": "可以重新发送试试；反复出现的话把详情复制给我们。"
@@ -1037,6 +1041,13 @@
 			"groupLabel": "当前目标",
 			"usage": "{{tokens}} Token · {{seconds}} 秒 · 续跑 {{count}} 次"
 		},
+		"statusDetail": {
+			"restored": "会话中断后恢复的目标，需要你手动继续。",
+			"executionFailed": "连续三轮执行失败，先检查失败原因再继续。",
+			"noProgress": "连续三轮自动续跑没有产出可用结果（空转或中途失败），先检查目标再继续。",
+			"sessionStartFailed": "会话没能启动。",
+			"sessionResumeFailed": "会话没能恢复。"
+		},
 		"status": {
 			"active": "执行中",
 			"blocked": "受阻",
@@ -1063,7 +1074,8 @@
 	},
 	"sendButton": {
 		"sendMessage": "发送消息",
-		"stopGenerating": "停止生成"
+		"stopGenerating": "停止生成",
+		"stopping": "正在停止…"
 	},
 	"session": {
 		"emptyMessageLabel": "(图片)"

@@ -36,6 +36,24 @@ const NETWORK =
 	/fetch failed|connection.?(error|refused|reset|closed)|other side closed|reset before headers|socket hang up|network.?error|ETIMEDOUT|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|terminated|timed? ?out|超时/i;
 
 /**
+ * 模型撞上输出上限，自动续接也救不回来。新会话靠下面的 `KIND_BY_CODE`；
+ * 早于该码存在的会话文件里只有英文原文，用同一句话兜底。
+ */
+const LENGTH_TRUNCATED =
+	/length stop before any visible output|response remained truncated after \d+ automatic continuation attempts/i;
+
+/**
+ * 产品层失败码 → 错误卡分类。码由 coding-agent 声明，比英文文案稳定，命中就不
+ * 再看正则；未登记的码回落文本分类。
+ * 取值见 `packages/coding-agent/src/composition/turn/length-continuation-source.ts`
+ * 的 `CODING_AGENT_LENGTH_FAILURE_CODES`。
+ */
+const KIND_BY_CODE: Readonly<Record<string, ChatErrorKind>> = {
+	coding_agent_length_stop_without_output: "truncated",
+	coding_agent_length_truncation_unrecoverable: "truncated",
+};
+
+/**
  * 归类一条错误文本。
  *
  * 顺序即优先级，按「用户能做什么」从确定到模糊排：配额和鉴权要人工介入，必须
@@ -43,8 +61,13 @@ const NETWORK =
  * 「等等就好」）。server 早于 network：`upstream connect error` 一类同时含连接
  * 词和上游语义，归到服务端更接近真相。
  */
-export function classifyChatError(text: string): ChatErrorKind {
+export function classifyChatError(text: string, code?: string): ChatErrorKind {
+	if (code) {
+		const known = KIND_BY_CODE[code];
+		if (known) return known;
+	}
 	if (!text) return "unknown";
+	if (LENGTH_TRUNCATED.test(text)) return "truncated";
 	if (QUOTA.test(text)) return "quota";
 	if (AUTH.test(text)) return "auth";
 	if (RATE_LIMIT.test(text)) return "rate_limit";
