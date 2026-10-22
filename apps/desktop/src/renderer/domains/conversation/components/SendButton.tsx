@@ -15,6 +15,7 @@ export function SendButton(props: HostSendButtonProps): JSX.Element {
 			labels={{
 				sendMessage: t("sendButton.sendMessage"),
 				stopGenerating: t("sendButton.stopGenerating"),
+				stopping: t("sendButton.stopping"),
 			}}
 		/>
 	);

@@ -66,17 +66,20 @@ describe("SendButton", () => {
 		expect((button as HTMLButtonElement).disabled).toBe(true);
 	});
 
-	it("点击停止后保持纯图标并拒绝重复取消", async () => {
+	it("点击停止后立刻换成「正在停止」并拒绝重复取消", async () => {
+		// 运行时收线最长要两秒，这期间按钮必须马上有可见变化，否则用户以为点了没反应。
 		const user = userEvent.setup();
 		const onAbort = vi.fn(() => new Promise<void>(() => undefined));
 		render(<SendButton canSend={false} isStreaming onSend={vi.fn()} onAbort={onAbort} />);
 
 		await user.click(screen.getByRole("button", { name: "sendButton.stopGenerating" }));
 
-		const button = screen.getByRole("button", { name: "sendButton.stopGenerating" });
+		const button = screen.getByRole("button", { name: "sendButton.stopping" });
 		expect(button.textContent).toBe("");
 		expect(button.getAttribute("aria-busy")).toBe("true");
+		expect(button.getAttribute("title")).toBe("sendButton.stopping");
 		expect((button as HTMLButtonElement).disabled).toBe(true);
+		expect(document.querySelector(".send-button-stopping-icon")).not.toBeNull();
 		expect(onAbort).toHaveBeenCalledOnce();
 		await user.click(button);
 		expect(onAbort).toHaveBeenCalledOnce();
