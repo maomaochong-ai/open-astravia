@@ -110,3 +110,6 @@ agent-tools
 .playwright-cli
 .tmp*
 .ai
+
+# 本机逆向分析产物（QQ 客户端 UI/进程分析记录），不随仓库分发
+qq-app-analysis/
