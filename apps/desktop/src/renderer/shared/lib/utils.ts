@@ -98,3 +98,12 @@ export function pathNormalize(path: string): string {
 export function toAstraviaFileUrl(path: string): string {
 	return createLocalFileUrl(pathNormalize(path));
 }
+
+/**
+ * 远程项目（`ssh://<hostId>/…`）的文件在另一台机器上，本机应用打不开它：
+ * `open -a Cursor ssh://host/srv/app` 只会得到一个里面没有任何工作区文件的新窗口。
+ * 所有把工作区交给本机应用的入口都应该先用它拦一下。
+ */
+export function isRemoteProjectPath(path: string | null | undefined): boolean {
+	return typeof path === "string" && isSshProjectUri(path);
+}

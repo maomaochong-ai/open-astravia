@@ -295,6 +295,7 @@
 			"failedCount": "{{count}} item(s) failed to transfer"
 		},
 		"openWorkspaceWithAppNoWorkspace": "Open in external app (no workspace bound yet)",
+		"openWorkspaceWithAppRemote": "Remote project files live on another machine, so a local app can't open them",
 		"loadingApplications": "Detecting installed apps…",
 		"openWithDefaultApp": "Open with system default",
 		"openWorkspaceWithAppFailed": "Could not open with the selected app"

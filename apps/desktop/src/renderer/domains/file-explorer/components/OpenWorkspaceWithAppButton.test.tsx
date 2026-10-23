@@ -79,6 +79,17 @@ describe("OpenWorkspaceWithAppButton", () => {
 		expect(localStorage.getItem("astravia:open-workspace:app-id")).toBe("/Applications/Cursor.app");
 	});
 
+	it("远程工作区：按钮禁用并说明原因，也不去问本机装了哪些应用", async () => {
+		// `ssh://` 路径指向另一台机器，交给本机应用只会换来一个空窗口（见 isRemoteProjectPath）。
+		render(<OpenWorkspaceWithAppButton rootDir="ssh://host-1/srv/app" />);
+
+		const button = screen.getByRole("button") as HTMLButtonElement;
+		expect(button.disabled).toBe(true);
+		expect(button.getAttribute("title")).toBe("fileExplorer.openWorkspaceWithAppRemote");
+		expect(listExternalApplications).not.toHaveBeenCalled();
+		expect(openPathWithApplication).not.toHaveBeenCalled();
+	});
+
 	it("没有工作区时只启动应用，不传路径", async () => {
 		render(<OpenWorkspaceWithAppButton rootDir={null} />);
 		await waitFor(() => expect(listExternalApplications).toHaveBeenCalled());
