@@ -628,11 +628,20 @@ describe("DefaultCodingAgentContextRuntime", () => {
 	});
 
 	it("passes the admitted summary language to every compaction generation", async () => {
-		const generateCompaction = vi.fn(async (preparation: CompactionPreparation) => ({
-			summary: "summary",
-			firstKeptEntryId: preparation.firstKeptEntryId,
-			tokensBefore: preparation.tokensBefore,
-		}));
+		const generateCompaction = vi.fn(
+			async (
+				preparation: CompactionPreparation,
+				_model: unknown,
+				_apiKey: string,
+				_customInstructions: string | undefined,
+				_signal: AbortSignal,
+				_generationOptions?: unknown,
+			) => ({
+				summary: "summary",
+				firstKeptEntryId: preparation.firstKeptEntryId,
+				tokensBefore: preparation.tokensBefore,
+			}),
+		);
 		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: createHookRuntime(),
 			resolveApiKey: () => "key",

@@ -1331,7 +1331,7 @@ describe("append version conflict recovery", () => {
 							type: "context.appended",
 							sessionId: request.sessionId,
 							turnId: request.turnId,
-							record: { id: "c1", content: "stale", role: "user", modelVisible: false },
+							record: { type: "stale-context", content: "stale", modelVisible: false },
 							timestamp: 1,
 						},
 					]);

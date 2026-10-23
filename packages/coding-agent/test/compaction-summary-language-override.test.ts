@@ -41,7 +41,9 @@ function instructions(captured: Context[]): string {
 	expect(captured.length).toBeGreaterThan(0);
 	const text = captured
 		.flatMap((context) => context.messages)
-		.flatMap((message) => (Array.isArray(message.content) ? message.content : []))
+		.flatMap((message) =>
+			Array.isArray(message.content) ? (message.content as readonly { type: string; text?: string }[]) : [],
+		)
 		.map((part) => (part.type === "text" ? part.text : ""))
 		.join("\n");
 	expect(text).not.toBe("");
