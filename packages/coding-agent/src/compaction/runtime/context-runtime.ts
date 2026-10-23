@@ -88,8 +88,10 @@ export class DefaultCodingAgentContextRuntime
 			options.generateCompaction ??
 			((preparation, model, apiKey, customInstructions, signal, generationOptions) =>
 				compact(preparation, model, apiKey, customInstructions, signal, generationOptions));
-		// G4：把「本会话 recall 工具是否可用」注入每次压缩摘要的 generationOptions，让 compact()
-		// 决定是否追加 RECALL_POINTER。统一在入口包装，自动/手动/预燃三个策略一次覆盖。
+		// 宿主侧策略统一在入口注入，自动/手动/预燃三个策略一次覆盖：
+		// - recallAvailable：本会话 recall 工具是否可用 → compact() 决定是否追加 RECALL_POINTER；
+		// - summaryLanguage：摘要跟随界面语言而非会话语言（人要在中文界面里读它）。
+		// 取 preparation.settings（本次压缩已冻结的快照），而不是另读一次设置，避免同一次压缩用两套值。
 		const generateCompaction: NonNullable<CodingAgentContextRuntimeOptions["generateCompaction"]> = (
 			preparation,
 			model,
@@ -101,6 +103,7 @@ export class DefaultCodingAgentContextRuntime
 			baseGenerateCompaction(preparation, model, apiKey, customInstructions, signal, {
 				...generationOptions,
 				recallAvailable: options.recallAvailable,
+				summaryLanguage: preparation.settings.summaryLanguage,
 			});
 		const circuitBreaker = new ConsecutiveFailureCircuitBreaker({ now: this.now });
 		this.usage = new RuntimeContextUsageTracker({

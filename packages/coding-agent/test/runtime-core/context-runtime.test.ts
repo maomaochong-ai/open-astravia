@@ -627,6 +627,44 @@ describe("DefaultCodingAgentContextRuntime", () => {
 		await bound.releaseTurnBinding?.();
 	});
 
+	it("passes the admitted summary language to every compaction generation", async () => {
+		const generateCompaction = vi.fn(async (preparation: CompactionPreparation) => ({
+			summary: "summary",
+			firstKeptEntryId: preparation.firstKeptEntryId,
+			tokensBefore: preparation.tokensBefore,
+		}));
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			// 界面语言由宿主经设置端口传入（见 desktop composition）；这里钉住它到得了摘要生成入口。
+			resolveSettings: () => ({ ...compactingSettings(), summaryLanguage: "zh" }),
+			generateCompaction,
+		});
+		const history = [
+			userMessage("old request".repeat(40), 1),
+			assistantMessage("old response", 90, 2),
+			userMessage("kept request", 3),
+		] satisfies Message[];
+		const bound = await runtime.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
+
+		await bound.prepare(
+			{
+				...preparationInput(documentFromMessages(history), history, history, []),
+				reason: "model_call" as const,
+			},
+			new AbortController().signal,
+		);
+
+		expect(generateCompaction).toHaveBeenCalledOnce();
+		expect(generateCompaction.mock.calls[0]?.[5]).toMatchObject({ summaryLanguage: "zh" });
+		await bound.releaseTurnBinding?.();
+	});
+
 	it("does not generate an automatic compaction when the keep-tail policy would retain every message", async () => {
 		const history = [
 			userMessage("old request", 1),

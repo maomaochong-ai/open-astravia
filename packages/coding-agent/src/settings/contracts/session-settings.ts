@@ -1,8 +1,12 @@
+import type { SummaryLanguage } from "../../compaction/contracts.js";
+
 export interface ResolvedCompactionSettings {
 	readonly enabled: boolean;
 	readonly reserveTokens: number;
 	readonly minFreePercent: number;
 	readonly keepRecentTokens: number;
+	/** 摘要正文语言；缺省（undefined）时摘要跟随会话语言。见 `CompactionSettings.summaryLanguage`。 */
+	readonly summaryLanguage?: SummaryLanguage;
 }
 
 export interface ResolvedRetrySettings {

@@ -61,6 +61,7 @@ import {
 import { DEFAULT_SERVER_URL } from "../constants.js";
 import { resolveDesktopRuntimeSessionRoots } from "../conversations/session-catalog-roots.js";
 import { resolveSessionListCwd } from "../conversations/session-paths.js";
+import { getAppLanguage } from "../i18n/index.js";
 import { getKnowledgeRoot } from "../knowledge/knowledge-layout.js";
 import { getAppLogger } from "../logger.js";
 import { getDesktopMcpAppRegistry } from "../mcp/mcp-app-runtime.js";
@@ -189,7 +190,12 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				tracing: { captureContent: false, detail: "standard" },
 				agentRuntime: { runtime: agentRuntime },
 				modelRegistry: modelRuntime,
-				resolveCompactionSettings: () => runtimeConfiguration.readCompactionSettings(),
+				// 摘要卡是摆在界面上给人读的，所以摘要语言取界面语言，而不是会话语言。
+				// 不在这里缓存：压缩设置随每次 Turn 准入重新解析，切语言后下一个 Turn 的压缩就换语言。
+				resolveCompactionSettings: () => ({
+					...runtimeConfiguration.readCompactionSettings(),
+					summaryLanguage: getAppLanguage(),
+				}),
 				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 				createPluginRuntime: () => getDesktopCodingAgentPluginRuntimeSource(),
 				// 工作模式注册表归 desktop 所有（ADR-0071 修订）：coding-agent 只保留 core.mode
