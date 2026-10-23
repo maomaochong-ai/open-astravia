@@ -100,7 +100,11 @@ class InMemoryConversationRepository implements ConversationRepository {
 			throw new Error("compaction append failed");
 		}
 		if (conversation.version !== expectedVersion) {
-			throw new Error(`Version mismatch: expected ${expectedVersion}, received ${conversation.version}`);
+			const error = new Error(
+				`Version mismatch: expected ${expectedVersion}, received ${conversation.version}`,
+			) as Error & { code: string };
+			error.code = "conversation_version_conflict";
+			throw error;
 		}
 		const messages = [...conversation.messages];
 		for (const event of events) {
@@ -1305,6 +1309,53 @@ describe("greenfield runtime kernel", () => {
 
 		expect(result.status).toBe("completed");
 		expect(harness.session.state).toBe("idle");
+	});
+});
+
+describe("append version conflict recovery", () => {
+	it("recovers from a stale state.version by reloading and retrying", async () => {
+		// 模拟 turn 进行中后台写入者追加了一条记录，导致 state.version 滞后。
+		// append 应在 VERSION_CONFLICT 时重新 load 最新版本并重试，而不是把 turn 放大成 failed。
+		const repository = new InMemoryConversationRepository();
+		const eventSink = new CollectingEventSink();
+		const contextStrategy = new RecordingContextStrategy();
+		let injected = false;
+		const turnEngine: TurnEnginePort = {
+			async *execute(request) {
+				if (!injected) {
+					injected = true;
+					// 在 message.appended 之前偷偷追加一条记录，让 state.version 落后 1。
+					const conversation = await repository.load(request.sessionId);
+					await repository.append(request.sessionId, conversation.version, [
+						{
+							type: "context.appended",
+							sessionId: request.sessionId,
+							turnId: request.turnId,
+							record: { id: "c1", content: "stale", role: "user", modelVisible: false },
+							timestamp: 1,
+						},
+					]);
+				}
+				yield { type: "message", message: assistantMessage("done") };
+				yield { type: "completed", stopReason: "stop" };
+			},
+		};
+		const pipeline = new TurnPipeline({
+			repository,
+			snapshotProvider: new StaticRuntimeSnapshotProvider(snapshot(contextStrategy)),
+			turnEngine,
+			eventSink,
+			clock: new TestClock(),
+			idGenerator: new TestIdGenerator(),
+		});
+		const session = await createAgentSession({ id: "session-1", pipeline });
+
+		const result = await session.send({ message: userMessage("hello") });
+
+		expect(result.status).toBe("completed");
+		expect(session.state).toBe("idle");
+		const failedEvents = eventSink.events.filter((event) => event.type === "turn.failed");
+		expect(failedEvents).toHaveLength(0);
 	});
 });
 

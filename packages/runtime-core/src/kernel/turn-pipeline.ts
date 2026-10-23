@@ -6,6 +6,7 @@ import type { RuntimeExecutionObservationEvent, RuntimeMessageEnvelope } from ".
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import { ContextCompactionCommitter } from "./context-compaction-committer.js";
 import type {
+	AppendResult,
 	Clock,
 	ContextCompactionCommitResult,
 	ContextCompactionRecord,
@@ -957,11 +958,32 @@ export class TurnPipeline {
 		signal: AbortSignal,
 		events: readonly StoredSessionEvent[],
 	): Promise<void> {
-		const result = await this.repository.append(state.sessionId, state.version, events);
+		const result = await this.appendWithVersionRecovery(state, events);
 		state.version = result.version;
 		for (const event of events) {
 			await this.publishSafely(event);
 			await this.notifyObserversSafely(state.snapshot, event, signal);
+		}
+	}
+
+	/**
+	 * 写入事件并在状态版本滞后时自愈。
+	 *
+	 * 版本号就是事件条数，单调递增。当 state.version 落后于持久化版本时（例如
+	 * 中断恢复或后台写入在 state 不知情的情况下追加了记录），重新 load 拿到
+	 * 最新版本后重试一次，避免把可恢复的同步偏差放大成 turn_failed。
+	 */
+	private async appendWithVersionRecovery(
+		state: MutableTurnState,
+		events: readonly StoredSessionEvent[],
+	): Promise<AppendResult> {
+		try {
+			return await this.repository.append(state.sessionId, state.version, events);
+		} catch (error) {
+			if (!isConversationVersionConflict(error)) throw error;
+			const conversation = await this.repository.load(state.sessionId);
+			state.version = conversation.version;
+			return this.repository.append(state.sessionId, state.version, events);
 		}
 	}
 
@@ -1151,6 +1173,16 @@ export class TurnPipeline {
 
 function isAbortError(error: unknown): boolean {
 	return error instanceof Error && error.name === "AbortError";
+}
+
+/**
+ * ConversationRepository 的版本冲突错误来自 runtime-storage，runtime-core
+ * 不直接依赖该包，因此按错误码鸭子类型识别。
+ */
+function isConversationVersionConflict(error: unknown): boolean {
+	return (
+		error instanceof Error && "code" in error && (error as { code: unknown }).code === "conversation_version_conflict"
+	);
 }
 
 function abortReason(signal: AbortSignal): string | undefined {
