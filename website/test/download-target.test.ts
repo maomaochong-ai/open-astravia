@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { resolveDownloadOs, resolveDownloadTarget } from "../src/download-target";
 
-const VERSION = "0.5.74";
+const VERSION = "0.5.75";
 const BASE = `https://dl.astravia.dev/app/v${VERSION}`;
 
 /** Apple Silicon 上的 Chrome / Safari 同样上报 "Intel Mac OS X"，这是 issue #5 的根因。 */
