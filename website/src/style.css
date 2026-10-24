@@ -2753,3 +2753,129 @@ html.theme-transition *::after {
 		height: 24px;
 	}
 }
+
+/* ================= 手机端下载 ================= */
+.dl-mobile {
+	margin-top: 56px;
+	display: flex;
+	flex-direction: column;
+	gap: 28px;
+}
+.dl-mobile__head {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	max-width: 720px;
+}
+.dl-mobile__title {
+	font-size: clamp(22px, 3vw, 30px);
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	color: var(--ink);
+}
+.dl-mobile__lead {
+	color: var(--muted);
+	font-size: 15px;
+	line-height: 1.7;
+}
+.mob-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+	gap: 20px;
+}
+.mob-card {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	padding: 24px;
+	background: var(--elev);
+	border: 1px solid var(--line);
+	border-radius: 18px;
+	box-shadow: var(--shadow);
+	transition: border-color 0.2s var(--ease), transform 0.2s var(--ease);
+}
+/* 当前设备那一块描边提亮：给用户“你应该装这个”的低声提示，不藏起另一块 */
+.mob-card.is-detected {
+	border-color: var(--accent);
+}
+.mob-card__head {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+.mob-card__title {
+	font-size: 17px;
+	font-weight: 600;
+	color: var(--ink);
+}
+.mob-card__tag {
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--muted);
+	padding: 2px 8px;
+	background: var(--accent-soft);
+	border-radius: 999px;
+}
+.mob-card__desc {
+	color: var(--muted);
+	font-size: 14px;
+	line-height: 1.7;
+}
+.mob-card__cta {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	align-items: flex-start;
+}
+.mob-card__btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 11px 22px;
+	background: var(--btn-bg);
+	color: var(--btn-fg);
+	border: 1px solid var(--btn-bg);
+	border-radius: 999px;
+	font-size: 14px;
+	font-weight: 600;
+	text-decoration: none;
+	transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.mob-card__btn:hover {
+	background: var(--btn-bg-hover);
+	border-color: var(--btn-bg-hover);
+	transform: translateY(-1px);
+}
+.mob-card__meta {
+	font-size: 12px;
+	color: var(--faint);
+}
+.mob-card__steps {
+	margin: 0;
+	padding-left: 18px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	font-size: 13px;
+	line-height: 1.65;
+	color: var(--muted);
+}
+.mob-card__steps a {
+	color: var(--ink);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+	.dl-mobile {
+		margin-top: 40px;
+	}
+	.mob-grid {
+		grid-template-columns: 1fr;
+	}
+	.mob-card {
+		padding: 20px;
+	}
+}

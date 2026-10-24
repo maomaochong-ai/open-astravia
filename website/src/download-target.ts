@@ -7,7 +7,7 @@
  * 同时把 Intel 版留在「其他版本」里明确标注，并在版本标签上指路。
  */
 
-export type DownloadOs = "macos" | "windows" | "linux";
+export type DownloadOs = "macos" | "windows" | "linux" | "mobile";
 
 export type DownloadArchitecture = "arm64" | "x64" | "unknown";
 
@@ -40,8 +40,10 @@ const ARM_TOKEN = /arm64|aarch64|armv8|(?:^|[^a-z])arm(?:$|[^a-z])/i;
 const X86_TOKEN = /x86|i[3-6]86|amd64|x64|intel/i;
 
 export function resolveDownloadOs(userAgent: string): DownloadOs {
-	const isMobileApple = /iPhone|iPad|iPod/i.test(userAgent);
-	if (/Mac/i.test(userAgent) && !isMobileApple) return "macos";
+	// 手机/平板装不了桌面包，得先单独归类：iPhone 的 UA 带 "Mac OS X"，不拦就拿到 dmg；
+	// Android 的 UA 带 "Linux"，不拦就拿到 AppImage。
+	if (/iPhone|iPad|iPod|Android/i.test(userAgent)) return "mobile";
+	if (/Mac/i.test(userAgent)) return "macos";
 	if (/Win/i.test(userAgent)) return "windows";
 	return "linux";
 }
@@ -61,6 +63,17 @@ export function resolveDownloadTarget(
 	{ version, base = `https://dl.astravia.dev/app/v${version}`, intelHint = true }: DownloadTargetOptions,
 ): DownloadTarget {
 	const os = resolveDownloadOs(signals.userAgent);
+
+	if (os === "mobile") {
+		// 手机上的主按钮不下载安装包，只把用户带到本页的手机端安装说明。
+		return {
+			os,
+			architecture: "unknown",
+			href: "#dlMobile",
+			label: "查看手机安装方式",
+			versionLabel: "iPhone 需 iOS 26+ · Android 直接装",
+		};
+	}
 
 	if (os === "windows") {
 		return {

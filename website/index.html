@@ -856,6 +856,49 @@
 					</div>
 					<div class="dl-platforms-bottom" id="dlPlatformsBottom" aria-hidden="true"></div>
 				</div>
+			<!-- 手机端：桌面版装好之后最常见的下一步，单独给一块入口 -->
+			<div class="dl-mobile reveal" id="dlMobile">
+				<div class="dl-mobile__head">
+					<p class="section__kicker">手机端</p>
+					<h3 class="dl-mobile__title">装到手机，扫码就能遥控这台电脑</h3>
+					<p class="dl-mobile__lead">手机 App 与桌面版走同一套配对协议：桌面端点「手机扫码连接」，手机扫码后即可在手机上接着看会话、发指令。两端都免费。</p>
+				</div>
+				<div class="mob-grid">
+					<article class="mob-card" data-mob="ios">
+						<header class="mob-card__head">
+							<h4 class="mob-card__title">iPhone / iPad</h4>
+							<p class="mob-card__tag">未上架 App Store</p>
+						</header>
+						<p class="mob-card__desc">下载 IPA 后用你自己的 Apple ID 签名安装，不需要开发者账号，也不需要把设备交给别人。系统要求 iOS 26 或更高。</p>
+						<div class="mob-card__cta">
+							<a class="mob-card__btn" id="mobIosHref" href="https://dl.astravia.dev/client-mobile/Astravia-ios.ipa"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>下载 IPA</span></a>
+							<p class="mob-card__meta" id="mobIosMeta">IPA · 需自备 Apple ID 签名</p>
+						</div>
+						<ol class="mob-card__steps">
+							<li>把 IPA 下到电脑上。</li>
+							<li>电脑装 <a href="https://sideloadly.io" target="_blank" rel="noopener">Sideloadly</a>，手机连上电脑，填入你的 Apple ID 后签名安装。</li>
+							<li>免费 Apple ID 签出的 App 有效期 7 天，到期用同样步骤重签一次即可。</li>
+							<li>打开 App，在桌面端点「手机扫码连接」，扫码完成配对。</li>
+						</ol>
+					</article>
+					<article class="mob-card" data-mob="android">
+						<header class="mob-card__head">
+							<h4 class="mob-card__title">Android</h4>
+							<p class="mob-card__tag">APK 直装</p>
+						</header>
+						<p class="mob-card__desc">APK 由发版流程用固定密钥签名，与桌面版同一次发布，装上就能用。</p>
+						<div class="mob-card__cta">
+							<a class="mob-card__btn" id="mobAndroidHref" href="https://dl.astravia.dev/client-mobile/Astravia-arm64-v8a.apk"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>下载 APK</span></a>
+							<p class="mob-card__meta" id="mobAndroidMeta">arm64-v8a · 直接安装</p>
+						</div>
+						<ol class="mob-card__steps">
+							<li>手机浏览器打开本页，下载 APK。</li>
+							<li>系统询问时允许「安装未知来源应用」，然后打开安装。</li>
+							<li>桌面端点「手机扫码连接」，扫码完成配对。</li>
+						</ol>
+					</article>
+				</div>
+			</div>
 			</div>
 		</div>
 	</section>
