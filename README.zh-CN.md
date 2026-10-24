@@ -190,7 +190,7 @@ Questions and early ideas belong in GitHub Discussions. Report vulnerabilities p
       </td>
       <td align="center" style="border:1px solid #d0d7de;border-radius:12px;padding:20px 16px;background:#f6f8fa;vertical-align:top;">
         <div style="display:inline-block;padding:3px 10px;border-radius:20px;background:#07c160;color:#fff;font-size:12px;font-weight:600;margin-bottom:12px;">WeChat</div><br />
-        <img src="docs/assets/community/wechat-group.jpg" width="200" alt="WeChat group" style="border-radius:6px;" /><br />
+        <img src="docs/assets/community/wechat-group.png" width="200" alt="WeChat group" style="border-radius:6px;" /><br />
         <p style="margin:12px 0 0 0;font-weight:600;font-size:15px;">Official WeChat group</p>
         <p style="margin:4px 0 0 0;color:#656d76;font-size:13px;">Release updates · beta recruitment</p>
       </td>

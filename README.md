@@ -224,7 +224,7 @@ Pull Request 发往 **`dev`** 分支。贡献地图、测试要求与评审门�
       </td>
       <td align="center" style="border:1px solid #d0d7de;border-radius:12px;padding:20px 16px;background:#f6f8fa;vertical-align:top;">
         <div style="display:inline-block;padding:3px 10px;border-radius:20px;background:#07c160;color:#fff;font-size:12px;font-weight:600;margin-bottom:12px;">微信</div><br />
-        <img src="docs/assets/community/wechat-group.jpg" width="200" alt="微信群" style="border-radius:6px;" /><br />
+        <img src="docs/assets/community/wechat-group.png" width="200" alt="微信群" style="border-radius:6px;" /><br />
         <p style="margin:12px 0 0 0;font-weight:600;font-size:15px;">微信官方群</p>
         <p style="margin:4px 0 0 0;color:#656d76;font-size:13px;">版本更新 · 内测招募</p>
       </td>
