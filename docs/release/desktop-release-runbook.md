@@ -173,9 +173,9 @@ GitHub target 的手动发布会以当前 workflow SHA 创建对应版本 Releas
 
 ### GitHub target 的发布链路：R2 → 官网 → 部署
 
-`release_target=github` 的正式发布（tag 或 `channel=stable`）在四个平台构建完成后自己把剩下三步跑完，不需要再手动 dispatch：
+`release_target=github` 的正式发布（tag 或 `channel=stable`）在三个桌面平台构建完成后自己把剩下三步跑完，不需要再手动 dispatch：
 
-1. `publish-r2`（`needs: [prepare, build]`）调用 [upload-release-to-r2.yml](../../.github/workflows/upload-release-to-r2.yml)，把 GitHub Release 上的安装包传到 `app/v<version>`。它不依赖 `android`：APK 失败不能挡住桌面安装包上 CDN。
+1. `publish-r2`（`needs: [prepare, build]`）调用 [upload-release-to-r2.yml](../../.github/workflows/upload-release-to-r2.yml)，把 GitHub Release 上的安装包传到 `app/v<version>`。它只依赖桌面的 `build`，手机端产物不在这条链上（见下文「手机端发布」）。
 2. `publish-website`（`needs: [prepare, publish-r2]`）在 `dev` 上跑 [bump-website-version.mjs](../../scripts/release/bump-website-version.mjs)，把官网 5 个文件的版本号对齐到新版本，推 `release/website-v<version>` 分支并向 `dev` 开 PR。版本号已经是新版本时不提交，直接部署 `dev`。
 3. `deploy-website`（`needs: [prepare, publish-website]`）调用 [deploy-website.yml](../../.github/workflows/deploy-website.yml)，`ref` 指向上一步的分支，站点立刻换成用户点得到的版本。
 
@@ -185,6 +185,18 @@ GitHub target 的手动发布会以当前 workflow SHA 创建对应版本 Releas
 - **PR 需要人工合并**。`dev` 和 `main` 都要求 6 项 required check，而 workflow 用 `GITHUB_TOKEN` 推的分支不会再触发 `pull_request` 事件，check 永远不上报。可以由人看过 diff 后 bypass 合并，或关掉再重开 PR 让 check 重跑。站点不依赖这次合并，已经在第 3 步上线了。
 
 `release_target=r2`（商业版）和 `channel=test` 不走这三步：前者的产物不进 GitHub 下载目录，后者不该动官网。
+
+### 手机端发布：独立流水线
+
+[iOS 与 Android 安装包](../../.github/workflows/client-mobile-release.yml) 由独立的 `client-mobile-release` 发布，与 `desktop-release` 同时被同一个 `v*` tag 触发，互不阻塞：
+
+1. `prepare` 要求 tag 与 `apps/desktop/package.json` 的版本一致，否则只记一条 notice 就结束；手动 `workflow_dispatch` 必须填 `tag`，用来单独重发某一版的手机安装包。
+2. `quality` 先校验发布说明存在——缺正文时 `publish-github-installers` 一定会失败，没必要等 macOS 归档跑完才知道。
+3. `ios` 在 `macos-26` 上 `xcodegen generate` 后归档未签名 IPA；`android` 用 `desktop-production` 的签名凭据产出 arm64 APK。缺签名凭据时 Android 整条签名链路跳过，主机测试照跑。
+4. `publish-r2`（`always()`，只要 ipa / apk 之一成功）把产物传到 `client-mobile/`，文件名不带版本号，官网按钮是固定直链。
+
+桌面与手机拆开的原因：桌面签名公证要跑很久，Android 少一个密钥也不该牵连手机端发布动作；反过来，iOS 归档失败也不该挡住桌面安装包上 CDN。
+
 ## Test 升级验收操作
 
 真实安装升级使用独立的 `desktop-upgrade-e2e` workflow，不覆盖 stable，也不把“下载了一个伪造更新文件”当成升级成功。

@@ -11,6 +11,7 @@ import type { ChatConversationItem } from "@shared/store/chat-atoms";
 import type { Usage } from "@astravia/ai/protocol";
 import { MessageFeed } from "@astravia-org/theme-ui/chat/MessageFeedView";
 import { MessageFeedLayout } from "@astravia-org/theme-ui/chat/MessageFeedLayoutView";
+import { useConversationFeed } from "./feed";
 import { memo, type ReactNode, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { ListRange, SizeFunction } from "react-virtuoso";
@@ -213,12 +214,18 @@ export function ConversationMessages({ children }: { readonly children?: ReactNo
 
 /** Content after the last message, inside the scrolled list (waiting state, suggestions). */
 export function ConversationFooter({ children }: { readonly children?: ReactNode }) {
+	const feed = useConversationFeed("Conversation.Footer");
+	const pendingLabel = feed.pendingLabel;
+	// pending/创建中态只有一行 indicator，不需要给最后一条消息留的 64px 输入栏避让，
+	// 否则 indicator 会悬在半空、距输入栏过远。
+	const bottomPad = pendingLabel ? "pb-6" : "pb-16";
 	return (
 		<MessageFeed.Footer>
-			<div className="pb-16">{children}</div>
+			<div className={bottomPad}>{children}</div>
 		</MessageFeed.Footer>
 	);
 }
+
 
 /**
  * Floating question index on the left edge of the conversation. It needs no

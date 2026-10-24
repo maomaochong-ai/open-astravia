@@ -25,8 +25,8 @@ export interface ActivityTabDefinition {
 	/** 是否可被用户减号隐藏 / detach，默认 true。 */
 	removable?: boolean;
 	/**
-	 * 无显式可见性记录时是否上栏。
-	 * 插件 attach 三态用；内置默认 true，隐藏走 hiddenKeys。
+	 * 无显式可见性记录时是否上栏，内置与插件通用。
+	 * 内置/插件都可用它声明「默认不上栏、等用户从「+」菜单添加」；内置另受 hiddenKeys 否决。
 	 */
 	initiallyVisible?: boolean;
 	/** 插件：允许出现的对话场景（fail-closed）。内置省略 = 不按场景过滤。 */

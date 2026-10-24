@@ -41,14 +41,19 @@ const RUNTIME_CONTRACT_PATTERN = /(?:^|\/)plugin\.json$/i;
 const QUALITY_GATES_TEST = "scripts/quality/quality-gates.test.mjs";
 const PLUGIN_MANIFESTS_TEST = "scripts/quality/plugin-manifests.test.mjs";
 const WORKFLOW_CONTRACT_TESTS = new Map([
-	[".github/workflows/desktop-packaged.yml", "scripts/quality/desktop-packaging-scope.test.mjs"],
-	[".github/workflows/desktop-release.yml", "scripts/quality/desktop-release-workflow.test.mjs"],
-	// 这两个 workflow 是 desktop-release 的发布链路环节，契约与同一个测试文件共享。
-	[".github/workflows/upload-release-to-r2.yml", "scripts/quality/desktop-release-workflow.test.mjs"],
-	[".github/workflows/deploy-website.yml", "scripts/quality/desktop-release-workflow.test.mjs"],
-	[".github/workflows/pr-quality.yml", "scripts/quality/pr-quality.test.mjs"],
-	[".github/workflows/pr-automation.yml", "scripts/quality/pr-auto-merge.test.mjs"],
-	[".github/workflows/promote-dev-to-main.yml", "scripts/quality/promote-dev-to-main.test.mjs"],
+	[".github/workflows/desktop-packaged.yml", ["scripts/quality/desktop-packaging-scope.test.mjs"]],
+	// 桌面与手机各一条发布链路，各自的契约测试分开钉：改 desktop-release 不该把
+	// 手机端一起拖进来跑，反之亦然。上传到 R2 的 workflow 两条链共用，两边都测。
+	[".github/workflows/desktop-release.yml", ["scripts/quality/desktop-release-workflow.test.mjs"]],
+	[".github/workflows/client-mobile-release.yml", ["scripts/quality/client-mobile-release-workflow.test.mjs"]],
+	[
+		".github/workflows/upload-release-to-r2.yml",
+		["scripts/quality/desktop-release-workflow.test.mjs", "scripts/quality/client-mobile-release-workflow.test.mjs"],
+	],
+	[".github/workflows/deploy-website.yml", ["scripts/quality/desktop-release-workflow.test.mjs"]],
+	[".github/workflows/pr-quality.yml", ["scripts/quality/pr-quality.test.mjs"]],
+	[".github/workflows/pr-automation.yml", ["scripts/quality/pr-auto-merge.test.mjs"]],
+	[".github/workflows/promote-dev-to-main.yml", ["scripts/quality/promote-dev-to-main.test.mjs"]],
 ]);
 
 /**
@@ -236,7 +241,7 @@ function qualityTestsForFiles(files, pathExists) {
 			continue;
 		}
 		if (file.startsWith(".github/workflows/")) {
-			tests.push(WORKFLOW_CONTRACT_TESTS.get(file) ?? QUALITY_GATES_TEST);
+			tests.push(...(WORKFLOW_CONTRACT_TESTS.get(file) ?? [QUALITY_GATES_TEST]));
 			continue;
 		}
 		if (file.startsWith("scripts/")) {

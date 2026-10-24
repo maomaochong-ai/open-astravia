@@ -1,10 +1,10 @@
 /**
  * 画廊的数据模型：把「侧边栏里的项目」变成「设计稿卡片」。
  *
- * 一张卡 = 一个项目。收集条件是项目根目录下直接躺着 `x.astravia-design/` 包——只看一层，不做
- * 递归列举：画廊要对**所有**项目扫一遍，递归一个大仓库的代价会让这个页面打不开，
- * 而 scaffoldDesign 与导入本来就只往项目根写（`${cwd}/${name}.astravia-design`）。
- * 代价是用户手动挪进子目录的设计收不到，这是明确取舍。
+ * 一张卡 = 一个项目。收集范围是项目根和它的**第一层子目录**（`ui-mock/x.astravia-design/` 这种
+ * 分目录归类也要能看到），再深就不再往下：画廊要对**所有**项目扫一遍，进入递归的代价会让这个
+ * 页面打不开，而 `node_modules`、构建产物这类目录里也不可能有设计。扫描的目录数有硬上限，
+ * 单个目录读不了就当它没有设计——一个坏掉的仓库不该让整页报错。
  */
 import type { PluginFsApi, PluginOfficialSessionSummary } from "@astravia-org/plugin-sdk";
 import { designNameOf, MANIFEST_FILE } from "../astravia-design/manifest-types";
@@ -53,14 +53,65 @@ const LEGACY_SIDECAR_SUFFIX = ".astravia-design-dir";
  * 一个坏掉的项目不该让整页报错。
  */
 export async function scanProjectDesigns(fs: PluginFsApi, cwd: string): Promise<GalleryDesign[]> {
-	let entries: Awaited<ReturnType<PluginFsApi["readDir"]>>;
-	try {
-		entries = await fs.readDir(cwd);
-	} catch {
-		return [];
-	}
-	const bundleNames = new Set(entries.filter((entry) => entry.isDirectory).map((entry) => entry.name));
 	const designs: GalleryDesign[] = [];
+	const root = await readEntries(fs, cwd);
+	if (!root) return [];
+	await collectDesigns(fs, root, designs);
+
+	// 只下潜一层，且只往看起来能装设计的目录里走：`node_modules` 和构建产物既不可能有
+	// 设计，又恰好是目录数量的大头。预算按「读过的目录数」算，不是按项目算，一个巨大的
+	// monorepo 不能拖住整个画廊。
+	let budget = MAX_SCANNED_DIRECTORIES;
+	for (const entry of root) {
+		if (budget <= 0) break;
+		if (!entry.isDirectory || !isScannableDirectory(entry.name)) continue;
+		budget -= 1;
+		const nested = await readEntries(fs, entry.path);
+		if (!nested) continue;
+		await collectDesigns(fs, nested, designs);
+	}
+
+	return designs.sort((left, right) => right.modifiedAt - left.modifiedAt);
+}
+
+/** 每个项目最多下潜的子目录数；超过就只保留根目录的结果。 */
+const MAX_SCANNED_DIRECTORIES = 48;
+
+/** 不可能装着设计、但目录数最多的一批名字。 */
+const UNSCANNABLE_DIRECTORIES = new Set([
+	"node_modules",
+	"dist",
+	"build",
+	"out",
+	"target",
+	"vendor",
+	"pods",
+	"coverage",
+	"__pycache__",
+	"site-packages",
+]);
+
+function isScannableDirectory(name: string): boolean {
+	// 隐藏目录（`.git`、`.venv`、各种 cache）一律不进去；`.astravia-design` 包本身由
+	// collectDesigns 当作设计收走，不是下潜目标。
+	if (name.startsWith(".")) return false;
+	if (name.endsWith(".astravia-design") || name.endsWith(LEGACY_SIDECAR_SUFFIX)) return false;
+	return !UNSCANNABLE_DIRECTORIES.has(name.toLowerCase());
+}
+
+type DirEntry = Awaited<ReturnType<PluginFsApi["readDir"]>>[number];
+
+async function readEntries(fs: PluginFsApi, path: string): Promise<DirEntry[] | null> {
+	try {
+		return await fs.readDir(path);
+	} catch {
+		return null;
+	}
+}
+
+/** 收集一个目录里直接躺着的设计，含就地迁移 v1 遗留形态。 */
+async function collectDesigns(fs: PluginFsApi, entries: readonly DirEntry[], designs: GalleryDesign[]): Promise<void> {
+	const bundleNames = new Set(entries.filter((entry) => entry.isDirectory).map((entry) => entry.name));
 	for (const entry of entries) {
 		const legacyPath = legacyDesignPathOf(entry, bundleNames);
 		if (legacyPath) {
@@ -73,7 +124,6 @@ export async function scanProjectDesigns(fs: PluginFsApi, cwd: string): Promise<
 		if (!entry.isDirectory || !entry.name.endsWith(".astravia-design")) continue;
 		designs.push(await describeDesign(fs, entry.path, entry.modifiedAt));
 	}
-	return designs.sort((left, right) => right.modifiedAt - left.modifiedAt);
 }
 
 /**

@@ -39,13 +39,16 @@ HTML 可以使用内联样式、脚本、Canvas 和 DOM 事件；可以嵌入 da
 ```powershell
 bun scripts/quality/run-vitest.mjs --config apps/desktop/vitest.config.ts --run apps/desktop/src/renderer/domains/conversation/components/blocks/MarkdownRichContent.test.tsx apps/desktop/src/renderer/domains/conversation/components/blocks/markdown-math-client.test.ts
 node --test apps/desktop/scripts/markdown-preview.node-test.mjs
+node --test apps/desktop/scripts/markdown-link-icon.node-test.mjs
 node apps/desktop/scripts/markdown-render.bench.mjs
 node apps/desktop/scripts/markdown-isolation.test.mjs
 ```
 
-第二条命令使用 Playwright 的独立无头 Chromium 与临时构建，不连接真实 Astravia 实例。需已安装该版本的 Playwright Chromium；可用 `ASTRAVIA_TEST_BROWSER` 选择已安装的浏览器通道。
+第二条命令使用 Playwright 的独立无头 Chromium 与临时构建，验证隔离页面的策略，不连接真实 Astravia 实例。需已安装该版本的 Playwright Chromium；可用 `ASTRAVIA_TEST_BROWSER` 选择已安装的浏览器通道。
 
-第三条是可重复运行的长消息基准，包含长正文、大表格和长代码，每个场景按 50ms 间隔追加 40 次，输出解析次数、累计解析字符数和 React 渲染耗时；可追加输出 JSON 文件路径。它使用 production profiling 构建与简化样式，衡量渲染计算，不代表真实 Desktop 的 GPU、滚动或完整布局耗时。耗时只用于同机对比，不作为跨机器的硬性测试门槛；组件测试约束解析频率与最终内容完整性。
+第三条用同样的临时构建检查链接徽标排版：取到站点图标与退回通用地球图标时，图标都必须与文字垂直居中。
+
+第四条是可重复运行的长消息基准，包含长正文、大表格和长代码，每个场景按 50ms 间隔追加 40 次，输出解析次数、累计解析字符数和 React 渲染耗时；可追加输出 JSON 文件路径。它使用 production profiling 构建与简化样式，衡量渲染计算，不代表真实 Desktop 的 GPU、滚动或完整布局耗时。耗时只用于同机对比，不作为跨机器的硬性测试门槛；组件测试约束解析频率与最终内容完整性。
 
 2026-09-23 在 Windows、Chromium 151.0.7922.10 上，以相同夹具分别运行本轮优化前后的观察值：
 

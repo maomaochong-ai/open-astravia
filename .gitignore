@@ -71,6 +71,11 @@ apps/desktop/build/pet/*.compressed.webm
 # at build time (see scripts/fetch-ocr-models.js); not checked in.
 apps/desktop/resources/ocr-models/
 
+# 落到仓库根目录的安装包：构建产物应从 apps/mobile/client-apple/build 或 CDN 取，
+# 下载/校验时当前目录不对就会落在根目录，不允许被误提交。
+/*.ipa
+/*.apk
+
 # Windows Sherpa-ONNX speech model is fetched and verified at build time,
 # then packaged as an Electron extraResource; model weights are not source.
 apps/desktop/resources/speech-models/
@@ -110,3 +115,6 @@ agent-tools
 .playwright-cli
 .tmp*
 .ai
+
+# 本机逆向分析产物（QQ 客户端 UI/进程分析记录），不随仓库分发
+qq-app-analysis/

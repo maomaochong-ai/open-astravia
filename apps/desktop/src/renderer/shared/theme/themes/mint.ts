@@ -6,32 +6,33 @@ import { defaultTheme } from "./default";
 // 浅色画布带一层薄荷灰（不是纯白），卡面比画布更亮，muted/secondary 依次加深；
 // 深色画布是近黑的冷绿，卡面与浮层逐级提亮。
 // chart 取青绿一族 + 一枚冷蓝，避免图表区域显出一块不属于主题的颜色。
+// 色相守住青绿一侧：与森林（橄榄绿）刻意分色相，两套深色侧栏 RGB 距离 18.5。
 
-const PRIMARY_LIGHT = "#297a65";
-const PRIMARY_DARK = "#62c9a8";
+const PRIMARY_LIGHT = "#127a6b";
+const PRIMARY_DARK = "#5fd4b0";
 const PRIMARY_FG_LIGHT = "#ffffff";
 const PRIMARY_FG_DARK = "#04150f";
 
-const LIGHT_BG = "#eef7f3";
+const LIGHT_BG = "#e4f6f4";
 const LIGHT_FG = "#0f221e";
-const LIGHT_CARD = "#fbfefd";
-const LIGHT_MUTED = "#e4f2ec";
-const LIGHT_SECONDARY = "#daeee7";
-const LIGHT_ACCENT = "#dcefe9";
-const LIGHT_BORDER = "#c8dfd6";
-const LIGHT_INPUT = "#d3e7df";
-const LIGHT_MUTED_FG = "#557069";
+const LIGHT_CARD = "#f4fdfb";
+const LIGHT_MUTED = "#d4ece8";
+const LIGHT_SECONDARY = "#c6e6e1";
+const LIGHT_ACCENT = "#d0ece8";
+const LIGHT_BORDER = "#b4dcd6";
+const LIGHT_INPUT = "#c2e2dd";
+const LIGHT_MUTED_FG = "#3f635b";
 
-const DARK_BG = "#08110f";
+const DARK_BG = "#041214";
 const DARK_FG = "#e0f0ea";
-const DARK_CARD = "#0f1d19";
-const DARK_POPOVER = "#142420";
-const DARK_MUTED = "#0c1614";
-const DARK_SECONDARY = "#182722";
-const DARK_ACCENT = "#1c2e28";
-const DARK_BORDER = "#263f39";
-const DARK_INPUT = "#2e4a43";
-const DARK_MUTED_FG = "#82a29a";
+const DARK_CARD = "#0d231e";
+const DARK_POPOVER = "#122b24";
+const DARK_MUTED = "#091b17";
+const DARK_SECONDARY = "#163129";
+const DARK_ACCENT = "#1c3b32";
+const DARK_BORDER = "#26493f";
+const DARK_INPUT = "#2d5448";
+const DARK_MUTED_FG = "#86a8a1";
 
 export const mintTheme: ThemeDef = {
 	id: "mint",

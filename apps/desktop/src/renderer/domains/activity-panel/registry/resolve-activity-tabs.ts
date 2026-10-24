@@ -1,4 +1,4 @@
-import { explicitTabVisibility } from "@domains/plugins/runtime/attached-tabs";
+import { explicitTabVisibility } from "@shared/lib/tab-visibility";
 import type { ActivityTabDefinition, ActivityTabId, ActivityTabMeta, ResolvedActivityTab } from "./types";
 
 function toResolved(def: ActivityTabDefinition, meta: ActivityTabMeta): ResolvedActivityTab {
@@ -28,8 +28,11 @@ export function applyTabOrder<T extends { id: ActivityTabId }>(items: T[], order
 		.map(({ item }) => item);
 }
 
-/** canonical: plugin:<pluginId>:<tabId> → <pluginId>:<tabId> */
-function pluginAttachKey(def: ActivityTabDefinition): string {
+/**
+ * 可见性记录的 key：canonical `plugin:<pluginId>:<tabId>` → `<pluginId>:<tabId>`；
+ * 内置 tab 用它自己的稳定 id（`browser`），与插件 key 不会撞车。
+ */
+function tabAttachKey(def: ActivityTabDefinition): string {
 	if (def.id.startsWith("plugin:")) return def.id.slice("plugin:".length);
 	if (def.pluginId) return `${def.pluginId}:${def.id}`;
 	return def.id;
@@ -37,8 +40,30 @@ function pluginAttachKey(def: ActivityTabDefinition): string {
 
 /** 插件上栏：显式 attach 记录优先，否则 initiallyVisible（缺省 true）。 */
 export function isPluginTabOnBar(def: ActivityTabDefinition, tabVisibilityRecords: readonly string[]): boolean {
-	const key = pluginAttachKey(def);
+	const key = tabAttachKey(def);
 	return explicitTabVisibility(tabVisibilityRecords, key) ?? def.initiallyVisible !== false;
+}
+
+/** 内置 tab 的去向：上栏 / 「+」菜单的已隐藏池 / 「+」菜单的可添加池。 */
+export type BuiltinTabPlacement = "bar" | "hidden" | "available";
+
+/**
+ * 内置 tab 的去向。
+ *
+ * 用户按减号隐藏（`hiddenKeys`）一票否决，进「已隐藏面板」；否则听显式记录——内置面板
+ * 声明 `initiallyVisible: false` 时（如内置浏览器）默认不上栏，等用户从「+」菜单添加；
+ * 没表过态的内置 tab 仍按老规矩直接上栏。
+ */
+export function resolveBuiltinTabPlacement(
+	def: ActivityTabDefinition,
+	tabVisibilityRecords: readonly string[],
+	hiddenKeys: readonly string[],
+): BuiltinTabPlacement {
+	if (hiddenKeys.includes(def.id)) return "hidden";
+	const explicit = explicitTabVisibility(tabVisibilityRecords, tabAttachKey(def));
+	if (explicit === false) return "available";
+	if (explicit === true) return "bar";
+	return def.initiallyVisible === false ? "available" : "bar";
 }
 
 export interface ResolveActivityTabsInput {
@@ -52,12 +77,12 @@ export interface ResolveActivityTabsInput {
 export interface ResolveActivityTabsResult {
 	/** meta 非空的全部候选（尚未按用户可见性过滤）。 */
 	candidates: ResolvedActivityTab[];
-	/** 上栏可见（过滤 hidden / 插件未 attach），已排序。 */
+	/** 上栏可见（过滤 hidden / 未添加的可添加池条目），已排序。 */
 	onBar: ResolvedActivityTab[];
 	/** 内置候选但被用户隐藏 → 「+」可恢复。 */
 	restorable: ResolvedActivityTab[];
-	/** 插件候选但未上栏 → 「+」可添加。 */
-	availablePlugins: ResolvedActivityTab[];
+	/** 候选但不在栏上（插件未 attach / 内置未添加）→ 「+」可添加。 */
+	available: ResolvedActivityTab[];
 }
 
 /**
@@ -82,7 +107,7 @@ export function resolveActivityTabs(input: ResolveActivityTabsInput): ResolveAct
 
 	const onBarRaw: ResolvedActivityTab[] = [];
 	const restorable: ResolvedActivityTab[] = [];
-	const availablePlugins: ResolvedActivityTab[] = [];
+	const available: ResolvedActivityTab[] = [];
 
 	for (const item of natural) {
 		const def = item.definition;
@@ -90,14 +115,17 @@ export function resolveActivityTabs(input: ResolveActivityTabsInput): ResolveAct
 			if (isPluginTabOnBar(def, tabVisibilityRecords)) {
 				onBarRaw.push(item);
 			} else {
-				availablePlugins.push(item);
+				available.push(item);
 			}
 			continue;
 		}
-		if (hiddenKeys.includes(def.id)) {
+		const placement = resolveBuiltinTabPlacement(def, tabVisibilityRecords, hiddenKeys);
+		if (placement === "bar") {
+			onBarRaw.push(item);
+		} else if (placement === "hidden") {
 			restorable.push(item);
 		} else {
-			onBarRaw.push(item);
+			available.push(item);
 		}
 	}
 
@@ -105,9 +133,9 @@ export function resolveActivityTabs(input: ResolveActivityTabsInput): ResolveAct
 		candidates: natural,
 		onBar: applyTabOrder(onBarRaw, [...tabOrder]),
 		restorable,
-		availablePlugins,
+		available,
 	};
 }
 
-/** @internal 测试/调试：插件 attach key */
-export { pluginAttachKey };
+/** @internal 测试/调试：tab 可见性记录 key */
+export { tabAttachKey };

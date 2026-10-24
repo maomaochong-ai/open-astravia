@@ -16,6 +16,11 @@ settings:
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "3"
     CODE_SIGN_STYLE: Automatic
+  configs:
+    # Debug simulator builds must stay single-architecture: AstraviaKit only
+    # produces the host slice, so an x86_64 widget slice cannot import it.
+    Debug:
+      ONLY_ACTIVE_ARCH: YES
 packages:
   AstraviaKit:
     path: AstraviaKit
@@ -41,6 +46,9 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         INFOPLIST_FILE: Astravia/Resources/Info.plist
         ENABLE_PREVIEWS: YES
+        # The SPM WebRTC binary target is linked through @rpath and embedded into
+        # Astravia.app/Frameworks, so the executable needs that search path.
+        LD_RUNPATH_SEARCH_PATHS: $(inherited) @executable_path/Frameworks
     info:
       path: Astravia/Resources/Info.plist
       properties:
@@ -110,7 +118,8 @@ targets:
       - package: AstraviaKit
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.maomaochong-ai.mobile.rtctests
+        PRODUCT_BUNDLE_IDENTIFIER: com.astravia.mobile.rtctests
+        PRODUCT_NAME: AstraviaRTCTests
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
   AstraviaUITests:
@@ -123,6 +132,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.astravia.mobile.uitests
+        PRODUCT_NAME: AstraviaUITests
         TEST_TARGET_NAME: Astravia
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated

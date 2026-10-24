@@ -993,7 +993,8 @@
 			"systemSection": "系统权限",
 			"computerUseTitle": "Astravia Computer Use",
 			"computerUseDesc": "独立辅助程序负责前台窗口捕获，需单独完成辅助功能与屏幕录制授权",
-			"optionalHint": "权限均为可选，可随时在「设置 › 权限」中调整"
+			"optionalHint": "权限均为可选，可随时在「设置 › 权限」中调整",
+			"macOnlyHint": "系统权限与应用快照仅支持 macOS，当前平台可跳过此步骤"
 		},
 		"languageAppearance": {
 			"title": "语言与外观",

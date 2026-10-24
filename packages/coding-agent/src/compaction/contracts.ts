@@ -66,11 +66,21 @@ export interface CompactionResult<T = unknown> {
 	details?: T;
 }
 
+/** 摘要正文语言：由宿主按自己的「读的人是谁」决定，见 `CompactionSettings.summaryLanguage`。 */
+export type SummaryLanguage = "zh" | "en";
+
 export interface CompactionSettings {
 	enabled: boolean;
 	reserveTokens: number;
 	minFreePercent: number;
 	keepRecentTokens: number;
+	/**
+	 * 摘要正文与标题用哪种语言写；缺省遵循历史行为——跟随会话语言。
+	 *
+	 * 摘要卡是摆在界面上给人读的：中文界面里显示一份英文摘要就是混语言。宿主知道
+	 * 界面用的是哪种语言，所以由它决定这里填什么。
+	 */
+	summaryLanguage?: SummaryLanguage;
 }
 
 export const DEFAULT_COMPACTION_SETTINGS: CompactionSettings = {

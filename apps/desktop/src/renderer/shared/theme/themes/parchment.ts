@@ -6,32 +6,33 @@ import { defaultTheme } from "./default";
 // 浅色画布是米纸色，卡面更亮、muted/secondary 更深，四层都是暖色相；
 // 深色画布压成暖棕黑，卡面与浮层依次提亮。
 // 主色比原色板压暗一档（#b04a2c）：它要当实心按钮底色，浅橙上压白字读不清。
+// 深色表面往赭红偏：与蜜蜂（蜜金）刻意分色相，且与森林、薄荷的冷调完全不重叠。
 
 const PRIMARY_LIGHT = "#b04a2c";
 const PRIMARY_DARK = "#e08a68";
 const PRIMARY_FG_LIGHT = "#ffffff";
 const PRIMARY_FG_DARK = "#1e0f08";
 
-const LIGHT_BG = "#f8f2e8";
+const LIGHT_BG = "#f6eee1";
 const LIGHT_FG = "#241a13";
-const LIGHT_CARD = "#fdfaf5";
-const LIGHT_MUTED = "#f2e9dc";
-const LIGHT_SECONDARY = "#ece0d0";
-const LIGHT_ACCENT = "#eee4d6";
-const LIGHT_BORDER = "#ddcebd";
-const LIGHT_INPUT = "#e6d9c8";
-const LIGHT_MUTED_FG = "#6f5d4e";
+const LIGHT_CARD = "#fdf8f0";
+const LIGHT_MUTED = "#efe2d1";
+const LIGHT_SECONDARY = "#e8d8c3";
+const LIGHT_ACCENT = "#f0e5d6";
+const LIGHT_BORDER = "#dccbb4";
+const LIGHT_INPUT = "#e8dcc9";
+const LIGHT_MUTED_FG = "#685646";
 
-const DARK_BG = "#14100c";
+const DARK_BG = "#170d09";
 const DARK_FG = "#f2eae0";
-const DARK_CARD = "#1e1814";
-const DARK_POPOVER = "#251e18";
-const DARK_MUTED = "#191410";
-const DARK_SECONDARY = "#2a221b";
-const DARK_ACCENT = "#342b23";
-const DARK_BORDER = "#41352b";
-const DARK_INPUT = "#4b3e33";
-const DARK_MUTED_FG = "#a89a8d";
+const DARK_CARD = "#22150f";
+const DARK_POPOVER = "#291a13";
+const DARK_MUTED = "#1c110c";
+const DARK_SECONDARY = "#2e1d14";
+const DARK_ACCENT = "#37251a";
+const DARK_BORDER = "#452e20";
+const DARK_INPUT = "#503728";
+const DARK_MUTED_FG = "#ab9c8e";
 
 export const parchmentTheme: ThemeDef = {
 	id: "parchment",

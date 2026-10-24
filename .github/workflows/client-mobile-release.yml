@@ -1,0 +1,247 @@
+name: client-mobile-release
+
+# 手机端产物（iOS 未签名 IPA、Android arm64 APK）单独一条流水线：`desktop-release`
+# 只负责桌面，这里只负责手机。两者由同一个 tag 触发，各自独立跑，任何一边失败都不
+# 连累另一边——桌面签名公证动辄两小时，不该被 Android 密钥缺失拖住。
+#
+# 不用 `release: published` 触发：Release 由本仓库的工作流用 GITHUB_TOKEN 创建，而
+# GITHUB_TOKEN 产生的事件不会唤醒其他 workflow，接上去就是一条永远不触发的死链。
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要重发手机安装包的 tag，例如 v0.5.76。必须与 apps/desktop/package.json 的版本一致。'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: resolve mobile release scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      should-publish: ${{ steps.scope.outputs.should-publish }}
+      release-version: ${{ steps.scope.outputs.release-version }}
+      tag: ${{ steps.scope.outputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
+
+      # 手机端不像桌面有 stable / test 两个渠道：安装包只跟随正式 tag 发布，测试渠道
+      # 是桌面更新链路的内部概念，手机端没有「测试版更新」这回事。
+      - name: Require a tag that matches the release version
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          TAG="${REF_NAME}"
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            TAG="${INPUT_TAG}"
+          fi
+          if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Expected a release tag such as v0.5.76, got ${TAG:-<empty>}."
+            exit 1
+          fi
+          VERSION="$(node -p "require('./apps/desktop/package.json').version")"
+          # 一个 tag 对应一个版本：对不上说明是误推的 tag，手机端不该跟着发一版。
+          if [[ "${TAG}" != "v${VERSION}" ]]; then
+            echo "::notice::Ignoring ${TAG}; the release version is ${VERSION}."
+            echo "should-publish=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "release-version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "should-publish=true" >> "${GITHUB_OUTPUT}"
+
+  # 发布说明就是 Release 正文，`publish-github-installers` 缺了它直接失败。放在这里
+  # 一分钟内失败，而不是等 macOS 归档跑完才告诉你没有正文可发。
+  quality:
+    name: verify mobile release prerequisites
+    needs: prepare
+    if: needs.prepare.outputs.should-publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        uses: ./.github/actions/install-bun-dependencies
+
+      - name: Verify release notes exist
+        run: node scripts/release/release-notes.mjs --check
+
+      # 签名准备与 IPA/APK 追加发布都在本流水线里，它们的单测也只该在这里跑。
+      - name: Test mobile release scripts
+        run: bun scripts/quality/run-vitest.mjs --run scripts/release/prepare-android-release.test.mjs scripts/release/publish-github-installers.test.mjs
+
+  # Android 缺签名凭据时整条签名链路跳过（未签名 APK 装不上，发布没有意义），
+  # 但主机侧逻辑测试不受签名影响，仍然照跑。
+  android:
+    name: build and publish signed arm64 APK
+    needs: [prepare, quality]
+    if: needs.prepare.outputs.should-publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: desktop-production
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Prepare Android release signing
+        id: android-signing
+        env:
+          ASTRAVIA_ANDROID_KEYSTORE_BASE64: ${{ secrets.ASTRAVIA_ANDROID_KEYSTORE_BASE64 }}
+          ASTRAVIA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ASTRAVIA_ANDROID_KEYSTORE_PASSWORD }}
+          ASTRAVIA_ANDROID_KEY_ALIAS: ${{ secrets.ASTRAVIA_ANDROID_KEY_ALIAS }}
+          ASTRAVIA_ANDROID_KEY_PASSWORD: ${{ secrets.ASTRAVIA_ANDROID_KEY_PASSWORD }}
+        run: node scripts/release/prepare-android-release.mjs
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-disabled: true
+
+      - name: Test Android host logic
+        working-directory: apps/mobile/client-android
+        run: bash ./gradlew --no-daemon :shared:testAndroidHostTest
+
+      # 未配置签名凭据时准备步骤会声明 available=false，这里连同后续上传、发布一起跳过：
+      # 未签名的 APK 装不上，发布它没有意义。
+      - name: Build signed Android release APK
+        if: steps.android-signing.outputs.android_signing_available == 'true'
+        working-directory: apps/mobile/client-android
+        env:
+          ASTRAVIA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ASTRAVIA_ANDROID_KEYSTORE_PASSWORD }}
+          ASTRAVIA_ANDROID_KEY_ALIAS: ${{ secrets.ASTRAVIA_ANDROID_KEY_ALIAS }}
+          ASTRAVIA_ANDROID_KEY_PASSWORD: ${{ secrets.ASTRAVIA_ANDROID_KEY_PASSWORD }}
+        run: bash ./gradlew --no-daemon -PastraviaSplitApks=true :androidApp:assembleRelease
+
+      - name: Verify and name signed Android APK
+        if: steps.android-signing.outputs.android_signing_available == 'true'
+        shell: bash
+        run: |
+          node scripts/release/prepare-android-release.mjs --stage-apk apps/mobile/client-android/androidApp/build/outputs/apk/release
+          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose "${ASTRAVIA_ANDROID_APK_PATH}"
+
+      - name: Upload signed Android APK
+        if: steps.android-signing.outputs.android_signing_available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: ${{ env.ASTRAVIA_ANDROID_APK_PATH }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          overwrite: true
+
+      - name: Add Android APK to GitHub Release
+        if: steps.android-signing.outputs.android_signing_available == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.release-version }}
+        run: node scripts/release/publish-github-installers.mjs --platform android --directory "${{ runner.temp }}/android-release"
+
+      - name: Clean Android signing key
+        if: always()
+        shell: bash
+        run: |
+          if [[ -n "${ASTRAVIA_ANDROID_KEYSTORE_PATH:-}" ]]; then
+            rm -f -- "${ASTRAVIA_ANDROID_KEYSTORE_PATH}"
+          fi
+
+  # iOS 还没上架 App Store，官网发的是未签名 IPA：用户用自己的 Apple ID 签名安装，
+  # 不需要开发者账号。project.yml 是 xcodegen 的事实源，所以先 generate 再 archive。
+  ios:
+    name: build and publish unsigned iOS IPA
+    needs: [prepare, quality]
+    if: needs.prepare.outputs.should-publish == 'true'
+    runs-on: macos-26
+    timeout-minutes: 45
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Generate the Xcode project
+        working-directory: apps/mobile/client-apple
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build unsigned IPA
+        working-directory: apps/mobile/client-apple
+        run: scripts/build-ios-ipa.sh
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipa
+          path: apps/mobile/client-apple/build/ios/Astravia-ios.ipa
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          overwrite: true
+
+      - name: Add IPA to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.release-version }}
+        run: node scripts/release/publish-github-installers.mjs --platform ios --directory apps/mobile/client-apple/build/ios
+
+  # 官网按钮指向 R2 的 client-mobile/ 直链，文件名不带版本号（Astravia-ios.ipa /
+  # Astravia-arm64-v8a.apk）：href 固定，发新版本不用改页面。
+  # android 可能因为没配签名凭据整条跳过，所以只要两边至少有一个成功就上传。
+  publish-r2:
+    name: publish mobile installers → R2 client-mobile
+    needs: [prepare, ios, android]
+    if: |
+      always() &&
+      needs.prepare.outputs.should-publish == 'true' &&
+      (needs.ios.result == 'success' || needs.android.result == 'success')
+    uses: ./.github/workflows/upload-release-to-r2.yml
+    with:
+      version: ${{ needs.prepare.outputs.release-version }}
+      prefix: client-mobile
+      patterns: "*.ipa,*.apk"
+    secrets: inherit

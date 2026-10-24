@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
 	McpAuthRequiredError,
 	type McpClientHandle,
@@ -112,6 +112,53 @@ describe("McpServerSupervisor", () => {
 		expect(supervisor.getServerBinding("removed")?.client).toBe(removedClient);
 		expect(supervisor.getServerBinding("added")).toBeUndefined();
 		expect(clients.clients.filter((client) => client.name === "added").at(-1)?.closed).toBe(true);
+		await supervisor.shutdown();
+	});
+
+	it("retries a newly added server that failed to start once the backoff elapses", async () => {
+		vi.useFakeTimers();
+		try {
+			const source = new MutableConfigSource({ stable: stdio("stable") });
+			const clients = new FakeClientFactory();
+			const supervisor = createSupervisor(source, clients.create);
+			await supervisor.initialize();
+
+			clients.initializeErrors.set("added", new Error("cold npx timeout"));
+			source.servers = { stable: stdio("stable"), added: stdio("added") };
+			source.signature = "files-v2";
+			expect(await supervisor.reloadIfChanged()).toBe(false);
+			expect(supervisor.getServerBinding("added")).toBeUndefined();
+
+			// Config file untouched and the server is healthy now, but the backoff window still holds.
+			clients.initializeErrors.delete("added");
+			expect(await supervisor.reloadIfChanged()).toBe(false);
+			expect(supervisor.getServerBinding("added")).toBeUndefined();
+
+			vi.advanceTimersByTime(31_000);
+			expect(await supervisor.reloadIfChanged()).toBe(true);
+			expect(supervisor.getServerBinding("added")?.view.status).toBe("ready");
+			await supervisor.shutdown();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("retries immediately when the config changes again after a failed generation", async () => {
+		const source = new MutableConfigSource({ stable: stdio("stable") });
+		const clients = new FakeClientFactory();
+		const supervisor = createSupervisor(source, clients.create);
+		await supervisor.initialize();
+
+		clients.initializeErrors.set("added", new Error("bad args"));
+		source.servers = { stable: stdio("stable"), added: stdio("added-v1") };
+		source.signature = "files-v2";
+		expect(await supervisor.reloadIfChanged()).toBe(false);
+
+		clients.initializeErrors.delete("added");
+		source.servers = { stable: stdio("stable"), added: stdio("added-v2") };
+		source.signature = "files-v3";
+		expect(await supervisor.reloadIfChanged()).toBe(true);
+		expect(supervisor.getServerBinding("added")?.view.status).toBe("ready");
 		await supervisor.shutdown();
 	});
 

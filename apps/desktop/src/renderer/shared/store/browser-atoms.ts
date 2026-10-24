@@ -1,5 +1,11 @@
+import { withTabVisibility } from "@shared/lib/tab-visibility";
 import { atom } from "jotai";
-import { activityPanelOpenAtom, activityPanelTabByProjectAtom, setActivityPanelWidthAtom } from "./activity-atoms";
+import {
+	activityPanelOpenAtom,
+	activityPanelTabByProjectAtom,
+	attachedPluginTabsAtom,
+	setActivityPanelWidthAtom,
+} from "./activity-atoms";
 import { activeSessionAtom } from "./chat-atoms";
 
 /**
@@ -19,14 +25,16 @@ export function getBrowserUrlForWorkspace(map: Map<string, string>, workspaceId:
 export const getBrowserUrlForSession = getBrowserUrlForWorkspace;
 
 /** 在显式工作空间打开 URL：写入预览地址 + 展开面板 + 切到浏览器 tab。 */
-export const openUrlInActivityWorkspaceAtom = atom(null, (_get, set, input: { workspaceId: string; url: string }) => {
+export const openUrlInActivityWorkspaceAtom = atom(null, (get, set, input: { workspaceId: string; url: string }) => {
 	set(browserUrlByWorkspaceAtom, (prev) => {
 		const next = new Map(prev);
 		next.set(input.workspaceId, input.url);
 		return next;
 	});
 	set(activityPanelOpenAtom, true);
-	// 从消息链接展开浏览器时默认拉到最大宽度，给预览页面足够空间。
+	// 浏览器 tab 默认不在栏上（用户要从「+」菜单添加），点会话里的链接得先把它挂上去。
+	const attached = withTabVisibility(get(attachedPluginTabsAtom), input.workspaceId, "browser", true);
+	if (attached) set(attachedPluginTabsAtom, attached);
 	set(setActivityPanelWidthAtom, "max");
 	set(activityPanelTabByProjectAtom, (prev) => new Map(prev).set(input.workspaceId, "browser"));
 });

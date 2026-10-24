@@ -10,6 +10,7 @@ import type { ExternalApplication, ExternalApplicationKind } from "@preload/api-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { showToast } from "@shared/store/toast-atoms";
+import { isRemoteProjectPath } from "@shared/lib/utils";
 
 interface OpenWorkspaceWithAppProps {
 	/** 要打开的工作区目录；null = 会话还没绑定工作区，此时只启动应用。 */
@@ -38,8 +39,14 @@ export function OpenWorkspaceWithAppButton({ rootDir }: OpenWorkspaceWithAppProp
 	const [applications, setApplications] = useState<ExternalApplication[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [lastAppId, setLastAppId] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY));
-
+	// 远程工作区没有本机路径可交：菜单也就不必去问本机装了哪些应用。
+	const remote = isRemoteProjectPath(rootDir);
 	const loadApplications = useCallback(async () => {
+		if (isRemoteProjectPath(rootDir)) {
+			setApplications([]);
+			setLoading(false);
+			return;
+		}
 		setLoading(true);
 		try {
 			const apps = await window.astravia.shell.listExternalApplications(rootDir);
@@ -96,12 +103,23 @@ export function OpenWorkspaceWithAppButton({ rootDir }: OpenWorkspaceWithAppProp
 		return next;
 	}, [applications, lastAppId]);
 
-	const title = rootDir === null ? t("fileExplorer.openWorkspaceWithAppNoWorkspace") : t("fileExplorer.openWorkspaceWithApp");
+	const title = remote
+		? t("fileExplorer.openWorkspaceWithAppRemote")
+		: rootDir === null
+			? t("fileExplorer.openWorkspaceWithAppNoWorkspace")
+			: t("fileExplorer.openWorkspaceWithApp");
 
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" size="icon-xs" title={title} aria-label={title} onClick={() => void loadApplications()}>
+				<Button
+					variant="ghost"
+					size="icon-xs"
+					disabled={remote}
+					title={title}
+					aria-label={title}
+					onClick={() => void loadApplications()}
+				>
 					<span className="icon-[solar--export-linear] h-3.5 w-3.5" />
 				</Button>
 			</DropdownMenuTrigger>
@@ -128,7 +146,7 @@ export function OpenWorkspaceWithAppButton({ rootDir }: OpenWorkspaceWithAppProp
 						</DropdownMenuItem>
 					))
 				)}
-				{rootDir !== null && (
+				{rootDir !== null && !remote && (
 					<>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem onSelect={() => void handleOpenDefault()}>

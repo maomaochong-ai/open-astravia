@@ -15,17 +15,21 @@ function design(name: string, modifiedAt: number): GalleryDesign {
 	return { astraviaDesignPath: `/w/p/${name}.astravia-design`, name, modifiedAt };
 }
 
-function fsStub(entries: Array<{ name: string; isDirectory: boolean; modifiedAt?: number }>, manifests: Record<string, number> = {}) {
+type StubEntry = { name: string; isDirectory: boolean; modifiedAt?: number };
+
+function fsStub(tree: Record<string, StubEntry[]>, manifests: Record<string, number> = {}) {
 	return {
-		readDir: vi.fn(async (dir: string) =>
-			entries.map((entry) => ({
+		readDir: vi.fn(async (dir: string) => {
+			const entries = tree[dir];
+			if (!entries) throw new Error(`ENOENT ${dir}`);
+			return entries.map((entry) => ({
 				name: entry.name,
 				path: `${dir}/${entry.name}`,
 				isDirectory: entry.isDirectory,
 				size: 0,
 				modifiedAt: entry.modifiedAt ?? 0,
-			})),
-		),
+			}));
+		}),
 		stat: vi.fn(async (path: string) => {
 			const found = manifests[path];
 			return found === undefined ? null : { size: 1, modifiedAt: found, createdAt: 0 };
@@ -34,23 +38,75 @@ function fsStub(entries: Array<{ name: string; isDirectory: boolean; modifiedAt?
 }
 
 describe("scanProjectDesigns", () => {
-	it("只认根目录一层里的 .astravia-design 目录", async () => {
-		const fs = fsStub([
-			{ name: "a.astravia-design", isDirectory: true },
-			{ name: "notes.md", isDirectory: false },
-			{ name: "b.astravia-design", isDirectory: false }, // 老的打包文件形态，不是设计包
-			{ name: "src", isDirectory: true },
-		]);
+	it("只认根目录里的 .astravia-design 目录", async () => {
+		const fs = fsStub({
+			"/w/p": [
+				{ name: "a.astravia-design", isDirectory: true },
+				{ name: "notes.md", isDirectory: false },
+				{ name: "b.astravia-design", isDirectory: false }, // 老的打包文件形态，不是设计包
+				{ name: "src", isDirectory: true },
+			],
+			"/w/p/src": [],
+		});
 		const designs = await scanProjectDesigns(fs, "/w/p");
 		expect(designs.map((item) => item.name)).toEqual(["a"]);
 	});
 
+	// 用户会把设计按用途收进子目录（本项目里的 `ui-mock/` 就是），只扫根一层会让画廊看起来是空的。
+	it("根目录下一层里的设计也要收进来", async () => {
+		const fs = fsStub({
+			"/w/p": [
+				{ name: "ui-mock", isDirectory: true },
+				{ name: "root.astravia-design", isDirectory: true, modifiedAt: 10 },
+			],
+			"/w/p/ui-mock": [{ name: "dbx-pro.astravia-design", isDirectory: true, modifiedAt: 20 }],
+		});
+		const designs = await scanProjectDesigns(fs, "/w/p");
+		expect(designs.map((item) => [item.name, item.astraviaDesignPath])).toEqual([
+			["dbx-pro", "/w/p/ui-mock/dbx-pro.astravia-design"],
+			["root", "/w/p/root.astravia-design"],
+		]);
+	});
+
+	it("不再往第二层下潜，也不进 node_modules 与隐藏目录", async () => {
+		const fs = fsStub({
+			"/w/p": [
+				{ name: "ui-mock", isDirectory: true },
+				{ name: "node_modules", isDirectory: true },
+				{ name: ".cache", isDirectory: true },
+			],
+			"/w/p/ui-mock": [{ name: "deeper", isDirectory: true }],
+			"/w/p/ui-mock/deeper": [{ name: "hidden.astravia-design", isDirectory: true }],
+			"/w/p/node_modules": [{ name: "pkg.astravia-design", isDirectory: true }],
+			"/w/p/.cache": [{ name: "cache.astravia-design", isDirectory: true }],
+		});
+		await expect(scanProjectDesigns(fs, "/w/p")).resolves.toEqual([]);
+		expect(fs.readDir).not.toHaveBeenCalledWith("/w/p/node_modules");
+		expect(fs.readDir).not.toHaveBeenCalledWith("/w/p/.cache");
+	});
+
+	it("一个子目录读不了不影响其它目录的结果", async () => {
+		const tree: Record<string, StubEntry[]> = {
+			"/w/p": [
+				{ name: "a.astravia-design", isDirectory: true },
+				{ name: "broken", isDirectory: true },
+				{ name: "ui-mock", isDirectory: true },
+			],
+			"/w/p/ui-mock": [{ name: "b.astravia-design", isDirectory: true }],
+		};
+		const fs = fsStub(tree);
+		const designs = await scanProjectDesigns(fs, "/w/p");
+		expect(designs.map((item) => item.name).sort()).toEqual(["a", "b"]);
+	});
+
 	it("时间取 design.json 的 mtime，缺失时退回目录 mtime", async () => {
 		const fs = fsStub(
-			[
-				{ name: "a.astravia-design", isDirectory: true, modifiedAt: 100 },
-				{ name: "b.astravia-design", isDirectory: true, modifiedAt: 900 },
-			],
+			{
+				"/w/p": [
+					{ name: "a.astravia-design", isDirectory: true, modifiedAt: 100 },
+					{ name: "b.astravia-design", isDirectory: true, modifiedAt: 900 },
+				],
+			},
 			{ "/w/p/a.astravia-design/design.json": 5000 },
 		);
 		const designs = await scanProjectDesigns(fs, "/w/p");

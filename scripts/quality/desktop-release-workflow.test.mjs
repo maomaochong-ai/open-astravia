@@ -41,7 +41,6 @@ describe("Desktop release workflow contracts", () => {
 			"prepare",
 			"quality",
 			"build",
-			"android",
 			"publish-r2",
 			"publish-website",
 			"deploy-website",
@@ -117,14 +116,26 @@ describe("Desktop release workflow contracts", () => {
 		expect(r2.uses).toBe("./.github/workflows/upload-release-to-r2.yml");
 		expect(r2.with.version).toBe("$" + "{{ needs.prepare.outputs.release-version }}");
 		expect(r2.secrets).toBe("inherit");
-		// 不依赖 android（APK 失败不能挡住安装包上 CDN），也不在测试渠道里跑。
+		// 手机端产物在 client-mobile-release 里，桌面这条链只跑自己的构建；也不在测试渠道里跑。
 		for (const name of ["publish-r2", "publish-website", "deploy-website"]) {
 			expect(jobs[name].if).toContain("needs.prepare.outputs.should-publish == 'true'");
 			expect(jobs[name].if).toContain("needs.prepare.outputs.release_target == 'github'");
 			expect(jobs[name].if).toContain("needs.prepare.outputs.channel != 'test'");
 			expect(jobs[name].if).not.toContain("always()");
 		}
-
+		// 同一个 Release 上还有手机端 IPA / APK，桌面只拉自己的格式；这份清单必须与
+		// publish-github-installers 的桌面白名单一致，否则新增格式会静默传不上 CDN。
+		expect(r2.with.patterns).toBe("*.AppImage,*.blockmap,*.deb,*.dmg,*.exe,*.msi,*.rpm,*.zip");
+		const installerScript = readFileSync(
+			join(import.meta.dirname, "../../scripts/release/publish-github-installers.mjs"),
+			"utf8",
+		);
+		const desktopFormats = installerScript.match(/desktop: new Set\(\[([^\]]*)\]\)/)?.[1] ?? "";
+		const extensions = desktopFormats.match(/"\.[\w.]+"/g) ?? [];
+		expect(extensions.length).toBeGreaterThan(0);
+		for (const extension of extensions) {
+			expect(r2.with.patterns).toContain(`*${extension.slice(1, -1)}`);
+		}
 		const website = jobs["publish-website"];
 		expect(website.needs).toEqual(["prepare", "publish-r2"]);
 		expect(website.permissions).toEqual({ contents: "write", "pull-requests": "write" });
@@ -331,69 +342,6 @@ describe("Desktop release workflow contracts", () => {
 		// 正文缺失要在质量阶段就失败，而不是等平台矩阵签名公证跑完。
 		const qualityJob = workflow.slice(workflow.indexOf("\n  quality:"), workflow.indexOf("\n  build:"));
 		expect(qualityJob).toContain("node scripts/release/release-notes.mjs --check");
-	});
-
-	it("builds Android with its own version and publishes the APK to the matching desktop release", () => {
-		const android = jobs.android;
-		expect(android.needs).toEqual(["prepare", "quality"]);
-		expect(android.if).toBe(
-			"needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.channel != 'test'",
-		);
-		expect(android.environment).toBe("desktop-production");
-		expect(android.permissions).toEqual({ contents: "write" });
-		const steps = android.steps;
-		const index = (name) => steps.findIndex((step) => step.name === name);
-		const prepare = steps[index("Prepare Android release signing")];
-		expect(prepare.env).not.toHaveProperty("RELEASE_VERSION");
-		expect(prepare.id).toBe("android-signing");
-		for (const name of [
-			"ASTRAVIA_ANDROID_KEYSTORE_BASE64",
-			"ASTRAVIA_ANDROID_KEYSTORE_PASSWORD",
-			"ASTRAVIA_ANDROID_KEY_ALIAS",
-			"ASTRAVIA_ANDROID_KEY_PASSWORD",
-		]) {
-			expect(prepare.env[name]).toBe(`${"$"}{{ secrets.${name} }}`);
-		}
-		expect(steps.find((step) => step.uses === "gradle/actions/setup-gradle@v4").with["cache-disabled"]).toBe(true);
-		expect(steps[index("Test Android host logic")].run).toContain(":shared:testAndroidHostTest");
-		expect(steps[index("Build signed Android release APK")].run).toContain(
-			"-PastraviaSplitApks=true :androidApp:assembleRelease",
-		);
-		expect(steps[index("Verify and name signed Android APK")].run).toContain('apksigner" verify');
-		expect(steps[index("Upload signed Android APK")].with.path).toBe("$" + "{{ env.ASTRAVIA_ANDROID_APK_PATH }}");
-		const publish = steps[index("Add Android APK to GitHub Release")];
-		expect(publish.env.RELEASE_VERSION).toBe("$" + "{{ needs.prepare.outputs.release-version }}");
-		expect(publish.run).toContain("publish-github-installers.mjs --platform android");
-		expect(index("Test Android host logic")).toBeLessThan(index("Build signed Android release APK"));
-		expect(index("Build signed Android release APK")).toBeLessThan(index("Verify and name signed Android APK"));
-		expect(index("Verify and name signed Android APK")).toBeLessThan(index("Add Android APK to GitHub Release"));
-		expect(steps[index("Clean Android signing key")].if).toBe("always()");
-		// 缺少签名凭据时整条签名链路都不跑，但主机测试仍要守住发布质量。
-		const signingGate = "steps.android-signing.outputs.android_signing_available == 'true'";
-		for (const name of [
-			"Build signed Android release APK",
-			"Verify and name signed Android APK",
-			"Upload signed Android APK",
-			"Add Android APK to GitHub Release",
-		]) {
-			expect(steps[index(name)].if).toBe(signingGate);
-		}
-		expect(steps[index("Test Android host logic")].if).toBeUndefined();
-		const gradle = readFileSync(
-			join(import.meta.dirname, "../../apps/mobile/client-android/androidApp/build.gradle.kts"),
-			"utf8",
-		);
-		expect(gradle).toContain('signingConfig = signingConfigs.getByName("release")');
-		expect(gradle).toContain('it.name == "preReleaseBuild"');
-		expect(gradle).toContain("dependsOn(validateAstraviaReleaseSigning)");
-		expect(gradle).toContain('providers.gradleProperty("astraviaAndroidVersionName")');
-		expect(gradle).toContain('providers.gradleProperty("astraviaAndroidVersionCode")');
-		expect(gradle).toContain('include(providers.gradleProperty("astraviaAndroidAbi").get())');
-		expect(
-			readFileSync(join(import.meta.dirname, "../../apps/mobile/client-android/gradle.properties"), "utf8"),
-		).toMatch(/^astraviaAndroidAbi=arm64-v8a\r?$/m);
-		expect(gradle).toContain('providers.gradleProperty("astraviaSplitApks").orElse("false")');
-		expect(gradle).not.toContain("ASTRAVIA_ANDROID_VERSION_NAME");
 	});
 
 	it("provides an isolated test-channel workflow for real install and restart upgrades", () => {

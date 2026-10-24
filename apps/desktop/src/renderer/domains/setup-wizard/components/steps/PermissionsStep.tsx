@@ -1,4 +1,5 @@
 import type { PermissionKind, PermissionStatus, PermissionsSnapshot } from "@preload/api";
+import { isMac } from "@shared/lib/platform";
 import { cn } from "@shared/lib/utils";
 import { Button } from "@astravia-org/ui/button";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -101,63 +102,80 @@ export function PermissionsStep(): JSX.Element {
 				<p className="mt-1 text-[12px] text-muted-foreground">{t("setupWizard.permissions.subtitle")}</p>
 			</div>
 
-			<section className="space-y-2">
-				<h3 className="text-[12px] font-medium text-muted-foreground">{t("setupWizard.permissions.systemSection")}</h3>
-				<div className="space-y-2">
-					{SYSTEM_ITEMS.map((item) => {
-						const status = snapshot?.[item.field];
-						return (
-							<div
-								key={item.kind}
-								className="flex items-start gap-3 rounded-xl border border-border/50 bg-card/40 px-3.5 py-3"
-							>
-								<span className={cn(item.icon, "mt-0.5 h-5 w-5 shrink-0 text-muted-foreground")} />
-								<div className="min-w-0 flex-1">
-									<div className="flex flex-wrap items-center gap-2">
-										<span className="text-[13px] font-medium text-foreground">{t(`settings:${item.titleKey}`)}</span>
-										{!("hideStatus" in item && item.hideStatus) && status && (
-											<span
-												className={cn(
-													"rounded-full px-2 py-0.5 text-[10px] font-medium",
-													statusClass(status),
-												)}
-											>
-												{statusLabel[status]}
-											</span>
-										)}
-									</div>
-									<p className="mt-0.5 text-[11px] text-muted-foreground">{t(`settings:${item.descKey}`)}</p>
-								</div>
-								<Button
-									variant="outline"
-									size="sm"
-									className="shrink-0"
-									onClick={() => void openPane(item.kind)}
+			{isMac ? (
+				<section className="space-y-2">
+					<h3 className="text-[12px] font-medium text-muted-foreground">{t("setupWizard.permissions.systemSection")}</h3>
+					<div className="space-y-2">
+						{SYSTEM_ITEMS.map((item) => {
+							const status = snapshot?.[item.field];
+							return (
+								<div
+									key={item.kind}
+									className="flex items-start gap-3 rounded-xl border border-border/50 bg-card/40 px-3.5 py-3"
 								>
-									{t("settings:goToAuthorize")}
-								</Button>
-							</div>
-						);
-					})}
-				</div>
-			</section>
-
-			<section className="rounded-xl border border-border/50 bg-card/40 px-3.5 py-3">
-				<div className="flex items-start gap-3">
-					<span className="icon-[solar--window-frame-linear] mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-					<div className="min-w-0 flex-1">
-						<h3 className="text-[13px] font-medium text-foreground">
-							{t("setupWizard.permissions.computerUseTitle")}
-						</h3>
-						<p className="mt-0.5 text-[11px] text-muted-foreground">
-							{t("setupWizard.permissions.computerUseDesc")}
-						</p>
+									<span className={cn(item.icon, "mt-0.5 h-5 w-5 shrink-0 text-muted-foreground")} />
+									<div className="min-w-0 flex-1">
+										<div className="flex flex-wrap items-center gap-2">
+											<span className="text-[13px] font-medium text-foreground">{t(`settings:${item.titleKey}`)}</span>
+											{!("hideStatus" in item && item.hideStatus) && status && (
+												<span
+													className={cn(
+														"rounded-full px-2 py-0.5 text-[10px] font-medium",
+														statusClass(status),
+													)}
+												>
+													{statusLabel[status]}
+												</span>
+											)}
+										</div>
+										<p className="mt-0.5 text-[11px] text-muted-foreground">{t(`settings:${item.descKey}`)}</p>
+									</div>
+									<Button
+										variant="outline"
+										size="sm"
+										className="shrink-0"
+										onClick={() => void openPane(item.kind)}
+									>
+										{t("settings:goToAuthorize")}
+									</Button>
+								</div>
+							);
+						})}
 					</div>
-					<Button variant="outline" size="sm" className="shrink-0" onClick={() => void openComputerUse()}>
-						{t("settings:appshotSetupPermissions")}
-					</Button>
-				</div>
-			</section>
+				</section>
+			) : (
+				<section className="space-y-2">
+					<h3 className="text-[12px] font-medium text-muted-foreground">{t("setupWizard.permissions.systemSection")}</h3>
+					<p className="rounded-xl border border-border/50 bg-card/40 px-3.5 py-3 text-[12px] text-muted-foreground">
+						{t("setupWizard.permissions.macOnlyHint")}
+					</p>
+				</section>
+			)}
+
+			{isMac ? (
+				<section className="rounded-xl border border-border/50 bg-card/40 px-3.5 py-3">
+					<div className="flex items-start gap-3">
+						<span className="icon-[solar--window-frame-linear] mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+						<div className="min-w-0 flex-1">
+							<h3 className="text-[13px] font-medium text-foreground">
+								{t("setupWizard.permissions.computerUseTitle")}
+							</h3>
+							<p className="mt-0.5 text-[11px] text-muted-foreground">
+								{t("setupWizard.permissions.computerUseDesc")}
+							</p>
+						</div>
+						<Button variant="outline" size="sm" className="shrink-0" onClick={() => void openComputerUse()}>
+							{t("settings:appshotSetupPermissions")}
+						</Button>
+					</div>
+				</section>
+			) : (
+				<section className="rounded-xl border border-border/50 bg-card/40 px-3.5 py-3">
+					<p className="text-[12px] text-muted-foreground">
+						{t("setupWizard.permissions.macOnlyHint")}
+					</p>
+				</section>
+			)}
 
 			{error && (
 				<p className="flex items-center gap-1.5 text-[12px] text-destructive">

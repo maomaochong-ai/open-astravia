@@ -203,6 +203,11 @@ export function useSessionOpener(): SessionOpenerController {
 				setChatStreamOwner(null);
 				if (isExistingSessionOpen) perfSessionSwitchComplete("failed", interactionId);
 			};
+			// 新操作接管过渡态：先清掉任何残留的 pending（被取代的操作可能因 token
+			// 失效而没机会清自己的 interactionId），再设置本次的。否则旧 pending 泄漏会
+			// 让 routePending 在 activeSession 已重置后仍误判，显示骨架屏且输入栏消失。
+			setPendingSessionCreation(null);
+			setPendingSessionOpen(null);
 			if (navigateBeforeCreate) {
 				setPendingSessionCreation({ cwd, interactionId: interactionId ?? "" });
 			} else if (stageExistingSessionOpen) {
@@ -399,6 +404,19 @@ export function useSessionOpener(): SessionOpenerController {
 			const { sessionId } = createResult;
 			if (myOpenToken !== getOpenSessionToken()) {
 				markSessionSwitch("session-create-superseded");
+				// 会话已在主进程落盘，但当前 open 已被更新的操作取代；不删除的话
+				// 侧边栏会多出一个没有 activeSession 归属的「未命名会话」空壳。
+				const orphanPath = createResult.sessionPath || sessionPath;
+				if (orphanPath) {
+					void window.astravia.session.delete(orphanPath).catch((error: unknown) => {
+						console.warn("[useSessionOpener] delete superseded empty session failed", error);
+					});
+				}
+				finishCancelledOpen();
+				return;
+			}
+			if (myOpenToken !== getOpenSessionToken()) {
+				markSessionSwitch("session-create-superseded");
 				finishCancelledOpen();
 				return;
 			}
@@ -422,6 +440,10 @@ export function useSessionOpener(): SessionOpenerController {
 				runtimeId: sessionId,
 				...(createResult.agentProfileId ? { agentProfileId: createResult.agentProfileId } : {}),
 			};
+			// 新会话在 create 返回后立即结束「正在创建会话」过渡态：会话已落库，
+			// 后续 attach / getState 属于 runtime 就绪，用户已能看到 ChatView。
+			// 已有会话仍保留 pendingSessionOpen 直到历史预览提交，避免空白闪烁。
+			if (navigateBeforeCreate) clearOwnPendingTransition();
 			// Existing-session UI already follows pendingSessionOpen and the history read from its file.
 			// Keep Runtime identity out of presentation state until getState can commit the
 			// complete session snapshot once. New sessions still need the early identity to

@@ -115,3 +115,42 @@ describe.each(THEMES)("$id 主题色板", (theme) => {
 		expect(new Set(THEMES.map(preview)).size).toBe(THEMES.length);
 	});
 });
+
+/**
+ * 主题之间的可分辨性：允许「有点像」，不允许「看起来是同一套」。
+ *
+ * 深色下四套主题的画布曾经都挤在 #0a120e–#14100c 之间（森林↔薄荷 RGB 距离 4.7，
+ * 蜜蜂↔羊皮纸 4.6），浅色下蜜蜂↔羊皮纸只剩 3.7。那种情况下切主题只看到按钮变色，
+ * 画布和侧栏读不出一丝差别——用户的原话是「四套主题颜色几乎无差异」。
+ */
+describe("四套主题彼此可分辨", () => {
+	function assertApart(pick: (theme: ThemeDef) => string, minimum: number, label: string): void {
+		for (let index = 0; index < THEMES.length; index += 1) {
+			for (let other = index + 1; other < THEMES.length; other += 1) {
+				const left = THEMES[index];
+				const right = THEMES[other];
+				expect(
+					distance(pick(left), pick(right)),
+					`${label}：${left.id} / ${right.id} 太接近`,
+				).toBeGreaterThanOrEqual(minimum);
+			}
+		}
+	}
+
+	it("深色画布两两可分辨", () => {
+		assertApart((theme) => theme.dark.background, 6, "深色画布");
+	});
+
+	it("浅色画布两两可分辨", () => {
+		assertApart((theme) => theme.light.background, 8, "浅色画布");
+	});
+
+	it("森林偏橄榄、薄荷偏青，两套绿色主题不共用色相", () => {
+		// 往同一个色相偏也能过「距离」守卫（各自压暗一点就分开了），但用户会把两套
+		// 主题读成同一套的深浅版。这里钉住色相方向：森林绿高于蓝（橄榄），薄荷蓝高于绿（青）。
+		const [, forestGreen, forestBlue] = channels(forestTheme.dark.background);
+		const [, mintGreen, mintBlue] = channels(mintTheme.dark.background);
+		expect(forestGreen).toBeGreaterThan(forestBlue);
+		expect(mintBlue).toBeGreaterThan(mintGreen);
+	});
+});

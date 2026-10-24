@@ -14,7 +14,13 @@ import {
 	createCompactionSummaryMessage,
 	createCustomMessage,
 } from "../model-context/index.js";
-import type { CompactionEntry, CompactionHistoryEntry, CompactionResult, CompactionSettings } from "./contracts.js";
+import type {
+	CompactionEntry,
+	CompactionHistoryEntry,
+	CompactionResult,
+	CompactionSettings,
+	SummaryLanguage,
+} from "./contracts.js";
 import { buildMechanicalLedger, type MechanicalLedger } from "./mechanical-ledger.js";
 import {
 	type CompactionSummaryGenerationRecoveryOptions,
@@ -274,11 +280,47 @@ export function findCutPoint(
 // Summarization
 // ============================================================================
 
-const SUMMARIZATION_PROMPT = `Summarize the conversation in UNTRUSTED_SUMMARY_INPUT_JSON so another LLM can continue the work without losing context.
+const SUMMARY_LANGUAGE_LABELS: Record<SummaryLanguage, string> = {
+	zh: "Simplified Chinese",
+	en: "English",
+};
 
-**CRITICAL — Language**: Write the ENTIRE summary in the same language as the user's messages in the conversation. If the user wrote in Chinese, write the summary in Chinese. If the user wrote in English, write the summary in English. Do NOT mix languages.
+/**
+ * 「摘要用什么语言写」——三段摘要提示词共用。
+ *
+ * 两种来源：宿主给了界面语言就整篇按它写（摘要卡是给人读的，中文界面里出现英文摘要就是混语言）；
+ * 没给则保持历史行为——跟随会话里用户消息的语言。标题与正文必须同一种语言，否则读起来是混排。
+ */
+function summaryLanguageRule(
+	language: SummaryLanguage | undefined,
+	headingExample: readonly [english: string, localized: string],
+	previousSummaryMayDiffer: boolean,
+): string {
+	const [englishHeading, localizedHeading] = headingExample;
+	if (language === undefined) {
+		const carryOver = previousSummaryMayDiffer
+			? " Match the language of the previousSummary field, including its section headings."
+			: "";
+		return `**CRITICAL — Language**: Write the ENTIRE summary in the same language as the user's messages in the conversation. If the user wrote in Chinese, write the summary in Chinese. If the user wrote in English, write the summary in English. Do NOT mix languages.${carryOver}
 
-**Headings follow the same language.** The section headings in the required format below show structure, not literal text: translate them into that language (e.g. "## Primary Goal" → "## 主要目标"), keeping their order, nesting and bracketed guidance unchanged. Writing an English heading over a Chinese body is a mixed-language summary.
+**Headings follow the same language.** The section headings in the required format below show structure, not literal text: translate them into that language (e.g. "${englishHeading}" → "${localizedHeading}"), keeping their order, nesting and bracketed guidance unchanged.${previousSummaryMayDiffer ? " Rewrite a heading that the previousSummary left in another language." : " Writing an English heading over a Chinese body is a mixed-language summary."}`;
+	}
+	const label = SUMMARY_LANGUAGE_LABELS[language];
+	const carryOver = previousSummaryMayDiffer
+		? ` The previousSummary may be in another language: translate its content into ${label} as well.`
+		: "";
+	// 例子的方向跟着目标语言走，否则会出现「翻成 English（例如 “## Primary Goal” → “## 主要目标”）」。
+	const [fromHeading, toHeading] =
+		language === "en" ? [localizedHeading, englishHeading] : [englishHeading, localizedHeading];
+	return `**CRITICAL — Language**: Write the ENTIRE summary in ${label}, the language the app interface is in. Do NOT mix languages, even when the conversation is in another language.${carryOver}
+
+**Headings follow the same language.** The section headings in the required format below show structure, not literal text: translate them into ${label} (e.g. "${fromHeading}" → "${toHeading}"), keeping their order, nesting and bracketed guidance unchanged.${previousSummaryMayDiffer ? " Rewrite a heading that the previousSummary left in another language." : ` Writing a heading in another language over a ${label} body mixes two languages in one summary.`}`;
+}
+
+function summarizationPrompt(language: SummaryLanguage | undefined): string {
+	return `Summarize the conversation in UNTRUSTED_SUMMARY_INPUT_JSON so another LLM can continue the work without losing context.
+
+${summaryLanguageRule(language, ["## Primary Goal", "## 主要目标"], false)}
 
 First, write your analysis inside <analysis> tags — this is your private scratchpad:
 1. Chronologically review each message. For each section identify:
@@ -327,12 +369,12 @@ Then write the final summary inside <summary> tags using this EXACT format:
    [Include direct quotes showing where the last task left off]
 
 Keep each section concise. Preserve exact file paths, function names, error messages, and code snippets.`;
+}
 
-const UPDATE_SUMMARIZATION_PROMPT = `Incorporate the new conversation from UNTRUSTED_SUMMARY_INPUT_JSON into its previousSummary field.
+function updateSummarizationPrompt(language: SummaryLanguage | undefined): string {
+	return `Incorporate the new conversation from UNTRUSTED_SUMMARY_INPUT_JSON into its previousSummary field.
 
-**CRITICAL — Language**: Write the ENTIRE summary in the same language as the user's messages in the conversation. If the user wrote in Chinese, write the summary in Chinese. If the user wrote in English, write the summary in English. Do NOT mix languages. Match the language of the previousSummary field, including its section headings.
-
-**Headings follow the same language.** The section headings in the required format below show structure, not literal text: translate them into that language (e.g. "## Primary Goal" → "## 主要目标"), keeping their order, nesting and bracketed guidance unchanged. Rewrite a heading that the previousSummary left in another language.
+${summaryLanguageRule(language, ["## Primary Goal", "## 主要目标"], true)}
 
 First, write your analysis inside <analysis> tags — review the new messages and identify what changed:
 1. What new work was done? What completed? What new errors or decisions?
@@ -386,6 +428,7 @@ Use this EXACT format:
    [Include direct quotes from the most recent conversation]
 
 Keep each section concise. Preserve exact file paths, function names, error messages, and code snippets.`;
+}
 
 /**
  * Extract the <summary> content from an LLM response, discarding the <analysis> scratchpad.
@@ -432,6 +475,11 @@ export interface CompactionSummaryGenerationOptions extends CompactionSummaryGen
 	 * 避免模型引用不存在的工具。
 	 */
 	readonly recallAvailable?: boolean;
+	/**
+	 * 摘要正文语言；缺省时跟随会话语言（历史行为）。
+	 * 宿主按界面语言传入，让摘要卡与它所在界面读起来是同一语言。
+	 */
+	readonly summaryLanguage?: SummaryLanguage;
 }
 
 /**
@@ -469,7 +517,9 @@ export async function generateSummary(
 	const maxTokens = Math.min(8000, Math.floor(0.25 * reserveTokens));
 
 	// Use update prompt if we have a previous summary, otherwise initial prompt
-	const basePrompt = previousSummary ? UPDATE_SUMMARIZATION_PROMPT : SUMMARIZATION_PROMPT;
+	const basePrompt = previousSummary
+		? updateSummarizationPrompt(generationOptions.summaryLanguage)
+		: summarizationPrompt(generationOptions.summaryLanguage);
 
 	// 预检：用与触发判定同源的逐字口径先估每个档位，超预算的档直接跳过，
 	// 避免长会话 full 档「发出去等 provider 报错再降级」的瀑布式空跑。
@@ -619,11 +669,10 @@ export function prepareCompaction(
 // Main compaction function
 // ============================================================================
 
-const TURN_PREFIX_SUMMARIZATION_PROMPT = `This is the PREFIX of a turn that was too large to keep. The SUFFIX (recent work) is retained.
+function turnPrefixSummarizationPrompt(language: SummaryLanguage | undefined): string {
+	return `This is the PREFIX of a turn that was too large to keep. The SUFFIX (recent work) is retained.
 
-**CRITICAL — Language**: Write the ENTIRE summary in the same language as the user's messages in the conversation. If the user wrote in Chinese, write the summary in Chinese. If the user wrote in English, write the summary in English. Do NOT mix languages.
-
-**Headings follow the same language.** The section headings in the required format below show structure, not literal text: translate them into that language (e.g. "## Original Request" → "## 原始请求"), keeping their order, nesting and bracketed guidance unchanged.
+${summaryLanguageRule(language, ["## Original Request", "## 原始请求"], false)}
 
 Summarize the prefix to provide context for the retained suffix:
 
@@ -637,6 +686,7 @@ Summarize the prefix to provide context for the retained suffix:
 - [Information needed to understand the retained recent work]
 
 Be concise. Focus on what's needed to understand the kept suffix.`;
+}
 
 /**
  * G4 召回指针：压缩摘要尾部追加，告诉模型「被压缩掉的细节仍在盘上，用 recall 工具读回」。
@@ -761,7 +811,7 @@ async function generateTurnPrefixSummary(
 				apiKey,
 				maxTokens,
 				signal,
-				basePrompt: TURN_PREFIX_SUMMARIZATION_PROMPT,
+				basePrompt: turnPrefixSummarizationPrompt(generationOptions.summaryLanguage),
 				completion:
 					generationOptions.completion ??
 					(generationOptions.onSummaryDelta

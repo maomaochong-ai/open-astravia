@@ -20,8 +20,8 @@ function TabIcon({ icon, className }: { icon: ReactNode; className?: string }): 
 	);
 }
 
-/** "+"下拉中可恢复显示的已隐藏内置/动态 tab。 */
-export interface HiddenTabEntryView {
+/** "+"下拉里的一个条目：已隐藏的内置/动态 tab、宽度收纳的页签、可添加的面板。 */
+export interface TabPickerEntryView {
 	readonly key: string;
 	readonly label: string;
 	readonly icon?: ReactNode;
@@ -33,27 +33,27 @@ export interface PluginTabPickerViewLabels {
 	readonly menu: string;
 	readonly moreTabs: string;
 	readonly hiddenPanels: string;
-	readonly availablePlugins: string;
+	readonly availablePanels: string;
 }
 
 export interface PluginTabPickerViewProps {
 	/** 当前被隐藏、可点击恢复的 tab（内置/动态） */
-	readonly hiddenTabs: readonly HiddenTabEntryView[];
+	readonly hiddenTabs: readonly TabPickerEntryView[];
 	/** 恢复（取消隐藏）某个 tab */
 	readonly onRestore: (key: string) => void;
 	/** 因宽度不足被响应式收纳、未显示在标签栏上的页签（点击激活并自动让其挤回栏内） */
-	readonly overflowTabs: readonly HiddenTabEntryView[];
+	readonly overflowTabs: readonly TabPickerEntryView[];
 	/** 激活某个被收纳的页签 */
 	readonly onSelectOverflow: (key: string) => void;
-	/** 已注册但未 attach 的插件 tab（可添加池） */
-	readonly availablePluginTabs?: readonly HiddenTabEntryView[];
-	/** 从可添加池 attach 并激活 */
-	readonly onAttachPlugin?: (key: string) => void;
+	/** 未上栏但可添加的面板（插件未 attach / 内置未添加） */
+	readonly availableTabs?: readonly TabPickerEntryView[];
+	/** 从可添加池挂上栏并激活 */
+	readonly onAttachTab?: (key: string) => void;
 	readonly labels: PluginTabPickerViewLabels;
 }
 
 /**
- * 活动面板 tab 栏右侧的下拉按钮：可添加池插件 tab、宽度收纳页签、被手动隐藏的页签。
+ * 活动面板 tab 栏右侧的下拉按钮：可添加面板（插件与内置）、宽度收纳页签、被手动隐藏的页签。
  * 有收纳项或可添加项时常显，否则 hover tab 栏才浮现。
  */
 export function PluginTabPickerView({
@@ -61,13 +61,13 @@ export function PluginTabPickerView({
 	onRestore,
 	overflowTabs,
 	onSelectOverflow,
-	availablePluginTabs = [],
-	onAttachPlugin,
+	availableTabs = [],
+	onAttachTab,
 	labels,
 }: PluginTabPickerViewProps): JSX.Element {
 	const [open, setOpen] = useState(false);
 	const hasOverflow = overflowTabs.length > 0;
-	const hasAvailable = availablePluginTabs.length > 0;
+	const hasAvailable = availableTabs.length > 0;
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -93,17 +93,17 @@ export function PluginTabPickerView({
 				</button>
 			</PopoverTrigger>
 			<PopoverContent align="end" sideOffset={6} className="w-60 gap-0 p-1.5">
-				{availablePluginTabs.length > 0 && onAttachPlugin && (
+				{availableTabs.length > 0 && onAttachTab && (
 					<>
 						<div className="px-2 pb-1.5 pt-1 text-[11px] font-medium text-muted-foreground">
-							{labels.availablePlugins}
+							{labels.availablePanels}
 						</div>
-						{availablePluginTabs.map((tab) => (
+						{availableTabs.map((tab) => (
 							<button
 								key={tab.key}
 								type="button"
 								onClick={() => {
-									onAttachPlugin(tab.key);
+									onAttachTab(tab.key);
 									setOpen(false);
 								}}
 								className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted"

@@ -1,4 +1,4 @@
-import { parseOfferedProtocols, REMOTE_WEBSOCKET_PROTOCOL } from "@astravia/remote-control";
+import { INVITE_TOKEN_HEADERS, parseOfferedProtocols, REMOTE_WEBSOCKET_PROTOCOL } from "@astravia/remote-control";
 
 export { REMOTE_WEBSOCKET_PROTOCOL };
 
@@ -41,10 +41,14 @@ export function parseInviteRoute(pathname: string): { readonly boxId: string } |
 	return match?.[1] ? { boxId: match[1] } : undefined;
 }
 
-/** The desktop's token for replacing or withdrawing its own invite. */
+/** The desktop's token for replacing or withdrawing its own invite. Accepts every header name in
+ *  `INVITE_TOKEN_HEADERS`, so a client on either side of the rename still works. */
 export function inviteWriterToken(headers: Headers): string | undefined {
-	const token = headers.get("X-Astravia-Invite-Token");
-	return token && pairingSecretPattern.test(token) ? token : undefined;
+	for (const name of INVITE_TOKEN_HEADERS) {
+		const token = headers.get(name);
+		if (token && pairingSecretPattern.test(token)) return token;
+	}
+	return undefined;
 }
 
 export interface PairingCredentials {

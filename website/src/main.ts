@@ -6,6 +6,7 @@
 import "./style.css";
 
 import { initDownloadLinks, initDownloadPlatformHighlight } from "./download-links";
+import { initExternalLinks } from "./external-links";
 import { initMobileInstall } from "./mobile-install";
 
 import { initStory } from "./story";
@@ -38,8 +39,20 @@ function applyThemeToggleState(theme: Theme) {
 		?.setAttribute("content", theme === "dark" ? "#0d0d0d" : "#ffffff");
 }
 
+const QR_LINKS = [...document.querySelectorAll<HTMLAnchorElement>("a.qr-card[data-poster-dark][data-poster-light]")];
+
+/* 社群海报有大片自带底色：深色主题用深底海报、浅色主题用浅底海报，
+   否则海报底色会和界面底色撞出一个粗边框。二维码本体是透明底，不受影响 */
+function applyCommunityPosters(theme: Theme) {
+	for (const link of QR_LINKS) {
+		const next = theme === "dark" ? link.dataset.posterDark : link.dataset.posterLight;
+		if (next && link.getAttribute("href") !== next) link.setAttribute("href", next);
+	}
+}
+
 /* 深浅主题：点击切换并记忆；默认浅色（Apple 纸感风），仅存过 dark 才回暗色 */
 function initThemeToggle() {
+	applyCommunityPosters(getCurrentTheme());
 	if (!THEME_TOGGLE) return;
 	applyThemeToggleState(getCurrentTheme());
 	THEME_TOGGLE.addEventListener("click", () => {
@@ -49,11 +62,13 @@ function initThemeToggle() {
 		document.documentElement.dataset.theme = next;
 		localStorage.setItem(THEME_KEY, next);
 		applyThemeToggleState(next);
+		applyCommunityPosters(next);
 	});
 	window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
 		// 用户未手动选择过时，图标状态跟随系统切换
 		if (!document.documentElement.dataset.theme) {
 			applyThemeToggleState(event.matches ? "dark" : "light");
+			applyCommunityPosters(event.matches ? "dark" : "light");
 		}
 	});
 }
@@ -254,6 +269,7 @@ initNavToggle();
 initReveal();
 initActiveNav();
 initSmoothScroll();
+initExternalLinks();
 initYear();
 initThemeToggle();
 

@@ -773,7 +773,6 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 				<span className="icon-[solar--minimize-square-linear] h-3.5 w-3.5" />
 			</Button>
 			{pluginToolbarActionNodes}
-			<OpenWorkspaceWithAppButton rootDir={rootDir} />
 		</>
 	);
 
