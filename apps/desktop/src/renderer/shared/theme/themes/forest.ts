@@ -8,30 +8,30 @@ import { defaultTheme } from "./default";
 // 深色反过来：画布最深，卡面、浮层、hover 依次提亮。
 // chart 取同族色相（深中浅绿 + 一枚琥珀），图表与强调色因此不会突然跳出主题。
 
-const PRIMARY_LIGHT = "#3f6b52";
-const PRIMARY_DARK = "#5aa870";
+const PRIMARY_LIGHT = "#2d5a3d";
+const PRIMARY_DARK = "#4ea36a";
 const PRIMARY_FG_LIGHT = "#ffffff";
 const PRIMARY_FG_DARK = "#08170e";
 
-const LIGHT_BG = "#eef4f0";
+const LIGHT_BG = "#e6efe9";
 const LIGHT_FG = "#16211b";
-const LIGHT_CARD = "#f9fbfa";
-const LIGHT_MUTED = "#e5eee8";
-const LIGHT_SECONDARY = "#dce8e1";
-const LIGHT_ACCENT = "#e0ebe4";
-const LIGHT_BORDER = "#cfdbd3";
+const LIGHT_CARD = "#f4f9f6";
+const LIGHT_MUTED = "#dae8df";
+const LIGHT_SECONDARY = "#cfdfd6";
+const LIGHT_ACCENT = "#d6e6dc";
+const LIGHT_BORDER = "#bfd0c6";
 const LIGHT_INPUT = "#d9e3dc";
-const LIGHT_MUTED_FG = "#5c6d63";
+const LIGHT_MUTED_FG = "#3d5247";
 
-const DARK_BG = "#0f1512";
+const DARK_BG = "#0a120e";
 const DARK_FG = "#dae4dc";
-const DARK_CARD = "#17201a";
-const DARK_POPOVER = "#1d2721";
-const DARK_MUTED = "#141b17";
-const DARK_SECONDARY = "#212a24";
-const DARK_ACCENT = "#28332c";
-const DARK_BORDER = "#333f38";
-const DARK_INPUT = "#3c4a42";
+const DARK_CARD = "#121c16";
+const DARK_POPOVER = "#18241d";
+const DARK_MUTED = "#0e1712";
+const DARK_SECONDARY = "#1c2a21";
+const DARK_ACCENT = "#24342a";
+const DARK_BORDER = "#2e4036";
+const DARK_INPUT = "#364a3e";
 const DARK_MUTED_FG = "#8d9a92";
 
 export const forestTheme: ThemeDef = {

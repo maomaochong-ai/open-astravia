@@ -1119,6 +1119,30 @@ a {
 :root[data-theme="forest"][data-mode="light"] .sidebar-surface {
 	--muted: #dcebe2;
 	--border: #d4e1d8;
+	background-color: #eef5f0;
+}
+
+/* macOS 经典侧边栏浅色 vibrancy 只有 35% tint，浅色主题差异被桌面壁纸吞没。
+   这四套主题在 mac 浅色下直接铺不透明主题色，与 win/linux 保持一致。 */
+:root[data-platform="mac"][data-sidebar-style="classic"][data-theme="forest"][data-mode="light"]
+	.sidebar-dock
+	.sidebar-surface {
+	background-color: #eef5f0;
+}
+:root[data-platform="mac"][data-sidebar-style="classic"][data-theme="bee"][data-mode="light"]
+	.sidebar-dock
+	.sidebar-surface {
+	background-color: #fbf6e8;
+}
+:root[data-platform="mac"][data-sidebar-style="classic"][data-theme="mint"][data-mode="light"]
+	.sidebar-dock
+	.sidebar-surface {
+	background-color: #eef9f4;
+}
+:root[data-platform="mac"][data-sidebar-style="classic"][data-theme="parchment"][data-mode="light"]
+	.sidebar-dock
+	.sidebar-surface {
+	background-color: #faf4ea;
 }
 
 :root[data-theme="bee"][data-mode="dark"] .sidebar-surface {
@@ -1128,6 +1152,7 @@ a {
 :root[data-theme="bee"][data-mode="light"] .sidebar-surface {
 	--muted: #f0e6cc;
 	--border: #e4d9bc;
+	background-color: #fbf6e8;
 }
 
 :root[data-theme="mint"][data-mode="dark"] .sidebar-surface {
@@ -1137,6 +1162,7 @@ a {
 :root[data-theme="mint"][data-mode="light"] .sidebar-surface {
 	--muted: #dcefe8;
 	--border: #cfe5dc;
+	background-color: #eef9f4;
 }
 
 :root[data-theme="parchment"][data-mode="dark"] .sidebar-surface {
@@ -1146,4 +1172,5 @@ a {
 :root[data-theme="parchment"][data-mode="light"] .sidebar-surface {
 	--muted: #f0e4d2;
 	--border: #e4d6c4;
+	background-color: #faf4ea;
 }
