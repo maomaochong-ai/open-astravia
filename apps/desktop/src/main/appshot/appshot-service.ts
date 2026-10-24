@@ -282,6 +282,9 @@ async function doCapture(): Promise<void> {
 	const config = await readDesktopConfig();
 	if (config.appshot?.enabled !== true) return;
 
+	// 应用快照依赖 macOS helper（辅助功能 + 屏幕录制），其他平台不支持。
+	if (process.platform !== "darwin") return;
+
 	const permissions = await checkHelperPermissions();
 	if (!permissions.accessibility && !permissions.screenRecording) {
 		showMainWindow();

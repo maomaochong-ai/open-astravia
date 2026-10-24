@@ -993,7 +993,8 @@
 			"systemSection": "System permissions",
 			"computerUseTitle": "Astravia Computer Use",
 			"computerUseDesc": "A separate helper captures the frontmost window and needs its own Accessibility and Screen Recording grants",
-			"optionalHint": "All permissions are optional. Adjust anytime in Settings → Permissions"
+			"optionalHint": "All permissions are optional. Adjust anytime in Settings → Permissions",
+			"macOnlyHint": "System permissions and App Snapshot are macOS only. You can skip this step on your current platform."
 		},
 		"languageAppearance": {
 			"title": "Language & appearance",
