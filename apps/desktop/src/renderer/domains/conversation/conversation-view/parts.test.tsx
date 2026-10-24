@@ -3,14 +3,19 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import type { Usage } from "@astravia/ai";
 import { createConversationAgentMessage, createConversationUserMessage } from "@shared/conversation";
+import type { ChatConversationItem } from "@shared/store/chat-atoms";
 import userEvent from "@testing-library/user-event";
+import { atom } from "jotai";
 import { type ComponentProps, Fragment, type ReactNode, useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MessageListModel } from "../components/message-list/types";
 import { ConversationExtensionRegistry } from "./extensions";
+import { ConversationFeedContext, createConversationFeed } from "./feed";
 import { ConversationFooter, ConversationMessages, ConversationScrollToBottom, ConversationTimelineRail } from "./parts";
 import { ConversationViewportFrame } from "./viewport-frame";
 
+/** 这个文件只测布局与滚动契约，消息内容由 model 直接给出，feed 的 items 保持为空。 */
+const EMPTY_ITEMS = atom<readonly ChatConversationItem[]>([]);
 /** The default composition the old MessageListView rendered, driven by a prepared model. */
 function MessageListView({
 	model,
@@ -23,21 +28,30 @@ function MessageListView({
 	deferredContentReady: boolean;
 	sessionId?: string | null;
 }) {
+	// 部件按契约必须挂在 Conversation.Root 之下（Footer 读 feed.pendingLabel），
+	// 这里用同一套 context 装配，而不是绕开它直接拼部件。
+	const feed = createConversationFeed({
+		key: sessionId ?? null,
+		items: EMPTY_ITEMS,
+		workspace: { id: "workspace", cwd: "/workspace" } as never,
+	});
 	return (
-		<ConversationExtensionRegistry>
-			<ConversationViewportFrame
-				model={{
-					...model,
-					feedKey: sessionId ?? null,
-					deferredContentReady,
-				}}
-			>
-				<ConversationMessages />
-				<ConversationFooter>{children}</ConversationFooter>
-				<ConversationTimelineRail />
-				<ConversationScrollToBottom />
-			</ConversationViewportFrame>
-		</ConversationExtensionRegistry>
+		<ConversationFeedContext.Provider value={feed}>
+			<ConversationExtensionRegistry>
+				<ConversationViewportFrame
+					model={{
+						...model,
+						feedKey: sessionId ?? null,
+						deferredContentReady,
+					}}
+				>
+					<ConversationMessages />
+					<ConversationFooter>{children}</ConversationFooter>
+					<ConversationTimelineRail />
+					<ConversationScrollToBottom />
+				</ConversationViewportFrame>
+			</ConversationExtensionRegistry>
+		</ConversationFeedContext.Provider>
 	);
 }
 
