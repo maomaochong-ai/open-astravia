@@ -1,4 +1,4 @@
-import { chatUrlTransform } from "../markdown/markdown-link";
+import { chatUrlTransform, resolveMarkdownLinkTarget } from "../markdown/markdown-link";
 import { cn } from "@astravia-org/ui";
 import { MarkdownHostProvider } from "../markdown/host";
 import type { MarkdownHost } from "../markdown/host";
@@ -30,9 +30,23 @@ export interface MarkdownPreviewViewProps {
 	theme: "light" | "dark";
 	/** Host opens http(s)/mailto/tel links (e.g. via shell.openExternal). */
 	onOpenExternal: (href: string) => void;
+	/**
+	 * Host opens a local file referenced by the document (relative links, `file://`, absolute paths).
+	 *
+	 * A preview is a rendered document, not a page: letting a relative `./other.md` reach the
+	 * anchor's default navigation unloads the whole renderer and leaves a blank window. Hosts that
+	 * pass this callback make those links open in place; without it they stay inert.
+	 */
+	onOpenLocalFile?: (path: string) => void;
 	labels?: MarkdownLabels;
 	className?: string;
 }
+
+const LINK_CLASS = "text-primary underline decoration-primary/30 hover:decoration-primary";
+
+/** Mirrors the chat transcript's local-file badge, so a reference looks the same in both places. */
+const FILE_LINK_CLASS =
+	"inline-flex max-w-full items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-1.5 py-px align-middle text-[13px] font-medium text-primary no-underline transition-colors hover:bg-primary/20";
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 
@@ -106,6 +120,7 @@ export const MarkdownPreviewView = memo(function MarkdownPreviewView({
 	onOpenExternal,
 	labels = DEFAULT_LABELS,
 	host,
+	onOpenLocalFile,
 	className,
 }: MarkdownPreviewViewProps): JSX.Element {
 	const definition = useMarkdownDefinition();
@@ -170,22 +185,47 @@ export const MarkdownPreviewView = memo(function MarkdownPreviewView({
 			th: ({ children, style }) => <MarkdownTableHeaderCell style={style}>{children}</MarkdownTableHeaderCell>,
 			td: ({ children, style }) => <MarkdownTableCell style={style}>{children}</MarkdownTableCell>,
 			hr: () => <hr className="my-3 border-border" />,
-			a: ({ href, children }) => (
-				<a
-					href={href}
-					className="text-primary underline decoration-primary/30 hover:decoration-primary"
-					target={isExternalLink(href) ? "_blank" : undefined}
-					rel={isExternalLink(href) ? "noopener noreferrer" : undefined}
-					onClick={(event) => handleLinkClick(event, href)}
-				>
-					{href && /^https?:\/\//i.test(href) && (
-						<>
-							<WebsiteIcon href={href} />{" "}
-						</>
-					)}
-					{children}
-				</a>
-			),
+			a: ({ href, children }) => {
+				const target = resolveMarkdownLinkTarget(href);
+				if (target.kind === "file") {
+					return (
+						<button
+							type="button"
+							title={target.path}
+							className={FILE_LINK_CLASS}
+							onClick={() => onOpenLocalFile?.(target.path)}
+						>
+							{children}
+						</button>
+					);
+				}
+				if (target.kind === "external") {
+					return (
+						<a
+							href={target.url}
+							className={LINK_CLASS}
+							target="_blank"
+							rel="noopener noreferrer"
+							onClick={(event) => handleLinkClick(event, target.url)}
+						>
+							{/^https?:\/\//i.test(target.url) && (
+								<>
+									<WebsiteIcon href={target.url} />{" "}
+								</>
+							)}
+							{children}
+						</a>
+					);
+				}
+				if (target.kind === "anchor") {
+					return (
+						<a href={target.href} className={LINK_CLASS}>
+							{children}
+						</a>
+					);
+				}
+				return <span>{children}</span>;
+			},
 			strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
 			em: ({ children }) => <em className="italic">{children}</em>,
 			"astravia-svg": ({ node }: { node?: HastElement }) => {
@@ -196,7 +236,7 @@ export const MarkdownPreviewView = memo(function MarkdownPreviewView({
 			...definition.components,
 			...definition.elements,
 		};
-	}, [theme, onOpenExternal, definition, labels]);
+	}, [theme, onOpenExternal, onOpenLocalFile, definition, labels]);
 
 	return (
 		<MarkdownHostProvider host={host}><div className={cn("markdown-body break-words p-4", className)}>

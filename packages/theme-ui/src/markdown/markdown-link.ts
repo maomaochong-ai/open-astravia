@@ -277,3 +277,30 @@ export function classifyMarkdownLink(href: string | undefined): MarkdownLinkKind
 
 	return { type: "other", href: trimmed };
 }
+
+/** What a rendered document may do with one link. */
+export type MarkdownLinkTarget =
+	| { readonly kind: "file"; readonly path: string }
+	| { readonly kind: "external"; readonly url: string }
+	| { readonly kind: "anchor"; readonly href: string }
+	| { readonly kind: "inert" };
+
+/**
+ * Decide what a link inside a rendered document is allowed to do.
+ *
+ * A document preview is not a page: the only thing that may leave the window is an
+ * http(s)/mailto/tel target, and only through the host. Local references are handed
+ * back to the host to open in place; same-document fragments keep their anchor; and
+ * everything else is inert rather than a live `href`. Without that last rule a
+ * relative link such as `./other.md` reaches the browser's default navigation, which
+ * unloads the renderer and leaves a blank window.
+ */
+export function resolveMarkdownLinkTarget(href: string | undefined): MarkdownLinkTarget {
+	const kind = classifyMarkdownLink(href);
+	if (kind.type === "file") return { kind: "file", path: kind.path };
+	if (kind.type === "url") return { kind: "external", url: kind.url };
+	const trimmed = (href ?? "").trim();
+	if (/^(?:mailto|tel):/i.test(trimmed)) return { kind: "external", url: trimmed };
+	if (trimmed.startsWith("#")) return { kind: "anchor", href: trimmed };
+	return { kind: "inert" };
+}

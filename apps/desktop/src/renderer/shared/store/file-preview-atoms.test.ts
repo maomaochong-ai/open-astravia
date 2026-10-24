@@ -1,49 +1,74 @@
-// @vitest-environment jsdom
-import { getDefaultStore } from "jotai";
-import { beforeEach, describe, expect, it } from "vitest";
-import { activityPanelOpenAtom, activityPanelTabByProjectAtom } from "./activity-atoms";
-import { clearFileExplorerRevealRequestAtom, fileExplorerRevealRequestAtom } from "./file-atoms";
-import { inlineFilePreviewAtom, openFileInActivityWorkspaceAtom } from "./file-preview-atoms";
+/**
+ * @vitest-environment jsdom
+ */
+import { createStore } from "jotai";
+import { describe, expect, it } from "vitest";
+import {
+	filePreviewAtom,
+	filePreviewContextReadonlyAtom,
+	inlineFilePreviewAtom,
+	inlineFilePreviewContextReadonlyAtom,
+	openInlineFilePreviewAtom,
+	openReferencedFileAtom,
+} from "./file-preview-atoms";
 
-const store = getDefaultStore();
+const source = "/docs/guide.md";
+const referenced = "/docs/other.md";
 
-describe("openFileInActivityWorkspaceAtom", () => {
-	beforeEach(() => {
-		store.set(activityPanelOpenAtom, false);
-		store.set(activityPanelTabByProjectAtom, new Map());
-		store.set(inlineFilePreviewAtom, null);
-		const pending = store.get(fileExplorerRevealRequestAtom);
-		if (pending) store.set(clearFileExplorerRevealRequestAtom, pending.id);
+describe("openReferencedFileAtom", () => {
+	it("swaps the inline preview when that is the surface showing the source document", () => {
+		const store = createStore();
+		store.set(inlineFilePreviewAtom, { name: "guide.md", path: source });
+		store.set(filePreviewAtom, { name: "shot.png", path: "/shots/shot.png" });
+
+		store.set(openReferencedFileAtom, { from: source, path: referenced });
+
+		expect(store.get(inlineFilePreviewContextReadonlyAtom)).toEqual({
+			items: [{ name: "other.md", path: referenced }],
+			index: 0,
+		});
+		expect(store.get(filePreviewContextReadonlyAtom)).toEqual({
+			items: [{ name: "shot.png", path: "/shots/shot.png" }],
+			index: 0,
+		});
 	});
 
-	it("展开文件 tab、载入预览，并把定位请求交给文件树", () => {
-		store.set(openFileInActivityWorkspaceAtom, { workspaceId: "/ws", path: "/ws/src/main.ts" });
+	it("swaps the modal preview rather than opening a second surface", () => {
+		const store = createStore();
+		store.set(filePreviewAtom, { name: "guide.md", path: source });
 
-		expect(store.get(activityPanelOpenAtom)).toBe(true);
-		expect(store.get(activityPanelTabByProjectAtom).get("/ws")).toBe("file");
-		expect(store.get(inlineFilePreviewAtom)).toMatchObject({ name: "main.ts", path: "/ws/src/main.ts" });
-		expect(store.get(fileExplorerRevealRequestAtom)?.path).toBe("/ws/src/main.ts");
+		store.set(openReferencedFileAtom, { from: source, path: referenced });
+
+		expect(store.get(filePreviewContextReadonlyAtom)).toEqual({
+			items: [{ name: "other.md", path: referenced }],
+			index: 0,
+		});
+		expect(store.get(inlineFilePreviewContextReadonlyAtom)).toBeNull();
 	});
 
-	it("同一路径再点一次会拿到新的请求 id", () => {
-		store.set(openFileInActivityWorkspaceAtom, { workspaceId: "/ws", path: "/ws/src/main.ts" });
-		const first = store.get(fileExplorerRevealRequestAtom);
+	it("opens the inline preview when neither surface is showing the source", () => {
+		const store = createStore();
 
-		store.set(openFileInActivityWorkspaceAtom, { workspaceId: "/ws", path: "/ws/src/main.ts" });
-		const second = store.get(fileExplorerRevealRequestAtom);
+		store.set(openReferencedFileAtom, { from: source, path: referenced });
 
-		expect(first?.path).toBe("/ws/src/main.ts");
-		expect(second?.path).toBe("/ws/src/main.ts");
-		expect(second?.id).not.toBe(first?.id);
+		expect(store.get(inlineFilePreviewContextReadonlyAtom)).toEqual({
+			items: [{ name: "other.md", path: referenced }],
+			index: 0,
+		});
 	});
 
-	it("只切换目标工作空间的 tab，不影响其他项目当前的 tab", () => {
-		store.set(activityPanelTabByProjectAtom, new Map([["/other", "browser"]]));
+	// The document a preview renders can be reopened after a reload; clearing the surface must
+	// not turn a stale reference into a fresh preview of an unrelated file.
+	it("keeps the source identity, so a reference from a different document does not hijack the surface", () => {
+		const store = createStore();
+		store.set(inlineFilePreviewAtom, { name: "guide.md", path: source });
+		store.set(openInlineFilePreviewAtom, { name: "unrelated.md", path: "/docs/unrelated.md" });
 
-		store.set(openFileInActivityWorkspaceAtom, { workspaceId: "/ws", path: "/ws/README.md" });
+		store.set(openReferencedFileAtom, { from: source, path: referenced });
 
-		const tabs = store.get(activityPanelTabByProjectAtom);
-		expect(tabs.get("/ws")).toBe("file");
-		expect(tabs.get("/other")).toBe("browser");
+		expect(store.get(inlineFilePreviewContextReadonlyAtom)).toEqual({
+			items: [{ name: "other.md", path: referenced }],
+			index: 0,
+		});
 	});
 });

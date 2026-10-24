@@ -129,6 +129,29 @@ export const openFileInActivityWorkspaceAtom = atom(null, (_get, set, input: { w
 	set(requestFileExplorerRevealAtom, input.path);
 });
 
+function contextShowsPath(ctx: FilePreviewContext | null, path: string): boolean {
+	return ctx?.items.some((item) => item.path === path) ?? false;
+}
+
+/**
+ * 在「正在显示这段源文件」的那个预览面里打开它引用的文件（markdown 内部引用）。
+ *
+ * 内嵌预览与全局 Dialog 各持一份上下文，这里按「哪个面现在就指着 from」决定切哪一个：
+ * 既不会凭空开出另一个面，也不会把另一个面正在看的内容顶掉。两个面都没显示它时
+ * （例如预览的是远端附件）回落到内嵌预览，和文件树的打开语义一致。
+ */
+export const openReferencedFileAtom = atom(null, (get, set, input: { from: string; path: string }) => {
+	const item: FilePreviewItem = { name: pathBasename(input.path), path: input.path };
+	if (contextShowsPath(get(inlineFilePreviewContextAtom), input.from)) {
+		set(inlineFilePreviewAtom, item);
+		return;
+	}
+	if (contextShowsPath(get(filePreviewContextAtom), input.from)) {
+		set(filePreviewAtom, item);
+		return;
+	}
+	set(openInlineFilePreviewAtom, item);
+});
 /**
  * 关闭内嵌预览：清空预览上下文，并把面板宽度回拉到点开前（若有记录）。
  * 关闭按钮、切走文件 tab、切换 session 都走这里，保证不残留「拉宽」形态。
