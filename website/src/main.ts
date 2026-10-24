@@ -6,6 +6,7 @@
 import "./style.css";
 
 import { initDownloadLinks, initDownloadPlatformHighlight } from "./download-links";
+import { initMobileInstall } from "./mobile-install";
 
 import { initStory } from "./story";
 
@@ -259,6 +260,8 @@ initThemeToggle();
 initFaq();
 initDownload();
 initDownloadLinks();
+
+initMobileInstall();
 
 initStory();
 
