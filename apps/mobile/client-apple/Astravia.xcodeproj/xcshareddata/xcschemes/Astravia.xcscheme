@@ -15,7 +15,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "EFF47FAFC9162FC5F0E8FD23"
+               BlueprintIdentifier = "75F30EDE4FC3D0DAC845D8DE"
                BuildableName = "Astravia.app"
                BlueprintName = "Astravia"
                ReferencedContainer = "container:Astravia.xcodeproj">
@@ -29,7 +29,7 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "B9DFC0CB9B81F02F5A21FE0C"
+               BlueprintIdentifier = "49DD3A0C9DD57A1A558BABC0"
                BuildableName = "AstraviaRTCTests.xctest"
                BlueprintName = "AstraviaRTCTests"
                ReferencedContainer = "container:Astravia.xcodeproj">
@@ -43,7 +43,7 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "6B17FFF7D8EC56DB20D70966"
+               BlueprintIdentifier = "508C7C1F54971ABCEC51FDD7"
                BuildableName = "AstraviaUITests.xctest"
                BlueprintName = "AstraviaUITests"
                ReferencedContainer = "container:Astravia.xcodeproj">
@@ -60,7 +60,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "EFF47FAFC9162FC5F0E8FD23"
+            BlueprintIdentifier = "75F30EDE4FC3D0DAC845D8DE"
             BuildableName = "Astravia.app"
             BlueprintName = "Astravia"
             ReferencedContainer = "container:Astravia.xcodeproj">
@@ -72,7 +72,7 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "6B17FFF7D8EC56DB20D70966"
+               BlueprintIdentifier = "508C7C1F54971ABCEC51FDD7"
                BuildableName = "AstraviaUITests.xctest"
                BlueprintName = "AstraviaUITests"
                ReferencedContainer = "container:Astravia.xcodeproj">
@@ -83,7 +83,7 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "B9DFC0CB9B81F02F5A21FE0C"
+               BlueprintIdentifier = "49DD3A0C9DD57A1A558BABC0"
                BuildableName = "AstraviaRTCTests.xctest"
                BlueprintName = "AstraviaRTCTests"
                ReferencedContainer = "container:Astravia.xcodeproj">
@@ -107,7 +107,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "EFF47FAFC9162FC5F0E8FD23"
+            BlueprintIdentifier = "75F30EDE4FC3D0DAC845D8DE"
             BuildableName = "Astravia.app"
             BlueprintName = "Astravia"
             ReferencedContainer = "container:Astravia.xcodeproj">
@@ -124,7 +124,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "EFF47FAFC9162FC5F0E8FD23"
+            BlueprintIdentifier = "75F30EDE4FC3D0DAC845D8DE"
             BuildableName = "Astravia.app"
             BlueprintName = "Astravia"
             ReferencedContainer = "container:Astravia.xcodeproj">
