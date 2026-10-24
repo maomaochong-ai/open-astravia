@@ -229,8 +229,8 @@ jobs:
       - name: Test quality and release configuration
         run: bun run test:quality
 
-      - name: Test Android release and GitHub installer publishing
-        run: bun scripts/quality/run-vitest.mjs --run scripts/release/prepare-android-release.test.mjs scripts/release/publish-github-installers.test.mjs
+      - name: Test GitHub installer publishing
+        run: bun scripts/quality/run-vitest.mjs --run scripts/release/publish-github-installers.test.mjs
 
       - name: Verify Desktop packaging contract
         run: bun run verify:desktop:contracts
@@ -465,92 +465,6 @@ jobs:
           RELEASE_VERSION: ${{ needs.prepare.outputs.release-version }}
         run: node scripts/release/publish-github-installers.mjs --platform desktop --directory apps/desktop/release
 
-  android:
-    name: build and publish signed arm64 APK
-    needs: [prepare, quality]
-    if: needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.channel != 'test'
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    environment: desktop-production
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Prepare Android release signing
-        id: android-signing
-        env:
-          ASTRAVIA_ANDROID_KEYSTORE_BASE64: ${{ secrets.ASTRAVIA_ANDROID_KEYSTORE_BASE64 }}
-          ASTRAVIA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ASTRAVIA_ANDROID_KEYSTORE_PASSWORD }}
-          ASTRAVIA_ANDROID_KEY_ALIAS: ${{ secrets.ASTRAVIA_ANDROID_KEY_ALIAS }}
-          ASTRAVIA_ANDROID_KEY_PASSWORD: ${{ secrets.ASTRAVIA_ANDROID_KEY_PASSWORD }}
-        run: node scripts/release/prepare-android-release.mjs
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          packages: platform-tools platforms;android-36 build-tools;36.0.0
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-disabled: true
-
-      - name: Test Android host logic
-        working-directory: apps/mobile/client-android
-        run: bash ./gradlew --no-daemon :shared:testAndroidHostTest
-
-      # 未配置签名凭据时准备步骤会声明 available=false，这里连同后续上传、发布一起跳过：
-      # 未签名的 APK 装不上，发布它没有意义。
-      - name: Build signed Android release APK
-        if: steps.android-signing.outputs.android_signing_available == 'true'
-        working-directory: apps/mobile/client-android
-        env:
-          ASTRAVIA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ASTRAVIA_ANDROID_KEYSTORE_PASSWORD }}
-          ASTRAVIA_ANDROID_KEY_ALIAS: ${{ secrets.ASTRAVIA_ANDROID_KEY_ALIAS }}
-          ASTRAVIA_ANDROID_KEY_PASSWORD: ${{ secrets.ASTRAVIA_ANDROID_KEY_PASSWORD }}
-        run: bash ./gradlew --no-daemon -PastraviaSplitApks=true :androidApp:assembleRelease
-
-      - name: Verify and name signed Android APK
-        if: steps.android-signing.outputs.android_signing_available == 'true'
-        shell: bash
-        run: |
-          node scripts/release/prepare-android-release.mjs --stage-apk apps/mobile/client-android/androidApp/build/outputs/apk/release
-          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose "${ASTRAVIA_ANDROID_APK_PATH}"
-
-      - name: Upload signed Android APK
-        if: steps.android-signing.outputs.android_signing_available == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: apk
-          path: ${{ env.ASTRAVIA_ANDROID_APK_PATH }}
-          if-no-files-found: error
-          retention-days: 30
-          compression-level: 0
-          overwrite: true
-
-      - name: Add Android APK to GitHub Release
-        if: steps.android-signing.outputs.android_signing_available == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ needs.prepare.outputs.release-version }}
-        run: node scripts/release/publish-github-installers.mjs --platform android --directory "${{ runner.temp }}/android-release"
-
-      - name: Clean Android signing key
-        if: always()
-        shell: bash
-        run: |
-          if [[ -n "${ASTRAVIA_ANDROID_KEYSTORE_PATH:-}" ]]; then
-            rm -f -- "${ASTRAVIA_ANDROID_KEYSTORE_PATH}"
-          fi
-
   # 官网下载按钮指向 R2 直链，所以产物必须先上 CDN、再改官网版本号：两个 job 的依赖顺序
   # 就是这条约束，漏一步用户点下去就是 404。
   publish-r2:
@@ -560,6 +474,9 @@ jobs:
     uses: ./.github/workflows/upload-release-to-r2.yml
     with:
       version: ${{ needs.prepare.outputs.release-version }}
+      # 同一个 tag 的 Release 上还挂着手机端 IPA / APK（由 client-mobile-release 上传）。这里限定
+      # 桌面格式，否则它们会被一并拷到 app/v<version>/，跟桌面下载目录搅在一起。
+      patterns: "*.AppImage,*.blockmap,*.deb,*.dmg,*.exe,*.msi,*.rpm,*.zip"
     secrets: inherit
 
   # 把官网 5 个文件的版本号推到发布分支并开 PR。分支由 CI 拥有，和 tag 一一对应，

@@ -1,13 +1,14 @@
 name: Upload Desktop Release to R2
 
 description: |
-  Downloads the assets of a published GitHub Desktop release and uploads
-  every installer, zip, dmg, AppImage, deb and rpm to the Cloudflare R2
-  bucket `astravia-downloads` under `app/v{version}/`.  The website
-  download page links to these R2 objects.
+  Downloads the assets of a published GitHub release and uploads them to the
+  Cloudflare R2 bucket `astravia-downloads`.  The website download page links
+  to these R2 objects.
 
   `desktop-release` 在四个平台构建完成、GitHub Release 落地后以 workflow_call 调用它，
-  这样一次 tag 推送就能把产物送上 CDN；也可以对任意 tag 手动 workflow_dispatch。
+  这样一次 tag 推送就能把产物送上 CDN；手机端产物复用同一个 workflow，只换
+  `prefix: client-mobile` 与 `patterns: "*.ipa,*.apk"`。也可以对任意 tag 手动 workflow_dispatch。
+
 on:
   release:
     types: [published]
@@ -19,6 +20,13 @@ on:
         required: true
       prefix:
         description: "R2 object prefix (default: app/v{version})"
+        type: string
+        required: false
+        default: ""
+      # 手机端只需要 ipa / apk：不限制的话整包桌面安装包（几百 MB）会被再传一份到
+      # client-mobile/。逗号分隔，支持多个通配符。
+      patterns:
+        description: "Comma-separated asset globs to download (default: * = every asset)"
         type: string
         required: false
         default: ""
@@ -37,6 +45,11 @@ on:
         description: "R2 object prefix (default: app/v{version}/)"
         type: string
         required: false
+      patterns:
+        description: "Comma-separated asset globs to download (default: * = every asset)"
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -77,10 +90,15 @@ jobs:
           if [[ -z "${PREFIX}" ]]; then
             PREFIX="app/v${VERSION}"
           fi
+          PATTERNS="${{ inputs.patterns }}"
+          if [[ -z "${PATTERNS}" ]]; then
+            PATTERNS="*"
+          fi
           echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
           echo "prefix=${PREFIX}" >> "${GITHUB_OUTPUT}"
-          echo "Resolved: tag=${TAG} version=${VERSION} prefix=${PREFIX}"
+          echo "patterns=${PATTERNS}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved: tag=${TAG} version=${VERSION} prefix=${PREFIX} patterns=${PATTERNS}"
 
       - name: Install rclone
         shell: bash
@@ -123,14 +141,28 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.resolve.outputs.tag }}
+          PATTERNS: ${{ steps.resolve.outputs.patterns }}
         run: |
           rm -rf /tmp/astravia-release && mkdir -p /tmp/astravia-release
           cd /tmp/astravia-release
-          gh release download "${TAG}" \
-            --repo "${GITHUB_REPOSITORY}" \
-            --pattern '*' \
-            --clobber
-          echo "Downloaded $(ls -1 | wc -l) assets:"
+          IFS=',' read -ra GLOBS <<< "${PATTERNS}"
+          for pattern in "${GLOBS[@]}"; do
+            glob="$(echo "${pattern}" | xargs)"
+            [[ -z "${glob}" ]] && continue
+            # 手机端只要 ipa/apk，但缺签名凭据时 APK 本来就不会存在：单个 pattern
+            # 没匹配到不应该把整条上传带成失败。
+            gh release download "${TAG}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --pattern "${glob}" \
+              --clobber \
+              || echo "::warning::No asset matched ${glob}"
+          done
+          count=$(find . -maxdepth 1 -type f | wc -l)
+          if [[ "${count}" -eq 0 ]]; then
+            echo "::error::No release asset matched ${PATTERNS} on ${TAG}"
+            exit 1
+          fi
+          echo "Downloaded ${count} assets:"
           ls -1
 
       - name: Upload assets to R2

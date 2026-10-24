@@ -7,6 +7,7 @@ import { desktopVersion, requireReleaseNotes } from "./release-notes.mjs";
 const INSTALLER_EXTENSIONS = {
 	desktop: new Set([".AppImage", ".blockmap", ".deb", ".dmg", ".exe", ".msi", ".rpm", ".zip"]),
 	android: new Set([".apk"]),
+	ios: new Set([".ipa"]),
 };
 
 function runGh(args) {
@@ -18,8 +19,8 @@ function runGh(args) {
 export function publishGithubInstallers({ version, sha, platform, directory, root = repoRoot, github = runGh }) {
 	const notes = requireReleaseNotes(version, root);
 	if (!/^[a-f0-9]{40}$/i.test(sha ?? "")) throw new Error("GITHUB_SHA must identify the release commit.");
-	if (platform !== "desktop" && platform !== "android")
-		throw new Error("Installer platform must be desktop or android.");
+	if (!Object.hasOwn(INSTALLER_EXTENSIONS, platform))
+		throw new Error("Installer platform must be desktop, android or ios.");
 	const extensions = INSTALLER_EXTENSIONS[platform];
 	const installers = readdirSync(directory, { withFileTypes: true })
 		.filter((entry) => entry.isFile() && extensions.has(extname(entry.name)))
@@ -56,7 +57,7 @@ if (isDirectRun(import.meta.url)) {
 	try {
 		const args = process.argv.slice(2);
 		if (args.length !== 4 || args[0] !== "--platform" || args[2] !== "--directory") {
-			throw new Error("Usage: publish-github-installers.mjs --platform <desktop|android> --directory <path>");
+			throw new Error("Usage: publish-github-installers.mjs --platform <desktop|android|ios> --directory <path>");
 		}
 		publishGithubInstallers({
 			version: process.env.RELEASE_VERSION || desktopVersion(),

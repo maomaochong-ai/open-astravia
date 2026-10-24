@@ -40,6 +40,31 @@ describe("publish GitHub installers", () => {
 			["v0.5.62", [join(fixture.directory, "Astravia-0.5.62.exe"), join(fixture.directory, "Astravia-arm64-v8a.apk")]],
 		]);
 	});
+	// iOS 包与 Android 同属「手机端产物」：不附桌面版本号，进同一个 v<版本> Release。
+	it("appends the IPA to the same tag and ignores non-installer files", () => {
+		const fixture = releaseFixture(["Astravia-ios.ipa", "manifest.plist", "Astravia.xcarchive"]);
+		const releases = new Map();
+		const github = ([, operation, tag, ...args]) => {
+			if (operation === "view") return releases.has(tag);
+			if (operation === "create") {
+				releases.set(tag, []);
+			} else if (operation === "upload") {
+				releases.get(tag).push(...args.filter((arg) => arg !== "--clobber"));
+			}
+			return true;
+		};
+		expect(publishGithubInstallers({ ...fixture, platform: "ios", github })).toEqual([
+			join(fixture.directory, "Astravia-ios.ipa"),
+		]);
+	});
+
+	it("rejects an unknown installer platform instead of publishing nothing", () => {
+		const fixture = releaseFixture(["Astravia-ios.ipa"]);
+		expect(() => publishGithubInstallers({ ...fixture, platform: "watchos", github: () => true })).toThrow(
+			"desktop, android or ios",
+		);
+	});
+
 	it("recovers when another platform creates the release concurrently", () => {
 		const fixture = releaseFixture(["Astravia-arm64-v8a.apk"]);
 		let created = false;
