@@ -6,32 +6,33 @@ import { defaultTheme } from "./default";
 // 浅色主色保持近黑（蜜黄上压白字不可读），黄色全部落在 accent / chart / 深色模式的主色上。
 // 表面是米黄到暖灰的四级台阶，画布不再是纯白——否则整套主题只剩一个按钮颜色。
 // 深色画布压到近黑的暖棕，卡面提亮。chart 取蜜黄同族色，深色下不刺眼。
+// 深色表面往蜜金偏：与羊皮纸（赭红）刻意分色相，两套暖色主题不会混在一起。
 
 const PRIMARY_LIGHT = "#14120c";
 const PRIMARY_DARK = "#e0c65c";
 const PRIMARY_FG_LIGHT = "#faf5e7";
 const PRIMARY_FG_DARK = "#14120c";
 
-const LIGHT_BG = "#faf5e7";
+const LIGHT_BG = "#fcf5da";
 const LIGHT_FG = "#1e1a0e";
 const LIGHT_CARD = "#fffdf4";
-const LIGHT_MUTED = "#f5eeda";
-const LIGHT_SECONDARY = "#efe6cd";
-const LIGHT_ACCENT = "#f2ead3";
-const LIGHT_BORDER = "#ded2b4";
-const LIGHT_INPUT = "#e8ddc1";
-const LIGHT_MUTED_FG = "#6b6150";
+const LIGHT_MUTED = "#f7edd2";
+const LIGHT_SECONDARY = "#f0e4c4";
+const LIGHT_ACCENT = "#f7eed8";
+const LIGHT_BORDER = "#ddd0ae";
+const LIGHT_INPUT = "#eadeb9";
+const LIGHT_MUTED_FG = "#645b4b";
 
-const DARK_BG = "#100f0a";
+const DARK_BG = "#131208";
 const DARK_FG = "#f0e9d6";
-const DARK_CARD = "#181712";
-const DARK_POPOVER = "#1f1d15";
-const DARK_MUTED = "#15130d";
-const DARK_SECONDARY = "#262315";
-const DARK_ACCENT = "#2e2a1a";
-const DARK_BORDER = "#3a3520";
-const DARK_INPUT = "#453f22";
-const DARK_MUTED_FG = "#9a9077";
+const DARK_CARD = "#1e1b0b";
+const DARK_POPOVER = "#24200e";
+const DARK_MUTED = "#181608";
+const DARK_SECONDARY = "#292412";
+const DARK_ACCENT = "#322c15";
+const DARK_BORDER = "#403719";
+const DARK_INPUT = "#4a401f";
+const DARK_MUTED_FG = "#a19678";
 
 export const beeTheme: ThemeDef = {
 	id: "bee",

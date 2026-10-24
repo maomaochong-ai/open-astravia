@@ -1105,72 +1105,100 @@ a {
 
 
 /* ── 主题专属侧栏配色 ──────────────────────────────────────────────
-   forest / bee / mint / parchment 四套主题的侧栏底色比主画布更深/更亮一档，
-   让侧栏先读成一条独立的「脊」，再读成画布的一部分。
-   open-astravia 的侧栏面板使用 bg-muted，这里按 data-theme 在侧栏子树内
-   覆盖 --muted；data-mode 区分明暗。
-   --border 取该主题 border 与侧栏底色的混色（对比度 1.09–1.22）：侧栏里
-   分隔线与卡片边框密度远高于主画布，直接用主题原色会在整片面板上连成一圈亮线。
-   需要更重的分隔时用 bg-* 叠色，不要回头加深这个 token。 */
-:root[data-theme="forest"][data-mode="dark"] .sidebar-surface {
-	--muted: #17241c;
-	--border: #26332b;
-}
-:root[data-theme="forest"][data-mode="light"] .sidebar-surface {
-	--muted: #dcebe2;
-	--border: #d4e1d8;
-	background-color: #eef5f0;
+   四套彩色主题的侧栏底色统一比主画布**深一档**（对比度：深色 1.15–1.17，
+   浅色 1.10–1.12），让侧栏先读成一条独立的「脊」，再读成画布的一部分。
+   浅色曾经取「比画布更亮」的一侧，四套主题都挤在 1.01–1.06 的亮度区间里，
+   看上去像同一块米白，层次感反而比深色更平——浅色要的层次只能靠向下压暗拿到。
+
+   深色下四套主题还各自往不同色相偏：森林縖欖绿、蜜蜂蜜金、薄荷青绿、羊皮纸赭红。
+   不偏色的后果是“森林”与“薄荷”的深色侧栏只差 RGB 距离 5.8，根本读成同一套主题；
+   现在两两距离拉到了 14 以上（薄荷↔羊皮纸 42）。
+
+    open-astravia 的侧栏面板使用 bg-muted，这里按 data-theme 在侧栏子树内
+   覆盖 --muted；data-mode 区分明暗。--border 取该主题 border 与侧栏底色的混色
+   （对比度 1.17–1.25）：侧栏里覆盖面板、分组标题密度远高于主画布，直接用主题
+   原色会在整片面板上连成一圈亮线；需要更重的分隔时用 bg-* 叠色，不要回头加深
+   这个 token。底色统一由 --sidebar-bg 提供，mac 与 win/linux 共用同一份。 */
+
+:root:is([data-theme="forest"], [data-theme="bee"], [data-theme="mint"], [data-theme="parchment"])
+	.sidebar-surface {
+	background-color: var(--sidebar-bg);
+	/* 极淡的顶部高光：纯色平涂会让侧栏看起来像贴在窗口上的一块色卡 */
+	background-image: var(--sidebar-sheen);
 }
 
-/* macOS 经典侧边栏浅色 vibrancy 只有 35% tint，浅色主题差异被桌面壁纸吞没。
-   这四套主题在 mac 浅色下直接铺不透明主题色，与 win/linux 保持一致。 */
-:root[data-platform="mac"][data-sidebar-style="classic"][data-theme="forest"][data-mode="light"]
+/* macOS 经典侧栏靠原生 vibrancy（深色 60%、浅色 35% tint）让画布色半透明，桌面
+   壁纸直接参与配色：同一条色在壁纸前可能显得比画布亮，也可能更脏，四套主题
+   的身份就没了。四套主题因此在 mac 上也钺不透明色，深浅两态都与 win/linux 一致；
+   未改造的 default / mono / sand 继续用 vibrancy。 */
+:root[data-platform="mac"][data-sidebar-style="classic"]:is(
+		[data-theme="forest"],
+		[data-theme="bee"],
+		[data-theme="mint"],
+		[data-theme="parchment"]
+	)
 	.sidebar-dock
 	.sidebar-surface {
-	background-color: #eef5f0;
+	background-color: var(--sidebar-bg);
+	background-image: var(--sidebar-sheen);
 }
-:root[data-platform="mac"][data-sidebar-style="classic"][data-theme="bee"][data-mode="light"]
-	.sidebar-dock
-	.sidebar-surface {
-	background-color: #fbf6e8;
+
+:root:is([data-theme="forest"], [data-theme="bee"], [data-theme="mint"], [data-theme="parchment"])[data-mode="dark"] {
+	--sidebar-sheen: linear-gradient(
+		to bottom,
+		color-mix(in srgb, #ffffff 5%, transparent),
+		transparent 240px
+	);
 }
-:root[data-platform="mac"][data-sidebar-style="classic"][data-theme="mint"][data-mode="light"]
-	.sidebar-dock
-	.sidebar-surface {
-	background-color: #eef9f4;
+
+:root:is([data-theme="forest"], [data-theme="bee"], [data-theme="mint"], [data-theme="parchment"])[data-mode="light"] {
+	--sidebar-sheen: linear-gradient(
+		to bottom,
+		color-mix(in srgb, #ffffff 60%, transparent),
+		transparent 200px
+	);
 }
-:root[data-platform="mac"][data-sidebar-style="classic"][data-theme="parchment"][data-mode="light"]
-	.sidebar-dock
-	.sidebar-surface {
-	background-color: #faf4ea;
+
+:root[data-theme="forest"][data-mode="dark"] .sidebar-surface {
+	--muted: #101a0c;
+	--border: #2b3b24;
+	--sidebar-bg: #152313;
+}
+:root[data-theme="forest"][data-mode="light"] .sidebar-surface {
+	--muted: #ccd8bd;
+	--border: #d1dbc0;
+	--sidebar-bg: #dce4cd;
 }
 
 :root[data-theme="bee"][data-mode="dark"] .sidebar-surface {
-	--muted: #221d10;
-	--border: #2f2a19;
+	--muted: #181608;
+	--border: #34301a;
+	--sidebar-bg: #22210e;
 }
 :root[data-theme="bee"][data-mode="light"] .sidebar-surface {
-	--muted: #f0e6cc;
-	--border: #e4d9bc;
-	background-color: #fbf6e8;
+	--muted: #ebdcae;
+	--border: #dccfa2;
+	--sidebar-bg: #f2e4b9;
 }
 
 :root[data-theme="mint"][data-mode="dark"] .sidebar-surface {
-	--muted: #12241f;
-	--border: #1d332d;
+	--muted: #091b17;
+	--border: #1a3a33;
+	--sidebar-bg: #082226;
 }
 :root[data-theme="mint"][data-mode="light"] .sidebar-surface {
-	--muted: #dcefe8;
-	--border: #cfe5dc;
-	background-color: #eef9f4;
+	--muted: #c6e2de;
+	--border: #c4ded9;
+	--sidebar-bg: #d6ece8;
 }
 
 :root[data-theme="parchment"][data-mode="dark"] .sidebar-surface {
-	--muted: #291e17;
-	--border: #362b22;
+	--muted: #1c110c;
+	--border: #3a271b;
+	--sidebar-bg: #2f1a12;
 }
 :root[data-theme="parchment"][data-mode="light"] .sidebar-surface {
-	--muted: #f0e4d2;
-	--border: #e4d6c4;
-	background-color: #faf4ea;
+	--muted: #e4d3bc;
+	--border: #d6c4ab;
+	--sidebar-bg: #ecdfcb;
 }

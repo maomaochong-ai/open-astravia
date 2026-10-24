@@ -7,32 +7,35 @@ import { defaultTheme } from "./default";
 // 卡片才浮得起来；画布与卡面都是 #ffffff 时，除了主色按钮之外整套主题等于不存在。
 // 深色反过来：画布最深，卡面、浮层、hover 依次提亮。
 // chart 取同族色相（深中浅绿 + 一枚琥珀），图表与强调色因此不会突然跳出主题。
+//
+// 色相往**橄榄**偏、而不是往青绿偏：森林与薄荷同属绿色系，若两者都往青绿走，
+// 深色下两条侧栏只差 RGB 距离 5.8，用户会直接读成同一套主题。
 
 const PRIMARY_LIGHT = "#2d5a3d";
 const PRIMARY_DARK = "#4ea36a";
 const PRIMARY_FG_LIGHT = "#ffffff";
 const PRIMARY_FG_DARK = "#08170e";
 
-const LIGHT_BG = "#e6efe9";
-const LIGHT_FG = "#16211b";
-const LIGHT_CARD = "#f4f9f6";
-const LIGHT_MUTED = "#dae8df";
-const LIGHT_SECONDARY = "#cfdfd6";
-const LIGHT_ACCENT = "#d6e6dc";
-const LIGHT_BORDER = "#bfd0c6";
-const LIGHT_INPUT = "#d9e3dc";
-const LIGHT_MUTED_FG = "#3d5247";
+const LIGHT_BG = "#e9efe0";
+const LIGHT_FG = "#1b2415";
+const LIGHT_CARD = "#f7faf2";
+const LIGHT_MUTED = "#dfe8d2";
+const LIGHT_SECONDARY = "#d5e0c6";
+const LIGHT_ACCENT = "#dbe6cd";
+const LIGHT_BORDER = "#c6d2b6";
+const LIGHT_INPUT = "#d9e3ca";
+const LIGHT_MUTED_FG = "#4c5a41";
 
-const DARK_BG = "#0a120e";
-const DARK_FG = "#dae4dc";
-const DARK_CARD = "#121c16";
-const DARK_POPOVER = "#18241d";
-const DARK_MUTED = "#0e1712";
-const DARK_SECONDARY = "#1c2a21";
-const DARK_ACCENT = "#24342a";
-const DARK_BORDER = "#2e4036";
-const DARK_INPUT = "#364a3e";
-const DARK_MUTED_FG = "#8d9a92";
+const DARK_BG = "#0b130a";
+const DARK_FG = "#dde5d4";
+const DARK_CARD = "#16210f";
+const DARK_POPOVER = "#1c2a14";
+const DARK_MUTED = "#101a0c";
+const DARK_SECONDARY = "#202d17";
+const DARK_ACCENT = "#27381d";
+const DARK_BORDER = "#354a27";
+const DARK_INPUT = "#3d5530";
+const DARK_MUTED_FG = "#9aa793";
 
 export const forestTheme: ThemeDef = {
 	id: "forest",
