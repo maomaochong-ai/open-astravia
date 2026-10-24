@@ -2028,8 +2028,8 @@ code {
 
 .footer__grid {
 	display: grid;
-	grid-template-columns: 280px 1fr;
-	gap: 64px;
+	grid-template-columns: 260px minmax(0, 1fr) auto;
+	gap: 56px;
 	align-items: start;
 }
 
@@ -2892,5 +2892,243 @@ html.theme-transition *::after {
 	}
 	.mob-card {
 		padding: 20px;
+	}
+}
+
+
+/* ---------------- 页脚社群二维码 ---------------- */
+
+.footer__community {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	min-width: 0;
+}
+
+.qr-row {
+	display: flex;
+	gap: 16px;
+}
+
+.qr-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	text-decoration: none;
+}
+
+/* 二维码图是透明底：可扫需要的浅色底由底板提供，不靠图片自带的底色，
+   所以底板能跟着主题走（深色下用略灰的白，减少大块纯白在暗界面里的眩光） */
+.qr-card__plate {
+	display: block;
+	padding: 9px;
+	background: #ffffff;
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	transition:
+		transform 0.2s var(--ease),
+		border-color 0.2s var(--ease),
+		box-shadow 0.2s var(--ease);
+}
+
+:root[data-theme="dark"] .qr-card__plate {
+	background: #f4f4f5;
+}
+
+.qr-card__plate img {
+	display: block;
+	width: 112px;
+	height: 112px;
+}
+
+.qr-card__label {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12.5px;
+	color: var(--muted);
+	transition: color 0.15s var(--ease);
+}
+
+.qr-card__dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+}
+
+.qr-card__dot--qq {
+	background: #12b7f5;
+}
+
+.qr-card__dot--wechat {
+	background: #07c160;
+}
+
+.qr-note {
+	max-width: 268px;
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.65;
+	color: var(--muted);
+}
+
+.qr-note a {
+	color: var(--ink);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.qr-card:hover .qr-card__plate {
+		transform: translateY(-2px);
+		border-color: var(--line-strong);
+		box-shadow: var(--shadow-hover);
+	}
+
+	.qr-card:hover .qr-card__label {
+		color: var(--ink);
+	}
+}
+
+@media (max-width: 560px) {
+	.qr-row {
+		gap: 12px;
+	}
+
+	.qr-card__plate img {
+		width: 128px;
+		height: 128px;
+	}
+
+	.qr-note {
+		max-width: none;
+	}
+}
+
+
+/* ---------------- 知识库补充 ---------------- */
+
+.kb-note {
+	margin: 18px 0 0;
+	font-size: 13px;
+	line-height: 1.7;
+	color: var(--muted);
+}
+
+.kb-note code {
+	padding: 2px 6px;
+	border-radius: 6px;
+	background: var(--surface);
+	font-family: var(--font-mono);
+	font-size: 12px;
+	color: var(--ink);
+}
+
+/* ---------------- 定价 ---------------- */
+
+.plans {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 18px;
+	max-width: 880px;
+}
+
+.plan {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	padding: 28px;
+	background: var(--elev);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+/* 第二张不是「另一个套餐」而是另一个入口，视觉上压低一档 */
+.plan--muted {
+	background: var(--surface);
+	box-shadow: none;
+}
+
+.plan__head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.plan__name {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--ink);
+}
+
+.plan__price {
+	margin: 0;
+}
+
+.plan__amount {
+	font-size: 26px;
+	font-weight: 600;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+}
+
+.plan__note {
+	margin: 0;
+	font-size: 13.5px;
+	line-height: 1.6;
+	color: var(--muted);
+}
+
+.plan__list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.plan__list li {
+	position: relative;
+	padding-left: 20px;
+	font-size: 13.5px;
+	line-height: 1.6;
+	color: var(--muted);
+}
+
+.plan__list li::before {
+	content: "";
+	position: absolute;
+	left: 2px;
+	top: 9px;
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: var(--ink);
+	opacity: 0.45;
+}
+
+.plan__cta {
+	margin-top: auto;
+}
+
+.plans__foot {
+	margin: 18px 0 0;
+	font-size: 13px;
+	line-height: 1.7;
+	color: var(--muted);
+}
+
+@media (max-width: 760px) {
+	.plans {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.plan {
+		padding: 22px;
 	}
 }

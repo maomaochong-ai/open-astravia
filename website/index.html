@@ -105,6 +105,7 @@
 				<a href="#ecosystem" data-nav="ecosystem">生态</a>
 				<a href="https://docs.astravia.dev" target="_blank" rel="noopener">文档</a>
 				<a href="#privacy" data-nav="privacy">隐私</a>
+				<a href="#community" data-nav="community">社群</a>
 				<a href="#download" data-nav="download">下载</a>
 			</nav>
 			<div class="nav__actions">
@@ -707,12 +708,106 @@
 			</div>
 		</section>
 
+		<!-- ================= 知识库 ================= -->
+		<section class="section" id="knowledge">
+			<div class="container">
+				<header class="section__head reveal">
+					<p class="section__kicker">知识库</p>
+					<h2 class="section__title">你已有的资料，<br />变成可长期使用的知识。</h2>
+					<p class="section__lead">把文档原样放进来就行。星轨会整理成条理清楚、互相关联的笔记，智能体真正用得上——你加得越多，它越得力。</p>
+				</header>
+
+				<ol class="steps">
+					<li class="step reveal">
+						<span class="step__num">01</span>
+						<span class="step__icon" aria-hidden="true">
+							<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8" /><path d="M1 3h22v5H1z" /><path d="M10 12h4" /></svg>
+						</span>
+						<h3 class="step__title">放入</h3>
+						<p class="step__desc">PDF、笔记、表格、导出文件都可以原样加入，不必先整理好文件夹。</p>
+					</li>
+					<li class="step reveal">
+						<span class="step__num">02</span>
+						<span class="step__icon" aria-hidden="true">
+							<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+						</span>
+						<h3 class="step__title">整理</h3>
+						<p class="step__desc">读懂每一份材料，写成一篇篇好读的笔记——有标题、有主题，以后随时能打开。</p>
+					</li>
+					<li class="step reveal">
+						<span class="step__num">03</span>
+						<span class="step__icon" aria-hidden="true">
+							<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+						</span>
+						<h3 class="step__title">找到</h3>
+						<p class="step__desc">按标签、按索引，或顺着相关笔记进入——该看的上下文就在手边。</p>
+					</li>
+					<li class="step reveal">
+						<span class="step__num">04</span>
+						<span class="step__icon" aria-hidden="true">
+							<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /><path d="M8 9h8M8 13h5" /></svg>
+						</span>
+						<h3 class="step__title">回答</h3>
+						<p class="step__desc">智能体基于整理好的笔记作答——并附上你能打开核对的来源。</p>
+					</li>
+				</ol>
+
+				<p class="kb-note reveal">笔记与索引全部存在本机 <code>~/.astravia</code>，不进云端、不用于训练任何模型。</p>
+			</div>
+		</section>
+
+		<!-- ================= 定价 ================= -->
+		<section class="section section--tint" id="pricing">
+			<div class="container">
+				<header class="section__head reveal">
+					<p class="section__kicker">定价</p>
+					<h2 class="section__title">随你成长的定价。</h2>
+					<p class="section__lead">星轨不卖订阅：开源版包含全部功能，本地运行不产生任何费用。需要私有化部署与定制时再谈。</p>
+				</header>
+
+				<div class="plans reveal">
+					<article class="plan">
+						<div class="plan__head">
+							<p class="plan__name">开源版</p>
+							<p class="plan__price"><span class="plan__amount">免费</span></p>
+						</div>
+						<p class="plan__note">自托管的开源应用，与社区一起构建。</p>
+						<ul class="plan__list">
+							<li>完整开源应用，支持自托管与二次开发</li>
+							<li>全部内置能力：会话、数据库、批量任务、定时任务、设计画布</li>
+							<li>自备模型 Key，用你自己的服务商或本地端点</li>
+							<li>社区插件、技能与公开文档</li>
+						</ul>
+						<a class="btn btn--primary plan__cta" href="#download">下载客户端</a>
+					</article>
+
+					<article class="plan plan--muted">
+						<div class="plan__head">
+							<p class="plan__name">自托管与定制</p>
+							<p class="plan__price"><span class="plan__amount">按范围报价</span></p>
+						</div>
+						<p class="plan__note">给需要数据驻留与内部系统对接的团队。</p>
+						<ul class="plan__list">
+							<li>部署在你的 VPC、机房或专属环境，模型、数据与流量由你掌控</li>
+							<li>按内部系统与数据源对接接口与流程</li>
+							<li>定制插件、技能与知识结构</li>
+							<li>落地与运维有固定对接通道</li>
+						</ul>
+						<a class="btn btn--ghost plan__cta" href="https://github.com/maomaochong-ai/astravia/issues/new" target="_blank" rel="noopener">在 Issues 里聊</a>
+					</article>
+				</div>
+
+				<p class="plans__foot reveal">没有额度限制，也没有隐藏收费：推理费用直接结算给你自己配置的模型服务商。</p>
+			</div>
+		</section>
+
 		<!-- ================= 隐私 ================= -->
 		<section class="section" id="privacy">
 			<div class="container">
 				<header class="section__head reveal">
-					<p class="section__kicker">隐私承诺</p>
-					<h2 class="section__title">你在本机工作，<br />数据就留在本机。</h2>
+					<p class="section__kicker">为掌控而设计</p>
+					<h2 class="section__title">你的数据。<br />你的隐私。</h2>
+					<p class="section__lead">星轨跑在你指定的环境。连接自己的模型、工具与数据——始终由你掌控。</p>
 				</header>
 
 				<div class="promises">
@@ -720,22 +815,22 @@
 						<span class="promise__icon" aria-hidden="true">
 							<svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20" /><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193" /><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07" /></svg>
 						</span>
-						<h3 class="promise__title">没有云端</h3>
-						<p class="promise__desc">无登录、无账号、无订阅。模型密钥（BYOK）由你配置，请求直连服务商。</p>
+						<h3 class="promise__title">数据安全</h3>
+						<p class="promise__desc">离线运行，或部署在你自己的基础设施里；会话、工作区与密钥都留在本机。</p>
 					</article>
 					<article class="promise reveal">
 						<span class="promise__icon" aria-hidden="true">
 							<svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
 						</span>
-						<h3 class="promise__title">没有遥测</h3>
-						<p class="promise__desc">不收集崩溃报告与使用统计；任何出站请求都由你的配置明确触发。</p>
+						<h3 class="promise__title">模型自由</h3>
+						<p class="promise__desc">使用自己的密钥、模型与端点：OpenAI 兼容即接入，本地推理可完全离线。</p>
 					</article>
 					<article class="promise reveal">
 						<span class="promise__icon" aria-hidden="true">
 							<svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12H2" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /><path d="M6 16h.01M10 16h.01" /></svg>
 						</span>
-						<h3 class="promise__title">数据在本机</h3>
-						<p class="promise__desc">会话、工作区、知识库、数据库连接默认都在 <code>~/.astravia</code>，不离开你的机器。</p>
+						<h3 class="promise__title">可扩展平台</h3>
+						<p class="promise__desc">插件、技能与 MCP 面向规模扩展；能力按需装，不用的不占位。</p>
 					</article>
 				</div>
 
@@ -757,50 +852,58 @@
 		<section class="section section--tint" id="faq">
 			<div class="container">
 				<header class="section__head reveal">
-					<p class="section__kicker">常见问题</p>
-					<h2 class="section__title">常见问题。</h2>
+					<p class="section__kicker">问问星轨</p>
+					<h2 class="section__title">开始使用前，<br />人们最关心什么？</h2>
+					<p class="section__lead">关于隐私、方案选择、用量与保障的真实问题，用产品本身来回答。</p>
 				</header>
 
 				<div class="faq reveal">
 					<details class="faq__item">
-						<summary>需要注册账号吗？</summary>
+						<summary>什么是星轨 Astravia？</summary>
 						<div class="faq__body">
-							<p>不需要。星轨没有账号体系，不登录、不订阅、不收费——它是一款本地运行的开源应用。</p>
+							<p>一套开源、本地优先的 AI Agent 桌面应用：对话、编码、文档、数据库、批量任务、定时任务与设计画布都在同一个工作区里，模型与密钥由你自己配置。</p>
 						</div>
 					</details>
 					<details class="faq__item">
-						<summary>我的数据存在哪里？</summary>
+						<summary>星轨是开源的吗？</summary>
 						<div class="faq__body">
-							<p>默认都在本机 <code>~/.astravia</code>：会话、工作区、知识库、数据库连接，全部不离开你的机器。</p>
+							<p>是。Apache-2.0 许可，客户端与服务端的可开源部分都在 <a href="https://github.com/maomaochong-ai/astravia" target="_blank" rel="noopener">GitHub</a> 上，可查看、可自托管、可二次开发。</p>
 						</div>
 					</details>
 					<details class="faq__item">
-					<summary>必须联网才能用吗？</summary>
+						<summary>星轨能扩展哪些能力？</summary>
 						<div class="faq__body">
-								<p>不需要。联网只发生在你配置的范围内：不配置服务商 Key 就不会有推理请求；使用本地推理端点可以完全离线。</p>
+							<p>插件与技能能给应用加面板、加工具，MCP 能接外部服务；三者都能自己写，也能从能力市场装。官方与社区并行，装不装由你决定。</p>
 						</div>
 					</details>
 					<details class="faq__item">
-					<summary>数据安全有保障吗？</summary>
+						<summary>我的数据安全吗？</summary>
 						<div class="faq__body">
-								<p>有保障。所有数据默认存储在本机 <code>~/.astravia</code>，密钥存系统钥匙串；无登录、无遥测、无崩溃上报，网络请求仅限你主动配置的服务商推理和插件。</p>
+							<p>会话、工作区、知识库与数据库连接默认都在本机 <code>~/.astravia</code>，密钥存系统钥匙串；没有遥测、没有崩溃上报，出站请求只发生在你配置的服务商与插件上。</p>
 						</div>
 					</details>
 					<details class="faq__item">
-						<summary>如何更新到新版本？</summary>
+						<summary>我该选哪个方案？</summary>
 						<div class="faq__body">
-							<p>自动更新由应用内配置决定，也可以随时到官网下载最新安装包覆盖安装。</p>
+							<p>个人直接用开源版：下载即装，功能齐全，不收费也不用注册。需要数据驻留、内部系统对接或定制插件时，到 <a href="https://github.com/maomaochong-ai/astravia/issues/new" target="_blank" rel="noopener">Issues</a> 说明场景，我们再谈部署范围。</p>
 						</div>
 					</details>
 					<details class="faq__item">
-					<summary>支持本地推理吗？</summary>
+						<summary>超出使用限制会怎样？</summary>
 						<div class="faq__body">
-								<p>支持。Ollama、vLLM、LM Studio 等本地推理服务均可通过 OpenAI 兼容端点接入——只要模型支持 chat 接口即可，配好地址和 Key 即可完全离线使用。</p>
+							<p>没有额度这回事。星轨不代理推理，也不从中计费——你直接调用自己的模型服务商，用多少、花多少都由那边的账户决定。到额时限制来自服务商，而不是这个应用。</p>
+						</div>
+					</details>
+					<details class="faq__item">
+						<summary>插件能做什么？</summary>
+						<div class="faq__body">
+							<p>扩展应用本身，而不只是多一个工具：新增侧栏面板、活动区标签页与命令，接入数据库、外部 API 或内部系统，并把结果留在同一份工作区记录里。</p>
 						</div>
 					</details>
 				</div>
 			</div>
 		</section>
+
 	</main>
 
 	<!-- ================= 下载 ================= -->
@@ -905,6 +1008,7 @@
 		</div>
 	</section>
 
+
 	<!-- ================= 页脚 ================= -->
 	<footer class="footer">
 		<div class="container">
@@ -926,6 +1030,8 @@
 							<li><a href="#products">能力</a></li>
 							<li><a href="#models">模型</a></li>
 							<li><a href="#ecosystem">生态</a></li>
+							<li><a href="#knowledge">知识库</a></li>
+							<li><a href="#pricing">定价</a></li>
 							<li><a href="#download">下载</a></li>
 						</ul>
 					</div>
@@ -946,6 +1052,46 @@
 						</ul>
 					</div>
 				</nav>
+
+				<!-- 右侧：社群二维码。二维码本体是透明底，底板与「看大图」海报都跟随深浅主题 -->
+				<div class="footer__community" id="community">
+					<p class="footer__link-heading">社群</p>
+					<div class="qr-row">
+						<a
+							class="qr-card"
+							href="/community/qq-group.png"
+							data-poster-dark="/community/qq-group.png"
+							data-poster-light="/community/qq-group.png"
+							target="_blank"
+							rel="noopener"
+							aria-label="查看 QQ 群官方海报"
+						>
+							<span class="qr-card__plate">
+								<img src="/community/qr-qq.png" width="528" height="528" alt="QQ 官方群二维码" loading="lazy" decoding="async" />
+							</span>
+							<span class="qr-card__label"><i class="qr-card__dot qr-card__dot--qq" aria-hidden="true"></i>QQ 群</span>
+						</a>
+						<a
+							class="qr-card"
+							href="/community/wechat-group.png"
+							data-poster-dark="/community/wechat-group.png"
+							data-poster-light="/community/wechat-group-light.png"
+							target="_blank"
+							rel="noopener"
+							aria-label="查看微信群官方海报"
+						>
+							<span class="qr-card__plate">
+								<img src="/community/qr-wechat.png" width="848" height="848" alt="微信官方群二维码" loading="lazy" decoding="async" />
+							</span>
+							<span class="qr-card__label"><i class="qr-card__dot qr-card__dot--wechat" aria-hidden="true"></i>微信群</span>
+						</a>
+					</div>
+					<p class="qr-note">
+						QQ 群偏日常交流与问题反馈，微信群偏版本更新与内测招募。微信群码 7 天有效，失效请到
+						<a href="https://github.com/maomaochong-ai/astravia/issues" target="_blank" rel="noopener">Issues</a>
+						说一声。
+					</p>
+				</div>
 			</div>
 
 			<!-- 底部：版权 -->
