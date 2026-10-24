@@ -18,12 +18,19 @@ function faviconUrl(href: string): string | null {
 	}
 }
 
+/**
+ * 图标尺寸框。favicon、兜底的通用地球图标共用同一套盒模型与垂直对齐：
+ * 缺省 `<span>` 是行内元素，若只有 favicon 分支带 `align-text-bottom`、兜底分支不带，
+ * 未取到网站图标的链接（内网、加载失败、站点未发布 favicon）会让图标比文字高几个像素。
+ */
+const ICON_BOX_CLASS = "relative inline-block h-3.5 w-3.5 shrink-0 align-text-bottom";
+
 function IconImage({ src }: { src: string }): JSX.Element {
 	const [status, setStatus] = useState<"loading" | "loaded" | "failed">(() =>
 		(failedIcons.get(src) ?? 0) > Date.now() ? "failed" : "loading",
 	);
 	return (
-		<span aria-hidden="true" className="relative inline-block h-3.5 w-3.5 shrink-0 align-text-bottom">
+		<span aria-hidden="true" className={ICON_BOX_CLASS}>
 			{status !== "loaded" && <span className="icon-[solar--global-linear] block h-full w-full" />}
 			{status !== "failed" && (
 				<img
@@ -73,5 +80,15 @@ export const WebsiteIcon = memo(function WebsiteIcon({ href }: { href: string })
 	}, [host, active, fallback]);
 	// The host already tried /favicon.ico; do not issue a second, credentialed browser request on failure.
 	const src = host ? (resolved?.key === fallback ? resolved.url : null) : fallback;
-	return fallback ? <span ref={ref}>{src ? <IconImage key={src} src={src} /> : <span aria-hidden="true" className="icon-[solar--global-linear] inline-block h-3.5 w-3.5 shrink-0" />}</span> : null;
+	return fallback ? (
+		<span ref={ref}>
+			{src ? (
+				<IconImage key={src} src={src} />
+			) : (
+				<span aria-hidden="true" className={ICON_BOX_CLASS}>
+					<span className="icon-[solar--global-linear] block h-full w-full" />
+				</span>
+			)}
+		</span>
+	) : null;
 });
