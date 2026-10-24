@@ -157,5 +157,9 @@ describe("Mobile release workflow contracts", () => {
 		expect(r2Workflow).toContain("PATTERNS");
 		// 过滤后仍要有兜底：一个都没下到就直接失败，不能拿空目录去覆盖 R2。
 		expect(r2Workflow).toContain("No release asset matched");
+		// 桌面与手机对同一个 tag 各调一次本 workflow，并发组必须区分前缀，否则
+		// cancel-in-progress 会让两次上传互相取消，后到的那条把先到的干掉。
+		const r2Concurrency = parse(r2Workflow)?.concurrency?.group ?? "";
+		expect(r2Concurrency).toContain("inputs.prefix");
 	});
 });

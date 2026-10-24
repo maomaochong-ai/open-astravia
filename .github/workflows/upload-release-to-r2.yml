@@ -55,7 +55,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: upload-r2-${{ github.ref_name }}
+  # 桌面与手机各调一次本 workflow，前缀不同才是两条独立的上传。不带前缀会把同
+  # 一个 tag 的两次上传塞进同一个 group，cancel-in-progress 直接互相取消。
+  group: upload-r2-${{ github.ref_name }}-${{ inputs.prefix || 'all' }}
   cancel-in-progress: true
 
 jobs:
