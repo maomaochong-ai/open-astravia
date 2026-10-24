@@ -6,7 +6,7 @@ import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { RefObject } from "react";
 import type { ResolvedActivityTab } from "../../registry/types";
 import type { ActivityTabBounds, ActivityTabPoint } from "../../services/floating-activity-tab";
-import type { HiddenTabEntry } from "../PluginTabPicker";
+import type { TabPickerEntry } from "../PluginTabPicker";
 
 export interface ActivityPanelProps {
 	workspace: ActivityWorkspace;
@@ -19,8 +19,8 @@ export interface ActivityPanelProps {
 
 export interface ActivityPanelModel {
 	activeTab: ActivityTabKey;
-	/** 已注册且未 attach 的插件 tab，供「+」菜单从可添加池挂入。 */
-	availablePluginTabs: HiddenTabEntry[];
+	/** 未上栏但可添加的面板（插件未 attach / 内置未添加），供「+」菜单挂入。 */
+	availableTabs: TabPickerEntry[];
 	bottomSheet: boolean;
 	cwd: string | null;
 	workspaceId: string;
@@ -35,16 +35,16 @@ export interface ActivityPanelModel {
 	/** 当前需挂载的 tab：激活项、浮动项及显式 keepAlive 项。 */
 	mountedTabs: ResolvedActivityTab[];
 	narrowSheet: boolean;
-	overflowTabs: HiddenTabEntry[];
+	overflowTabs: TabPickerEntry[];
 	panelRef: RefObject<HTMLDivElement | null>;
-	restorableTabs: HiddenTabEntry[];
+	restorableTabs: TabPickerEntry[];
 	showTabPicker: boolean;
 	tabItems: TabBarItem<ActivityTabKey>[];
 	width: number;
 }
 
 export interface ActivityPanelActions {
-	onAttachPluginTab: (key: string) => void;
+	onAttachTab: (key: string) => void;
 	onClose: () => void;
 	onFloatingResize: (key: ActivityTabKey, delta: ActivityTabPoint) => void;
 	onFloatingResizeEnd: (key: ActivityTabKey) => void;

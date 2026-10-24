@@ -1,7 +1,7 @@
-import { withPluginTabVisibility } from "@domains/plugins/runtime/attached-tabs";
 import type { TabBarItem } from "@shared/components/ui/tab-bar";
 import { useNarrowScreen, useWindowWidth } from "@shared/hooks/useNarrowScreen";
 import { type ActivityTabKey, useProjectProfile } from "@shared/lib/project-profile";
+import { withTabVisibility } from "@shared/lib/tab-visibility";
 import {
 	ACTIVITY_PANEL_MIN_CHAT_AREA,
 	ACTIVITY_PANEL_MIN_WIDTH,
@@ -24,7 +24,7 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ActivityPanelActions, ActivityPanelModel } from "../components/activity-panel/types";
-import { resolveActivityTabs } from "../registry/resolve-activity-tabs";
+import { resolveActivityTabs, tabAttachKey } from "../registry/resolve-activity-tabs";
 import type { ActivityTabDefinition, ActivityTabId, ActivityTabMeta, ResolvedActivityTab } from "../registry/types";
 import { mergeDockedTabOrder } from "../services/floating-activity-tab";
 import { useActivityTabResidency } from "./useActivityTabResidency";
@@ -111,15 +111,15 @@ export function useActivityPanelModel({
 			})),
 		[resolved.restorable],
 	);
-	const availablePluginTabs = useMemo(
+	const availableTabs = useMemo(
 		() =>
-			resolved.availablePlugins.map((item) => ({
+			resolved.available.map((item) => ({
 				key: item.id,
 				label: item.label,
 				icon: item.icon,
 				subtitle: item.pluginName,
 			})),
-		[resolved.availablePlugins],
+		[resolved.available],
 	);
 
 	const definitionById = useMemo(() => {
@@ -294,7 +294,7 @@ export function useActivityPanelModel({
 				})),
 				candidates: resolved.candidates.map((tab) => tab.id),
 				onBar: resolved.onBar.map((tab) => tab.id),
-				availablePlugins: resolved.availablePlugins.map((tab) => tab.id),
+				available: resolved.available.map((tab) => tab.id),
 				docked: dockedTabItems.map((tab) => tab.key),
 			})}`,
 		);
@@ -307,7 +307,7 @@ export function useActivityPanelModel({
 		hiddenKeys,
 		isOpen,
 		metaById,
-		resolved.availablePlugins,
+		resolved.available,
 		resolved.candidates,
 		resolved.onBar,
 		tabByProject,
@@ -353,7 +353,7 @@ export function useActivityPanelModel({
 			// 插件 tab：写显式下栏，回到「+」可添加池（不进 hidden 列表）。
 			if (key.startsWith("plugin:")) {
 				const attachKey = key.slice("plugin:".length);
-				const nextAttached = withPluginTabVisibility(attachedPluginTabsMap, workspaceId, attachKey, false);
+				const nextAttached = withTabVisibility(attachedPluginTabsMap, workspaceId, attachKey, false);
 				if (nextAttached) setAttachedPluginTabsMap(nextAttached);
 				if (activeTab === key) {
 					onTabChange(dockedTabItems.find((item) => item.key !== key)?.key ?? "file");
@@ -393,17 +393,20 @@ export function useActivityPanelModel({
 		},
 		[workspaceId, hiddenTabsMap, setHiddenTabsMap, onTabChange],
 	);
-	/** 从可添加池显式上栏插件 tab 并切过去（与 openActivityTab 同语义，不强制改宽度）。 */
-	const onAttachPluginTab = useCallback(
+	/**
+	 * 从可添加池把 tab 挂上栏并切过去（与 openActivityTab 同语义，不强制改宽度）。
+	 * 内置（如浏览器）与插件共用同一套显式可见性记录，只是 attach key 不同。
+	 */
+	const onAttachTab = useCallback(
 		(key: string) => {
-			if (!key.startsWith("plugin:")) return;
-			const attachKey = key.slice("plugin:".length);
-			const nextAttached = withPluginTabVisibility(attachedPluginTabsMap, workspaceId, attachKey, true);
+			const def = definitionById.get(key);
+			if (!def) return;
+			const nextAttached = withTabVisibility(attachedPluginTabsMap, workspaceId, tabAttachKey(def), true);
 			if (nextAttached) setAttachedPluginTabsMap(nextAttached);
 			onTabChange(key as ActivityTabKey);
 			setOpen(true);
 		},
-		[workspaceId, attachedPluginTabsMap, setAttachedPluginTabsMap, onTabChange, setOpen],
+		[workspaceId, definitionById, attachedPluginTabsMap, setAttachedPluginTabsMap, onTabChange, setOpen],
 	);
 	const onReorderTabs = useCallback(
 		(keys: ActivityTabKey[]) => {
@@ -422,11 +425,11 @@ export function useActivityPanelModel({
 	const showTabPicker =
 		!knowledgeHistory &&
 		cwd !== null &&
-		(restorableTabs.length > 0 || overflowTabs.length > 0 || availablePluginTabs.length > 0);
+		(restorableTabs.length > 0 || overflowTabs.length > 0 || availableTabs.length > 0);
 
 	const actions = useMemo<ActivityPanelActions>(
 		() => ({
-			onAttachPluginTab,
+			onAttachTab,
 			onClose,
 			onFloatingResize: floating.actions.onFloatingResize,
 			onFloatingResizeEnd: floating.actions.onFloatingResizeEnd,
@@ -447,7 +450,7 @@ export function useActivityPanelModel({
 			onTabDragStart,
 		}),
 		[
-			onAttachPluginTab,
+			onAttachTab,
 			onClose,
 			floating.actions.onDockedTabDragEnd,
 			floating.actions.onDockedTabDragMove,
@@ -472,7 +475,7 @@ export function useActivityPanelModel({
 		actions,
 		model: {
 			activeTab,
-			availablePluginTabs,
+			availableTabs,
 			bottomSheet: narrow && isOpen,
 			cwd,
 			workspaceId,

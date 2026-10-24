@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { applyTabOrder, isPluginTabOnBar, pluginAttachKey, resolveActivityTabs } from "./resolve-activity-tabs";
+import {
+	applyTabOrder,
+	isPluginTabOnBar,
+	resolveActivityTabs,
+	resolveBuiltinTabPlacement,
+	tabAttachKey,
+} from "./resolve-activity-tabs";
 import type { ActivityTabDefinition, ActivityTabMeta } from "./types";
 
 function def(
@@ -28,9 +34,31 @@ describe("applyTabOrder", () => {
 	});
 });
 
-describe("pluginAttachKey", () => {
+describe("tabAttachKey", () => {
 	it("strips plugin: prefix", () => {
-		expect(pluginAttachKey(def({ id: "plugin:git:changes", source: "plugin", pluginId: "git" }))).toBe("git:changes");
+		expect(tabAttachKey(def({ id: "plugin:git:changes", source: "plugin", pluginId: "git" }))).toBe("git:changes");
+	});
+
+	it("keeps the builtin tab id", () => {
+		expect(tabAttachKey(def({ id: "browser", source: "builtin" }))).toBe("browser");
+	});
+});
+
+describe("resolveBuiltinTabPlacement", () => {
+	const browser = def({ id: "browser", source: "builtin", initiallyVisible: false });
+	const files = def({ id: "file", source: "builtin" });
+
+	it("puts initially-hidden builtins into the available pool", () => {
+		expect(resolveBuiltinTabPlacement(browser, [], [])).toBe("available");
+		expect(resolveBuiltinTabPlacement(files, [], [])).toBe("bar");
+	});
+
+	it("moves a builtin to the bar once it is explicitly attached", () => {
+		expect(resolveBuiltinTabPlacement(browser, ["browser"], [])).toBe("bar");
+	});
+
+	it("keeps hiddenKeys authoritative over attach records", () => {
+		expect(resolveBuiltinTabPlacement(browser, ["browser"], ["browser"])).toBe("hidden");
 	});
 });
 
@@ -93,7 +121,7 @@ describe("resolveActivityTabs", () => {
 		expect(result.restorable[0]?.badge).toBe(2);
 	});
 
-	it("puts initially-hidden plugins into availablePlugins until attached", () => {
+	it("puts initially-hidden panels into the available pool until attached", () => {
 		const result = resolveActivityTabs({
 			definitions: [file, plugin],
 			metaById: metaMap({
@@ -105,7 +133,7 @@ describe("resolveActivityTabs", () => {
 			tabOrder: [],
 		});
 		expect(result.onBar.map((t) => t.id)).toEqual(["file"]);
-		expect(result.availablePlugins.map((t) => t.id)).toEqual(["plugin:git:changes"]);
+		expect(result.available.map((t) => t.id)).toEqual(["plugin:git:changes"]);
 
 		const attached = resolveActivityTabs({
 			definitions: [file, plugin],
@@ -118,7 +146,7 @@ describe("resolveActivityTabs", () => {
 			tabOrder: ["plugin:git:changes", "file"],
 		});
 		expect(attached.onBar.map((t) => t.id)).toEqual(["plugin:git:changes", "file"]);
-		expect(attached.availablePlugins).toEqual([]);
+		expect(attached.available).toEqual([]);
 	});
 
 	it("sorts by definition.order then user tabOrder", () => {
@@ -136,5 +164,39 @@ describe("resolveActivityTabs", () => {
 		});
 		// natural by order: file(0), todo(20), debug(90) → user order reorders onBar
 		expect(result.onBar.map((t) => t.id)).toEqual(["todo", "file", "debug"]);
+	});
+
+	it("keeps the builtin browser off the bar until the user adds it", () => {
+		const browser = def({ id: "browser", source: "builtin", order: 15, initiallyVisible: false });
+		const metas = metaMap({ file: { label: "F" }, browser: { label: "Browser" } });
+
+		const initial = resolveActivityTabs({
+			definitions: [file, browser],
+			metaById: metas,
+			tabVisibilityRecords: [],
+			hiddenKeys: [],
+			tabOrder: [],
+		});
+		expect(initial.onBar.map((t) => t.id)).toEqual(["file"]);
+		expect(initial.available.map((t) => t.id)).toEqual(["browser"]);
+
+		const added = resolveActivityTabs({
+			definitions: [file, browser],
+			metaById: metas,
+			tabVisibilityRecords: ["browser"],
+			hiddenKeys: [],
+			tabOrder: [],
+		});
+		expect(added.onBar.map((t) => t.id)).toEqual(["file", "browser"]);
+		expect(added.available).toEqual([]);
+
+		const thenHidden = resolveActivityTabs({
+			definitions: [file, browser],
+			metaById: metas,
+			tabVisibilityRecords: ["browser"],
+			hiddenKeys: ["browser"],
+			tabOrder: [],
+		});
+		expect(thenHidden.restorable.map((t) => t.id)).toEqual(["browser"]);
 	});
 });

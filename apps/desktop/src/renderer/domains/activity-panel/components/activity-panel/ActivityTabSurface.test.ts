@@ -17,7 +17,7 @@ function frame({ children }: ActivityPanelFrameProps): ReturnType<typeof createE
 
 function actions(): ActivityPanelActions {
 	return {
-		onAttachPluginTab: vi.fn(),
+		onAttachTab: vi.fn(),
 		onClose: vi.fn(),
 		onFloatingResize: vi.fn(),
 		onFloatingResizeEnd: vi.fn(),

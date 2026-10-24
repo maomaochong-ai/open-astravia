@@ -74,9 +74,9 @@ export { KnowledgeHistoryPanelView } from "./KnowledgeHistoryPanelView";
 export type { MarkdownPreviewViewProps } from "./MarkdownPreviewView";
 export { MarkdownPreviewView } from "./MarkdownPreviewView";
 export type {
-	HiddenTabEntryView,
 	PluginTabPickerViewLabels,
 	PluginTabPickerViewProps,
+	TabPickerEntryView,
 } from "./PluginTabPickerView";
 export {
 	DEFAULT_PLUGIN_TAB_ICON,

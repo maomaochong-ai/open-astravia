@@ -1,9 +1,6 @@
 import { lazy } from "react";
-import { browserUrlByWorkspaceAtom, getBrowserUrlForWorkspace } from "@shared/store/atoms";
-import { useAtomValue } from "jotai";
 import { useTranslation } from "react-i18next";
 
-import { useActivityWorkspace } from "../registry/context";
 import type { ActivityTabDefinition } from "../registry/types";
 
 const BrowserPanel = lazy(() =>
@@ -20,12 +17,13 @@ export const browserTabDefinition: ActivityTabDefinition = {
 	removable: true,
 	source: "builtin",
 	retention: "pinned",
+	/**
+	 * 默认不上栏：留着地址栏空态也照样能用，所以它进「+」菜单的可添加池，等用户自己添加。
+	 * 元数据常驻（不像 todo 那样「没内容就不出现」），否则连菜单里都点不到。
+	 */
+	initiallyVisible: false,
 	useMeta: () => {
 		const { t } = useTranslation("chat");
-		const workspace = useActivityWorkspace();
-		const browserUrlMap = useAtomValue(browserUrlByWorkspaceAtom);
-		const browserUrl = getBrowserUrlForWorkspace(browserUrlMap, workspace.id);
-		if (!browserUrl) return null;
 		return {
 			label: t("browser.tab"),
 			icon: "icon-[mdi--web]",

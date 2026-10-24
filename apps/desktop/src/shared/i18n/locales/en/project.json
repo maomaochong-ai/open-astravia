@@ -204,7 +204,7 @@
 	"tabPicker": {
 		"moreTabs": "More tabs",
 		"hiddenPanels": "Hidden panels",
-		"availablePlugins": "Add plugin panels",
+		"availablePanels": "Add panels",
 		"hideTab": "Hide tab",
 		"menu": "Tab menu"
 	},
