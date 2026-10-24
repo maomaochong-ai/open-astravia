@@ -54,6 +54,8 @@ export interface McpServerSupervisorOptions {
 	readonly builtinServers?: Readonly<Record<string, McpServerConfig>>;
 }
 
+const MCP_CANDIDATE_RETRY_BACKOFF_MS = 30_000;
+
 /**
  * Owns MCP server lifecycle and file/dynamic config reconciliation.
  * Product-specific auth UX and tool adaptation remain in host adapters.
@@ -78,6 +80,9 @@ export class McpServerSupervisor {
 	private globalConfig: McpConfig | undefined;
 	private projectConfig: McpConfig | undefined;
 	private reconcileRevision = 0;
+	/** 候选代失败时的配置签名；同一签名在退避窗口内不重试，避免每轮 prompt 都被同一个坏 server 拖住。 */
+	private failedSignature: string | undefined;
+	private retryNotBefore = 0;
 
 	constructor(options: McpServerSupervisorOptions) {
 		this.configSource = options.configSource;
@@ -145,6 +150,7 @@ export class McpServerSupervisor {
 		if (!this.enabled) return false;
 		const signature = this.combinedSignature();
 		if (this.lastSignature !== undefined && this.lastSignature === signature) return false;
+		if (this.failedSignature === signature && Date.now() < this.retryNotBefore) return false;
 		this.log("MCP config changed, diff-reloading");
 		return this.reconcileToEffectiveConfig();
 	}
@@ -410,9 +416,10 @@ export class McpServerSupervisor {
 		const failed = [...candidates.values()].filter((candidate) => candidate.status !== "ready");
 		if (failed.length > 0) {
 			await Promise.all([...candidates.values()].map((candidate) => this.retireServer(candidate)));
-			this.globalConfig = this.configSource.loadGlobal() ?? undefined;
-			this.projectConfig = this.configSource.loadProject() ?? undefined;
-			this.lastSignature = this.combinedSignature();
+			// 不推进 lastSignature：配置未真正生效，退避期过后下一次 reload 要重试，
+			// 否则新增 server 首次启动失败（冷启动下载超时等）会永久丢失直到重启。
+			this.failedSignature = this.combinedSignature();
+			this.retryNotBefore = Date.now() + MCP_CANDIDATE_RETRY_BACKOFF_MS;
 			this.log(
 				`MCP candidate generation failed for ${failed.map(({ name }) => name).join(", ")}; keeping complete last-known-good generation`,
 			);
@@ -441,6 +448,8 @@ export class McpServerSupervisor {
 		this.globalConfig = this.configSource.loadGlobal() ?? undefined;
 		this.projectConfig = this.configSource.loadProject() ?? undefined;
 		this.lastSignature = this.combinedSignature();
+		this.failedSignature = undefined;
+		this.log(`Reconcile done, ${this.servers.size} servers active`);
 		this.log(`Reconcile done, ${this.servers.size} servers active`);
 		return changed;
 	}
