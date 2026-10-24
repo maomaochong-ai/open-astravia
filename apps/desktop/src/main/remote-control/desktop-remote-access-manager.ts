@@ -1255,7 +1255,7 @@ export class DesktopRemoteAccessManager {
 						// The phones know the default relay; name it only when this desktop uses another.
 						relayBaseUrl: relayBaseUrl === this.options.store.defaultRelayBaseUrl() ? undefined : relayBaseUrl,
 					})
-				: code?.status === "failed"
+				: code?.status === "failed" || !relayBaseUrl
 					? inviteUri
 					: undefined;
 		return {
