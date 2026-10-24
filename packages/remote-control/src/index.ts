@@ -86,6 +86,7 @@ export {
 	INVITE_CODE_LENGTH,
 	INVITE_KDF_ITERATIONS,
 	INVITE_PASSWORD_LENGTH,
+	INVITE_TOKEN_HEADERS,
 	inviteBoxId,
 	inviteBoxUrl,
 	isValidInvitePassword,

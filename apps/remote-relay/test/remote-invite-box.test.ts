@@ -6,10 +6,24 @@ const token = "desktop_invite_token_0123456789abcdefghijklmnop";
 const otherToken = "someone_else_token_0123456789abcdefghijklmnopq";
 
 function put(boxId: string, body: unknown, writer: string | null = token): Promise<Response> {
+	return putWithHeader(boxId, body, writer, "X-Astravia-Invite-Token");
+}
+
+/** 默认中继是上游部署的实例，只认旧头名；自有中继两个都收。 */
+function putWithHeader(
+	boxId: string,
+	body: unknown,
+	writer: string | null,
+	headerName: string,
+	method: "PUT" | "DELETE" = "PUT",
+): Promise<Response> {
 	return SELF.fetch(`https://relay.test/v2/invite/${boxId}`, {
-		method: "PUT",
-		headers: { "Content-Type": "application/json", ...(writer ? { "X-Astravia-Invite-Token": writer } : {}) },
-		body: JSON.stringify(body),
+		method,
+		headers: {
+			...(method === "PUT" ? { "Content-Type": "application/json" } : {}),
+			...(writer ? { [headerName]: writer } : {}),
+		},
+		...(method === "PUT" ? { body: JSON.stringify(body) } : {}),
 	});
 }
 
@@ -35,16 +49,20 @@ describe("invite mailbox (ADR-0136)", () => {
 		expect((await put(boxId, { envelope })).status).toBe(204);
 		expect((await put(boxId, { envelope }, otherToken)).status).toBe(409);
 
-		const stranger = await SELF.fetch(`https://relay.test/v2/invite/${boxId}`, {
-			method: "DELETE",
-			headers: { "X-Astravia-Invite-Token": otherToken },
-		});
+		const stranger = await putWithHeader(boxId, null, otherToken, "X-Astravia-Invite-Token", "DELETE");
 		expect(stranger.status).toBe(401);
-		const withdrawn = await SELF.fetch(`https://relay.test/v2/invite/${boxId}`, {
-			method: "DELETE",
-			headers: { "X-Astravia-Invite-Token": token },
-		});
+		const withdrawn = await putWithHeader(boxId, null, token, "X-Astravia-Invite-Token", "DELETE");
 		expect(withdrawn.status).toBe(204);
+		expect((await SELF.fetch(`https://relay.test/v2/invite/${boxId}`)).status).toBe(404);
+	});
+
+	it("accepts the pre-rename token header so an older client keeps working", async () => {
+		const boxId = inviteBoxId("LEGACY99");
+		const envelope = await sealInvite("astravia://pair?v=2", "LEGACY99", "000111");
+
+		expect((await putWithHeader(boxId, { envelope }, token, "X-Vetta-Invite-Token")).status).toBe(204);
+		expect((await SELF.fetch(`https://relay.test/v2/invite/${boxId}`)).status).toBe(200);
+		expect((await putWithHeader(boxId, null, token, "X-Vetta-Invite-Token", "DELETE")).status).toBe(204);
 		expect((await SELF.fetch(`https://relay.test/v2/invite/${boxId}`)).status).toBe(404);
 	});
 

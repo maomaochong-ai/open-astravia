@@ -22,6 +22,12 @@ export const INVITE_KDF_ITERATIONS = 200_000;
 export const INVITE_ASSOCIATED_DATA = "astravia-invite-v1";
 /** Longest sealed envelope the relay keeps, as serialized JSON. */
 export const MAX_INVITE_ENVELOPE_CHARS = 8_192;
+/**
+ * 邀请码邮筒的写者令牌头。前一个是本项目的名字，后一个是**线协议兼容别名**：默认中继
+ * （`DEFAULT_REMOTE_RELAY_BASE_URL`）是上游部署的实例，只认旧头名。客户端两个都发，自有中继
+ * 两个都收，这样换中继实现不需要与已部署的实例同时上线。
+ */
+export const INVITE_TOKEN_HEADERS = ["X-Astravia-Invite-Token", "X-Vetta-Invite-Token"] as const;
 
 /** Crockford base32: no I, L, O or U, so a code read aloud or retyped survives. */
 const CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";

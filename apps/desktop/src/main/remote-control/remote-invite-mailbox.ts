@@ -1,4 +1,4 @@
-import type { RemoteInviteEnvelope } from "@astravia/remote-control";
+import { INVITE_TOKEN_HEADERS, type RemoteInviteEnvelope } from "@astravia/remote-control";
 
 /**
  * The relay's invite mailbox (ADR-0136) as the desktop uses it: put a sealed invite
@@ -24,12 +24,17 @@ export class RemoteInviteMailboxError extends Error {
 	}
 }
 
+/** 两个头名同一个令牌：默认中继是上游部署的实例，只认旧头名；自有中继两个都认。 */
+function tokenHeaders(token: string): Record<string, string> {
+	return Object.fromEntries(INVITE_TOKEN_HEADERS.map((name) => [name, token]));
+}
+
 export function createRemoteInviteMailbox(fetchImpl: typeof fetch = fetch): RemoteInviteMailbox {
 	return {
 		async publish(boxUrl, token, envelope, ttlMs) {
 			const response = await fetchImpl(boxUrl, {
 				method: "PUT",
-				headers: { "Content-Type": "application/json", "X-Astravia-Invite-Token": token },
+				headers: { "Content-Type": "application/json", ...tokenHeaders(token) },
 				body: JSON.stringify({ envelope, ttlMs }),
 				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
@@ -38,7 +43,7 @@ export function createRemoteInviteMailbox(fetchImpl: typeof fetch = fetch): Remo
 		async withdraw(boxUrl, token) {
 			await fetchImpl(boxUrl, {
 				method: "DELETE",
-				headers: { "X-Astravia-Invite-Token": token },
+				headers: tokenHeaders(token),
 				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
 		},
