@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { resolveDownloadOs, resolveDownloadTarget } from "../src/download-target";
 
-const VERSION = "0.5.75";
+const VERSION = "0.5.76";
 const BASE = `https://dl.astravia.dev/app/v${VERSION}`;
 
 /** Apple Silicon 上的 Chrome / Safari 同样上报 "Intel Mac OS X"，这是 issue #5 的根因。 */
@@ -20,6 +20,17 @@ describe("resolveDownloadOs", () => {
 		expect(resolveDownloadOs(MAC_UA)).toBe("macos");
 		expect(resolveDownloadOs(WINDOWS_UA)).toBe("windows");
 		expect(resolveDownloadOs(LINUX_UA)).toBe("linux");
+	});
+
+	it("手机 UA 不归为任何桌面系统", () => {
+		// 回归用例：iPhone 的 UA 里带 "Mac OS X"、Android 的带 "Linux"，
+		// 旧实现会因此给手机推 dmg / AppImage，用户根本装不了。
+		const IPHONE_UA =
+			"Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1";
+		const ANDROID_UA =
+			"Mozilla/5.0 (Linux; Android 15; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36";
+		expect(resolveDownloadOs(IPHONE_UA)).toBe("mobile");
+		expect(resolveDownloadOs(ANDROID_UA)).toBe("mobile");
 	});
 });
 
