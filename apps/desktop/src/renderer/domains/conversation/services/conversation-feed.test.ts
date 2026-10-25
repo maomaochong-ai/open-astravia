@@ -932,6 +932,38 @@ describe("conversation feed", () => {
 			});
 		});
 
+		it("keeps writing the summary into the step that started before a steering message", () => {
+			// Turn 中途插入用户消息会开新段并把上一段定稿；压缩块留在上一段里，
+			// 只看当前段会让摘要静默停止增长，结束事件也落不到地上——那一步就永远转着。
+			const running = reduce(
+				freshFeed(),
+				events(
+					turnStarted("t1", 10),
+					userAppended("t1", "u1", "go", 11),
+					textDelta("t1", 0, "first answer", 12),
+					compactionStart(20),
+				),
+			);
+			const steered = reduce(
+				running,
+				events(userAppended("t1", "u2", "also this", 22), textDelta("t1", 1, "second answer", 23)),
+			);
+
+			const streamed = reduce(steered, events(compactionDelta(24, "late summary")));
+			const opening = streamed.items.find((item) => item.kind === "agent" && item.id === "assistant:t1:1");
+			expect(opening?.kind === "agent" && opening.blocks).toMatchObject([
+				{ type: "text" },
+				{ type: "compaction", status: "running", summary: "late summary" },
+			]);
+
+			const settled = reduce(streamed, events(compactionEnd(25, { summary: "full summary" })));
+			const settledOpening = settled.items.find((item) => item.kind === "agent" && item.id === "assistant:t1:1");
+			expect(settledOpening?.kind === "agent" && settledOpening.blocks).toMatchObject([
+				{ type: "text" },
+				{ type: "compaction", status: "success", summary: "full summary", tokensBefore: 120_000 },
+			]);
+		});
+
 		it("settles with the summary the end event carries when no delta ever streamed", () => {
 			// 自动压缩命中预燃（prefire）时全程不发 delta，只有结束事件带着全文；
 			// 没有这条合并，已完成的那一行就是空的，既没内容也展不开。
