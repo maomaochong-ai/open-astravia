@@ -1,4 +1,4 @@
-import type { UpdateCheckerViewProps } from "@astravia-org/theme-ui/overlays";
+import { normalizeReleaseNote, type UpdateCheckerViewProps } from "@astravia-org/theme-ui/overlays";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -60,7 +60,9 @@ export function useUpdateCheckerModel(): UpdateCheckerViewProps {
 			},
 			onViewMore: () => {
 				if (!state.releaseNote) return;
-				const blob = new Blob([state.releaseNote], { type: "text/markdown" });
+				// 同一个 releaseNote 可能是 GitHub feed 的 HTML：「查看更多」里也归一化，
+				// 否则预览页会把标签原样显示。
+				const blob = new Blob([normalizeReleaseNote(state.releaseNote)], { type: "text/markdown" });
 				const url = URL.createObjectURL(blob);
 				const versionName = state.latestVersion ? `v${state.latestVersion}` : "update";
 				setFilePreview({
