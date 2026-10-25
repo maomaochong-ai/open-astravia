@@ -3,6 +3,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@astravia-org/ui";
 
+import { normalizeReleaseNote } from "./release-note";
+
 export interface UpdateCheckerViewLabels {
 	readonly check: string;
 	readonly checking: string;
@@ -121,7 +123,6 @@ export function UpdateCheckerDetail({
 	);
 }
 
-const MAX_LINES = 10;
 // Line height ~1.5rem (24px) for 13px font text, 10 lines is ~240px
 const MAX_HEIGHT_PX = 240;
 
@@ -134,34 +135,39 @@ function ReleaseNotePreview({
 	readonly viewMoreLabel: string;
 	readonly onViewMore?: () => void;
 }): JSX.Element {
-	const contentRef = useRef<HTMLDivElement>(null);
+	const innerRef = useRef<HTMLDivElement>(null);
 	const [isOverflowing, setIsOverflowing] = useState(false);
+	// GitHub 的 feed 给 HTML，Release API 给 Markdown：统一成 Markdown 再渲染，
+	// 否则 HTML 会被当成纯文本原样显示。
+	const markdown = normalizeReleaseNote(releaseNote);
 
 	useEffect(() => {
-		const el = contentRef.current;
+		const el = innerRef.current;
 		if (!el) return;
 
-		// 检查纯行数（通过换行统计作为下限）以及实际渲染像素高度
-		const lineCount = releaseNote.split(/\r?\n/).length;
-		if (lineCount > MAX_LINES || el.scrollHeight > MAX_HEIGHT_PX + 4) {
-			setIsOverflowing(true);
-		} else {
-			setIsOverflowing(false);
-		}
-	}, [releaseNote]);
+		// 裁切高度恒定，这里只判断内容有没有超出。测量必须跟着内容尺寸变化重跑：
+		// 面板隐藏时挂载、字体晚到、窗口缩放都会让一次性测量得出错误结论，
+		// 之后再也不重算就是长文本溢出卡片、盖住下面设置行的直接原因。
+		const measure = () => {
+			setIsOverflowing(el.getBoundingClientRect().height > MAX_HEIGHT_PX + 4);
+		};
+		measure();
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(measure);
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, [markdown]);
 
 	return (
 		<div className="relative mt-2">
 			<div
-				ref={contentRef}
-				className={`markdown-body text-[12.5px] leading-[1.5] text-muted-foreground break-words ${
-					isOverflowing ? "overflow-hidden" : ""
-				}`}
-				style={isOverflowing ? { maxHeight: `${MAX_HEIGHT_PX}px` } : undefined}
+				className="markdown-body overflow-hidden text-[12.5px] leading-[1.5] text-muted-foreground break-words"
+				data-testid="updater-release-note"
+				style={{ maxHeight: `${MAX_HEIGHT_PX}px` }}
 			>
-				<ReactMarkdown remarkPlugins={[remarkGfm]}>
-					{releaseNote}
-				</ReactMarkdown>
+				<div ref={innerRef}>
+					<ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
+				</div>
 			</div>
 			{isOverflowing && (
 				<div className="pt-6 -mt-6 bg-gradient-to-t from-secondary via-secondary/85 to-transparent flex items-center justify-center relative z-10">

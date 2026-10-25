@@ -801,7 +801,8 @@
 			"done": "Context compacted",
 			"failed": "Context compaction failed",
 			"skipped": "Context compaction skipped",
-			"tokensBefore": "{{tokens}} tokens before"
+			"tokensBefore": "{{tokens}} tokens before",
+			"generating": "Generating summary…"
 		},
 		"compactionHeading": {
 			"primaryGoal": "Primary Goal",

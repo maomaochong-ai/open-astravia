@@ -11,7 +11,7 @@ interface SidebarBottomBarProps {
 }
 
 /**
- * 侧栏底栏：上方更新条（仅更新就绪时显示），下方左侧用户菜单（昵称过长 truncate）、右侧消息中心 shrink-0 不被挤出。
+ * 侧栏底栏：上方更新条（发现新版本、下载中、下载完成待重启都会显示），下方左侧用户菜单（昵称过长 truncate）、右侧消息中心 shrink-0 不被挤出。
  */
 export function SidebarBottomBar({ className, classNames }: SidebarBottomBarProps): JSX.Element {
 	return (

@@ -100,6 +100,25 @@ export function shouldRevealStreamingTail(text: string, isStreamingTail: boolean
 	return isStreamingTail && text.length <= STREAM_ANIMATE_MAX_CHARS;
 }
 
+/** 超过这个长度先按 200ms 节流，再超过大阈值放宽到 400ms。 */
+export const STREAM_RENDER_INTERVAL_SMALL_CHARS = 12_000;
+export const STREAM_RENDER_INTERVAL_LARGE_CHARS = 50_000;
+
+/**
+ * 流式渲染的节流间隔。
+ *
+ * 只看尾块长度不工作：尾块是“最后一个空行之后的部分”，写一段就归零、写完一段又长回来，所以它大多时候很小，
+ * 间隔实际几乎一直是 0——拿一份真实的 52k 压缩摘要模拟 130 次增量，旧规则只有 14 次开了节流，其余 89% 仍是无节流的整篇解析，
+ * 正是 #185 需要的压力。整体长度在流式期间只增不减，用它兜底后间隔一旦抬上去就不再落回；
+ * 短回复（整体也不长）仍然即时渲染，保持逐字手感。
+ */
+export function resolveStreamRenderInterval(streamLength: number, tailLength: number): number {
+	const longest = Math.max(streamLength, tailLength);
+	if (longest >= STREAM_RENDER_INTERVAL_LARGE_CHARS) return 400;
+	if (longest >= STREAM_RENDER_INTERVAL_SMALL_CHARS) return 200;
+	return 0;
+}
+
 /**
  * 流式尾块：把显示文本匀速追向宿主文本（节奏见 streaming-reveal），配合 rehype 分段做「最新短语略暗」。
  * 放出由 `text` 变化（宿主每 100ms 一次的增量刷新）驱动，在布局效果里同步更新，与那次渲染落在同一帧；

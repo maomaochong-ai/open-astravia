@@ -19,11 +19,26 @@ describe("CompactionStepView", () => {
 		expect(open).toContain("earlier work");
 	});
 
-	it("cannot open while running because there is no summary yet", () => {
-		const markup = renderToStaticMarkup(<CompactionStepView status="running" label="Compacting context…" />);
+	it("opens the panel while running even before the first summary delta arrives", () => {
+		// 压缩实测可能跑好几分钟、首段 delta 到达前没有任何文本；这段时间必须能展开看进度。
+		const markup = renderToStaticMarkup(
+			<CompactionStepView
+				status="running"
+				label="Compacting context…"
+				pendingHint={<span data-testid="pending">Generating summary…</span>}
+			/>,
+		);
 		expect(markup).toContain('data-compaction-step="running"');
-		expect(markup).toContain("disabled");
+		expect(markup).not.toContain("disabled");
+		expect(markup).toContain('aria-expanded="true"');
+		expect(markup).toContain("Generating summary…");
 		expect(markup).toContain("tool-call-shimmer-text");
+	});
+
+	it("stays collapsed and inert when there is nothing to show", () => {
+		const markup = renderToStaticMarkup(<CompactionStepView status="success" label="Context compacted" />);
+		expect(markup).toContain("disabled");
+		expect(markup).not.toContain("compaction-summary");
 	});
 
 	it("auto-expands summary panel while streaming so user can follow in real time", () => {

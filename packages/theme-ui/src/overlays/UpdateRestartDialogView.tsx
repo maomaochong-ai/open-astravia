@@ -1,7 +1,10 @@
 import { AnimatePresence, motion } from "motion/react";
 import type { JSX, RefObject } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { cn } from "@astravia-org/ui/utils";
 import { ThemeSurface } from "../appearance/ThemeSurface";
+import { normalizeReleaseNote } from "./release-note";
 
 export interface UpdateRestartDialogViewLabels {
 	readonly install: string;
@@ -63,9 +66,9 @@ export function UpdateRestartDialogView({
 							<p className="mt-2 text-[12px] text-muted-foreground">{labels.message}</p>
 							{releaseNote && (
 								<div className="mt-3 max-h-[40vh] overflow-auto rounded-lg border border-border bg-secondary/50 p-3">
-									<p className="whitespace-pre-wrap break-words text-[12px] text-muted-foreground">
-										{releaseNote}
-									</p>
+									<div className="markdown-body text-[12px] text-muted-foreground">
+										<ReactMarkdown remarkPlugins={[remarkGfm]}>{normalizeReleaseNote(releaseNote)}</ReactMarkdown>
+									</div>
 								</div>
 							)}
 							<div className="mt-5 flex justify-end gap-2">

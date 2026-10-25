@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -39,6 +40,8 @@ import kotlinx.serialization.json.put
 import org.astravia.android.domain.remote.RemoteStreamStats
 import org.astravia.android.domain.remote.SignalingDrop
 import org.astravia.android.domain.remote.SignalingRetry
+import org.astravia.android.domain.remote.SignalingTimeoutException
+import org.astravia.android.domain.remote.signalingFailureStep
 import org.astravia.android.domain.remote.connection.PlatformRemoteLogger
 import org.astravia.android.domain.remote.connection.RemoteTransport
 import org.astravia.android.domain.remote.protocol.RemoteFrame
@@ -65,6 +68,13 @@ private const val CONTROL_CHANNEL = "astravia-control-v2"
 private const val VIEW_CHANNEL = "astravia-view-v1"
 private const val MAX_CONTROL_MESSAGE_BYTES = 1_500_000
 private const val TRACE_STEPS = 8
+
+/**
+ * How long the relay gets to answer the viewer upgrade. A network that drops the upgrade instead
+ * of refusing it leaves `client.webSocketSession` waiting until the session ends, which reads on
+ * the page as "signaling connecting" for as long as it is open.
+ */
+private const val SIGNALING_OPEN_TIMEOUT_MS = 10_000L
 
 /**
  * STUN only, no TURN (ADR-0135), and only servers reachable in mainland China without a
@@ -179,7 +189,9 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
 
     fun start() {
         if (signalingJob != null) return
-        stopped = false
+        // A stopped session has cancelled its scope and released its client and EGL context.
+        // Starting one again would leave a session that looks alive and never connects.
+        if (stopped) return
         signalingJob = scope.launch { run() }
     }
 
@@ -300,12 +312,16 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                 .createPeerConnectionFactory()
             val (socketUrl, token) = splitTarget(target)
             while (!stopped) {
+                var ended: Throwable? = null
                 try {
                     note(if (peerConnection == null) "signaling connecting" else "signaling reconnecting")
-                    val socket = client.webSocketSession {
-                        url.takeFrom(socketUrl)
-                        headers.append(HttpHeaders.SecWebSocketProtocol, listOf("astravia.desktop.v1", "astravia.pairing.$token").joinToString(", "))
-                    }
+                    val socket =
+                        withTimeoutOrNull(SIGNALING_OPEN_TIMEOUT_MS) {
+                            client.webSocketSession {
+                                url.takeFrom(socketUrl)
+                                headers.append(HttpHeaders.SecWebSocketProtocol, listOf("astravia.desktop.v1", "astravia.pairing.$token").joinToString(", "))
+                            }
+                        } ?: throw SignalingTimeoutException(SIGNALING_OPEN_TIMEOUT_MS)
                     signaling = socket
                     signalingRetry.reopened()
                     note("signaling open")
@@ -315,25 +331,39 @@ class NativeRemoteDesktopSession(private val context: Context, private val targe
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Throwable) {
-                    // Before the direct link is up the session cannot go on without signaling.
-                    if (stopped || !directlyConnected) throw error
-                    PlatformRemoteLogger.warn("native WebRTC signaling lost", mapOf("error" to (error.message ?: error::class.simpleName)))
+                    if (stopped) throw error
+                    // A relay that never answered may answer on the next try; a relay that refused
+                    // would refuse again, and before the direct link is up nothing else can carry
+                    // the session.
+                    if (error !is SignalingTimeoutException && !directlyConnected) throw error
+                    ended = error
                 }
                 signaling?.cancel()
                 signaling = null
                 if (stopped) break
-                when (val drop = signalingRetry.dropped(directlyConnected)) {
-                    SignalingDrop.Stop -> break
+                val timedOut = ended is SignalingTimeoutException
+                if (ended == null) {
+                    PlatformRemoteLogger.info("native WebRTC signaling closed")
+                } else if (timedOut) {
+                    PlatformRemoteLogger.warn("native WebRTC signaling did not open", mapOf("timeoutMs" to SIGNALING_OPEN_TIMEOUT_MS))
+                } else {
+                    PlatformRemoteLogger.warn("native WebRTC signaling lost", mapOf("error" to (ended.message ?: ended::class.simpleName)))
+                }
+                val drop = if (timedOut) signalingRetry.openTimedOut(directlyConnected) else signalingRetry.dropped(directlyConnected)
+                when (drop) {
+                    SignalingDrop.Stop -> {
+                        ended?.let { note(signalingFailureStep(it)) }
+                        break
+                    }
                     is SignalingDrop.Reconnect -> {
-                        note("signaling lost, direct link kept")
+                        note(if (directlyConnected) "signaling lost, direct link kept" else "signaling retrying")
                         delay(drop.afterMs)
                     }
                 }
-                if (!directlyConnected) break
             }
         } catch (error: Throwable) {
             if (!stopped) {
-                note("failed: ${error::class.simpleName}")
+                note(signalingFailureStep(error))
                 PlatformRemoteLogger.warn("native WebRTC session failed", mapOf("error" to (error.message ?: error::class.simpleName)))
             }
         } finally {

@@ -12,7 +12,12 @@ class FakeUpdateEngine implements UpdateEngine {
 	private stagingHandler: (() => void) | null = null;
 	private resolveDownload: ((paths: string[]) => void) | null = null;
 
+	checkError: Error | null = null;
+	checkCalls = 0;
+
 	async checkForUpdates(): Promise<UpdateEngineCheckResult | null> {
+		this.checkCalls += 1;
+		if (this.checkError) throw this.checkError;
 		return this.checkResult;
 	}
 
@@ -382,5 +387,47 @@ describe("UpdaterService", () => {
 			phase: "error",
 			error: "updater.errors.developmentUnsupported",
 		});
+	});
+
+	it("retries a failed check on its own instead of waiting for the two hour period", async () => {
+		const engine = new FakeUpdateEngine();
+		engine.checkError = new Error("Cannot find latest-mac.yml in the latest release artifacts: HttpError: 404");
+		const service = new UpdaterService(engine, "0.5.21", true, translate, {
+			checkRetryDelaysMs: [60_000],
+			periodicCheckIntervalMs: 0,
+		});
+
+		await service.check();
+		expect(service.getState()).toMatchObject({ phase: "idle", error: "updater.errors.checkFailed" });
+
+		// 发布后元数据补齐，重试自己就能拿到结果，用户不用再点一次。
+		engine.checkError = null;
+		engine.checkResult = { hasUpdate: false, info: { version: "0.5.21" } };
+		await vi.advanceTimersByTimeAsync(60_000);
+
+		expect(engine.checkCalls).toBe(2);
+		expect(service.getState()).toMatchObject({ phase: "idle", error: undefined });
+
+		// 成功之后重试预算归零，不会继续空转。
+		await vi.advanceTimersByTimeAsync(3_600_000);
+		expect(engine.checkCalls).toBe(2);
+		service.dispose();
+	});
+
+	it("stops retrying once the retry budget is used up", async () => {
+		const engine = new FakeUpdateEngine();
+		engine.checkError = new Error("net::ERR_CONNECTION_TIMED_OUT");
+		const service = new UpdaterService(engine, "0.5.21", true, translate, {
+			checkRetryDelaysMs: [60_000],
+			periodicCheckIntervalMs: 0,
+		});
+
+		await service.check();
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(engine.checkCalls).toBe(2);
+
+		await vi.advanceTimersByTimeAsync(3_600_000);
+		expect(engine.checkCalls).toBe(2);
+		service.dispose();
 	});
 });

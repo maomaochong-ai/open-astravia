@@ -48,9 +48,18 @@ describe("Desktop Runtime composition boundary", () => {
 	});
 
 	it("binds persisted context compaction settings into Turn admission", () => {
+		expect(productionSources.composition).toContain("resolveCompactionSettings: () => ({");
+		expect(productionSources.composition).toContain("...runtimeConfiguration.readCompactionSettings(),");
+	});
+
+	// 会话文件的所有权互斥没有类型或运行时测试能覆盖：漏接这一行不会报错，
+	// 只会退回到「两个进程各写同一份 jsonl，把对方正在跑的 Turn 写成中断」。
+	it("claims exclusive ownership of each conversation file", () => {
 		expect(productionSources.composition).toContain(
-			"resolveCompactionSettings: () => runtimeConfiguration.readCompactionSettings()",
+			"conversationOwnershipManager: new FileConversationOwnershipManager()",
 		);
+		expect(productionSources.composition).toContain('} from "@astravia/runtime-node/conversation";');
+		expect(productionSources.composition).toContain("FileConversationOwnershipManager,");
 	});
 
 	it("keeps the Runtime entry limited to singleton lifecycle ownership", () => {

@@ -65,6 +65,9 @@ export const CompactionBlockView = memo(function CompactionBlockView({
 			detail={detail}
 			summary={summary}
 			renderSummary={renderSummaryMarkdown}
+			pendingHint={
+				<span className="tool-call-shimmer-text text-[0.8125rem]">{t("messageList.compactionStep.generating")}</span>
+			}
 			expanded={expanded}
 			onToggle={toggle}
 			exportMode={exportMode}

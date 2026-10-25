@@ -398,6 +398,25 @@ function commitUserMessage(
 	};
 }
 
+/**
+ * 正在跑的压缩块属于哪一个 assistant 项。
+ *
+ * Turn 中途插入新的用户消息（steering）会改变段号，当前 assistant 项随之切换；
+ * 只看最新项会把之前开始的压缩块弄丢，导致摘要不再增长、结束事件永远落不了地。
+ */
+function findRunningCompactionItem(
+	items: readonly ChatConversationItem[],
+	turnId: string,
+): { readonly index: number; readonly blockIndex: number } | undefined {
+	for (let index = items.length - 1; index >= 0; index -= 1) {
+		const item = items[index];
+		if (item.kind !== "agent" || item.turnId !== turnId) continue;
+		const blockIndex = findRunningCompaction(item.blocks);
+		if (blockIndex >= 0) return { index, blockIndex };
+	}
+	return undefined;
+}
+
 function findRunningCompaction(blocks: readonly ContentBlock[]): number {
 	for (let index = blocks.length - 1; index >= 0; index -= 1) {
 		const block = blocks[index];
@@ -417,18 +436,22 @@ function applyCompactionEvent(
 	// A delta belongs to a step that already started, so only start/end carry the manual reason.
 	if (event.type !== "compaction.delta" && event.reason === "manual") return state;
 	const resolved = resolveTurnAssistant(state, state.activeTurnId, event.timestamp);
-	const item = resolved.items[resolved.index] as AgentItem;
+	// 开始事件总落在当前段；delta/end 可能属于本 Turn 更早的 assistant 项。
+	const located =
+		event.type === "compaction.start" ? undefined : findRunningCompactionItem(resolved.items, state.activeTurnId);
+	const itemIndex = located?.index ?? resolved.index;
+	const item = resolved.items[itemIndex] as AgentItem;
 	const blocks = [...item.blocks];
 	if (event.type === "compaction.start") {
 		blocks.push({ type: "compaction", id: `${item.id}:compaction:${event.eventId}`, status: "running" });
 	} else if (event.type === "compaction.delta") {
 		// The summary streams while the step runs, so readers can follow it before it settles.
-		const deltaIndex = findRunningCompaction(blocks);
+		const deltaIndex = located?.blockIndex ?? findRunningCompaction(blocks);
 		if (deltaIndex < 0) return state;
 		const streaming = blocks[deltaIndex] as CompactionBlock;
 		blocks[deltaIndex] = { ...streaming, summary: `${streaming.summary ?? ""}${event.text}` };
 	} else {
-		const index = findRunningCompaction(blocks);
+		const index = located?.blockIndex ?? findRunningCompaction(blocks);
 		if (index < 0) return withItems(resolved.state, resolved.items);
 		const running = blocks[index] as CompactionBlock;
 		if (event.cancelled) {
@@ -456,7 +479,7 @@ function applyCompactionEvent(
 			};
 		}
 	}
-	return withItems(resolved.state, replaceAt(resolved.items, resolved.index, { ...item, blocks }));
+	return withItems(resolved.state, replaceAt(resolved.items, itemIndex, { ...item, blocks }));
 }
 
 /** Settle only the assistant message owned by the terminal Turn. */

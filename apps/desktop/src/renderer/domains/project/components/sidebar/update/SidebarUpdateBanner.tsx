@@ -22,10 +22,11 @@ export function SidebarUpdateBanner(): JSX.Element | null {
 			<span className="min-w-0 flex-1 truncate text-foreground text-xs">{model.label}</span>
 			<button
 				type="button"
-				onClick={model.onRestart}
-				className="shrink-0 rounded bg-primary px-2 py-0.5 text-primary-foreground text-xs transition-opacity hover:opacity-90"
+				disabled={model.actionDisabled}
+				onClick={model.onAction}
+				className="shrink-0 rounded bg-primary px-2 py-0.5 text-primary-foreground text-xs transition-opacity hover:opacity-90 disabled:cursor-default disabled:hover:opacity-100"
 			>
-				{model.restartLabel}
+				{model.actionLabel}
 			</button>
 		</div>
 	);

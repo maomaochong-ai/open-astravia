@@ -154,7 +154,10 @@ export class TurnPipeline {
 			},
 			timestamp: this.clock.now(),
 		};
-		await this.repository.append(sessionId, conversation.version, [event]);
+		// 同一会话可能被并发装配（跨进程/跨入口），重复收尾不应升级成持久化失败。
+		const result = await this.appendTerminalOnce(sessionId, event);
+		if (!result.ok) throw turnPersistenceError(result.error, { turnId: plan.turnId });
+		if (!result.appended) return;
 		await this.publishSafely(event);
 	}
 
@@ -1015,6 +1018,9 @@ export class TurnPipeline {
 			await this.appendTerminalEvent(state, terminalSignal, event);
 			return { ok: true };
 		} catch (error) {
+			// 终态落盘失败时界面仍需看见终态，否则 Turn 会永久停在流式状态，
+			// 而停止按钮在非 running 状态下不产生任何效果。
+			await this.publishSafely(event);
 			await this.publishSafely({
 				type: "observer.failed",
 				sessionId: state.sessionId,
@@ -1027,6 +1033,31 @@ export class TurnPipeline {
 		}
 	}
 
+	/**
+	 * 写入单个 Turn 的终态，已收敛则不重复写。
+	 *
+	 * 并发装配同一个会话时，两个写入者都会判定「Turn 仍然打开」并各自收尾；
+	 * 版本冲突重读后只要该 Turn 已有终态，本次就没有必要再写一条。
+	 */
+	private async appendTerminalOnce(
+		sessionId: string,
+		event: StoredSessionEvent,
+	): Promise<{ readonly ok: true; readonly appended: boolean } | { readonly ok: false; readonly error: unknown }> {
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const conversation = await this.repository.load(sessionId);
+			if (hasTerminalForTurn(conversation, event.turnId)) return { ok: true, appended: false };
+			const plan = this.recoveryPolicy.plan(conversation);
+			if (plan.status !== "interrupt" || plan.turnId !== event.turnId) return { ok: true, appended: false };
+			try {
+				await this.repository.append(sessionId, conversation.version, [event]);
+				return { ok: true, appended: true };
+			} catch (error) {
+				if (!isConversationVersionConflict(error) || attempt > 0) return { ok: false, error };
+			}
+		}
+		return { ok: false, error: new Error(`Conversation ${sessionId} rejected terminal event`) };
+	}
+
 	private async appendTerminalEvent(
 		state: MutableTurnState,
 		signal: AbortSignal,
@@ -1034,15 +1065,7 @@ export class TurnPipeline {
 	): Promise<void> {
 		for (let attempt = 0; attempt < 2; attempt += 1) {
 			const conversation = await this.repository.load(state.sessionId);
-			const existingTerminal = conversation.events.find(
-				(candidate) =>
-					candidate.turnId === event.turnId &&
-					(candidate.type === "turn.completed" ||
-						candidate.type === "turn.cancelled" ||
-						candidate.type === "turn.failed" ||
-						candidate.type === "turn.transferred"),
-			);
-			if (existingTerminal) {
+			if (hasTerminalForTurn(conversation, event.turnId)) {
 				state.version = conversation.version;
 				return;
 			}
@@ -1173,6 +1196,18 @@ export class TurnPipeline {
 
 function isAbortError(error: unknown): boolean {
 	return error instanceof Error && error.name === "AbortError";
+}
+
+function hasTerminalForTurn(conversation: StoredConversation, turnId: string | undefined): boolean {
+	if (turnId === undefined) return false;
+	return conversation.events.some(
+		(candidate) =>
+			candidate.turnId === turnId &&
+			(candidate.type === "turn.completed" ||
+				candidate.type === "turn.cancelled" ||
+				candidate.type === "turn.failed" ||
+				candidate.type === "turn.transferred"),
+	);
 }
 
 /**
