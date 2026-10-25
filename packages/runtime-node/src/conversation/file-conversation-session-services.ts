@@ -24,6 +24,18 @@ const CONVERSATION_FILE_SUFFIX = ".conversation.jsonl";
 const CONVERSATION_HEADER_READ_BYTES = 64 * 1024;
 const LAST_MESSAGE_PREVIEW_LENGTH = 120;
 
+interface CachedSessionHistoryInfo {
+	readonly size: number;
+	readonly mtimeMs: number;
+	readonly info: SessionHistoryInfo;
+}
+const SESSION_INFO_CACHE_LIMIT = 512;
+/**
+ * `SessionHistoryInfo` 只能靠「整份文件读入 + 全量投影」算出来，而列表在每个 Turn 边界都会重列一次。
+ * 记住上一份结果，文件大小与 mtime 都没变时只 stat：多会话并发时不再反复解析几 MB 的会话。
+ */
+const sessionInfoCache = new Map<string, CachedSessionHistoryInfo>();
+
 export interface RuntimeConversationSessionRoot {
 	readonly cwd: string;
 	readonly sessionDir: string;
@@ -136,10 +148,14 @@ export class FileConversationRuntimeSessionCatalog implements RuntimeSessionCata
 			entries
 				.filter((entry) => entry.isFile() && entry.name.endsWith(CONVERSATION_FILE_SUFFIX))
 				.map(async (entry) => {
+					const sessionPath = join(sessionDir, entry.name);
 					try {
-						return await readSessionHistoryInfo(join(sessionDir, entry.name), cwd);
-					} catch {
-						return undefined;
+						return await readListedSessionHistoryInfo(sessionPath, cwd);
+					} catch (error) {
+						// 文件真的没了才是删除了。其它失败（比如另一写入者正在替换/追写，这一趟读不出完整文件）
+						// 只是暂时读不到：返回上一次的结果，否则会话会从侧栏凭空消失。
+						if (nodeErrorCode(error) === "ENOENT") return undefined;
+						return sessionInfoCache.get(sessionInfoCacheKey(resolve(sessionPath), cwd))?.info;
 					}
 				}),
 		);
@@ -167,6 +183,37 @@ export class FileConversationRuntimeSessionFileHistoryReader implements RuntimeS
 		const file = parseConversationFile(text, header.sessionId);
 		return { history: projectConversationDocumentHistory(documentFromFile(header.sessionId, file)) };
 	}
+}
+
+function sessionInfoCacheKey(sessionPath: string, fallbackCwd: string): string {
+	// 文件头缺 cwd 时才用调用方的兜底值，所以同一个文件可能因为 root 不同需要两份结果。
+	return `${sessionPath}\n${fallbackCwd}`;
+}
+
+function rememberSessionInfo(key: string, stats: { size: number; mtimeMs: number }, info: SessionHistoryInfo): void {
+	if (!sessionInfoCache.has(key) && sessionInfoCache.size >= SESSION_INFO_CACHE_LIMIT) {
+		const oldest = sessionInfoCache.keys().next();
+		if (!oldest.done) sessionInfoCache.delete(oldest.value);
+	}
+	sessionInfoCache.set(key, { size: stats.size, mtimeMs: stats.mtimeMs, info });
+}
+
+async function readListedSessionHistoryInfo(sessionPath: string, fallbackCwd: string): Promise<SessionHistoryInfo> {
+	const path = resolve(sessionPath);
+	const key = sessionInfoCacheKey(path, fallbackCwd);
+	const cached = sessionInfoCache.get(key);
+	let stats: { size: number; mtimeMs: number };
+	try {
+		stats = await stat(path);
+	} catch (error) {
+		// 文件不在了：缓存也得跟着掉，否则已删掉的会话会被旧结果拉回列表。
+		if (nodeErrorCode(error) === "ENOENT") sessionInfoCache.delete(key);
+		throw error;
+	}
+	if (cached && cached.size === stats.size && cached.mtimeMs === stats.mtimeMs) return cached.info;
+	const info = await readSessionHistoryInfo(path, fallbackCwd);
+	rememberSessionInfo(key, stats, info);
+	return info;
 }
 
 async function readSessionHistoryInfo(sessionPath: string, fallbackCwd: string): Promise<SessionHistoryInfo> {
