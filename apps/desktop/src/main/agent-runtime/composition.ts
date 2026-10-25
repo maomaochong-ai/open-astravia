@@ -44,7 +44,10 @@ import {
 	PathFilteredRuntimeSessionCatalog,
 	setDesktopSshConnectionResolver,
 } from "@astravia/runtime-desktop";
-import { FileConversationRuntimeSessionFileHistoryReader } from "@astravia/runtime-node/conversation";
+import {
+	FileConversationOwnershipManager,
+	FileConversationRuntimeSessionFileHistoryReader,
+} from "@astravia/runtime-node/conversation";
 import {
 	createLoopbackSessionAffinityStream,
 	createNodeKnowledgeRuntime,
@@ -190,6 +193,9 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				tracing: { captureContent: false, detail: "standard" },
 				agentRuntime: { runtime: agentRuntime },
 				modelRegistry: modelRuntime,
+				// 同一会话文件只允许一个 Runtime 持有：多个实例共享 ~/.astravia 时，
+				// 第二个写入者必须拿到明确的冲突错误，而不是把对方正在跑的 Turn 写成中断。
+				conversationOwnershipManager: new FileConversationOwnershipManager(),
 				// 摘要卡是摆在界面上给人读的，所以摘要语言取界面语言，而不是会话语言。
 				// 不在这里缓存：压缩设置随每次 Turn 准入重新解析，切语言后下一个 Turn 的压缩就换语言。
 				resolveCompactionSettings: () => ({

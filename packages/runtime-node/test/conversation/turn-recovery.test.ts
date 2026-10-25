@@ -13,7 +13,7 @@ import {
 	type TurnEnginePort,
 	TurnPipeline,
 } from "../../../runtime-core/src/kernel/index.js";
-import { CONVERSATION_STORAGE_ERROR_CODES, FileConversationRepository } from "../../src/conversation/index.js";
+import { FileConversationRepository } from "../../src/conversation/index.js";
 
 const temporaryRoots: string[] = [];
 
@@ -86,7 +86,9 @@ describe("TurnPipeline recovery with FileConversationRepository", () => {
 		await reopened.close();
 	});
 
-	it("allows only one concurrent recovery writer for the same version", async () => {
+	// 两个写入者同时恢复同一 Turn 时，落败的一方会看到终态已由对方写好：
+	// 那是一个正常结果，不是需要弹给人的失败，否则并发恢复会变成用户可见的错误。
+	it("lets the losing concurrent recovery finish without an error", async () => {
 		const { repository } = await createRepository();
 		await seedIncompleteTurn(repository);
 
@@ -95,11 +97,41 @@ describe("TurnPipeline recovery with FileConversationRepository", () => {
 			createPipeline(repository).resumeSession("session-1"),
 		]);
 
-		expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
-		const rejected = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
-		expect(rejected?.reason).toMatchObject({ code: CONVERSATION_STORAGE_ERROR_CODES.VERSION_CONFLICT });
+		expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(2);
 		const conversation = await repository.load("session-1");
 		expect(conversation.version).toBe(2);
+		expect(conversation.events.filter((event) => event.type === "turn.failed")).toHaveLength(1);
+		await repository.close();
+	});
+
+	// 跨进程双写入者留下的真实形状：终态已经写好，随后又追写这个 Turn 的消息。
+	// 旧策略把这种文件判死，用户只能删会话重建；它实际上已经收敛，应当可以直接继续。
+	it("opens a file whose finished turn was appended to by another writer", async () => {
+		const { repository } = await createRepository();
+		await repository.create({ sessionId: "session-1", createdAt: 1 });
+		await repository.append("session-1", 0, [
+			{ type: "turn.started", sessionId: "session-1", turnId: "turn-1", snapshotId: "snapshot-1", timestamp: 100 },
+			{
+				type: "turn.failed",
+				sessionId: "session-1",
+				turnId: "turn-1",
+				error: { code: KERNEL_ERROR_CODES.TURN_INTERRUPTED, message: "interrupted" },
+				timestamp: 110,
+			},
+			{
+				type: "message.appended",
+				sessionId: "session-1",
+				turnId: "turn-1",
+				messageId: "message-1",
+				message: { role: "user", content: "late tail", timestamp: 120 },
+				timestamp: 120,
+			},
+		]);
+
+		await expect(createPipeline(repository).resumeSession("session-1")).resolves.toBeUndefined();
+		const conversation = await repository.load("session-1");
+		// 残留不再触发第二条终态，也不改变会话可执行性。
+		expect(conversation.version).toBe(3);
 		expect(conversation.events.filter((event) => event.type === "turn.failed")).toHaveLength(1);
 		await repository.close();
 	});

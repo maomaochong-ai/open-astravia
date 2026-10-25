@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { CONVERSATION_STORAGE_ERROR_CODES, FileConversationOwnershipManager } from "../../src/conversation/index.js";
@@ -88,6 +88,28 @@ describe("FileConversationOwnershipManager", () => {
 		const lease = await manager.acquire(conversationPath);
 
 		expect(lease.holder.token).not.toBe("dead");
+		await lease.release();
+	});
+
+	it("reclaims a lock this process left behind after an unclean release", async () => {
+		const conversationPath = await temporaryConversationPath();
+		const lockPath = `${conversationPath}.owner.lock`;
+		// 上一次装配没能走到 release：文件还在，但本进程已经没有对应租约。
+		await writeFile(
+			lockPath,
+			JSON.stringify({
+				token: "leaked-by-crashed-session",
+				pid: process.pid,
+				hostname: hostname(),
+				acquiredAt: new Date().toISOString(),
+			}),
+			"utf8",
+		);
+		const manager = new FileConversationOwnershipManager();
+
+		const lease = await manager.acquire(conversationPath);
+
+		expect(lease.holder.token).not.toBe("leaked-by-crashed-session");
 		await lease.release();
 	});
 

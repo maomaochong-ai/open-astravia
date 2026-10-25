@@ -19,6 +19,16 @@ const DEFAULT_STALE_AFTER_MS = 2 * 60_000;
 const ACQUIRE_RACE_RETRY_COUNT = 3;
 const PROCESS_START_TOLERANCE_MS = 5_000;
 
+/**
+ * 本进程当前持有的租约 token。
+ *
+ * 同一 pid 上存在锁文件时只有两种可能：另一个仍然有效的租约（必须报冲突），
+ * 或本进程因异常收尾遗留的文件（不回收就会永久锁死自己）。两者只能靠这份
+ * 进程级活性登记区分。登记表随模块实例存在，因此这里假定同一个 pid 下
+ * 不会有两个模块实例各自装配会话（会话装配在主进程发生，不跑 worker 线程）。
+ */
+const liveOwnershipTokens = new Set<string>();
+
 const ConversationOwnershipHolderSchema = Type.Object(
 	{
 		token: Type.String({ minLength: 1 }),
@@ -121,6 +131,7 @@ export class FileConversationOwnershipManager implements ConversationOwnershipMa
 		}, this.heartbeatIntervalMs);
 		heartbeat.unref();
 
+		liveOwnershipTokens.add(holder.token);
 		return {
 			conversationPath,
 			lockPath,
@@ -134,6 +145,7 @@ export class FileConversationOwnershipManager implements ConversationOwnershipMa
 							released = true;
 							clearInterval(heartbeat);
 						} finally {
+							liveOwnershipTokens.delete(holder.token);
 							releaseOperation = undefined;
 						}
 					})();
@@ -146,6 +158,8 @@ export class FileConversationOwnershipManager implements ConversationOwnershipMa
 	private async canReclaim(lockPath: string, holder: ConversationOwnershipHolder | undefined): Promise<boolean> {
 		if (holder?.hostname === this.hostname) {
 			if (!this.isProcessAlive(holder.pid)) return true;
+			// 同一进程且不是仍在生效的租约：上一次异常收尾遗留的文件，回收而不是报冲突。
+			if (holder.pid === this.pid && !liveOwnershipTokens.has(holder.token)) return true;
 			const liveStartedAt = this.readProcessStartedAtMs(holder.pid);
 			if (liveStartedAt === undefined) return false;
 			const recordedStartedAt = holder.processStartedAt ? Date.parse(holder.processStartedAt) : Number.NaN;

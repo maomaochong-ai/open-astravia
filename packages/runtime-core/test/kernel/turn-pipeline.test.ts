@@ -922,6 +922,10 @@ describe("greenfield runtime kernel", () => {
 		await expect(cancelError).resolves.toMatchObject({ code: KERNEL_ERROR_CODES.TURN_PERSISTENCE });
 		await expect(turnError).resolves.toMatchObject({ code: KERNEL_ERROR_CODES.TURN_PERSISTENCE });
 		expect(harness.session.state).toBe("recovery_required");
+		// 终态没能落盘，界面仍必须收到终态事件，否则会永久停在流式状态。
+		expect((harness.eventSink as CollectingEventSink).events).toContainEqual(
+			expect.objectContaining({ type: "turn.cancelled" }),
+		);
 		await expect(harness.session.send({ message: userMessage("must not start") })).rejects.toMatchObject({
 			code: KERNEL_ERROR_CODES.TURN_PERSISTENCE,
 		});

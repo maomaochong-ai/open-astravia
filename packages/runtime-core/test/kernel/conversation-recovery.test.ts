@@ -260,6 +260,8 @@ describe("conversation recovery", () => {
 		["overlapping turns", [started("session-1", "turn-1"), started("session-1", "turn-2")]],
 		["terminal event without a start", [completed("session-1", "turn-1")]],
 		["terminal event for another turn", [started("session-1", "turn-1"), completed("session-1", "turn-2")]],
+		["message without a start", [message("session-1", "turn-1")]],
+		["message for another turn", [started("session-1", "turn-1"), message("session-1", "turn-2")]],
 	])("fails closed for %s", async (_name, events) => {
 		const harness = createHarness();
 		await harness.repository.create({ sessionId: "session-1", createdAt: 1 });
@@ -273,4 +275,117 @@ describe("conversation recovery", () => {
 		expect((await harness.repository.load("session-1")).version).toBe(version);
 		expect(harness.eventSink.events).toHaveLength(0);
 	});
+
+	it("tolerates events appended after the turn already terminated", async () => {
+		const harness = createHarness();
+		await harness.repository.create({ sessionId: "session-1", createdAt: 1 });
+		const failed: StoredSessionEvent = {
+			type: "turn.failed",
+			sessionId: "session-1",
+			turnId: "turn-1",
+			error: { code: KERNEL_ERROR_CODES.TURN_INTERRUPTED, message: "interrupted" },
+			timestamp: 102,
+		};
+		await harness.repository.append("session-1", 0, [
+			started("session-1", "turn-1"),
+			message("session-1", "turn-1"),
+			failed,
+			message("session-1", "turn-1"),
+			failed,
+		]);
+
+		const session = await resumeAgentSession({ id: "session-1", pipeline: harness.pipeline });
+
+		expect(session.state).toBe("idle");
+		expect((await harness.repository.load("session-1")).version).toBe(5);
+		expect(harness.eventSink.events).toHaveLength(0);
+	});
+
+	it("tolerates residue of a terminated turn while the next turn is active", async () => {
+		const harness = createHarness();
+		await harness.repository.create({ sessionId: "session-1", createdAt: 1 });
+		await harness.repository.append("session-1", 0, [
+			started("session-1", "turn-1"),
+			completed("session-1", "turn-1"),
+			started("session-1", "turn-2"),
+			message("session-1", "turn-1"),
+		]);
+
+		const session = await resumeAgentSession({ id: "session-1", pipeline: harness.pipeline });
+
+		expect(session.state).toBe("idle");
+		const conversation = await harness.repository.load("session-1");
+		expect(conversation.events.at(-1)).toMatchObject({ type: "turn.failed", turnId: "turn-2" });
+	});
+
+	it("does not duplicate the terminal event when another writer already closed the turn", async () => {
+		const harness = createHarness();
+		await harness.repository.create({ sessionId: "session-1", createdAt: 1 });
+		await harness.repository.append("session-1", 0, [started("session-1", "turn-1")]);
+		const conflicting = new ConflictOnceRepository(harness.repository, "session-1", "turn-1");
+		const pipeline = new TurnPipeline({
+			repository: conflicting,
+			snapshotProvider: harness.snapshotProvider,
+			turnEngine: harness.turnEngine,
+			eventSink: harness.eventSink,
+			clock,
+			idGenerator,
+		});
+
+		await resumeAgentSession({ id: "session-1", pipeline });
+		await resumeAgentSession({ id: "session-1", pipeline });
+
+		const conversation = await harness.repository.load("session-1");
+		expect(conversation.events.filter((event) => event.type === "turn.failed")).toHaveLength(1);
+		// 终态由先写入的那个装配者发布，本次不重复发。
+		expect(harness.eventSink.events).toHaveLength(0);
+	});
 });
+
+/** 模拟并发装配：第一次写入前另一个写入者已经写入同一 Turn 的终态。 */
+class ConflictOnceRepository implements ConversationRepository {
+	private conflicted = false;
+
+	constructor(
+		private readonly inner: InMemoryConversationRepository,
+		private readonly sessionId: string,
+		private readonly turnId: string,
+	) {}
+
+	create(input: CreateConversationInput): Promise<ConversationMetadata> {
+		return this.inner.create(input);
+	}
+
+	load(sessionId: string): Promise<KernelStoredConversation> {
+		return this.inner.load(sessionId);
+	}
+
+	async append(
+		sessionId: string,
+		expectedVersion: number,
+		events: readonly StoredSessionEvent[],
+	): Promise<{ readonly version: number }> {
+		if (!this.conflicted) {
+			this.conflicted = true;
+			await this.inner.append(this.sessionId, (await this.inner.load(this.sessionId)).version, [
+				{
+					type: "turn.failed",
+					sessionId: this.sessionId,
+					turnId: this.turnId,
+					error: { code: KERNEL_ERROR_CODES.TURN_INTERRUPTED, message: "interrupted elsewhere" },
+					timestamp: 103,
+				},
+			]);
+			throw Object.assign(new Error("Version conflict"), { code: "conversation_version_conflict" });
+		}
+		return this.inner.append(sessionId, expectedVersion, events);
+	}
+
+	saveSnapshot(sessionId: string, snapshot: ConversationSnapshot): Promise<void> {
+		return this.inner.saveSnapshot(sessionId, snapshot);
+	}
+
+	close(): Promise<void> {
+		return this.inner.close();
+	}
+}
