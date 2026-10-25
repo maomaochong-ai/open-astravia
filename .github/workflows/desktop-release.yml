@@ -457,13 +457,29 @@ jobs:
 
       # R2 是更新源，GitHub Release 是对外的下载入口和版本说明归档，两者同时发布；
       # test 渠道的构建不进正式 Release 列表。第一个完成的平台创建 Release，
-      # 其余平台追加安装包；更新清单不上传，由开发者自行处理。
+      # 其余平台追加安装包。清单（latest*.yml）要等全部平台构建完、macOS 两架构合并后
+      # 才能定稿，统一由 publish-update-metadata（github 目标）或 desktop-promote（r2 目标）处理。
       - name: Add installers to GitHub Release
         if: needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.channel != 'test'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ needs.prepare.outputs.release-version }}
         run: node scripts/release/publish-github-installers.mjs --platform desktop --directory apps/desktop/release
+
+  # 开源版的更新源是 GitHub Release 资产，客户端直接请求 v<版本> 下的 latest*.yml；清单缺失
+  # 时 electron-updater 报 ERR_UPDATER_CHANNEL_FILE_NOT_FOUND，用户点「检查更新」只会看到失败。
+  # R2 目标由 desktop-promote 从暂存目录提升清单，这条路径没有 R2 目录，所以必须单独汇总上传。
+  publish-update-metadata:
+    name: publish update metadata → GitHub Release
+    needs: [prepare, build]
+    if: needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.release_target == 'github' && needs.prepare.outputs.channel != 'test'
+    # 被调 workflow 声明了这两个 scope；workflow_call 只能降不能升，缺一项就直接报错。
+    permissions:
+      contents: write
+      actions: read
+    uses: ./.github/workflows/desktop-publish-update-metadata.yml
+    with:
+      version: ${{ needs.prepare.outputs.release-version }}
 
   # 官网下载按钮指向 R2 直链，所以产物必须先上 CDN、再改官网版本号：两个 job 的依赖顺序
   # 就是这条约束，漏一步用户点下去就是 404。
@@ -587,7 +603,7 @@ jobs:
     secrets: inherit
 
   # 全部平台构建成功后自动上线更新清单；任一平台失败时跳过，修好后重跑失败的平台会一并重跑本任务。
-  # 以 GitHub Release 为更新源的构建没有 R2 暂存目录，仍需手动处理清单。
+  # 以 GitHub Release 为更新源的构建没有 R2 暂存目录，清单由 publish-update-metadata 直接附到 Release。
   promote:
     name: promote update metadata
     needs: [prepare, build]

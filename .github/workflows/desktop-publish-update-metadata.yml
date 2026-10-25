@@ -1,0 +1,94 @@
+name: desktop-publish-update-metadata
+
+# 开源版客户端的更新源就是 GitHub Release 资产：electron-updater 的 GitHubProvider 会请求
+# releases/download/v<版本>/latest-mac.yml（Windows 是 latest.yml，Linux 是
+# latest-linux.yml），拿不到就以 ERR_UPDATER_CHANNEL_FILE_NOT_FOUND 失败，用户点「检查更新」
+# 只会看到失败，永远等不到新版本。
+#
+# R2 目标那条链由 desktop-promote 把清单从 pending 提升到 live；以 GitHub Release 为更新源
+# 时没有 R2 暂存目录，清单只存在于各平台的构建产物里，而且 macOS 两份按架构命名的清单必须
+# 合并成一份。这里做这件事：汇总产物 → 合并 macOS 清单 → 附到同一个 Release → 复核公网 feed。
+#
+# 由 desktop-release 在所有平台构建成功后自动调用；也可以手动 dispatch，用 run_id 补发某一版
+# （例如清单漏传、需要修复历史 Release 时）。
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+      run_id:
+        description: "上传 desktop-* 产物的 run。空表示当前 run。"
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "要补发清单的版本，例如 0.5.79。"
+        type: string
+        required: true
+      run_id:
+        description: "产出 desktop-* 产物的 run id，空表示当前 run。"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: publish ${{ inputs.version }} metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # 附资产要写 Release；跨 run 取产物要读 Actions。
+    permissions:
+      contents: write
+      actions: read
+    concurrency:
+      group: desktop-update-metadata-${{ inputs.version }}
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        uses: ./.github/actions/install-bun-dependencies
+
+      # 四个平台的产物合并到同一个目录：latest*.yml 各自名字不同，不会互相覆盖。
+      - name: Download updater artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: apps/desktop/release
+          # 空值表示取当前 run 的 artifact；只有补发历史版本才需要跨 run 取（走 API）。
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+
+      # arm64 与 x64 两次构建各写一份 latest-mac-<arch>.yml，不合并的话
+      # MacUpdater.filterFilesForArch 会在其中一种架构上找不到 ZIP。
+      - name: Merge macOS per-architecture metadata
+        working-directory: apps/desktop
+        run: node scripts/merge-mac-update-metadata.mjs
+
+      - name: Attach update metadata to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        shell: bash
+        run: gh release upload "v${RELEASE_VERSION#v}" apps/desktop/release/latest*.yml --clobber
+
+      # 客户端读到的是公网地址，本地写成功不代表用户拿得到；三份清单引用的产物也必须可读。
+      - name: Verify update feed
+        working-directory: apps/desktop
+        env:
+          ASTRAVIA_DESKTOP_RELEASE_VERSION: ${{ inputs.version }}
+          ASTRAVIA_UPDATE_PROVIDER: github
+          ASTRAVIA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
+          ASTRAVIA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
+        run: node scripts/verify-update-feed.mjs

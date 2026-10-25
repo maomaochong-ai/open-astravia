@@ -41,6 +41,7 @@ describe("Desktop release workflow contracts", () => {
 			"prepare",
 			"quality",
 			"build",
+			"publish-update-metadata",
 			"publish-r2",
 			"publish-website",
 			"deploy-website",
@@ -48,7 +49,8 @@ describe("Desktop release workflow contracts", () => {
 		]);
 		expect(workflow).not.toContain("release-build-");
 		expect(workflow).not.toContain("test:e2e:packaged");
-		expect(workflow).not.toContain("download-artifact");
+		// 单个平台构建不许等别的平台的产物；清单汇总在 publish-update-metadata 里做。
+		expect(JSON.stringify(jobs.build)).not.toContain("download-artifact");
 		expect(workflow).not.toContain("merge:updates:mac");
 		const buildSteps = jobs.build.steps;
 		const index = (name) => buildSteps.findIndex((step) => step.name === name);
@@ -68,7 +70,8 @@ describe("Desktop release workflow contracts", () => {
 		expect(jobs.build.permissions).toEqual({ contents: "write" });
 	});
 
-	// 构建任务只上传安装包与暂存清单；清单上线集中在 desktop-promote。
+	// 构建任务只上传安装包与暂存清单；清单上线集中在 desktop-promote（r2 目标）
+	// 与 desktop-publish-update-metadata（github 目标）。
 	it("never publishes update metadata from a platform build", () => {
 		const buildSteps = jobs.build.steps;
 		const r2 = buildSteps.find((step) => step.name === "Publish installers to R2 and stage update metadata");
@@ -79,7 +82,55 @@ describe("Desktop release workflow contracts", () => {
 		expect(github.run).toContain("publish-github-installers.mjs --platform desktop");
 		expect(github.run).not.toContain(".yml");
 		expect(github.run).not.toContain("--draft");
-		expect(workflow).not.toContain("verify-update-feed");
+		expect(JSON.stringify(jobs.build)).not.toContain("verify-update-feed");
+	});
+
+	// 开源版客户端的更新源就是 GitHub Release 资产：客户端直接请求 v<版本> 下的
+	// latest*.yml，缺清单时 electron-updater 报 ERR_UPDATER_CHANNEL_FILE_NOT_FOUND，
+	// 用户点「检查更新」只会看到失败（0.5.78 的 Release 里只有安装包，就是这个现象）。
+	it("attaches merged update metadata to the GitHub Release for the github target", () => {
+		const publish = jobs["publish-update-metadata"];
+		expect(publish.needs).toEqual(["prepare", "build"]);
+		expect(publish.uses).toBe("./.github/workflows/desktop-publish-update-metadata.yml");
+		expect(publish.if).toContain("needs.prepare.outputs.should-publish == 'true'");
+		expect(publish.if).toContain("needs.prepare.outputs.release_target == 'github'");
+		expect(publish.if).toContain("needs.prepare.outputs.channel != 'test'");
+		expect(publish.if).not.toContain("always()");
+		expect(publish.with.version).toBe("$" + "{{ needs.prepare.outputs.release-version }}");
+		// 自动发布直接取当前 run 的产物；run_id 只留给补发历史版本。
+		expect(publish.with.run_id).toBeUndefined();
+		// workflow_call 只能降不能升：被调 workflow 声明的 scope 必须在这里先授出来。
+		expect(publish.permissions).toEqual({ contents: "write", actions: "read" });
+
+		const metadata = parse(
+			readFileSync(join(import.meta.dirname, "../../.github/workflows/desktop-publish-update-metadata.yml"), "utf8"),
+		);
+		expect(Object.keys(metadata.on).sort()).toEqual(["workflow_call", "workflow_dispatch"]);
+		for (const trigger of ["workflow_call", "workflow_dispatch"]) {
+			expect(metadata.on[trigger].inputs.version.required).toBe(true);
+			// run_id 默认空 → 从当前 run 取产物，不走跨 run 的 API 路径。
+			expect(metadata.on[trigger].inputs.run_id.default).toBe("");
+		}
+
+		const steps = metadata.jobs.publish.steps;
+		const position = (name) => steps.findIndex((step) => step.name === name);
+		const download = position("Download updater artifacts");
+		const merge = position("Merge macOS per-architecture metadata");
+		const attach = position("Attach update metadata to GitHub Release");
+		const verify = position("Verify update feed");
+		for (const index of [download, merge, attach, verify]) expect(index).toBeGreaterThanOrEqual(0);
+		expect(steps[download].with.pattern).toBe("desktop-*");
+		expect(steps[download].with["merge-multiple"]).toBe(true);
+		// arm64 与 x64 两份按架构命名的清单不合并，MacUpdater 会在其中一种架构上找不到 ZIP。
+		expect(steps[merge].run).toContain("node scripts/merge-mac-update-metadata.mjs");
+		expect(download).toBeLessThan(merge);
+		expect(merge).toBeLessThan(attach);
+		expect(steps[attach].run).toContain("gh release upload");
+		expect(steps[attach].run).toContain("latest*.yml");
+		// 写进 Release 不等于用户拿得到：公网复核必须排在最后。
+		expect(attach).toBeLessThan(verify);
+		expect(steps[verify].run).toBe("node scripts/verify-update-feed.mjs");
+		expect(steps[verify].env.ASTRAVIA_UPDATE_PROVIDER).toBe("github");
 	});
 
 	// 上线清单会让用户开始收到新版本：全部平台成功后自动调用，也保留手动入口，

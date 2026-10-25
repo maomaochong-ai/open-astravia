@@ -5,14 +5,14 @@
 ## 各平台构建完即发布安装包，全部成功后自动上线更新清单
 
 流水线先执行 `prepare` → `quality`，再并行构建 `build <platform>` 与正式渠道的 `android`。
-桌面全部平台成功后执行 `promote`；Android 独立发布，不参与桌面更新清单上线的门禁。每个桌面平台构建成功后在同一个任务里：
+桌面全部平台成功后执行 `promote`（r2 目标）或 `publish-update-metadata`（github 目标）；Android 独立发布，不参与桌面更新清单上线的门禁。每个桌面平台构建成功后在同一个任务里：
 
 1. 校验更新清单与安装包（`verify-update-artifacts`，macOS 含签名与公证）；Windows 的校验会真实安装一遍，发版跳过。
 2. 上传 Actions 制品 `desktop-<platform>`（安装包、blockmap 与 `latest*.yml`，保留 30 天）。
 3. R2 目标：安装包与 blockmap 上传到 `<prefix>/`（如 `desktop/stable/`），更新清单只上传到
    `<prefix>/pending/<版本>/`。安装包按版本命名、不会被已安装的客户端读到，所以可以先传。
 4. 非 test 渠道：第一个完成的平台创建 GitHub Release（正文取发布说明），其余平台追加安装包与 blockmap；
-   不上传 `latest*.yml`。
+   不上传 `latest*.yml`——清单要等全部平台构建完、两个 macOS 架构合并后才能定稿。
 
 因此不再等四个平台全部完成才开始发布，Release 页面会随各平台完成逐步补齐，刚创建时只有先完成的平台的安装包。
 
@@ -21,7 +21,7 @@ R2 目标在**全部平台构建成功后**由 `promote` 任务自动调用 desk
 - 任一平台失败时 `promote` 跳过，线上清单保持旧版本；修好后在原运行里 **Re-run failed jobs**，
   失败的平台和 `promote` 会一起重跑。也可以先手动运行 desktop-promote，只上线已经成功的平台。
 - 手动发版（`workflow_dispatch`）可取消勾选 `auto_promote`，构建完只暂存清单，之后再手动上线。
-- 以 GitHub Release 为更新源的构建（开源版）没有 R2 暂存目录，不会自动上线，需要按下文手动处理。
+- 以 GitHub Release 为更新源的构建（开源版）不走 `promote`：清单由 `publish-update-metadata` 直接从各平台制品汇总、合并 macOS 后附到同一个 Release，详见下文。
 
 ### 上线更新清单：desktop-promote
 
@@ -46,8 +46,7 @@ R2 目标在**全部平台构建成功后**由 `promote` 任务自动调用 desk
 `ASTRAVIA_R2_SECRET_ACCESS_KEY`、`ASTRAVIA_R2_BUCKET`、`ASTRAVIA_R2_PREFIX`、`ASTRAVIA_UPDATE_URL`，再运行
 `bun run --cwd apps/desktop promote:updates:r2 -- --version <版本> [--platforms mac] [--dry-run]`。
 
-以 GitHub Release 为更新源的构建（开源版）没有 R2 暂存目录，需从 Actions 制品取回清单、
-用 `merge:updates:mac` 合并后手动上传到 Release。
+以 GitHub Release 为更新源的构建（开源版）由 `publish-update-metadata` 自动发布清单：它在全部平台构建成功后下载 `desktop-*` 制品，用 `merge-mac-update-metadata.mjs` 合并双架构，`gh release upload --clobber` 附到同一个 Release，再从公网地址复核三份清单与它们引用的安装包。漏传时手动运行该 workflow，填 `version` 与产出制品的 `run_id` 即可补发（制品保留 30 天）。
 
 ## 同期 Android APK
 

@@ -376,11 +376,15 @@ tag v<version>
   -> 清理上一轮的 release/（复用工作目录的 runner 才会有残留）
   -> dist:mac:<arch>
   -> latest-mac.yml 改名为 latest-mac-<arch>.yml
-  -> 上传 artifact
+  -> 上传 artifact（安装包与 latest-mac-<arch>.yml）
 （arm64 与 x64 是两个独立 job，各自在匹配架构的托管 runner 上并行）
-  -> 四个平台 job 全绿后 publish-r2
-  -> merge:updates:mac 合并元数据
-  -> 发布到 desktop/stable
+  -> 四个平台 job 全绿后发布更新清单：
+       - release_target=github：publish-update-metadata 汇总各平台 artifact
+         -> node scripts/merge-mac-update-metadata.mjs 合并双架构
+         -> gh release upload 附到同一个 GitHub Release
+         -> verify-update-feed.mjs 从公网复核清单与产物
+       - release_target=r2：publish-update-artifacts-r2 --stage-metadata 暂存，
+         desktop-promote 提升到 live 后同样附到 Release
 ```
 
 两个 macOS job 并行，墙钟时间约等于单架构。签名+公证会让每个 job 比未签名构建多出 10～30 分钟（产物里内置 Node/Python 运行时与多个 sidecar 二进制，逐个签名再上传公证），build job 的 `timeout-minutes` 因此设为 120。

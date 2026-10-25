@@ -171,20 +171,31 @@ APPLE_TEAM_ID
 
 GitHub target 的手动发布会以当前 workflow SHA 创建对应版本 Release；R2 target 不要求先有 tag，但仍应保留 commit、workflow run 和版本号之间的发布记录。
 
-### GitHub target 的发布链路：R2 → 官网 → 部署
+### GitHub target 的发布链路：清单 → R2 → 官网 → 部署
 
-`release_target=github` 的正式发布（tag 或 `channel=stable`）在三个桌面平台构建完成后自己把剩下三步跑完，不需要再手动 dispatch：
+`release_target=github` 的正式发布（tag 或 `channel=stable`）在三个桌面平台构建完成后自己把剩下几步跑完，不需要再手动 dispatch：
 
-1. `publish-r2`（`needs: [prepare, build]`）调用 [upload-release-to-r2.yml](../../.github/workflows/upload-release-to-r2.yml)，把 GitHub Release 上的安装包传到 `app/v<version>`。它只依赖桌面的 `build`，手机端产物不在这条链上（见下文「手机端发布」）。
-2. `publish-website`（`needs: [prepare, publish-r2]`）在 `dev` 上跑 [bump-website-version.mjs](../../scripts/release/bump-website-version.mjs)，把官网 5 个文件的版本号对齐到新版本，推 `release/website-v<version>` 分支并向 `dev` 开 PR。版本号已经是新版本时不提交，直接部署 `dev`。
-3. `deploy-website`（`needs: [prepare, publish-website]`）调用 [deploy-website.yml](../../.github/workflows/deploy-website.yml)，`ref` 指向上一步的分支，站点立刻换成用户点得到的版本。
+1. `publish-update-metadata`（`needs: [prepare, build]`，与 `publish-r2` 并行）调用 [desktop-publish-update-metadata.yml](../../.github/workflows/desktop-publish-update-metadata.yml)：把各平台构建产物里的 `latest.yml` / `latest-linux.yml` / `latest-mac-<arch>.yml` 汇总，macOS 两个架构合并成一份 `latest-mac.yml`，再附到同一个 GitHub Release，最后从公网地址复核清单与它引用的产物。开源版客户端的更新源就是这几份资产，缺任何一份，`electron-updater` 都会以 `ERR_UPDATER_CHANNEL_FILE_NOT_FOUND` 失败——用户看到的只有「检查更新失败」，而这不会随重试自行好转。
+2. `publish-r2`（`needs: [prepare, build]`）调用 [upload-release-to-r2.yml](../../.github/workflows/upload-release-to-r2.yml)，把 GitHub Release 上的安装包传到 `app/v<version>`。它只依赖桌面的 `build`，手机端产物不在这条链上（见下文「手机端发布」）。
+3. `publish-website`（`needs: [prepare, publish-r2]`）在 `dev` 上跑 [bump-website-version.mjs](../../scripts/release/bump-website-version.mjs)，把官网 5 个文件的版本号对齐到新版本，推 `release/website-v<version>` 分支并向 `dev` 开 PR。版本号已经是新版本时不提交，直接部署 `dev`。
+4. `deploy-website`（`needs: [prepare, publish-website]`）调用 [deploy-website.yml](../../.github/workflows/deploy-website.yml)，`ref` 指向上一步的分支，站点立刻换成用户点得到的版本。
 
 两个必须记住的约束：
 
 - **顺序不能换**。官网下载按钮指向 `https://dl.astravia.dev/app/v<version>/`，先改版本号再传产物就会出现 404 窗口。
 - **PR 需要人工合并**。`dev` 和 `main` 都要求 6 项 required check，而 workflow 用 `GITHUB_TOKEN` 推的分支不会再触发 `pull_request` 事件，check 永远不上报。可以由人看过 diff 后 bypass 合并，或关掉再重开 PR 让 check 重跑。站点不依赖这次合并，已经在第 3 步上线了。
 
-`release_target=r2`（商业版）和 `channel=test` 不走这三步：前者的产物不进 GitHub 下载目录，后者不该动官网。
+`release_target=r2`（商业版）和 `channel=test` 不走这些步骤：前者的产物不进 GitHub 下载目录（清单由 `desktop-promote` 从 R2 暂存目录提升后另行附到 Release），后者不该动官网。
+
+### 清单漏传时补发
+
+安装包已经在 Release 上、但 `latest*.yml` 没传（0.5.78 就是这样：Release 里只有安装包和 blockmap，没有任何 `.yml`，客户端一直报找不到清单），可以只补清单，不必重发整个版本：
+
+1. 找到产出 `desktop-*` 产物的那次 `desktop-release` run，记下它的 run id。
+2. 手动运行 `desktop-publish-update-metadata`，填 `version`（例如 `0.5.78`）和该 `run_id`。
+3. 等它跑完：它会合并 macOS 清单、用 `gh release upload --clobber` 覆盖到那个 Release，并访问公网地址复核。
+
+产物只保留 30 天；过期后给旧版本补清单要么重新构建同一版本，要么直接发一个新版本——后者更省事，因为客户端只看最高版本。
 
 ### 手机端发布：独立流水线
 
@@ -278,6 +289,10 @@ R2 的 `latest*.yml` 不能先于安装包公开。版本化安装包和旧版 b
 
 这是预期隔离行为。test 包必须使用 test URL，stable 包只读取 stable URL。检查 job summary、`ASTRAVIA_UPDATE_URL_TEST`、`ASTRAVIA_R2_PREFIX_TEST` 和 CDN path 是否一致。
 
+### 客户端一直提示「检查更新失败」
+
+先看那一版 Release 的资产里有没有 `latest.yml`（Windows）、`latest-mac.yml`（macOS）、`latest-linux.yml`（Linux）。`release_target=github` 的发布没有清单时，`electron-updater` 取不到 channel file，就只能报 `ERR_UPDATER_CHANNEL_FILE_NOT_FOUND`，客户端重试多少次都一样，也不会随重试自行好转。同时确认 `latest-mac.yml` 是合并后的单份文件，而不是按架构分开的两份——后者在其中一个架构上会报 `ERR_UPDATER_ZIP_FILE_NOT_FOUND`。补发步骤见上文「清单漏传时补发」。
+
 ### feed 有 metadata 但客户端下载失败
 
 先检查 metadata 引用的每一个安装包和 blockmap 是否可公开读取，再检查 SHA-512、文件大小、缓存头和 URL path。不要只检查 `latest.yml` 的 HTTP 200。
@@ -292,7 +307,7 @@ R2 的 `latest*.yml` 不能先于安装包公开。版本化安装包和旧版 b
 
 ### GitHub Release 已经公开后重复运行
 
-workflow 不允许用 `--clobber` 修改已公开 Release。只有未公开的 draft 可以恢复；已公开版本应修复配置后发布新的版本号。
+workflow 不允许用 `--clobber` 修改已公开 Release 的安装包。只有未公开的 draft 可以恢复；已公开版本应修复配置后发布新的版本号。更新清单是派生内容，重跑 `desktop-promote` / `desktop-publish-update-metadata` 覆盖它不算修改已发布产物。
 
 ## 修改发布流程时的维护清单
 
