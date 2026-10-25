@@ -25,7 +25,12 @@ import { InlineTokenChip } from "./InlineTokenChip";
 import { WebsiteIcon } from "./WebsiteIcon";
 import { useRenderSnapshot } from "./use-render-snapshot";
 import { chatUrlTransform, classifyMarkdownLink, normalizeLocalFileLinksInMarkdown } from "./markdown-link";
-import { shouldRevealStreamingTail, useStreamingDisplayText, rehypeStreamingChunks } from "./streaming";
+import {
+	resolveStreamRenderInterval,
+	shouldRevealStreamingTail,
+	useStreamingDisplayText,
+	rehypeStreamingChunks,
+} from "./streaming";
 import { rehypeKeepPairedPunctuation } from "./em-dash";
 import {
 	INLINE_TOKEN_TAG,
@@ -178,7 +183,8 @@ export const MarkdownContent = memo(function MarkdownContent({
 	// Keep small replies responsive; bound full parsing of long tails without splitting
 	// paragraphs/lists/reference definitions into semantically different documents.
 	const tailLength = (candidateSplit?.tail ?? displayText).length;
-	const renderInterval = tailLength >= 50000 ? 400 : tailLength >= 12000 ? 200 : 0;
+	// 尾块长度会在新空行处归零，单靠它会让节流间隔反复落回 0，所以并入整体长度做单调兜底。
+	const renderInterval = resolveStreamRenderInterval(displayText.length, tailLength);
 	const previousText = useRef(displayText);
 	const replaced = !displayText.startsWith(previousText.current);
 	previousText.current = displayText;
