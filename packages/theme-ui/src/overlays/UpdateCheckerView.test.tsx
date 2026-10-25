@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { UpdateCheckerDetail, type UpdateCheckerViewLabels } from "./UpdateCheckerView";
+// 从 barrel 取归一化函数：desktop 侧读的是同一入口，这条引用保证导出没被删改。
+import { normalizeReleaseNote } from "./index";
 
 const labels: UpdateCheckerViewLabels = {
 	check: "Check for updates",
@@ -59,5 +61,9 @@ describe("UpdateCheckerDetail", () => {
 
 		expect(html).toContain("max-height:240px");
 		expect(html).toContain("overflow-hidden");
+	});
+
+	it("exports the release-note normaliser through the package barrel", () => {
+		expect(normalizeReleaseNote(FEED_HTML)).toBe(notesMarkdown);
 	});
 });

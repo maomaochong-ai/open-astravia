@@ -124,6 +124,33 @@ const EXPLICIT_SOURCE_TESTS = new Map([
 		"packages/theme-ui/src/chat/QueueCardView.tsx",
 		desktopTests("src/renderer/domains/conversation/components/command-panel/CommandPanelView.test.tsx"),
 	],
+	// 更新说明的两个视图与 barrel 导出各自有 SSR 契约测试；不映射的话，
+	// 它们在 theme-ui 里的「相关测试」会被上方那批 direct 测试排空，选择直接落空。
+	[
+		"packages/theme-ui/src/overlays/release-note.ts",
+		{ workspaceKey: "theme-ui", tests: ["src/overlays/release-note.test.ts"] },
+	],
+	[
+		"packages/theme-ui/src/overlays/UpdateCheckerView.tsx",
+		{ workspaceKey: "theme-ui", tests: ["src/overlays/UpdateCheckerView.test.tsx"] },
+	],
+	[
+		"packages/theme-ui/src/overlays/UpdateRestartDialogView.tsx",
+		{ workspaceKey: "theme-ui", tests: ["src/overlays/UpdateRestartDialogView.test.tsx"] },
+	],
+	[
+		"packages/theme-ui/src/overlays/index.ts",
+		{ workspaceKey: "theme-ui", tests: ["src/overlays/UpdateCheckerView.test.tsx"] },
+	],
+	// Markdown 组件只被桌面侧的渲染预算测试装载，theme-ui 内没有能选到的消费方测试。
+	[
+		"packages/theme-ui/src/markdown/MarkdownContent.tsx",
+		desktopTests("src/renderer/domains/conversation/components/blocks/MarkdownRenderBudget.test.tsx"),
+	],
+	[
+		"packages/theme-ui/src/markdown/streaming.ts",
+		{ workspaceKey: "theme-ui", tests: ["src/markdown/streaming.test.ts"] },
+	],
 ]);
 
 function workspaceForFile(file) {
