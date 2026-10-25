@@ -31,29 +31,32 @@ website/
 │   ├── fonts/
 │   ├── banner.png
 │   ├── favicon.png
-│   ├── screenshot.png       # 深色首屏产品截图
-│   ├── screenshot-light.png # 浅色首屏产品截图
+│   ├── screenshot.webp       # 深色首屏产品截图（2560×1602）
+│   ├── screenshot-light.webp # 浅色首屏产品截图（2560×1602）
 │   └── robots.txt
 └── src/
     ├── main.ts         # 交互（导航滚动、移动菜单、滚动显现、活动锚点、年份）
-    ├── story.ts        # 「产品故事」逐步滚动联动（含步骤 04-05 切换真实截图）
+    ├── story.ts        # 「产品故事」逐步滚动联动（右侧窗格为手写 HTML 模拟，不引图片）
     └── style.css       # 设计系统
 ```
 
 ## 素材
 
-产品真实截图放在 `public/app/`，全部为 1680×1050 左右的 WebP，单张 28–72KB：
+首屏一对产品截图是 `docs/assets` 的 WebP 副本，靠 `data-theme` 切换显示：深色 `public/screenshot.webp`、浅色 `public/screenshot-light.webp`，均为 2560×1602。
+两张必须取自同一代界面（当前深色取自 `docs/assets/ai-chat-baseline-left.png`，浅色取自 `docs/assets/screenshot-main-light.png`），否则切主题时侧栏入口和按钮会跳成两代 UI。
 
-| 文件 | 内容 | 用在哪 |
+`public/app/` 放 1680 宽的 WebP 衍生图，供后续区块直接引用（当前首页只用了首屏那一对）：
+
+| 文件 | 内容 | 源图 |
 | --- | --- | --- |
-| `app-dark.webp` | 会话工作区整体界面（深色） | 「产品故事」步骤 04-05 |
-| `app-light.webp` | 会话工作区整体界面（浅色） | 备用（浅色主题可选） |
-| `capabilities.webp` | 能力面板 | 「能力」区块截图卡 |
-| `ui-design-canvas.webp` | UI 设计画布 | 「能力」区块截图卡 |
+| `app-dark.webp` | 会话工作区整体界面（深色） | `docs/assets/ai-chat-baseline-left.png` |
+| `app-light.webp` | 会话工作区整体界面（浅色） | `docs/assets/screenshot-main-light.png` |
+| `capabilities.webp` | 能力面板 | `docs/assets/capabilities.png` |
+| `ui-design-canvas.webp` | UI 设计画布 | `docs/assets/ui-design-canvas.png` |
 
 注意事项：
 
-- **深色截图放进浅色卡片会拼成「两截」。** `capabilities` 与 `ui-design-canvas` 都是深色界面，因此 `.shot` 卡片固定用 `--shot-bg: #101019` 深色底（两种主题下都成立），不要改回 `var(--elev)`
+- **深色截图放进浅色卡片会拼成「两截」。** `capabilities` 与 `ui-design-canvas` 都是深色界面，若把它们放进浅色卡片，卡片固定用 `--shot-bg: #101019` 深色底（两种主题下都成立），不要改回 `var(--elev)`
 - **「产品故事」窗格用 `object-fit: contain`。** 窗格比例比截图窄，改成 `cover` 会横向裁掉 26%–41% 的界面内容；`contain` 预留的上下缝隙由窗格底色 `#131313` 补齐，与截图自身背景 `#111` 几乎同色，肉眼不可见
 - 新增截图沿用 1680×1050，并同时给出 `width` / `height` 属性，避免懒加载导致布局跳动
 - `public/plugins/` 的 11 个图标对应仓库 `packages/plugins/presets/` 的预装插件；若那边增删插件，这里需同步
