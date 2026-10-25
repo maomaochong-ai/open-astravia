@@ -140,9 +140,7 @@ describe("Desktop release workflow contracts", () => {
 		expect(website.needs).toEqual(["prepare", "publish-r2"]);
 		expect(website.permissions).toEqual({ contents: "write", "pull-requests": "write" });
 		expect(website.outputs.ref).toBe("$" + "{{ steps.publish.outputs.ref }}");
-		const bump = website.steps.find(
-			(step) => step.name === "Bump website version and open the follow-up pull request",
-		);
+		const bump = website.steps.find((step) => step.name?.startsWith("Bump website version"));
 		expect(bump.run).toContain("node scripts/release/bump-website-version.mjs --version");
 		expect(bump.run).toContain("git push --force origin");
 		expect(bump.run).toContain("refs/heads/");
@@ -150,6 +148,14 @@ describe("Desktop release workflow contracts", () => {
 		// 无人值守时不做自动合并：main 的版本号跟进必须由人看过 diff 再结合。
 		expect(bump.run).not.toContain("--auto");
 
+		// 上线内容只取 main：版本分支从 dev 派生，dev 落后时会把旧首页发到生产
+		// （0.5.77 就因此丢了知识库/定价/FAQ）。部署 ref 必须从 origin/main 派生。
+		expect(bump.env.DEPLOY_BRANCH).toBe("release/website-deploy-v$" + "{{ needs.prepare.outputs.release-version }}");
+		const deployRef = "$" + "{DEPLOY_BRANCH}";
+		const githubOutput = "$" + "{GITHUB_OUTPUT}";
+		expect(bump.run).toContain(`git switch -C "${deployRef}" origin/main`);
+		expect(bump.run).toContain(`git push --force origin "HEAD:refs/heads/${deployRef}"`);
+		expect(bump.run).toContain(`echo "ref=${deployRef}" >> "${githubOutput}"`);
 		const deploy = jobs["deploy-website"];
 		expect(deploy.needs).toEqual(["prepare", "publish-website"]);
 		expect(deploy.uses).toBe("./.github/workflows/deploy-website.yml");

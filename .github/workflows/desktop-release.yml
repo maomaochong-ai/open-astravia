@@ -480,9 +480,9 @@ jobs:
     secrets: inherit
 
   # 把官网 5 个文件的版本号推到发布分支并开 PR。分支由 CI 拥有，和 tag 一一对应，
-  # 重跑就覆盖；PR 只是把版本号送回 dev，站点已经在下一步按这个分支部署。
+  # 重跑就覆盖；升版 PR 只是把版本号送回 dev，上线用的分支另从 main 派生。
   publish-website:
-    name: bump website download version
+    name: prepare website release branches
     needs: [prepare, publish-r2]
     if: needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.release_target == 'github' && needs.prepare.outputs.channel != 'test'
     runs-on: ubuntu-latest
@@ -499,36 +499,52 @@ jobs:
           ref: dev
           fetch-depth: 0
 
-      - name: Bump website version and open the follow-up pull request
+      - name: Bump website version, open the follow-up pull request, stage the deploy branch
         id: publish
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.prepare.outputs.release-version }}
           BRANCH: release/website-v${{ needs.prepare.outputs.release-version }}
+          DEPLOY_BRANCH: release/website-deploy-v${{ needs.prepare.outputs.release-version }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           node scripts/release/bump-website-version.mjs --version "${VERSION}"
 
           if git diff --quiet -- website; then
-            echo "官网下载版本已是 ${VERSION}，直接部署 dev。"
-            echo "ref=dev" >> "${GITHUB_OUTPUT}"
-            exit 0
+            echo "官网下载版本已是 ${VERSION}，dev 上不需要升版提交。"
+            website_changed=false
+          else
+            website_changed=true
+            git switch -C "${BRANCH}"
+            git add -- website
+            git commit -m "chore(website): 下载入口跟进 ${VERSION}"
+            # 分支由 CI 独占（release/website-v<版本>），重跑覆盖是预期行为。
+            git push --force origin "HEAD:refs/heads/${BRANCH}"
           fi
 
-          git switch -c "${BRANCH}"
+          # 上线的页面只取 main：版本分支从 dev 派生，dev 落后于 main 时会拿旧首页覆盖生产
+          # （0.5.77 就这样丢过知识库/定价/FAQ）。部署分支 = main + 版本号，不涉及 dev，
+          # 合回 main 依旧走人工的 dev→main 常规流程。
+          git switch -C "${DEPLOY_BRANCH}" origin/main
+          node scripts/release/bump-website-version.mjs --version "${VERSION}"
           git add -- website
-          git commit -m "chore(website): 下载入口跟进 ${VERSION}"
-          # 分支由 CI 独占（release/website-v<版本>），重跑覆盖是预期行为。
-          git push --force origin "HEAD:refs/heads/${BRANCH}"
-          echo "ref=${BRANCH}" >> "${GITHUB_OUTPUT}"
-
-          cat > /tmp/website-pr.md <<EOF
+          if git diff --cached --quiet; then
+            echo "main 的官网已是 ${VERSION}，直接按 main 部署。"
+          else
+            git commit -m "chore(website): 生产部署页面按 main 对齐到 ${VERSION}"
+          fi
+          git push --force origin "HEAD:refs/heads/${DEPLOY_BRANCH}"
+          echo "ref=${DEPLOY_BRANCH}" >> "${GITHUB_OUTPUT}"
+          if [ "${website_changed:-false}" = "true" ]; then
+            cat > /tmp/website-pr.md <<EOF
           ## Why
 
           官网下载按钮指向 \`https://dl.astravia.dev/app/v${VERSION}/\`，产物已随本次发布上传到 R2。
-          这个 PR 只把官网 5 个文件的版本号从上一版对齐到 ${VERSION}，由 \`desktop-release\` 自动生成。
+          这个 PR 只把官网 5 个文件的版本号从上一版对齐到 ${VERSION}，由 `desktop-release` 自动生成。
+          （线上部署取自 main，与本分支无关，所以 dev 落后也不会再把官网发成旧版。）
 
           ## What users will see
 
@@ -541,19 +557,21 @@ jobs:
           ## Validation
 
           由 desktop-release 流水线运行：\`node scripts/release/bump-website-version.mjs --version ${VERSION}\`，
-          站点已按本分支部署并核对线上版本号。
+          站点按 main 的页面 + 该版本号部署，并已核对线上版本号。
           EOF
 
-          # PR 只是把版本号送回 dev 的记账；建 PR 失败不能挡住站点上线，所以降成警告。
-          pr_title="chore(website): 下载入口跟进 ${VERSION}"
-          if gh pr view "${BRANCH}" --json number > /dev/null 2>&1; then
-            gh pr edit "${BRANCH}" --title "${pr_title}" --body-file /tmp/website-pr.md
-          else
-            gh pr create --base dev --head "${BRANCH}" --title "${pr_title}" --body-file /tmp/website-pr.md \
-              || echo "::warning::跟进 PR 创建失败，站点仍会按 ${BRANCH} 部署，请手动开 PR"
+            # PR 只是把版本号送回 dev 的记账；建 PR 失败不能挡住站点上线，所以降成警告。
+            pr_title="chore(website): 下载入口跟进 ${VERSION}"
+            if gh pr view "${BRANCH}" --json number > /dev/null 2>&1; then
+              gh pr edit "${BRANCH}" --title "${pr_title}" --body-file /tmp/website-pr.md
+            else
+              gh pr create --base dev --head "${BRANCH}" --title "${pr_title}" --body-file /tmp/website-pr.md \
+                || echo "::warning::跟进 PR 创建失败，站点仍会按 ${BRANCH} 部署，请手动开 PR"
+            fi
           fi
 
-  # 站点先上线：按发布分支构建，用户立刻能下到新版本；main 的版本号跟进留给人工合并。
+  # 站点先上线：部署分支是 main + 版本号，用户立刻能下到新版本，且不会比 main 更旧；
+  # 版本号合回 main 依旧走人工的 dev→main 常规流程。
   deploy-website:
     name: deploy website → Cloudflare Pages
     needs: [prepare, publish-website]
