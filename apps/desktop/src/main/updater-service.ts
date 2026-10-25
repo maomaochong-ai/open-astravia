@@ -15,6 +15,10 @@ const DEFAULT_STAGING_TIMEOUT_MS = 600_000;
 const DEFAULT_PERIODIC_CHECK_INTERVAL_MS = 2 * 60 * 60 * 1_000;
 // 机会性补查的触发源都可能连发（合盖再开、反复开合菜单），与上一次检查间隔太近就跳过。
 const DEFAULT_BACKGROUND_CHECK_MIN_GAP_MS = 30 * 60 * 1_000;
+// 版本刚发布时更新元数据（latest-mac.yml / latest.yml）可能还没传完（GitHub Release 上就是 404），
+// 网络也可能瞬时断开。这类失败重试就好，但周期重查要等 2 小时——用户刚开应用看到一次
+// 失败提示，一下午就再也收不到新版本。失败后先按短间隔重试，用尽才把错误留在界面上。
+const DEFAULT_CHECK_RETRY_DELAYS_MS = [60_000, 300_000, 900_000];
 
 export type UpdaterPhase = "idle" | "checking" | "available" | "downloading" | "ready" | "installing" | "error";
 
@@ -47,6 +51,8 @@ export interface UpdaterServiceOptions {
 	autoDownloadRetryDelaysMs?: readonly number[];
 	downloadStallTimeoutMs?: number;
 	stagingTimeoutMs?: number;
+	/** 检查失败后的短间隔重试序列；传空数组表示不重试。 */
+	checkRetryDelaysMs?: readonly number[];
 	/** 周期性重查间隔；<= 0 表示关闭周期性重查。 */
 	periodicCheckIntervalMs?: number;
 	/** 机会性补查（唤醒、打开设置菜单）与上一次检查之间要求的最小间隔。 */
@@ -67,6 +73,8 @@ export class UpdaterService {
 	private lastCheckStartedAt = 0;
 	private checkPromise: Promise<UpdaterState> | null = null;
 	private periodicCheckTimer: NodeJS.Timeout | null = null;
+	private checkRetryTimer: NodeJS.Timeout | null = null;
+	private checkRetryAttempts = 0;
 	private disposeSystemEvents: (() => void) | null = null;
 	private readonly autoDownloadDelayMs: number;
 	private readonly autoDownloadRetryDelaysMs: readonly number[];
@@ -74,6 +82,7 @@ export class UpdaterService {
 	private readonly stagingTimeoutMs: number;
 	private readonly periodicCheckIntervalMs: number;
 	private readonly backgroundCheckMinGapMs: number;
+	private readonly checkRetryDelaysMs: readonly number[];
 	private readonly systemEvents: UpdaterSystemEvents | undefined;
 
 	constructor(
@@ -94,6 +103,7 @@ export class UpdaterService {
 		this.periodicCheckIntervalMs = options.periodicCheckIntervalMs ?? DEFAULT_PERIODIC_CHECK_INTERVAL_MS;
 		this.backgroundCheckMinGapMs = options.backgroundCheckMinGapMs ?? DEFAULT_BACKGROUND_CHECK_MIN_GAP_MS;
 		this.systemEvents = options.systemEvents;
+		this.checkRetryDelaysMs = options.checkRetryDelaysMs ?? DEFAULT_CHECK_RETRY_DELAYS_MS;
 	}
 
 	setMainWindow(win: BrowserWindow): void {
@@ -119,6 +129,7 @@ export class UpdaterService {
 	/** 停止周期性重查并退订系统事件；进程退出或测试收尾时调用。 */
 	dispose(): void {
 		this.clearPeriodicCheckTimer();
+		this.clearCheckRetryTimer();
 		this.disposeSystemEvents?.();
 		this.disposeSystemEvents = null;
 	}
@@ -144,6 +155,9 @@ export class UpdaterService {
 		this.setState({ phase: "checking", error: undefined });
 		try {
 			const result = await this.engine.checkForUpdates();
+			// 能拿到结果就说明元数据与网络都正常，重试预算归零，
+			// 否则下一轮发布初期的小抖动会用光之前攒下的退避次数。
+			this.resetCheckRetry();
 			if (!result) {
 				this.setState({
 					phase: "idle",
@@ -186,6 +200,8 @@ export class UpdaterService {
 				phase: "idle",
 				error: this.translate("updater.errors.checkFailed"),
 			});
+			// 先安排重试再看错误：用户不需要自己点第二次「检查更新」。
+			this.scheduleCheckRetry();
 		}
 		return this.getState();
 	}
@@ -336,6 +352,30 @@ export class UpdaterService {
 	private async runPeriodicCheck(): Promise<void> {
 		await this.checkIfNotBusy();
 		this.schedulePeriodicCheck();
+	}
+
+	private scheduleCheckRetry(): void {
+		this.clearCheckRetryTimer();
+		const delay = this.checkRetryDelaysMs[this.checkRetryAttempts];
+		if (delay === undefined) return;
+		this.checkRetryAttempts += 1;
+		const timer = setTimeout(() => {
+			this.checkRetryTimer = null;
+			void this.check();
+		}, delay);
+		timer.unref?.();
+		this.checkRetryTimer = timer;
+	}
+
+	private clearCheckRetryTimer(): void {
+		if (!this.checkRetryTimer) return;
+		clearTimeout(this.checkRetryTimer);
+		this.checkRetryTimer = null;
+	}
+
+	private resetCheckRetry(): void {
+		this.clearCheckRetryTimer();
+		this.checkRetryAttempts = 0;
 	}
 
 	private clearPeriodicCheckTimer(): void {
