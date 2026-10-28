@@ -1,6 +1,6 @@
 import { resolveDownloadOs, resolveDownloadTarget, type DownloadTarget } from "./download-target";
 
-export const DOWNLOAD_VERSION = "0.5.79";
+export const DOWNLOAD_VERSION = "0.5.82";
 
 type UserAgentData = {
 	getHighEntropyValues?: (hints: readonly string[]) => Promise<{ architecture?: string }>;
