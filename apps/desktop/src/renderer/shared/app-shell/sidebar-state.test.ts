@@ -3,7 +3,7 @@
  */
 
 import { SIDEBAR_NARROW_BREAKPOINT } from "@shared/hooks/useNarrowScreen";
-import { sidebarCollapsedAtom } from "@shared/store/atoms";
+import { SIDEBAR_WIDTH_DEFAULT, sidebarCollapsedAtom, sidebarWidthAtom } from "@shared/store/atoms";
 import { getDefaultStore } from "jotai";
 import { afterEach, describe, expect, it } from "vitest";
 import { readSidebarState, subscribeSidebarState } from "./sidebar-state";
@@ -18,6 +18,7 @@ const NARROW = SIDEBAR_NARROW_BREAKPOINT - 100;
 
 afterEach(() => {
 	getDefaultStore().set(sidebarCollapsedAtom, false);
+	getDefaultStore().set(sidebarWidthAtom, SIDEBAR_WIDTH_DEFAULT);
 	setWindowWidth(WIDE);
 });
 
@@ -25,14 +26,41 @@ describe("readSidebarState", () => {
 	it("宽屏展开时侧边栏占着左栏", () => {
 		setWindowWidth(WIDE);
 		getDefaultStore().set(sidebarCollapsedAtom, false);
-		expect(readSidebarState()).toEqual({ collapsed: false, narrow: false, visible: true });
+		expect(readSidebarState()).toEqual({
+			collapsed: false,
+			narrow: false,
+			visible: true,
+			width: SIDEBAR_WIDTH_DEFAULT,
+		});
 	});
 
 	it("窄屏下 collapsed 仍只表示用户意愿，visible 由窗口宽度否决", () => {
 		setWindowWidth(NARROW);
 		getDefaultStore().set(sidebarCollapsedAtom, false);
 		// 侧边栏改走悬浮覆盖：用户没收起，但它已经不占左栏了。
-		expect(readSidebarState()).toEqual({ collapsed: false, narrow: true, visible: false });
+		expect(readSidebarState()).toEqual({ collapsed: false, narrow: true, visible: false, width: 0 });
+	});
+});
+
+describe("sidebar width", () => {
+	it("拖动宽度时通知订阅者，宽度不变时不重复通知", () => {
+		setWindowWidth(WIDE);
+		const seen: number[] = [];
+		const unsubscribe = subscribeSidebarState((state) => seen.push(state.width));
+		getDefaultStore().set(sidebarWidthAtom, 260);
+		getDefaultStore().set(sidebarWidthAtom, 260);
+		getDefaultStore().set(sidebarWidthAtom, 240);
+		unsubscribe();
+		expect(seen).toEqual([260, 240]);
+	});
+
+	it("收起后宽度为 0，展开后恢复为当前宽度", () => {
+		setWindowWidth(WIDE);
+		getDefaultStore().set(sidebarWidthAtom, 250);
+		getDefaultStore().set(sidebarCollapsedAtom, true);
+		expect(readSidebarState()).toMatchObject({ collapsed: true, visible: false, width: 0 });
+		getDefaultStore().set(sidebarCollapsedAtom, false);
+		expect(readSidebarState()).toMatchObject({ collapsed: false, visible: true, width: 250 });
 	});
 });
 

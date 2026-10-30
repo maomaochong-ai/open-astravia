@@ -631,6 +631,11 @@ export interface PluginSidebarState {
 	narrow: boolean;
 	/** 侧边栏此刻是否实际占着左边那一栏。等价于 `!collapsed && !narrow`，多数自适应只需要这一位。 */
 	visible: boolean;
+	/**
+	 * 侧边栏占位时的实际宽度（CSS 像素，随用户拖动变化）；`visible` 为 false 时为 0。
+	 * 用于让插件内部的二级侧栏与宿主侧栏等宽。
+	 */
+	width: number;
 }
 
 export interface PluginUiApi {
