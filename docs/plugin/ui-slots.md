@@ -228,6 +228,19 @@ const sub = ctx.ui.onSidebarStateChanged((next) => redraw(next.visible));
 回调按值去重，拖窗口不会把它打成回调风暴——只有三元组真的变了才通知。无需权限：
 这是纯布局信息，不含任何用户数据。
 
+- `width`：侧边栏占位时的实际宽度（随用户拖动变化），不占位时为 0。插件内部的二级侧栏要与宿主侧栏等宽时读它；
+  宽度变化同样会触发 `onSidebarStateChanged`
+
+需要主动收起或展开侧边栏（例如整页工作区自带导航、进入时把宿主侧栏让出来）时，申请
+`ui.sidebar.control` 权限后调用：
+
+```ts
+ctx.ui.setSidebarCollapsed?.(true);   // 收起；false 为展开
+```
+
+效果与用户点收起 / 展开按钮相同，用户之后仍可自行切换。离开视图时如需恢复，自己记住进入前的
+`getSidebarState().collapsed`。旧宿主没有这个方法，用 `?.` 调用即可降级。
+
 **纯视觉自适应优先用 CSS**：宿主把同一份状态挂在整帧根节点上，插件不必订阅、不必
 重渲染：
 

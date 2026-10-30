@@ -50,6 +50,7 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `ui.file-explorer.decorations` | `ctx.fileExplorer.registerDecorationProvider()` | [file-explorer](./file-explorer.md#文件装饰) |
 | `ui.file-explorer.context-menu` | `ctx.fileExplorer.registerContextMenuAction()` | [file-explorer](./file-explorer.md#右键菜单) |
 | `ui.file-explorer.toolbar` | `ctx.fileExplorer.registerToolbarAction()` | [file-explorer](./file-explorer.md#工具栏动作) |
+| `ui.sidebar.control` | `ctx.ui.setSidebarCollapsed()`（收起 / 展开宿主侧边栏） | [ui-slots](./ui-slots.md#感知侧边栏-usesidebarstate) |
 | `workspace.read` | 文件列表查询、定位、刷新与事件 | [file-explorer](./file-explorer.md#工作区选择与定位) |
 | `agent.session.read` | `ctx.conversation.on()` + 对话 hook | [conversation-and-agent](./conversation-and-agent.md#对话读状态) |
 | `agent.session.write` | `sendPrompt` / `insertText` / `abort` | [conversation-and-agent](./conversation-and-agent.md#对话驾驶) |

@@ -24,7 +24,7 @@ import type {
 	PluginWorkspaceViewHeader,
 } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
-import { readSidebarState, subscribeSidebarState } from "@shared/app-shell/sidebar-state";
+import { readSidebarState, setSidebarCollapsed, subscribeSidebarState } from "@shared/app-shell/sidebar-state";
 import { resolvePluginContributionIcon } from "@shared/lib/plugin-icon";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import {
@@ -1020,6 +1020,14 @@ export function createPluginUiApi({
 		openExternal,
 		getSidebarState: () => readSidebarState(),
 		onSidebarStateChanged,
+		setSidebarCollapsed: (collapsed: boolean) => {
+			if (!hasPluginPermission(plugin, "ui.sidebar.control")) {
+				warnSkippedPluginContribution(plugin, "ui.sidebar.control", "sidebar control");
+				return;
+			}
+			if (typeof collapsed !== "boolean") throw new Error("setSidebarCollapsed() requires a boolean");
+			setSidebarCollapsed(collapsed);
+		},
 		notify,
 	};
 }

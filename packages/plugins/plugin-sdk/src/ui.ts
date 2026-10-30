@@ -631,6 +631,11 @@ export interface PluginSidebarState {
 	narrow: boolean;
 	/** 侧边栏此刻是否实际占着左边那一栏。等价于 `!collapsed && !narrow`，多数自适应只需要这一位。 */
 	visible: boolean;
+	/**
+	 * 侧边栏占位时的实际宽度（CSS 像素，随用户拖动变化）；`visible` 为 false 时为 0。
+	 * 用于让插件内部的二级侧栏与宿主侧栏等宽。
+	 */
+	width: number;
 }
 
 export interface PluginUiApi {
@@ -847,4 +852,10 @@ export interface PluginUiApi {
 	 * 回调按值去重：拖窗口不会把它打成回调风暴，只有三元组真的变了才通知。
 	 */
 	onSidebarStateChanged(listener: (state: PluginSidebarState) => void): Disposable;
+	/**
+	 * 请求收起（`true`）或展开（`false`）宿主左侧侧边栏，效果与用户点收起/展开按钮相同。
+	 * 需要 `ui.sidebar.control` 权限（缺权限 = **warn+noop**）。窄屏下侧边栏本就走悬浮覆盖，
+	 * 这里只改用户意愿位 `collapsed`。
+	 */
+	setSidebarCollapsed(collapsed: boolean): void;
 }

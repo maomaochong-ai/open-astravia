@@ -16,6 +16,7 @@ export const PLUGIN_PERMISSIONS = [
 	"ui.file-explorer.decorations",
 	"ui.file-explorer.context-menu",
 	"ui.file-explorer.toolbar",
+	"ui.sidebar.control",
 	"workspace.read",
 	"agent.session.read",
 	"agent.session.write",

@@ -22,6 +22,7 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"ui.file-explorer.decorations": "permission.uiFileExplorerDecorations",
 	"ui.file-explorer.context-menu": "permission.uiFileExplorerContextMenu",
 	"ui.file-explorer.toolbar": "permission.uiFileExplorerToolbar",
+	"ui.sidebar.control": "permission.uiSidebarControl",
 	"workspace.read": "permission.workspaceRead",
 	"agent.session.read": "permission.agentSessionRead",
 	"agent.session.write": "permission.agentSessionWrite",
@@ -217,6 +218,13 @@ export const PLUGIN_PERMISSION_PRESENTATIONS = {
 		risk: "low",
 		visual: "interface",
 		uiPreview: "fileToolbar",
+	},
+	"ui.sidebar.control": {
+		descriptionKey: "permission.description.uiSidebarControl",
+		group: "interface",
+		risk: "low",
+		visual: "interface",
+		uiPreview: "global",
 	},
 	"workspace.read": {
 		descriptionKey: "permission.description.workspaceRead",

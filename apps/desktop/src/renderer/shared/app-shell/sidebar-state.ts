@@ -1,6 +1,6 @@
 import type { PluginSidebarState } from "@astravia-org/plugin-sdk";
 import { SIDEBAR_NARROW_BREAKPOINT, useNarrowScreen } from "@shared/hooks/useNarrowScreen";
-import { sidebarCollapsedAtom } from "@shared/store/atoms";
+import { sidebarCollapsedAtom, sidebarWidthAtom } from "@shared/store/atoms";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
 
@@ -10,15 +10,27 @@ import { useMemo } from "react";
 
 export type SidebarState = PluginSidebarState;
 
-function compose(collapsed: boolean, narrow: boolean): SidebarState {
+// width：侧边栏占位时的实际宽度（与 SidebarDock 的 width 同源）；不占位时为 0。
+function compose(collapsed: boolean, narrow: boolean, dockWidth: number): SidebarState {
 	// visible 与 RootLayoutView 里 `<SidebarDock visible={!narrow && !sidebarCollapsed}>`
 	// 是同一个判断：窄屏下侧边栏不占左栏，此时 collapsed 只表示用户意愿。
-	return { collapsed, narrow, visible: !collapsed && !narrow };
+	const visible = !collapsed && !narrow;
+	return { collapsed, narrow, visible, width: visible ? dockWidth : 0 };
 }
 
 /** 读当前侧边栏状态（非 React 场景：activate()、工具处理器等）。 */
 export function readSidebarState(): SidebarState {
-	return compose(getDefaultStore().get(sidebarCollapsedAtom), window.innerWidth < SIDEBAR_NARROW_BREAKPOINT);
+	const store = getDefaultStore();
+	return compose(
+		store.get(sidebarCollapsedAtom),
+		window.innerWidth < SIDEBAR_NARROW_BREAKPOINT,
+		store.get(sidebarWidthAtom),
+	);
+}
+
+/** 请求收起/展开侧边栏：与用户点侧栏收起按钮、页头展开按钮写的是同一个状态。 */
+export function setSidebarCollapsed(collapsed: boolean): void {
+	getDefaultStore().set(sidebarCollapsedAtom, collapsed);
 }
 
 /**
@@ -31,16 +43,23 @@ export function subscribeSidebarState(listener: (state: SidebarState) => void): 
 	let last = readSidebarState();
 	const emit = (): void => {
 		const next = readSidebarState();
-		if (next.collapsed === last.collapsed && next.narrow === last.narrow && next.visible === last.visible) {
+		if (
+			next.collapsed === last.collapsed &&
+			next.narrow === last.narrow &&
+			next.visible === last.visible &&
+			next.width === last.width
+		) {
 			return;
 		}
 		last = next;
 		listener(next);
 	};
 	const unsubscribe = getDefaultStore().sub(sidebarCollapsedAtom, emit);
+	const unsubscribeWidth = getDefaultStore().sub(sidebarWidthAtom, emit);
 	window.addEventListener("resize", emit);
 	return () => {
 		unsubscribe();
+		unsubscribeWidth();
 		window.removeEventListener("resize", emit);
 	};
 }
@@ -49,6 +68,7 @@ export function subscribeSidebarState(listener: (state: SidebarState) => void): 
 export function useSidebarState(): SidebarState {
 	const collapsed = useAtomValue(sidebarCollapsedAtom);
 	const narrow = useNarrowScreen();
+	const width = useAtomValue(sidebarWidthAtom);
 	// 引用稳定：插件常把它丢进 useEffect 依赖，每次渲染换对象会变成重复触发。
-	return useMemo(() => compose(collapsed, narrow), [collapsed, narrow]);
+	return useMemo(() => compose(collapsed, narrow, width), [collapsed, narrow, width]);
 }
