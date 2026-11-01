@@ -198,18 +198,20 @@ export class DesktopConversationService {
 		try {
 			if (config?.sessionPath && isAbsolute(config.sessionPath)) {
 				const absolutePath = resolve(config.sessionPath);
-				await this.ensureOwnershipReady?.();
-				const owner = await this.ownershipCatalog?.getOwner?.(absolutePath);
-				if (owner) {
-					throw new DesktopConversationError("INVALID_SESSION_PATH", "Session is managed by Agent Team.", {
-						sessionPath: absolutePath,
-						teamId: owner.teamId,
-						teamSessionId: owner.teamSessionId,
-					});
-				}
-				// 文件已不在就到此为止。再往下会先起 MCP 服务器与 agent 实例（实测 10–17 秒），
-				// 然后才在读会话时报一个存储层的英文错，用户看到的是长时间空白加天书。
-				await this.assertSessionFileExists(absolutePath);
+				await trace.measure("precheck", async () => {
+					await this.ensureOwnershipReady?.();
+					const owner = await this.ownershipCatalog?.getOwner?.(absolutePath);
+					if (owner) {
+						throw new DesktopConversationError("INVALID_SESSION_PATH", "Session is managed by Agent Team.", {
+							sessionPath: absolutePath,
+							teamId: owner.teamId,
+							teamSessionId: owner.teamSessionId,
+						});
+					}
+					// 文件已不在就到此为止。再往下会先起 MCP 服务器与 agent 实例（实测 10–17 秒），
+					// 然后才在读会话时报一个存储层的英文错，用户看到的是长时间空白加天书。
+					await this.assertSessionFileExists(absolutePath);
+				});
 			}
 			// 远程项目没有沙箱可言，先把模式定下来：否则默认开着沙箱的用户会在这里被
 			// 「本机沙箱不可用」挡住，或者带着一套不存在的沙箱工具集进入会话。

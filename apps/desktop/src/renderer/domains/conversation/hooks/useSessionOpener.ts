@@ -61,6 +61,7 @@ import {
 	resetConversationFeed,
 } from "../services/conversation-feed-store";
 import { applySessionHydrationStateAtom } from "../services/session-hydration-state";
+import { reclaimableSupersededSessionPath } from "../services/superseded-session-reclaim";
 import { useSessionEventController } from "./useSessionEventController";
 
 export interface SessionOpenerController {
@@ -402,9 +403,12 @@ export function useSessionOpener(): SessionOpenerController {
 			const { sessionId } = createResult;
 			if (myOpenToken !== getOpenSessionToken()) {
 				markSessionSwitch("session-create-superseded");
-				// 会话已在主进程落盘，但当前 open 已被更新的操作取代；不删除的话
-				// 侧边栏会多出一个没有 activeSession 归属的「未命名会话」空壳。
-				const orphanPath = createResult.sessionPath || sessionPath;
+				// 只有本次 open 亲手新建的空壳能回收；已有会话的 create 只是取回 Runtime
+				// 句柄，返回的路径就是用户真正的对话文件，删它会连带删掉整个会话。
+				const orphanPath = reclaimableSupersededSessionPath({
+					isExistingSessionOpen,
+					sessionPath: createResult.sessionPath,
+				});
 				if (orphanPath) {
 					void window.astravia.session.delete(orphanPath).catch((error: unknown) => {
 						console.warn("[useSessionOpener] delete superseded empty session failed", error);
