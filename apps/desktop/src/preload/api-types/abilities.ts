@@ -2,11 +2,11 @@ import type { McpServerConfigData } from "./mcp.js";
 
 /**
  * 能力安装台账（`~/.astravia/abilities.json`）：desktop 侧「装了哪些能力、什么版本」的单一索引。
- * 它只是索引不是安装位置——产物仍分别落在 skills/ scene/ plugins/、agent/mcp.json，
+ * 它只是索引不是安装位置——产物仍分别落在 skills/ plugins/、agent/mcp.json，
  * 声明受管运行时的 MCP 另有版本化运行目录（ADR-0049、ADR-0092）。
  * bundle 不进台账：其状态全部由成员派生。
  */
-export type AbilityLedgerType = "skill" | "scene" | "plugin" | "mcp";
+export type AbilityLedgerType = "skill" | "plugin" | "mcp";
 
 export interface GitHubMarketplaceOrigin {
 	kind: "github-marketplace";
@@ -152,7 +152,7 @@ export interface LocalAbilityPresentation {
 export type LocalAbilityPresentations = Record<string, LocalAbilityPresentation>;
 
 export interface OpenMarketplaceBundleMember {
-	type: "skill" | "scene" | "mcp" | "plugin";
+	type: "skill" | "mcp" | "plugin";
 	slug: string;
 	exists: boolean;
 	name: string;
@@ -186,7 +186,7 @@ export interface OpenMarketplaceAbility {
 	/** Derived from top-level marketplace registration; absent on older snapshots means listed. */
 	listed?: boolean;
 	slug: string;
-	type: "skill" | "scene" | "mcp" | "plugin" | "bundle";
+	type: "skill" | "mcp" | "plugin" | "bundle";
 	name: string;
 	description: string;
 	license: string;
@@ -284,7 +284,7 @@ export interface DesktopAbilitiesApi {
 	listLocalPresentations(): Promise<LocalAbilityPresentations>;
 	/**
 	 * 记录一次市场 MCP 能力的安装/升级。
-	 * skill / scene / plugin 的写入由各自主进程安装流程完成，mcp 的写入路径在渲染层
+	 * skill / plugin 的写入由各自主进程安装流程完成，mcp 的写入路径在渲染层
 	 * （整份 mcp.json 覆写），故单独开这条通道；server 不在 mcp.json 时不落账。
 	 */
 	recordMcpInstall(runtimeName: string, version: string, metadata?: AbilityInstallMetadata): Promise<void>;
@@ -304,8 +304,8 @@ export interface DesktopAbilitiesApi {
 	refreshMarketplaceSource(id: string): Promise<OpenMarketplaceSourceSnapshot>;
 	/** 后台同步激活新快照时触发；调用方重新读取本地目录即可。 */
 	onOpenMarketplacesUpdated(handler: () => void): () => void;
-	/** 从当前已校验快照安装 skill / scene / plugin；bundle 由客户端逐成员安装。 */
-	installOpenAbility(type: "skill" | "scene" | "plugin", slug: string, sourceId?: string): Promise<void>;
+	/** 从当前已校验快照安装 skill / plugin；bundle 由客户端逐成员安装。 */
+	installOpenAbility(type: "skill" | "plugin", slug: string, sourceId?: string): Promise<void>;
 	/** 下载并校验开源市场 MCP 的受管运行时，返回可直接写入 mcp.json 的标准 server 配置。 */
 	prepareOpenMcpAbility(slug: string, sourceId?: string): Promise<McpServerConfigData>;
 	/** 监听受管 MCP 运行时准备阶段；返回取消订阅函数。 */

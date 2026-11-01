@@ -4,7 +4,7 @@ import type { InstalledPlugin, InstalledSkill, McpConfigData, SkillInfo } from "
 import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
 import { resolveMcpIcon } from "../../settings/mcp/builtin-mcp-presets";
 
-export type AgentCapabilityKind = "skill" | "scene" | "mcp" | "plugin";
+export type AgentCapabilityKind = "skill" | "mcp" | "plugin";
 
 export interface AgentCapabilityOption {
 	readonly id: string;

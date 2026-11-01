@@ -179,7 +179,7 @@ export function useAbilityActions({
 
 	const installSkill = useCallback(
 		async (item: AbilityItem, setOperation?: (next: AbilityOperation) => void): Promise<InstallOutcome> => {
-			if (item.type !== "skill" && item.type !== "scene") return "skipped";
+			if (item.type !== "skill") return "skipped";
 			if (item.origin?.kind === "github-marketplace") {
 				if (!item.installed) setOperation?.("checkingSource");
 				await window.astravia.abilities.installOpenAbility(item.type, item.slug, item.origin.sourceId);
@@ -362,7 +362,7 @@ export function useAbilityActions({
 				if (item.origin?.kind === "github-marketplace") {
 					await window.astravia.abilities.removeOpenMcpRuntime(item.slug, item.origin.sourceId);
 				}
-			} else if (item.type === "skill" || item.type === "scene") {
+			} else if (item.type === "skill") {
 				await window.astravia.skills.uninstall(item.slug, item.type);
 			} else {
 				return;
@@ -433,7 +433,7 @@ export function useAbilityActions({
 				await mcp.onToggleDisabled(item.serverName);
 				return;
 			}
-			if (item.type === "skill" || item.type === "scene") {
+			if (item.type === "skill") {
 				await window.astravia.skills.toggle(item.slug);
 			}
 		},

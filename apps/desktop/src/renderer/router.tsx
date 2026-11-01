@@ -13,7 +13,6 @@ import {
 	loadKnowledgeBasePage,
 	loadNewSessionPage,
 	loadPluginWorkspaceViewRoute,
-	loadScenesPage,
 	loadSettingsPage,
 } from "./route-page-loaders";
 import { RouteErrorPage } from "./shared/components/RouteErrorPage";
@@ -39,7 +38,6 @@ const AgentCenterPage = lazyRoutePage(loadAgentCenterPage);
 const TeamChatPage = lazyRoutePage(async () => ({
 	default: (await import("./domains/conversation/connectors/team/TeamChatPage")).TeamChatPage,
 }));
-const ScenesPage = lazyRoutePage(loadScenesPage);
 const SettingsPage = lazyRoutePage(loadSettingsPage);
 const ProjectDetailPage = lazyRoutePage(async () => ({
 	default: (await import("./domains/project/components/ProjectDetailPage")).ProjectDetailPage,
@@ -169,22 +167,13 @@ const abilityDetailRedirectRoute = createRoute({
 	},
 });
 
-/** 旧深链：/skills?tab=scene 仍去场景页，其余一律并入能力页（ADR-0049）。 */
+/** 旧深链：/skills 一律并入能力页（ADR-0049）。 */
 const skillsRedirectRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/skills",
-	validateSearch: (search: Record<string, unknown>) => ({
-		...(typeof search.tab === "string" ? { tab: search.tab } : {}),
-	}),
-	beforeLoad: ({ search }) => {
-		throw redirect({ to: search.tab === "scene" ? "/scenes" : "/abilities", replace: true });
+	beforeLoad: () => {
+		throw redirect({ to: "/abilities", replace: true });
 	},
-});
-
-const scenesRoute = createRoute({
-	getParentRoute: () => rootRoute,
-	path: "/scenes",
-	component: ScenesPage,
 });
 
 const pluginsRedirectRoute = createRoute({
@@ -295,7 +284,6 @@ const routeTree = rootRoute.addChildren([
 	abilitiesRoute,
 	abilityDetailRedirectRoute,
 	skillsRedirectRoute,
-	scenesRoute,
 	pluginsRedirectRoute,
 	settingsTabRoute,
 	projectDetailRoute,

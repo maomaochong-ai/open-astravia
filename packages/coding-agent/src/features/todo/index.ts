@@ -1,6 +1,5 @@
 export type {
 	CodingAgentTodoRuntime,
-	SceneTodoState,
 	TodoContinuationState,
 	TodoItem,
 	TodoLockSource,

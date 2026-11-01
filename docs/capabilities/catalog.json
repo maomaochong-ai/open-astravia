@@ -3523,16 +3523,8 @@
                   "type": "string"
                 },
                 "type": {
-                  "anyOf": [
-                    {
-                      "const": "skill",
-                      "type": "string"
-                    },
-                    {
-                      "const": "scene",
-                      "type": "string"
-                    }
-                  ]
+                  "const": "skill",
+                  "type": "string"
                 }
               }
             },
@@ -3721,16 +3713,8 @@
                 "type": "string"
               },
               "type": {
-                "anyOf": [
-                  {
-                    "const": "skill",
-                    "type": "string"
-                  },
-                  {
-                    "const": "scene",
-                    "type": "string"
-                  }
-                ]
+                "const": "skill",
+                "type": "string"
               }
             }
           },
@@ -3920,16 +3904,8 @@
                     "type": "string"
                   },
                   "type": {
-                    "anyOf": [
-                      {
-                        "const": "skill",
-                        "type": "string"
-                      },
-                      {
-                        "const": "scene",
-                        "type": "string"
-                      }
-                    ]
+                    "const": "skill",
+                    "type": "string"
                   }
                 }
               }
@@ -4011,16 +3987,8 @@
                 "type": "string"
               },
               "type": {
-                "anyOf": [
-                  {
-                    "const": "skill",
-                    "type": "string"
-                  },
-                  {
-                    "const": "scene",
-                    "type": "string"
-                  }
-                ]
+                "const": "skill",
+                "type": "string"
               }
             }
           },
@@ -4211,16 +4179,8 @@
                         "type": "string"
                       },
                       "type": {
-                        "anyOf": [
-                          {
-                            "const": "skill",
-                            "type": "string"
-                          },
-                          {
-                            "const": "scene",
-                            "type": "string"
-                          }
-                        ]
+                        "const": "skill",
+                        "type": "string"
                       }
                     }
                   },
@@ -4307,16 +4267,8 @@
                 "type": "string"
               },
               "type": {
-                "anyOf": [
-                  {
-                    "const": "skill",
-                    "type": "string"
-                  },
-                  {
-                    "const": "scene",
-                    "type": "string"
-                  }
-                ]
+                "const": "skill",
+                "type": "string"
               }
             }
           },
@@ -13250,16 +13202,8 @@
               "type": "string"
             },
             "type": {
-              "anyOf": [
-                {
-                  "const": "skill",
-                  "type": "string"
-                },
-                {
-                  "const": "scene",
-                  "type": "string"
-                }
-              ]
+              "const": "skill",
+              "type": "string"
             },
             "provenance": {
               "anyOf": [
@@ -13482,16 +13426,8 @@
                 "type": "boolean"
               },
               "type": {
-                "anyOf": [
-                  {
-                    "const": "skill",
-                    "type": "string"
-                  },
-                  {
-                    "const": "scene",
-                    "type": "string"
-                  }
-                ]
+                "const": "skill",
+                "type": "string"
               },
               "alias": {
                 "type": "string"
@@ -13561,16 +13497,8 @@
             "type": "string"
           },
           "type": {
-            "anyOf": [
-              {
-                "const": "skill",
-                "type": "string"
-              },
-              {
-                "const": "scene",
-                "type": "string"
-              }
-            ]
+            "const": "skill",
+            "type": "string"
           }
         }
       },

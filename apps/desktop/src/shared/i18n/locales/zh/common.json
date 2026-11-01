@@ -88,7 +88,7 @@
 			"skills": {
 				"enableTitle": "开启能力",
 				"disableTitle": "关闭能力",
-				"enableSummary": "开启后，AI 在对话中可以按需使用该能力（skill/场景）。",
+				"enableSummary": "开启后，AI 在对话中可以按需使用该能力（skill）。",
 				"disableSummary": "关闭后，该能力暂时不会被调用。不会卸载或删除文件。",
 				"enableConfirm": "确认开启",
 				"disableConfirm": "确认关闭",
@@ -147,13 +147,11 @@
 			"skillName": "能力名称",
 			"abilitySlug": "能力 slug",
 			"skill": "Skill",
-			"scene": "场景",
 			"appId": "App ID",
 			"appSecret": "App Secret",
 			"verificationToken": "Verification Token",
 			"encryptKey": "Encrypt Key",
 			"env": "环境变量 (KEY=VALUE)",
-			"resourceType": "类型",
 			"name": "名称",
 			"newName": "新名称",
 			"path": "路径",
@@ -326,7 +324,7 @@
 			"ops": {
 				"set-enabled": {
 					"title": "启用/停用能力确认",
-					"summary": "确认后将更改该能力（skill/场景）的启用状态。",
+					"summary": "确认后将更改该能力（skill）的启用状态。",
 					"confirm": "确认更改状态",
 					"badge": "能力",
 					"impact": "能力启用状态将立即生效。"
@@ -341,7 +339,7 @@
 				},
 				"install-from-market": {
 					"title": "从能力市场安装确认",
-					"summary": "确认后将从市场下载并安装该能力（skill 或场景）。",
+					"summary": "确认后将从市场下载并安装该能力（skill）。",
 					"confirm": "确认安装",
 					"badge": "安装",
 					"impact": "能力将下载到本机并出现在能力页；安装后默认启用。"
@@ -939,7 +937,6 @@
 			"knowledgeAll": "全部知识库",
 			"knowledge": "知识库",
 			"skills": "技能广场",
-			"scenes": "场景",
 			"plugins": "插件",
 			"settings": "设置",
 			"project": "项目详情",
@@ -1075,7 +1072,6 @@
 		},
 		"badges": {
 			"skill": "技能",
-			"scene": "场景",
 			"plugin": "插件"
 		},
 		"sessionTypes": {

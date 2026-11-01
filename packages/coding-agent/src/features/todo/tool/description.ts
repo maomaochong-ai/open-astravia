@@ -24,4 +24,4 @@ Never call create to start a new plan when a todo list already exists. Create do
 
 Aim to finish the items you committed to — don't abandon a plan halfway without reason. If the user has redirected you, clear the stale plan rather than ignoring it.
 
-NOTE — locked lists are STRICT: lists created from a scene's tasks.json are locked. For a locked list you MUST complete items in strict sequential order by ID, you CANNOT create or clear items, and you MUST finish every item before stopping. Out-of-order updates and clear are REJECTED, and the system will force you to continue if you stop early.`;
+NOTE — locked lists are STRICT: lists prefilled by the host (e.g. a knowledge-processing run) are locked. For a locked list you MUST complete items in strict sequential order by ID, you CANNOT create or clear items, and you MUST finish every item before stopping. Out-of-order updates and clear are REJECTED, and the system will force you to continue if you stop early.`;

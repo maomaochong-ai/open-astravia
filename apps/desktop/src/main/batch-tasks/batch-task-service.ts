@@ -117,7 +117,7 @@ function isBatchSkill(value: unknown): value is BatchSkillRef {
 	return (
 		isNonBlankString(skill.name) &&
 		(skill.alias === undefined || isNonBlankString(skill.alias)) &&
-		(skill.type === "skill" || skill.type === "scene") &&
+		skill.type === "skill" &&
 		Object.keys(skill).every((key) => key === "name" || key === "alias" || key === "type")
 	);
 }

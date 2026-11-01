@@ -183,12 +183,7 @@ describe("skill domain capabilities", () => {
 				type: "object",
 				required: ["name", "description", "source", "type"],
 				properties: {
-					type: {
-						anyOf: [
-							{ const: SKILL_TYPES.SKILL, type: "string" },
-							{ const: SKILL_TYPES.SCENE, type: "string" },
-						],
-					},
+					type: { const: SKILL_TYPES.SKILL, type: "string" },
 				},
 			},
 		});

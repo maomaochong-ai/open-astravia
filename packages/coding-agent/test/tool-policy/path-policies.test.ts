@@ -4,18 +4,18 @@ import { createCodingAgentWritePathPolicy } from "../../src/tool-policy/path/wri
 
 describe("Coding Agent path policies", () => {
 	const edit = createCodingAgentEditPathPolicy({
-		isProtectedSkillOrScenePath: (path) => path.startsWith("protected:"),
+		isProtectedSkillPath: (path) => path.startsWith("protected:"),
 		isKnowledgeWikiPath: (path) => path.startsWith("wiki:"),
 	});
 	const write = createCodingAgentWritePathPolicy({
-		isProtectedSkillOrScenePath: (path) => path.startsWith("protected:"),
+		isProtectedSkillPath: (path) => path.startsWith("protected:"),
 		isKnowledgeWikiPath: (path) => path.startsWith("wiki:"),
 	});
 
-	it("rejects paths classified as protected Skill or Scene resources", () => {
+	it("rejects paths classified as protected Skill resources", () => {
 		const absolutePath = "protected:/skills/example/SKILL.md";
-		expect(edit.getRejectionReason(absolutePath)).toContain("inside a skill/scene directory");
-		expect(write.getRejectionReason(absolutePath)).toContain("inside a skill/scene directory");
+		expect(edit.getRejectionReason(absolutePath)).toContain("inside a skill directory");
+		expect(write.getRejectionReason(absolutePath)).toContain("inside a skill directory");
 	});
 
 	it("rejects paths classified as managed Knowledge Wiki content", () => {

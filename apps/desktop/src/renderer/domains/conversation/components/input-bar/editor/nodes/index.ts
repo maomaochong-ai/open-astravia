@@ -23,9 +23,7 @@ export { $createFileTokenNode, $isFileTokenNode, FileTokenNode } from "./FileTok
 export { $createImageTokenNode, $isImageTokenNode, ImageTokenNode } from "./ImageTokenNode";
 export { $createMemberTokenNode, $isMemberTokenNode, MemberTokenNode } from "./MemberTokenNode";
 export {
-	$createSceneTokenNode,
 	$createSkillTokenNode,
 	$isSkillTokenNode,
-	type AbilityTokenType,
 	SkillTokenNode,
 } from "./SkillTokenNode";

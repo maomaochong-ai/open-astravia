@@ -394,9 +394,9 @@ export function registerDesktopDomainProviders(
 			},
 		}),
 		bindCapability(DOMAIN_SKILL_CAPABILITIES.UNINSTALL, {
-			execute: async ({ name, type }, context) => {
+			execute: async ({ name }, context) => {
 				assertNotAborted(context.signal);
-				await skills.uninstall(name, type);
+				await skills.uninstall(name);
 			},
 		}),
 	]);

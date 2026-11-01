@@ -13,7 +13,6 @@ import {
 	insertConnectorToken,
 	insertFileToken,
 	insertImageToken,
-	insertSceneToken,
 	insertSkillToken,
 } from "./editor/inputEditorHandle";
 import type { TriggerMatch } from "./editor/tokens/trigger";
@@ -144,8 +143,7 @@ export function useInputBarTriggerModel({
 		setTrigger(null);
 	}, [trigger]);
 	const handleSlashSelect = useCallback((skill: SkillInfo, icon?: string) => {
-		if (skill.type === "scene") insertSceneToken(skill.name, skill.alias, icon, { replaceTrigger: true });
-		else insertSkillToken(skill.name, skill.alias, icon, { replaceTrigger: true });
+		insertSkillToken(skill.name, skill.alias, icon, { replaceTrigger: true });
 		setTrigger(null);
 		focusInputEditor();
 	}, []);

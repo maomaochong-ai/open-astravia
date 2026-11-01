@@ -279,7 +279,7 @@ export interface InitHubResult {
 }
 
 /** 能力按类型分目录；空目录留 .gitkeep，否则 git 不会带上它们，作者得自己猜该放哪。 */
-const HUB_ABILITY_DIRS = ["plugins", "mcp", "skills", "scenes"] as const;
+const HUB_ABILITY_DIRS = ["plugins", "mcp", "skills"] as const;
 
 export function initHubRepository(input: InitHubInput): InitHubResult {
 	if (!HUB_NAME_PATTERN.test(input.name)) {

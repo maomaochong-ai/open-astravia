@@ -1,9 +1,9 @@
 ---
 title: Manage capabilities
-description: Install and manage skills, scenes, MCP connectors, plugins, and capability bundles from the Capabilities page.
+description: Install and manage skills, MCP connectors, plugins, and capability bundles from the Capabilities page.
 ---
 
-The **Capabilities** page at `/abilities` is the extension entry point. It adds skills, scenes, MCP connectors, plugins, and capability bundles to an Agent.
+The **Capabilities** page at `/abilities` is the extension entry point. It adds skills, MCP connectors, plugins, and capability bundles to an Agent.
 
 <MediaFrame portrait>
   <img src="/images/product/capabilities.webp" alt="Astravia Capabilities page showing connectors, skills, and plugins" width="1024" height="1365" />
@@ -15,7 +15,6 @@ The **Capabilities** page at `/abilities` is the extension entry point. It adds 
 | Type | Purpose |
 | --- | --- |
 | Skill | Task instructions and workflow prompts |
-| Scene | A preset working mode; managed here and also available at `/scenes` |
 | MCP | A connection to external tools and data |
 | Plugin | An extension to the desktop UI and Agent capabilities |
 | Bundle | Several capabilities organized as one installable selection |
@@ -25,7 +24,6 @@ The **Capabilities** page at `/abilities` is the extension entry point. It adds 
 | Goal | Prefer | Why |
 | --- | --- | --- |
 | Make the Agent follow a stable method | Skill | Guides one task with instructions and a workflow |
-| Preset a working mode and context | Scene | Re-enters the same kind of work repeatedly |
 | Call an external service or data source | MCP | Provides a structured tool connection |
 | Extend the desktop UI, files, or messages | Plugin | Enters the host UI and Agent lifecycle |
 | Install coordinated capabilities together | Bundle | Provides one discovery and selection flow |
@@ -85,6 +83,6 @@ The Astravia official source (`maomaochong-ai/astravia-official-marketplace`) sh
 - **Remove** uninstalls the local capability.
 - **Update / reload** is for new versions and development debugging.
 - If another source already owns the same capability ID, Astravia does not overwrite it automatically; confirm the source in the details view.
-- MCP is written to `~/.astravia/agent/mcp.json`; skills, scenes, and plugins are stored under `~/.astravia/skills`, `~/.astravia/scene`, and `~/.astravia/plugins`. The installation index is `~/.astravia/abilities.json`.
+- MCP is written to `~/.astravia/agent/mcp.json`; skills and plugins are stored under `~/.astravia/skills` and `~/.astravia/plugins`. The installation index is `~/.astravia/abilities.json`.
 
 For plugin development, read [Plugin development](/plugins/overview/). For an external tool service, read [MCP connectors](/product/mcp/).

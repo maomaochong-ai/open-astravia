@@ -227,7 +227,6 @@ export function projectCodingAgentSkillInfo(skill: Skill): CodingAgentSkillInfo 
 		alias: skill.alias,
 		description: skill.description,
 		source: skill.source,
-		type: skill.type,
 		...(skill.provenance ? { provenance: skill.provenance } : {}),
 		disableModelInvocation: skill.disableModelInvocation,
 	};
@@ -244,7 +243,6 @@ function toSkill(contribution: CodingAgentSkillContribution, source: string, cwd
 		filePath,
 		baseDir: contribution.baseDir ? resolve(cwd, contribution.baseDir) : dirname(filePath),
 		source,
-		type: contribution.type ?? "skill",
 		provenance: contribution.provenance ?? {
 			kind: "provided",
 			providerType: "sdk",
@@ -252,7 +250,6 @@ function toSkill(contribution: CodingAgentSkillContribution, source: string, cwd
 		},
 		disableModelInvocation: contribution.disableModelInvocation ?? false,
 		content: contribution.content,
-		sceneTasks: [],
 	};
 }
 
@@ -267,7 +264,6 @@ function matchesSelector(skill: Skill, selector: CodingAgentSkillSelector): bool
 	if (selector.names && !selector.names.includes(skill.name)) return false;
 	if (selector.nameContains && !selector.nameContains.some((fragment) => skill.name.includes(fragment))) return false;
 	if (selector.sources && !selector.sources.includes(skill.source)) return false;
-	if (selector.types && !selector.types.includes(skill.type)) return false;
 	return true;
 }
 
@@ -302,7 +298,6 @@ function cloneSelector(selector: CodingAgentSkillSelector | undefined): CodingAg
 		names: selector.names ? [...selector.names] : undefined,
 		nameContains: selector.nameContains ? [...selector.nameContains] : undefined,
 		sources: selector.sources ? [...selector.sources] : undefined,
-		types: selector.types ? [...selector.types] : undefined,
 	};
 }
 

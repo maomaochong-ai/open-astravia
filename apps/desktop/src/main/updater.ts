@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -19,6 +20,7 @@ import { runQuitCleanup } from "./quit-cleanup.js";
 import { markPendingUpdateRelaunch } from "./update-relaunch-marker.js";
 import { ElectronUpdaterEngine, type UpdateHandoffResult, type UpdateInstallMode } from "./updater-engine.js";
 import { type UpdaterPhase, UpdaterService, type UpdaterState } from "./updater-service.js";
+import { scheduleWindowsQuitWatchdog } from "./windows-quit-watchdog.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -27,6 +29,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  * 可能把退出拖死，超过这个时长就硬退（此时 relaunch 已失效，指针留到下次启动）。
  */
 const WINDOWS_QUIT_WATCHDOG_MS = 8_000;
+
+/**
+ * 看门狗兜底用的拉起路径：直接 spawn 版本目录里的可执行文件，而不再经过
+ * `app.relaunch()`——硬退路径不保证它还能 spawn。新进程会在单实例锁上有限重试，
+ * 所以旧进程还没完全退出也不会把它挤掉。
+ */
+function startWindowsUpdateTarget(executablePath: string | undefined): boolean {
+	if (!executablePath) return false;
+	spawn(executablePath, process.argv.slice(1), { detached: true, stdio: "ignore" }).unref();
+	return true;
+}
 
 export type { UpdaterPhase, UpdaterState };
 
@@ -150,8 +163,13 @@ const prepareQuit = async () => {
 //   而不是像旧实现那样什么也没装就退出。
 const handOff = async (mode: UpdateInstallMode): Promise<UpdateHandoffResult> => {
 	if (process.platform === "win32" && mode === "windows-inno") {
-		// 兜底：正常退出流程也可能被 sidecar 句柄拖死，8s 后硬退。
-		setTimeout(() => app.exit(0), WINDOWS_QUIT_WATCHDOG_MS).unref?.();
+		// 兜底：正常退出流程也可能被 sidecar 句柄拖死。硬退不会替我们 spawn
+		// `app.relaunch` 的目标，所以看门狗先自己拉起新版再退（见 windows-quit-watchdog.ts）。
+		scheduleWindowsQuitWatchdog({
+			timeoutMs: WINDOWS_QUIT_WATCHDOG_MS,
+			relaunch: () => startWindowsUpdateTarget(innoWindowsUpdate?.preparedExecutablePath()),
+			exit: () => app.exit(0),
+		});
 		app.quit();
 		return "exiting";
 	}

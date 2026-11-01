@@ -36,7 +36,7 @@
 	},
 	"form": {
 		"namePlaceholder": "项目名称",
-		"promptPlaceholder": "输入提示词...使用 / 唤出技能/场景",
+		"promptPlaceholder": "输入提示词...使用 / 唤出技能",
 		"model": "模型",
 		"modelEmpty": "暂无可用模型",
 		"modelSelect": "选择模型",

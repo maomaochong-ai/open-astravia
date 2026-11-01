@@ -5,21 +5,13 @@
  * 严格解析会直接报错而拒绝导入。导入端因此按行宽松取值，落盘时再由
  * `rewriteFrontmatterDescription` 把 description 规范成 double-quoted，
  * 使 agent 侧的严格 YAML 解析器能读到同一份内容。
- *
- * 类型口径必须与 agent 侧一致：agent 只认 `metadata.type === "scene"`
- * （见 coding-agent `resources/skills`），所以这里也只在 `metadata:` 块内取 type，
- * 否则会出现「desktop 装成 skill、agent 读成 scene」的分裂。
  */
-
-export type SkillFrontmatterType = "skill" | "scene";
 
 export interface SkillFrontmatter {
 	name?: string;
 	alias?: string;
 	description?: string;
 	version?: string;
-	/** 缺省 / 无法识别时为 undefined，由调用方按 skill 兜底。 */
-	type?: SkillFrontmatterType;
 }
 
 export function extractFrontmatter(content: string): string | null {
@@ -42,27 +34,6 @@ function unquote(value: string): string {
 function indentWidth(line: string): number {
 	const match = line.match(/^[ \t]*/);
 	return match ? match[0].length : 0;
-}
-
-/**
- * 取 `metadata:` 映射块里的 `type`。只扫比 `metadata:` 缩进更深的连续行，
- * 块结束（回到同级或更浅缩进）即停止，避免误读同名的顶层键。
- */
-function parseMetadataType(frontmatter: string): SkillFrontmatterType | undefined {
-	const lines = frontmatter.split(/\r?\n/);
-	const startIndex = lines.findIndex((line) => /^[ \t]*metadata:[ \t]*$/.test(line));
-	if (startIndex === -1) return undefined;
-	const baseIndent = indentWidth(lines[startIndex]);
-	for (let i = startIndex + 1; i < lines.length; i++) {
-		const line = lines[i];
-		if (line.trim().length === 0) continue;
-		if (indentWidth(line) <= baseIndent) break;
-		const match = line.match(/^[ \t]*type:[ \t]*(.*)$/);
-		if (!match) continue;
-		const value = unquote(match[1]);
-		return value === "scene" ? "scene" : value === "skill" ? "skill" : undefined;
-	}
-	return undefined;
 }
 
 /** YAML 块标量指示符（`>`、`|`，可带 `-` / `+` / 缩进数字）。 */
@@ -107,8 +78,6 @@ export function parseFrontmatter(content: string): SkillFrontmatter {
 	}
 	const versionMatch = fm.match(/version:\s*["']?([^\s"']+)["']?/i);
 	if (versionMatch) result.version = versionMatch[1];
-	const type = parseMetadataType(fm);
-	if (type) result.type = type;
 	return result;
 }
 

@@ -134,7 +134,7 @@ describe("batch RuntimeHost consumer", () => {
 		expect(prompt).toHaveBeenCalledWith("batch-session", {
 			text: project.prompt,
 			modelKey: "test/provider-model",
-			promptRef: { kind: "scene", name: "batch-scene" },
+			promptRef: { kind: "skill", name: "batch-skill" },
 		});
 		expect(renameSessionById).toHaveBeenCalledWith("batch-session", `${project.name}: ${task.name}`);
 		expect(mocks.saveTaskState.mock.calls.map(([, , state]) => state.status)).toEqual(["running", "completed"]);
@@ -255,7 +255,7 @@ function batchProject(projectDir: string): BatchProject {
 		modelKey: "test/provider-model",
 		concurrency: 1,
 		executionMode: "full-access",
-		skill: { type: "scene", name: "batch-scene" },
+		skill: { type: "skill", name: "batch-skill" },
 		tasks: [],
 		createdAt: 1,
 		updatedAt: 1,

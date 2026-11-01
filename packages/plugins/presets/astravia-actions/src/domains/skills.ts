@@ -4,7 +4,7 @@ import { createAstraviaActionRegistrar } from "../action-usage";
 
 /**
  * 公共 id 仍为 skills.*（兼容既有 CLI/Agent 调用）。
- * 产品文案统一为「能力」（能力页 / 能力市场），涵盖 skill 与 scene 两种类型。
+ * 产品文案统一为「能力」（能力页 / 能力市场），即 skill。
  */
 
 type SkillsQueryInput =
@@ -13,8 +13,8 @@ type SkillsQueryInput =
 	| { operation: "manifest" };
 type SkillsManageInput =
 	| { operation: "set-enabled"; name: string; enabled: boolean }
-	| { operation: "uninstall"; name: string; type?: "skill" | "scene" }
-	| { operation: "install-from-market"; type: "skill" | "scene"; slug: string };
+	| { operation: "uninstall"; name: string; type?: "skill" }
+	| { operation: "install-from-market"; type: "skill"; slug: string };
 
 const querySchema: PluginJsonSchema = {
 	type: "object",
@@ -48,7 +48,7 @@ const manageSchema: PluginJsonSchema = {
 			properties: {
 				operation: { const: "uninstall" },
 				name: { type: "string", minLength: 1 },
-				type: { enum: ["skill", "scene"] },
+				type: { enum: ["skill"] },
 			},
 			required: ["operation", "name"],
 			additionalProperties: false,
@@ -56,7 +56,7 @@ const manageSchema: PluginJsonSchema = {
 		{
 			properties: {
 				operation: { const: "install-from-market" },
-				type: { enum: ["skill", "scene"] },
+				type: { enum: ["skill"] },
 				slug: { type: "string", minLength: 1, pattern: "\\S" },
 			},
 			required: ["operation", "type", "slug"],
@@ -66,7 +66,7 @@ const manageSchema: PluginJsonSchema = {
 };
 
 const queryExamples: PluginAppActionExample<SkillsQueryInput>[] = [
-	{ description: "列出已可见能力（skill/scene）", input: { operation: "list" } },
+	{ description: "列出已可见能力（skill）", input: { operation: "list" } },
 	{ description: "查看本地已安装能力清单", input: { operation: "manifest" } },
 ];
 const manageExamples: PluginAppActionExample<SkillsManageInput>[] = [
@@ -84,10 +84,10 @@ export function registerSkillsActions(ctx: PluginContext): void {
 		id: "skills.query",
 		publicId: "skills.query",
 		title: "查询能力",
-		summary: "列出可见能力（skill/scene），或读取本地安装清单。对应能力页。",
+		summary: "列出可见能力（skill），或读取本地安装清单。对应能力页。",
 		description:
 			'对象参数；operation 为 "help"、"list" 或 "manifest"。list 可传 cwd 以包含项目级能力。安装请用 skills.manage install-from-market。',
-		keywords: ["能力", "abilities", "技能", "skill", "scene", "技能广场", "能力页", "manifest", "市场"],
+		keywords: ["能力", "abilities", "技能", "skill", "技能广场", "能力页", "manifest", "市场"],
 		effect: "read",
 		inputSchema: querySchema,
 		examples: queryExamples,
@@ -95,7 +95,7 @@ export function registerSkillsActions(ctx: PluginContext): void {
 			if (input.operation === "help") {
 				return {
 					guidance:
-						"产品「能力页」管理 skill/scene（公共 Action id 仍为 skills.*）。list/manifest 只读；install-from-market / set-enabled / uninstall 用 skills.manage。MCP/插件能力用 mcp.* / plugins.*。",
+						"产品「能力页」管理 skill（公共 Action id 仍为 skills.*）。list/manifest 只读；install-from-market / set-enabled / uninstall 用 skills.manage。MCP/插件能力用 mcp.* / plugins.*。",
 					actions: [
 						{ id: "skills.query", inputSchema: querySchema, examples: queryExamples },
 						{ id: "skills.manage", inputSchema: manageSchema, examples: manageExamples },
@@ -110,7 +110,7 @@ export function registerSkillsActions(ctx: PluginContext): void {
 		id: "skills.manage",
 		publicId: "skills.manage",
 		title: "管理能力",
-		summary: "从能力市场安装，或启用/停用/卸载已安装的 skill/scene。",
+		summary: "从能力市场安装，或启用/停用/卸载已安装的 skill。",
 		description:
 			'对象参数；operation 为 "set-enabled"、"uninstall" 或 "install-from-market"。install 传 type+slug；装完后出现在能力页与 manifest。',
 		keywords: ["能力", "abilities", "技能", "skill", "启用", "停用", "卸载", "安装", "市场", "install"],
@@ -149,7 +149,7 @@ export function registerSkillsActions(ctx: PluginContext): void {
 			if (!entry) {
 				throwEntityNotFound({
 					operation: input.operation,
-					entity: "installed ability (skill/scene)",
+					entity: "installed ability (skill)",
 					idField: "name",
 					id: input.name,
 					queryAction: "skills.query",
@@ -158,15 +158,6 @@ export function registerSkillsActions(ctx: PluginContext): void {
 					availableIds: Object.keys(manifest),
 					extra: 'You may also call skills.query with {"operation":"list"}.',
 				});
-			}
-			if (input.operation === "uninstall" && input.type) {
-				const actualType = entry.type === "scene" ? "scene" : "skill";
-				if (actualType !== input.type) {
-					throwInvalidInput(
-						`Refused uninstall before user approval: name=${JSON.stringify(input.name)} has type=${JSON.stringify(actualType)}, but you passed type=${JSON.stringify(input.type)}.`,
-						{ operation: input.operation, name: input.name, type: actualType, requestedType: input.type },
-					);
-				}
 			}
 		},
 		handler: async ({ input }) => {

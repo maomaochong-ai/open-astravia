@@ -1,11 +1,6 @@
 import type { PromptAttachmentRef } from "@astravia/runtime-core";
 import { createConversationUserMessage } from "@shared/conversation";
-import {
-	deriveAttachments,
-	MultipleSceneReferencesError,
-	prepareInputPrompt,
-	toTokenPath,
-} from "@shared/lib/input-tokens";
+import { deriveAttachments, prepareInputPrompt, toTokenPath } from "@shared/lib/input-tokens";
 import { perfSendMark } from "@shared/lib/perf-send";
 import {
 	activeInputDraftKeyAtom,
@@ -56,17 +51,7 @@ function stageSessionSend(
 	}
 
 	const rawText = hasOverride ? override : inputValue.trim();
-	let preparedInput: ReturnType<typeof prepareInputPrompt>;
-	try {
-		preparedInput = prepareInputPrompt(rawText, hasOverride ? undefined : inputSegments);
-	} catch (error) {
-		// Invalid scene combinations stay on the composer with their draft intact.
-		if (error instanceof MultipleSceneReferencesError) return null;
-		throw error;
-	}
-
-	const promptRef =
-		!hasOverride && preparedInput.sceneName ? { kind: "scene" as const, name: preparedInput.sceneName } : undefined;
+	const preparedInput = prepareInputPrompt(rawText, hasOverride ? undefined : inputSegments);
 	const attachmentsByPath = new Map<string, PromptAttachmentRef>();
 	if (!hasOverride) {
 		for (const attachment of deriveAttachments(preparedInput.segments)) {
@@ -95,7 +80,6 @@ function stageSessionSend(
 		...(hasOverride ? {} : { inputSegments: preparedInput.segments }),
 		timestamp: Date.now(),
 		model: modelKeyToParts(selectedModel),
-		promptRef,
 		attachments: [...attachmentsByPath.values()],
 		mentionedFiles,
 	});

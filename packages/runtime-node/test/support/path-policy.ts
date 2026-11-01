@@ -26,7 +26,7 @@ function createTestPathPolicy(
 	return {
 		getRejectionReason(absolutePath) {
 			if (protectedDirectories.some((directory) => isPathInside(absolutePath, directory))) {
-				return `"${absolutePath}" is inside a skill/scene directory which is read-only.`;
+				return `"${absolutePath}" is inside a skill directory which is read-only.`;
 			}
 			if (isPathInside(absolutePath, wikiDirectory)) {
 				return tool === "write"

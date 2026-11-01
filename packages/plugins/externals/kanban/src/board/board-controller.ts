@@ -144,7 +144,7 @@ export class KanbanBoardController {
 	async refreshSkills(): Promise<KanbanSkillOption[]> {
 		try {
 			const list = await this.ctx.official.skills.list();
-			// 只留 skill：scene 在 prompt 里没有 `@skill:` 软引用形态，混进来会插出无效 token。
+			// 只留 skill：其他类型在 prompt 里没有 `@skill:` 软引用形态，混进来会插出无效 token。
 			this.skills = list
 				.filter((skill) => skill.type === "skill")
 				.map((skill) => ({

@@ -109,7 +109,7 @@ export function createConversationDebugDefinitions(service: DesktopConversationS
 			keywords: ["conversation", "session", "create", "prompt", "agent"],
 			inputSchema: {
 				description:
-					"Absolute cwd, non-empty prompt, optional structured promptRef ({ kind: skill|scene, name }) and attachments ({ kind: file|directory|image, path }), executionMode/modelKey/reasoning, and timeoutMs (1000-1800000).",
+					"Absolute cwd, non-empty prompt, optional structured promptRef ({ kind: skill, name }) and attachments ({ kind: file|directory|image, path }), executionMode/modelKey/reasoning, and timeoutMs (1000-1800000).",
 			},
 			examples: [
 				{
@@ -151,7 +151,7 @@ export function createConversationDebugDefinitions(service: DesktopConversationS
 			keywords: ["conversation", "session", "continue", "resume", "prompt", "agent"],
 			inputSchema: {
 				description:
-					"Absolute sessionPath, non-empty prompt, optional structured promptRef ({ kind: skill|scene, name }) and attachments ({ kind: file|directory|image, path }), executionMode/modelKey/reasoning, and timeoutMs (1000-1800000).",
+					"Absolute sessionPath, non-empty prompt, optional structured promptRef ({ kind: skill, name }) and attachments ({ kind: file|directory|image, path }), executionMode/modelKey/reasoning, and timeoutMs (1000-1800000).",
 			},
 			examples: [
 				{

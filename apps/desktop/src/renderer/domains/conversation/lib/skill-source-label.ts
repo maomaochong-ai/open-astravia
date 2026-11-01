@@ -1,5 +1,3 @@
-import type { SkillInfo } from "@preload/api";
-
 /**
  * skill 来源 → i18n key。命令面板与 dialog 选择器共用。
  *
@@ -13,15 +11,13 @@ const SOURCE_LABEL_KEYS = {
 	user: "slashPanel.sourceLabels.user",
 	project: "slashPanel.sourceLabels.project",
 	path: "slashPanel.sourceLabels.path",
-	scene: "slashPanel.sourceLabels.scene",
 	"agents-user": "slashPanel.sourceLabels.agentsUser",
 	"agents-project": "slashPanel.sourceLabels.agentsProject",
 } as const;
 
 export type SkillSourceLabelKey = (typeof SOURCE_LABEL_KEYS)[keyof typeof SOURCE_LABEL_KEYS];
 
-/** 场景统一标「场景」，其余按 source 取；未知来源返回 null 由调用方回退原值。 */
-export function skillSourceLabelKey(source: string, type: SkillInfo["type"]): SkillSourceLabelKey | null {
-	const key = type === "scene" ? "scene" : source;
-	return key in SOURCE_LABEL_KEYS ? SOURCE_LABEL_KEYS[key as keyof typeof SOURCE_LABEL_KEYS] : null;
+/** 按 source 取标签；未知来源返回 null 由调用方回退原值。 */
+export function skillSourceLabelKey(source: string): SkillSourceLabelKey | null {
+	return source in SOURCE_LABEL_KEYS ? SOURCE_LABEL_KEYS[source as keyof typeof SOURCE_LABEL_KEYS] : null;
 }

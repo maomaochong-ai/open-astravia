@@ -67,7 +67,7 @@ The development app uses `~/.astravia-dev` by default, keeping installed-app dat
 - **Use local and external tools.** Run commands, inspect files, connect MCP services, and approve sensitive operations explicitly.
 - **Handle professional artifacts.** Preview and work with source code, PDF, Office files, spreadsheets, images, audio, video, SVG, and generated UI.
 - **Scale a proven task.** Run the same workflow across directories with batch tasks, or schedule it as an automation.
-- **Reuse organizational knowledge.** Build local knowledge bases and install reusable skills or scenarios.
+- **Reuse organizational knowledge.** Build local knowledge bases and install reusable skills.
 - **Keep working away from the desk.** Use supported IM bridges, webhooks, notifications, quick entry, and native desktop integrations.
 
 ## Core capabilities

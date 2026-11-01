@@ -3,7 +3,7 @@ import { xianxiaAssets } from "./assets";
 
 const xianxiaPanelFrame: ThemeSurfaceFrame = {
 	kind: "nine-slice-image",
-	imageUrl: xianxiaAssets.newSessionScenePanel,
+	imageUrl: xianxiaAssets.panelFrame,
 	decoration: {
 		borderWidth: "18px",
 		outset: "2px",
@@ -131,20 +131,6 @@ export const xianxiaAppearance: ThemeAppearance = {
 		"chat.newSessionGuidingWords": {
 			rootClassName: "xianxia-guiding-words border-transparent bg-card/80",
 			surfaceClassName: "xianxia-guiding-words-frame overflow-visible",
-		},
-		"chat.newSessionSceneCard": {
-			frame: {
-				kind: "nine-slice-image",
-				imageUrl: xianxiaAssets.newSessionScenePanel,
-				decoration: {
-					borderWidth: "18px",
-					outset: "2px",
-					repeat: "stretch",
-					slice: 122,
-				},
-			},
-			rootClassName: "xianxia-scene-card-background border-transparent bg-transparent",
-			surfaceClassName: "overflow-visible",
 		},
 		"chat.newSessionSkillCard": {
 			frame: {

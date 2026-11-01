@@ -3,7 +3,7 @@ import { Button, cn, Popover, PopoverContent, PopoverTrigger } from "@astravia-o
 import { useTranslation } from "react-i18next";
 import { type AbilityFilter, type AbilityProvenanceFilter, EMPTY_ABILITY_FILTER } from "../types";
 
-const TYPE_ORDER: AbilityType[] = ["skill", "mcp", "plugin", "bundle", "scene"];
+const TYPE_ORDER: AbilityType[] = ["skill", "mcp", "plugin", "bundle"];
 const PROVENANCE_ORDER: AbilityProvenanceFilter[] = ["all", "market", "builtin"];
 
 /** 生效中的筛选项数；按钮用它提示「列表被筛过」，否则面板一关用户会以为能力丢了。 */

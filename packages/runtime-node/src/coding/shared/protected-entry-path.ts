@@ -17,7 +17,7 @@ export function isPathInsideRoot(absolutePath: string, root: ProtectedRoot): boo
 }
 
 /**
- * Resolves the `<root>/<skill-name>` subtree a path belongs to. Skills and scenes are authored as such a
+ * Resolves the `<root>/<skill-name>` subtree a path belongs to. Skills are authored as such a
  * subtree, so only paths nested inside one have an entry; the root itself and files sitting directly in it
  * are loose artifacts rather than a resource being authored, and get no entry.
  */

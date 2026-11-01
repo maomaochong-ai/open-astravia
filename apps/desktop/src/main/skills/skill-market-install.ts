@@ -1,5 +1,5 @@
 /**
- * 从 Astravia 能力市场按 slug 下载并安装 skill/scene。
+ * 从 Astravia 能力市场按 slug 下载并安装技能。
  * 市场下载可匿名；有登录 token 时附带 Authorization。
  */
 import { execSync } from "node:child_process";
@@ -128,7 +128,7 @@ export async function installSkillFromMarketArchive(
 ): Promise<InstallSkillFromMarketResult> {
 	verifySha256(buffer, meta.sha256, `能力 ${name}`);
 
-	const baseDir = getSkillBaseDir(type);
+	const baseDir = getSkillBaseDir();
 	if (!existsSync(baseDir)) {
 		await mkdir(baseDir, { recursive: true });
 	}
@@ -182,14 +182,14 @@ export async function installSkillFromMarketArchive(
 	return { name, type, version, updated: Boolean(previous) };
 }
 
-/** 按市场 slug 拉 info + 归档并安装 skill/scene 能力。 */
+/** 按市场 slug 拉 info + 归档并安装 skill 能力。 */
 export async function installSkillFromMarketSlug(
 	type: InstalledSkillType,
 	slug: string,
 ): Promise<InstallSkillFromMarketResult> {
 	const trimmed = slug.trim();
 	if (!trimmed) throw new Error("slug is required");
-	if (type !== "skill" && type !== "scene") throw new Error(`Unsupported ability type: ${type}`);
+	if (type !== "skill") throw new Error(`Unsupported ability type: ${type}`);
 
 	log.info("install from market", { type, slug: trimmed });
 	const info = await fetchMarketAbilityInfo(type, trimmed);

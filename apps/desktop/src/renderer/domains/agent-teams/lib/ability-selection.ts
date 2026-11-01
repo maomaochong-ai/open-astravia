@@ -4,7 +4,7 @@ import type { AgentCapabilityOption } from "./capability-options";
 export type AgentAbilityKey = "skills" | "mcpServers" | "plugins";
 
 export function abilityKeyForKind(kind: AgentCapabilityOption["kind"]): AgentAbilityKey {
-	if (kind === "skill" || kind === "scene") return "skills";
+	if (kind === "skill") return "skills";
 	if (kind === "mcp") return "mcpServers";
 	return "plugins";
 }
@@ -51,7 +51,7 @@ export function toggleAgentAbility(
 	const selected = current[key];
 	if (option.kind === "plugin") {
 		const linkedSkillIds = capabilities
-			.filter((candidate) => candidate.kind === "skill" || candidate.kind === "scene")
+			.filter((candidate) => candidate.kind === "skill")
 			.filter((candidate) => candidate.sourcePluginId === option.id)
 			.map((candidate) => candidate.id);
 		const enabling = !selected.includes(option.id);
@@ -64,11 +64,11 @@ export function toggleAgentAbility(
 				: current.skills.filter((id) => !linkedSkillIds.includes(id)),
 		};
 	}
-	if ((option.kind === "skill" || option.kind === "scene") && option.sourcePluginId) {
+	if (option.kind === "skill" && option.sourcePluginId) {
 		const enabling = !selected.includes(option.id);
 		const hasSelectedSibling = capabilities.some(
 			(candidate) =>
-				(candidate.kind === "skill" || candidate.kind === "scene") &&
+				candidate.kind === "skill" &&
 				candidate.sourcePluginId === option.sourcePluginId &&
 				candidate.id !== option.id &&
 				current.skills.includes(candidate.id),
@@ -95,7 +95,7 @@ export function selectAllAgentAbilities(capabilities: readonly AgentCapabilityOp
 	const enabled = capabilities.filter((capability) => capability.enabledGlobally);
 	return {
 		selectionMode: "all",
-		skills: uniqueIds(enabled.filter((option) => option.kind === "skill" || option.kind === "scene")),
+		skills: uniqueIds(enabled.filter((option) => option.kind === "skill")),
 		mcpServers: uniqueIds(enabled.filter((option) => option.kind === "mcp")),
 		plugins: uniqueIds(enabled.filter((option) => option.kind === "plugin")),
 	};

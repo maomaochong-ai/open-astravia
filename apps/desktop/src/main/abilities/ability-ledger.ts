@@ -15,7 +15,7 @@ import { ABILITY_LEDGER_SCHEMA_VERSION, migrateAbilityLedgerConfig } from "./abi
  * 能力安装台账（ADR-0049）。
  *
  * 只记录「装了哪些能力、什么版本」，**不改变任何物理安装位置**：
- * skill → `~/.astravia/skills/<slug>`、scene → `~/.astravia/scene/<slug>`、
+ * skill → `~/.astravia/skills/<slug>`、
  * plugin → `~/.astravia/plugins/<slug>`、mcp → `~/.astravia/agent/mcp.json` 的一个 key。
  * bundle 不进台账（状态由成员派生）。
  *
@@ -27,11 +27,10 @@ import { ABILITY_LEDGER_SCHEMA_VERSION, migrateAbilityLedgerConfig } from "./abi
  */
 const ledgerPath = join(getAstraviaHomePath(), "abilities.json");
 const skillsBaseDir = join(getAstraviaHomePath(), "skills");
-const sceneBaseDir = join(getAstraviaHomePath(), "scene");
 const pluginsBaseDir = join(getAstraviaHomePath(), "plugins");
 const mcpConfigPath = join(getAstraviaHomePath(), "agent", "mcp.json");
 
-const LEDGER_TYPES = new Set<string>(["skill", "scene", "plugin", "mcp"]);
+const LEDGER_TYPES = new Set<string>(["skill", "plugin", "mcp"]);
 
 interface PersistedAbilityLedger {
 	schemaVersion: typeof ABILITY_LEDGER_SCHEMA_VERSION;
@@ -156,8 +155,6 @@ function isAbilityStillInstalled(type: AbilityLedgerType, slug: string, mcpServe
 	switch (type) {
 		case "skill":
 			return existsSync(join(skillsBaseDir, slug));
-		case "scene":
-			return existsSync(join(sceneBaseDir, slug));
 		case "plugin":
 			return existsSync(join(pluginsBaseDir, slug));
 		case "mcp":

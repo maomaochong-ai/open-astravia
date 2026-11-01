@@ -11,10 +11,10 @@
 import { nlsKeyOf } from "./package-inspect.mjs";
 
 /** 能力形态。与服务端 model.AbilityType* 一一对应。 */
-export const ABILITY_TYPES = ["skill", "scene", "mcp", "plugin", "bundle"];
+export const ABILITY_TYPES = ["skill", "mcp", "plugin", "bundle"];
 
 /** 有产物的形态：必须随包提交，产物是安装的物理来源。 */
-export const ARTIFACT_TYPES = ["skill", "scene", "plugin"];
+export const ARTIFACT_TYPES = ["skill", "plugin"];
 
 /** 宿主已实现的头图模板白名单，与服务端 showcaseTemplates 保持一致。 */
 const SHOWCASE_TEMPLATES = new Set(["chat-over-canvas", "chat-thread"]);
@@ -270,7 +270,7 @@ export function validateUploadInput(input, options = {}) {
 	if (ARTIFACT_TYPES.includes(input.type)) {
 		if (isBlank(input.package_path)) {
 			errors.push(
-				`${input.type} 必须提供 package_path：本地安装包路径（plugin 为 .zip，skill/scene 为 .zip 或 .tar.gz）`,
+				`${input.type} 必须提供 package_path：本地安装包路径（plugin 为 .zip，skill 为 .zip 或 .tar.gz）`,
 			);
 		} else {
 			const path = input.package_path;
@@ -378,7 +378,7 @@ function crossCheckPlugin(input, pkg, errors, warnings) {
 	}
 }
 
-/** skill / scene 的交叉校验：slug 与 tags 都来自 SKILL.md，payload 只能覆盖不能改名。 */
+/** skill 的交叉校验：slug 与 tags 都来自 SKILL.md，payload 只能覆盖不能改名。 */
 function crossCheckSkill(input, pkg, errors, warnings) {
 	const fm = pkg.skillFrontmatter;
 	if (!fm) {

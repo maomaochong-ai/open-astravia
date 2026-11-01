@@ -239,13 +239,13 @@ function extractUserText(content: unknown): string {
 	return parts.join("\n");
 }
 
-/** 抹掉首条用户消息里的 @file / /skill: / /scene: 前缀行，只留真正的诉求文本。 */
+/** 抹掉首条用户消息里的 @file / /skill: 前缀行，只留真正的诉求文本。 */
 function stripPrefixLines(text: string): string {
 	return text
 		.split("\n")
 		.filter((line) => {
 			const t = line.trim();
-			return t.length > 0 && !t.startsWith("@") && !t.startsWith("/skill:") && !t.startsWith("/scene:");
+			return t.length > 0 && !t.startsWith("@") && !t.startsWith("/skill:");
 		})
 		.join(" ")
 		.trim();

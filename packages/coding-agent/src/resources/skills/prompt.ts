@@ -4,13 +4,12 @@ import { SKILL_SELECTION_GUIDANCE } from "./usage-guidance.js";
 export interface ModelVisibleSkill {
 	readonly name: string;
 	readonly description: string;
-	readonly type: "skill" | "scene";
 	readonly disableModelInvocation: boolean;
 }
 
 /** Format model-visible skills using the Agent Skills XML convention. */
 export function formatSkillsForPrompt(skills: readonly ModelVisibleSkill[]): string {
-	const visibleSkills = skills.filter((skill) => !skill.disableModelInvocation && skill.type !== "scene");
+	const visibleSkills = skills.filter((skill) => !skill.disableModelInvocation);
 	if (visibleSkills.length === 0) return "";
 	const lines = [
 		"\n\n# Skills",

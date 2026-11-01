@@ -172,7 +172,7 @@ export interface DesktopSessionApi {
 	/** 解除 abort/error 后的队列暂停并继续逐条发送。 */
 	resumeQueue(sessionId: string): Promise<void>;
 	clearQueue(sessionId: string): Promise<void>;
-	/** 清空 session 的 todo 列表（被 scene 等 lock 时返回 false）。 */
+	/** 清空 session 的 todo 列表（被锁定时返回 false）。 */
 	clearTodos(sessionId: string): Promise<boolean>;
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): Promise<() => void>;
 	/**

@@ -166,10 +166,10 @@ describe("automation task executor", () => {
 		expect(mocks.updateTaskLastRun).toHaveBeenCalledWith("task-1", "failed");
 	});
 
-	it("passes the explicit model and reasoning and lifts the scene token into promptRef", async () => {
+	it("passes the explicit model and reasoning", async () => {
 		const { runtime } = fakeRuntime();
 		await executeTask(
-			task({ prompt: "@scene:review check the diff", model: { key: "anthropic/opus", reasoning: "high" } }),
+			task({ prompt: "check the diff", model: { key: "anthropic/opus", reasoning: "high" } }),
 			runtime,
 			{ trigger: "manual" },
 		);
@@ -178,7 +178,6 @@ describe("automation task executor", () => {
 			"session-1",
 			expect.objectContaining({
 				text: "check the diff",
-				promptRef: { kind: "scene", name: "review" },
 				modelKey: "anthropic/opus",
 				reasoning: "high",
 			}),

@@ -11,21 +11,14 @@ export interface ParsedSkillBlock {
 
 export interface PromptResourceExpansion {
 	text: string;
-	sceneInjection?: string;
 	skillInjection?: string;
 	promptResourceHookContribution?: EcosystemHookContributionSource;
-	/** @deprecated Use promptResourceHookContribution for both Skill and Scene resources. */
+	/** @deprecated Use promptResourceHookContribution. */
 	skillHookContribution?: EcosystemHookContributionSource;
 	promptRef?: PromptResourceRef;
 }
 
-export interface SceneTodoState {
-	readSceneTodoState(): { readonly locked: boolean; readonly itemCount: number };
-	initializeSceneTodoItems(contents: readonly string[]): void;
-}
-
 export interface PromptResourceExpansionDependencies {
 	resourceLoader: Pick<SessionResourceRuntime, "getSkills">;
-	todoState: SceneTodoState;
 	emitError?: (error: { extensionPath: string; event: string; error: string }) => void;
 }

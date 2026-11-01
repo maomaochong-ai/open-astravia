@@ -30,7 +30,19 @@ import { ALLOWED_BASE_BRANCHES, INTEGRATION_BRANCH } from "./pr-quality.mjs";
 export const AUTOMATION_COMMENT_MARKER = "<!-- astravia-pr-automation -->";
 export const PROMOTION_WORKFLOW_FILE = "promote-dev-to-main.yml";
 export const MERGE_METHOD = "squash";
+/**
+ * dev → main 的推进 PR 必须用 merge commit：
+ * squash 会让 dev 上的提交在 main 上不可达，下一次自动推进就无法快进。
+ */
+export const PROMOTION_MERGE_METHOD = "merge";
 const CHECK_RUN_PAGE_LIMIT = 10;
+
+export function resolveMergeMethod(pullRequest) {
+	const headRef = pullRequest?.head?.ref;
+	const baseRef = pullRequest?.base?.ref;
+	if (headRef === INTEGRATION_BRANCH && baseRef === "main") return PROMOTION_MERGE_METHOD;
+	return MERGE_METHOD;
+}
 
 export function readEvent(env = process.env) {
 	const path = env.GITHUB_EVENT_PATH;
@@ -110,8 +122,9 @@ export function describeEligibility(report) {
 
 export function renderAutomationComment({ pullRequest, report, merged, sha }) {
 	if (merged) {
+		const method = resolveMergeMethod(pullRequest);
 		const lines = [
-			`Merged into \`${pullRequest.base.ref}\` as ${sha ? `\`${sha}\`` : "a squash commit"} once every required check was green.`,
+			`Merged into \`${pullRequest.base.ref}\` as ${sha ? `\`${sha}\`` : `a ${method} commit`} once every required check was green.`,
 		];
 		if (pullRequest.base.ref === INTEGRATION_BRANCH) {
 			lines.push(`\`${INTEGRATION_BRANCH}\` is promoted to \`main\` by a separate workflow run.`);
@@ -130,7 +143,7 @@ export function renderAutomationComment({ pullRequest, report, merged, sha }) {
 export async function mergePullRequest(client, { owner, repo, pullRequest, log = () => {} }) {
 	const { status, data } = await client.put(`/repos/${owner}/${repo}/pulls/${pullRequest.number}/merge`, {
 		json: {
-			merge_method: MERGE_METHOD,
+			merge_method: resolveMergeMethod(pullRequest),
 			sha: pullRequest.head.sha,
 			commit_title: `${pullRequest.title} (#${pullRequest.number})`,
 		},

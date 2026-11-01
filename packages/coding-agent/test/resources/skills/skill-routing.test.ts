@@ -9,23 +9,20 @@ describe("model-visible skill routing", () => {
 			{
 				name: "visible",
 				description: 'Use <images> & "videos"',
-				type: "skill" as const,
 				disableModelInvocation: false,
 			},
-			{ name: "hidden", description: "private", type: "skill" as const, disableModelInvocation: true },
-			{ name: "scene", description: "scene-only", type: "scene" as const, disableModelInvocation: false },
+			{ name: "hidden", description: "private", disableModelInvocation: true },
 		];
 		const prompt = formatSkillsForPrompt(skills);
 		expect(formatModelVisibleSkills(skills)).toBe(prompt);
 		expect(prompt).toContain("Use &lt;images&gt; &amp; &quot;videos&quot;");
 		expect(prompt).not.toContain("private");
-		expect(prompt).not.toContain("scene-only");
 		expect(formatSkillsForPrompt(skills.slice(1))).toBe("");
 	});
 
 	it("exposes task matching and non-authorization boundaries before invocation", () => {
 		const prompt = formatModelVisibleSkills([
-			{ name: "visible", description: "Media workflow", type: "skill", disableModelInvocation: false },
+			{ name: "visible", description: "Media workflow", disableModelInvocation: false },
 		]);
 		for (const text of [prompt, INVOKE_SKILL_TOOL_DESCRIPTION]) {
 			expect(text).toContain("outcome and target resource");

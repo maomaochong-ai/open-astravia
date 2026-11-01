@@ -7,7 +7,6 @@
 	--xianxia-app-frame-radius: 22px;
 	--xianxia-input-bar-background-radius: 28px;
 	--xianxia-main-content-background-radius: var(--xianxia-app-frame-radius);
-	--xianxia-scene-card-background-radius: 24px;
 	--xianxia-sidebar-background-radius: 24px;
 	--xianxia-skill-card-background-radius: 9999px;
 }
@@ -43,10 +42,6 @@
 .xianxia-send-button .send-button-icon,
 .xianxia-send-button .send-button-outgoing-arrow {
 	filter: drop-shadow(0 0 2px rgb(255 248 210 / 72%));
-}
-
-.xianxia-scene-card-background {
-	border-radius: var(--xianxia-scene-card-background-radius);
 }
 
 .xianxia-sidebar-background {

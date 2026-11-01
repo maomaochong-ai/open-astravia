@@ -158,12 +158,13 @@ describe("parseMarketplaceManifest", () => {
 		expect(() => parseMarketplaceManifest(manifest)).toThrow("Duplicate ability");
 	});
 
-	it("rejects the same slug across skill and scene because the local manifest shares a namespace", () => {
+	it("ignores legacy scene entries instead of failing the whole index", () => {
 		const manifest = validManifest();
 		const abilities = manifest.abilities as Array<Record<string, unknown>>;
-		abilities.push({ ...structuredClone(abilities[0]), type: "scene" });
+		abilities.push({ ...structuredClone(abilities[0]), slug: "old-scene", type: "scene" });
 
-		expect(() => parseMarketplaceManifest(manifest)).toThrow("Duplicate ability slug");
+		const parsed = parseMarketplaceManifest(manifest);
+		expect(parsed.abilities.map((ability) => ability.slug)).not.toContain("old-scene");
 	});
 
 	it("accepts MCP, plugin and bundle entries", () => {

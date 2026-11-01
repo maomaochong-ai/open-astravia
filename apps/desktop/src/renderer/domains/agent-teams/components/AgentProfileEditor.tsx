@@ -572,12 +572,12 @@ function AbilityEditor({
 							.toLocaleLowerCase()
 							.includes(normalizedQuery),
 			);
-	const pluginResourceGroups = (kind: "skill" | "scene") => {
+	const pluginResourceGroups = () => {
 		const byPlugin = new Map<string, { label: string; items: AgentCapabilityOption[] }>();
 		for (const option of configurableCapabilities) {
-			if (option.kind !== kind || !option.sourcePluginId) continue;
+			if (option.kind !== "skill" || !option.sourcePluginId) continue;
 			const current = byPlugin.get(option.sourcePluginId) ?? {
-				label: t(kind === "skill" ? "profile.pluginSkills" : "profile.pluginScenes", {
+				label: t("profile.pluginSkills", {
 					plugin: option.sourceName || option.sourcePluginId,
 				}),
 				items: [],
@@ -592,12 +592,7 @@ function AbilityEditor({
 			label: t("profile.skills"),
 			items: configurableCapabilities.filter((option) => option.kind === "skill" && !option.sourcePluginId),
 		},
-		...pluginResourceGroups("skill"),
-		{
-			label: t("profile.scenes"),
-			items: configurableCapabilities.filter((option) => option.kind === "scene" && !option.sourcePluginId),
-		},
-		...pluginResourceGroups("scene"),
+		...pluginResourceGroups(),
 		{ label: t("profile.mcp"), items: configurableCapabilities.filter((option) => option.kind === "mcp") },
 		{ label: t("profile.plugins"), items: configurableCapabilities.filter((option) => option.kind === "plugin") },
 	]

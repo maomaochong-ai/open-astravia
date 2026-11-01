@@ -65,8 +65,7 @@ export function isImageSkillIcon(icon: string | null | undefined): boolean {
 }
 
 export interface SkillTypeIconProps {
-	readonly type: "skill" | "scene";
-	/** 空 / 未识别 → 按 type 显示默认图标 */
+	/** 空 / 未识别 → 显示默认图标 */
 	readonly icon?: string | null;
 	readonly className?: string;
 }
@@ -104,11 +103,11 @@ export function SkillDefaultIcon({ className = "h-4 w-4" }: { className?: string
 }
 
 /**
- * 技能卡片图标：自定义图 → Solar 实心 → type 默认图标。
+ * 技能卡片图标：自定义图 → Solar 实心 → 默认图标。
  * 图片铺满父容器（h-full w-full）；字体/Solar/默认 SVG 使用 className 尺寸。
- * skill 默认：3D 方块（浅色 `#1C274C` / 深色白）；scene 默认：mdi 影片。
+ * 默认：3D 方块（浅色 `#1C274C` / 深色白）。
  */
-export function SkillTypeIcon({ type, icon, className = "h-4 w-4" }: SkillTypeIconProps): JSX.Element {
+export function SkillTypeIcon({ icon, className = "h-4 w-4" }: SkillTypeIconProps): JSX.Element {
 	const trimmed = icon?.trim() ?? "";
 	if (trimmed && isImageSkillIcon(trimmed)) {
 		return <img src={trimmed} alt="" className="h-full w-full object-contain" />;
@@ -118,9 +117,6 @@ export function SkillTypeIcon({ type, icon, className = "h-4 w-4" }: SkillTypeIc
 		if (cls) {
 			return <span className={`${className} ${cls}`} />;
 		}
-	}
-	if (type === "scene") {
-		return <span className={`${className} icon-[mdi--movie-open-outline]`} />;
 	}
 	return <SkillDefaultIcon className={className} />;
 }

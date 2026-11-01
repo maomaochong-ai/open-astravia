@@ -1,54 +1,4 @@
 {
-	"tabs": {
-		"scene": "场景"
-	},
-	"typeNoun": {
-		"scene": "场景"
-	},
-	"subtitle": "安装并启用你需要的能力，让 Astravia 拥有更多专业技能",
-	"search": {
-		"placeholder": "搜索{{noun}}..."
-	},
-	"actions": {
-		"install": "安装",
-		"use": "使用",
-		"update": "更新",
-		"uninstall": "卸载"
-	},
-	"loading": "加载中...",
-	"card": {
-		"noDescription": "暂无描述",
-		"custom": "自定义",
-		"general": "通用",
-		"readonly": "只读",
-		"updatable": "可更新"
-	},
-	"scene": {
-		"generalReadonly": "通用·只读",
-		"localReadonly": "本地·只读",
-		"running": "运行中",
-		"installed": "已安装"
-	},
-	"group": {
-		"agentSkill": "通用 Agent Skill",
-		"custom": "自定义",
-		"uncategorized": "未分类",
-		"enabledCount": "{{n}} 已启用"
-	},
-	"empty": {
-		"noMatch": "没有匹配的结果",
-		"noMatchHint": "试试换个关键词",
-		"none": "暂无可用{{noun}}",
-		"noneHint": "稍后再来看看吧"
-	},
-	"error": {
-		"loadFailed": "加载失败",
-		"partialFallback": "{{error}}，当前仅显示已安装的{{noun}}"
-	},
-	"import": {
-		"failed": "导入失败：{{error}}",
-		"unknownError": "未知错误"
-	},
 	"tour": {
 		"capabilities": {
 			"banner": {
@@ -76,11 +26,11 @@
 		},
 		"install-ability": {
 			"name": "安装能力",
-			"description": "在本机 Astravia 中安装插件、Skill/场景与 MCP 能力，并在插件升级挂起待应用版本时立即重载。"
+			"description": "在本机 Astravia 中安装插件、Skill 与 MCP 能力，并在插件升级挂起待应用版本时立即重载。"
 		},
 		"publish-ability": {
 			"name": "发布能力",
-			"description": "把 skill、scene、MCP、插件或能力套装提交到 Astravia 能力市场，讲清必填字段、多语言与审核流程。"
+			"description": "把 skill、MCP、插件或能力套装提交到 Astravia 能力市场，讲清必填字段、多语言与审核流程。"
 		}
 	}
 }

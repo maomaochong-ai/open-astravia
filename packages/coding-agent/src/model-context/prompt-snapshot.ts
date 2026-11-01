@@ -3,7 +3,7 @@ import type { CodingAgentPromptResourceSource, CodingAgentPromptSettingsSource }
 
 /**
  * Turn admission 时把已物化的 Prompt/Skill generation 转换为只读内存视图。
- * Skill 正文与 Scene tasks 已在资源刷新阶段读取，本层只冻结当前 Turn 的版本。
+ * Skill 正文已在资源刷新阶段读取，本层只冻结当前 Turn 的版本。
  */
 export async function capturePromptResourceSource(
 	source: CodingAgentPromptResourceSource,
@@ -55,9 +55,5 @@ export function capturePromptSettingsSource(source: CodingAgentPromptSettingsSou
 }
 
 function captureSkill(skill: Skill): Skill {
-	const captured: Skill = {
-		...skill,
-		sceneTasks: Object.freeze([...skill.sceneTasks]),
-	};
-	return Object.freeze(captured);
+	return Object.freeze({ ...skill });
 }

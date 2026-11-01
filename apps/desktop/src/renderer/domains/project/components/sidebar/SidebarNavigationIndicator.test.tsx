@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const ITEMS: SidebarNavItem[] = [
 	{ key: "/abilities", label: "能力", icon: "icon-[solar--widget-linear]", active: true, path: "/abilities" },
-	{ key: "/scenes", label: "场景", icon: "icon-[solar--star-linear]", active: false, path: "/scenes" },
+	{ key: "/agents", label: "智能体", icon: "icon-[solar--star-linear]", active: false, path: "/agents" },
 ] as unknown as SidebarNavItem[];
 
 function renderNav(bounds: { left: number; top: number; width: number; height: number } | null) {
@@ -43,12 +43,12 @@ describe("SidebarNavigation 指示条", () => {
 				setItemRef={() => () => {}}
 			/>,
 		);
-		const scenes = screen.getByRole("button", { name: "场景" });
-		fireEvent.mouseEnter(scenes);
-		fireEvent.focus(scenes);
+		const agents = screen.getByRole("button", { name: "智能体" });
+		fireEvent.mouseEnter(agents);
+		fireEvent.focus(agents);
 		expect(onItemIntent).toHaveBeenCalledWith(ITEMS[1]);
 		expect(onItemClick).not.toHaveBeenCalled();
-		fireEvent.click(scenes);
+		fireEvent.click(agents);
 		expect(onItemClick).toHaveBeenCalledWith(ITEMS[1]);
 	});
 

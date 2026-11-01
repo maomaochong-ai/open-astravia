@@ -120,7 +120,7 @@ async function main() {
 	if (input.slug?.trim()) form.set("slug", input.slug.trim());
 	if (input.version?.trim()) form.set("version", input.version.trim());
 	if (input.category?.trim()) form.set("category", input.category.trim());
-	// tags 只走 detail：平铺的 tags 表单字段是 admin 通道的入参，skill/scene 的上传路径
+	// tags 只走 detail：平铺的 tags 表单字段是 admin 通道的入参，skill 的上传路径
 	// 压根不读它，plugin 与 mcp/bundle 读了也会被 detail.tags 再覆盖一遍。
 	// 同一份数据发两遍、三种优先级，只会制造「改了没生效」的假象。
 

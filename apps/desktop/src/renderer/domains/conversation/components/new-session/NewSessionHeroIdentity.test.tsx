@@ -56,11 +56,6 @@ function Harness(): JSX.Element {
 				greetingTitle="Hi, Ada"
 				identity={identity}
 				mounted
-				onSceneClick={() => {}}
-				sceneActions={{}}
-				sceneLabels={{ installPrompt: "", next: "", previous: "" }}
-				scenes={[]}
-				selected={null}
 				subtitle="今天想做点什么"
 			/>
 		</>

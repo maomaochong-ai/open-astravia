@@ -34,7 +34,7 @@ export function createInvokeSkillTool(options: InvokeSkillToolOptions): RuntimeT
 			const skill = skills.find((candidate) => candidate.name === name);
 			if (!skill) {
 				const availableNames = skills
-					.filter((candidate) => !candidate.disableModelInvocation && candidate.type !== "scene")
+					.filter((candidate) => !candidate.disableModelInvocation)
 					.map((candidate) => candidate.name);
 				console.info("[skills] invoke miss", { name, available: availableNames.length });
 				return {

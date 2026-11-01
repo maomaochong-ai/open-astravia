@@ -30,10 +30,9 @@ import { buildPluginSkillSources, findPluginSkillSource, resolvePluginSkillPrese
 
 const skillsLog = getAppLogger("skills");
 const skillsBaseDir = join(getAstraviaHomePath(), "skills");
-const sceneBaseDir = join(getAstraviaHomePath(), "scene");
 const manifestPath = join(getAstraviaHomePath(), "skills-manifest.json");
 
-export type InstalledSkillType = "skill" | "scene";
+export type InstalledSkillType = "skill";
 
 export interface InstalledMarketSkill {
 	name: string;
@@ -76,8 +75,8 @@ export interface ListedSkill {
 	icon?: string;
 }
 
-export function getSkillBaseDir(type: InstalledSkillType): string {
-	return type === "scene" ? sceneBaseDir : skillsBaseDir;
+export function getSkillBaseDir(): string {
+	return skillsBaseDir;
 }
 
 export function recordSkillResourceEvent(input: {
@@ -107,7 +106,12 @@ export function readSkillsManifest(): Record<string, InstalledSkill> {
 	if (!existsSync(manifestPath)) return {};
 	try {
 		const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as Record<string, InstalledSkill>;
-		for (const entry of Object.values(manifest)) {
+		for (const [name, entry] of Object.entries(manifest)) {
+			// 场景功能已移除：旧清单里遗留的 scene 条目不再对应任何可加载资源。
+			if ((entry as { type?: string }).type === "scene") {
+				delete manifest[name];
+				continue;
+			}
 			if (entry.enabled === undefined) entry.enabled = true;
 		}
 		return manifest;
@@ -221,7 +225,7 @@ export class SkillService {
 							: (skill.provenance ?? { kind: "native", scope: skill.source }),
 					...(presentation ? { presentation } : {}),
 					...(pluginSource ? { sourcePluginId: pluginSource.pluginId } : {}),
-					type: skill.type,
+					type: "skill",
 					...(icon ? { icon } : {}),
 				};
 			});
@@ -250,7 +254,7 @@ export class SkillService {
 			writeSkillsManifest(manifest);
 			recordSkillResourceEvent({
 				name,
-				type: entry.type === "scene" ? "scene" : "skill",
+				type: "skill",
 				source: entry.source,
 				operation: enabled ? "enabled" : "disabled",
 			});
@@ -264,11 +268,9 @@ export class SkillService {
 		return this.setEnabled(name, !entry.enabled);
 	}
 
-	async uninstall(name: string, type?: InstalledSkillType): Promise<void> {
+	async uninstall(name: string): Promise<void> {
 		const manifest = readSkillsManifest();
-		const itemType: InstalledSkillType =
-			type === "scene" ? "scene" : type === "skill" ? "skill" : manifest[name]?.type === "scene" ? "scene" : "skill";
-		const baseDir = getSkillBaseDir(itemType);
+		const baseDir = getSkillBaseDir();
 		ensureDirWritable(baseDir);
 		const skillDir = join(baseDir, name);
 		const previous = manifest[name];
@@ -276,15 +278,12 @@ export class SkillService {
 			ensureDirWritable(skillDir);
 			await rm(skillDir, { recursive: true, force: true });
 		}
-		// 清单是扁平 map：同名的 skill 与 scene 共用一个键，卸载其一不能删掉另一种类型的记录
-		if (!previous || (previous.type === "scene" ? "scene" : "skill") === itemType) {
-			delete manifest[name];
-			writeSkillsManifest(manifest);
-		}
-		removeAbilityLedgerEntry(itemType, name);
+		delete manifest[name];
+		writeSkillsManifest(manifest);
+		removeAbilityLedgerEntry("skill", name);
 		recordSkillResourceEvent({
 			name,
-			type: itemType,
+			type: "skill",
 			source: previous?.source,
 			operation: "uninstalled",
 		});

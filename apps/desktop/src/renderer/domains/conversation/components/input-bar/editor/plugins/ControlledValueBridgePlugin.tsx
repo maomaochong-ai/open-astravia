@@ -23,7 +23,6 @@ function inputSegmentsEqual(left: readonly InputSegment[], right: readonly Input
 					segment.meta === candidate.meta
 				);
 			case "skill":
-			case "scene":
 				return (
 					candidate.kind === segment.kind &&
 					segment.name === candidate.name &&

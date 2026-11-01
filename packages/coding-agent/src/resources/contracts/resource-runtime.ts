@@ -19,7 +19,6 @@ export interface ResourceExtensionPaths {
 }
 
 export interface SkillResourceLocations {
-	readonly sceneDir: string;
 	readonly managedSkillsDir: string;
 	readonly manifestPath: string;
 }

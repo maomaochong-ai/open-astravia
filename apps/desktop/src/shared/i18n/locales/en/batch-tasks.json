@@ -36,7 +36,7 @@
 	},
 	"form": {
 		"namePlaceholder": "Project name",
-		"promptPlaceholder": "Enter a prompt... type / to invoke skills/scenes",
+		"promptPlaceholder": "Enter a prompt... type / to invoke skills",
 		"model": "Model",
 		"modelEmpty": "No available models",
 		"modelSelect": "Select model",

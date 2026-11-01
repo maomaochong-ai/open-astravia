@@ -110,8 +110,8 @@ export function useSkillPickerModel({
 			emptyNoMatchHint: t("slashPanel.emptyNoMatchHint"),
 			emptyNoSkills: t("slashPanel.emptyNoSkills"),
 			emptyNoSkillsHint: t("slashPanel.emptyNoSkillsHint"),
-			sourceLabel: (source: string, type: SkillInfo["type"]) => {
-				const key = skillSourceLabelKey(source, type);
+			sourceLabel: (source: string) => {
+				const key = skillSourceLabelKey(source);
 				return key ? t(key) : source;
 			},
 		}),

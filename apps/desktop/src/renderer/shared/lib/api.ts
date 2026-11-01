@@ -292,9 +292,9 @@ export async function fetchUsageSeries(token: string, days: 7 | 30 | 90 | 365 = 
 	});
 }
 
-// ─── Market Abilities（ADR-0049：Skill / Scene / MCP / Plugin / Bundle 统一为 Ability） ───
+// ─── Market Abilities（ADR-0049：Skill / MCP / Plugin / Bundle 统一为 Ability） ───
 
-export type AbilityType = "skill" | "scene" | "mcp" | "plugin" | "bundle";
+export type AbilityType = "skill" | "mcp" | "plugin" | "bundle";
 /** bundle 不允许嵌套，成员集合恒为一层。 */
 export type AbilityMemberType = Exclude<AbilityType, "bundle">;
 

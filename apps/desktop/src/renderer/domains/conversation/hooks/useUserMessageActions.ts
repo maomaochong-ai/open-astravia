@@ -24,9 +24,7 @@ const DELETE_CONFIRMATION_SUPPRESSION_MS = 60_000;
 let deleteConfirmationSuppressedUntil = 0;
 
 function matchesPromptRef(segment: InputSegment, ref: { readonly kind: string; readonly name: string }): boolean {
-	return (
-		(segment.kind === "skill" || segment.kind === "scene") && segment.kind === ref.kind && segment.name === ref.name
-	);
+	return segment.kind === "skill" && segment.kind === ref.kind && segment.name === ref.name;
 }
 
 function fillInputFromUserMessage(message: ConversationUserMessageViewModel): void {
@@ -34,11 +32,7 @@ function fillInputFromUserMessage(message: ConversationUserMessageViewModel): vo
 	const { segments, legacyRef } = parseInputSegments(message.text);
 	const ref = message.promptRef ?? legacyRef ?? null;
 	const restored: InputSegment[] = [...segments];
-	if (
-		ref &&
-		(ref.kind === "skill" || ref.kind === "scene") &&
-		!restored.some((segment) => matchesPromptRef(segment, ref))
-	) {
+	if (ref && ref.kind === "skill" && !restored.some((segment) => matchesPromptRef(segment, ref))) {
 		restored.unshift({ kind: ref.kind, name: ref.name });
 	}
 	const covered = new Set(

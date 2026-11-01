@@ -31,7 +31,7 @@ async function temporaryRoot(): Promise<string> {
 async function writeAbility(
 	root: string,
 	slug: string,
-	type: "skill" | "scene" | "plugin",
+	type: "skill" | "plugin",
 	version: string,
 	icon = "assets/icon.svg",
 ): Promise<void> {

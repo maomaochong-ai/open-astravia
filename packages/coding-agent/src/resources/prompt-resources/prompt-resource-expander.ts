@@ -9,11 +9,7 @@ function expandPromptResource(
 	options: { structured: boolean; legacyArgs?: string },
 ): PromptResourceExpansion {
 	const name = promptRef.name.trim();
-	const isScene = promptRef.kind === "scene";
-	const allSkills = dependencies.resourceLoader.getSkills().skills;
-	const skill = isScene
-		? allSkills.find((candidate) => candidate.name === name && candidate.type === "scene")
-		: allSkills.find((candidate) => candidate.name === name && (!options.structured || candidate.type !== "scene"));
+	const skill = dependencies.resourceLoader.getSkills().skills.find((candidate) => candidate.name === name);
 	if (!skill) {
 		console.info("[skills] expand miss", { kind: promptRef.kind, name });
 		return options.structured ? { text, promptRef } : { text };
@@ -23,62 +19,6 @@ function expandPromptResource(
 		const document = readSkillInvocationDocument(skill);
 		const body = document.body.trim();
 		const hookContribution = createSkillHookContribution(skill, document);
-		if (isScene) {
-			const lines: string[] = [
-				`<scene name="${skill.name}" location="${skill.filePath}">`,
-				"",
-				`SCENE_DIR="${skill.baseDir}"`,
-				`ALL relative paths in this scene MUST be resolved against SCENE_DIR using absolute paths.`,
-				`For example: bash "${skill.baseDir}/scripts/run.sh" — do NOT cd into the scene directory.`,
-				`IMPORTANT: Use the literal path above. Do NOT use shell variables like $SCENE_DIR — no such variable exists in the shell environment.`,
-				"",
-				`CRITICAL: The scene directory is READ-ONLY. NEVER write, create, or modify any files inside the scene directory.`,
-				`NEVER cd into the scene directory. Stay in the user's working directory (cwd) at all times.`,
-				`All output files and artifacts MUST be written to cwd, NOT into the scene directory.`,
-				"",
-				body,
-				`</scene>`,
-			];
-
-			const sceneState = dependencies.todoState.readSceneTodoState();
-			if (sceneState.locked) {
-				lines.push(
-					"",
-					`[SYSTEM] The todo list is already locked from an earlier scene invocation in this session (${sceneState.itemCount} items).`,
-					`Do NOT call todo(action="create") — it will be rejected.`,
-					`Continue working through the existing items in strict sequential order.`,
-					`Use todo(action="list") to view current progress.`,
-				);
-			} else if (skill.sceneTasks.length > 0) {
-				try {
-					dependencies.todoState.initializeSceneTodoItems(skill.sceneTasks);
-					lines.push(
-						"",
-						`[SYSTEM] ${skill.sceneTasks.length} todo items have been auto-created from this scene's tasks.json and the list is now LOCKED.`,
-						`Do NOT call todo(action="create") — it will be rejected. The tasks.json list is the authoritative plan.`,
-						`Work strictly through these items in order. Start now with todo(action="update", id=1, status="in_progress").`,
-						`After finishing each item, IMMEDIATELY call todo(action="update", id=N, status="done") before moving on to the next.`,
-					);
-				} catch {
-					// Scene Todo initialization remains a best-effort side effect.
-				}
-			}
-
-			console.info("[skills] expand", {
-				kind: "scene",
-				name: skill.name,
-				source: skill.source,
-				path: skill.filePath,
-				hasArgs: Boolean(options.legacyArgs),
-			});
-			return {
-				text: options.legacyArgs || text,
-				sceneInjection: lines.join("\n"),
-				promptResourceHookContribution: hookContribution,
-				promptRef,
-			};
-		}
-
 		const skillBlock = `<skill name="${skill.name}" location="${skill.filePath}">\nReferences are relative to ${skill.baseDir}.\n\n${body}\n</skill>`;
 		console.info("[skills] expand", {
 			kind: "skill",
@@ -98,7 +38,7 @@ function expandPromptResource(
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		console.info("[skills] expand error", {
-			kind: isScene ? "scene" : "skill",
+			kind: "skill",
 			name: skill.name,
 			path: skill.filePath,
 			error: message,
@@ -126,21 +66,12 @@ export function expandPromptResourceCommand(
 	text: string,
 	dependencies: PromptResourceExpansionDependencies,
 ): PromptResourceExpansion {
-	let kind: PromptResourceRef["kind"];
-	let prefix: string;
-	if (text.startsWith("/skill:")) {
-		kind = "skill";
-		prefix = "/skill:";
-	} else if (text.startsWith("/scene:")) {
-		kind = "scene";
-		prefix = "/scene:";
-	} else {
-		return { text };
-	}
+	const prefix = "/skill:";
+	if (!text.startsWith(prefix)) return { text };
 
 	const rest = text.slice(prefix.length);
 	const separator = rest.match(/[\s]/);
 	const name = separator ? rest.slice(0, separator.index) : rest;
 	const args = separator ? rest.slice(separator.index).trim() : "";
-	return expandPromptResource(text, { kind, name }, dependencies, { structured: false, legacyArgs: args });
+	return expandPromptResource(text, { kind: "skill", name }, dependencies, { structured: false, legacyArgs: args });
 }

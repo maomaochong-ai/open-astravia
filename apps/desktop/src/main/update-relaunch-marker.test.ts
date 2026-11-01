@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { consumePendingUpdateRelaunch, markPendingUpdateRelaunch } from "./update-relaunch-marker";
+import {
+	consumePendingUpdateRelaunch,
+	hasPendingUpdateRelaunch,
+	markPendingUpdateRelaunch,
+} from "./update-relaunch-marker";
 
 const roots: string[] = [];
 
@@ -25,6 +29,18 @@ describe("update relaunch marker", () => {
 		expect(consumePendingUpdateRelaunch(dir)).toBe(true);
 		// 第二次必须是 false：否则之后每次手动启动都会抢焦点。
 		expect(consumePendingUpdateRelaunch(dir)).toBe(false);
+	});
+
+	it("answers the read-only question the single-instance retry depends on", async () => {
+		const dir = await stateDir();
+		expect(hasPendingUpdateRelaunch(dir)).toBe(false);
+
+		markPendingUpdateRelaunch(dir);
+		expect(hasPendingUpdateRelaunch(dir)).toBe(true);
+		// 只读：问过之后标记仍在，它只由启动完成后的消费方删掉。
+		expect(hasPendingUpdateRelaunch(dir)).toBe(true);
+		expect(consumePendingUpdateRelaunch(dir)).toBe(true);
+		expect(hasPendingUpdateRelaunch(dir)).toBe(false);
 	});
 
 	it("reports false when the app was not relaunched by the installer", async () => {

@@ -64,7 +64,7 @@ export function createTodoTool(options: TodoToolOptions): RuntimeToolDefinition<
 						return result(
 							action,
 							`REJECTED: The todo list is locked by ${source ?? "the system"} and cannot accept new items.\n` +
-								`This list was prefilled from a scene's tasks.json and is the authoritative plan.\n` +
+								`This list was prefilled by the host and is the authoritative plan.\n` +
 								`Do NOT attempt to create additional todos. Work strictly through the existing items in order:\n` +
 								`call todo(action="list") to view them, then todo(action="update", id=N, status="in_progress"|"done").\n\n${formatItems(store)}`,
 						);

@@ -205,7 +205,7 @@ export interface CodingAgentRuntimeContextOptions {
 	) => readonly SessionExtensionDefinition[] | Promise<readonly SessionExtensionDefinition[]>;
 	/** 外围 Composition Root 向产品 Session Extension 提供的通用 typed functions。 */
 	readonly sessionExtensionFunctions?: SessionExtensionFunctionSource;
-	/** 为每个 Session 创建唯一 Todo Runtime；Tool、Continuation、Scene 与 Controller 共享它。 */
+	/** 为每个 Session 创建唯一 Todo Runtime；Tool、Continuation 与 Controller 共享它。 */
 	readonly createTodoRuntime?: (sessionOptions: CodingAgentRuntimeSessionOptions) => CodingAgentTodoRuntime;
 	/** 运行中读取压缩设置；未提供时使用 Coding Agent 既有默认值。 */
 	readonly resolveCompactionSettings?: CodingAgentCompactionRuntimeOptions["resolveSettings"];

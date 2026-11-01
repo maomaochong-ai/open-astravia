@@ -776,7 +776,6 @@ function recordInputPromptRefUsed(data: AppMonitorData, rawKind: string, rawName
 	const refKey = `${kind}:${name}`;
 	data.inputPromptRefs.events += 1;
 	if (kind === "skill") data.inputPromptRefs.skills += 1;
-	if (kind === "scene") data.inputPromptRefs.scenes += 1;
 	data.inputPromptRefs.byKind[kind] = (data.inputPromptRefs.byKind[kind] ?? 0) + 1;
 	data.inputPromptRefs.byName[name] = (data.inputPromptRefs.byName[name] ?? 0) + 1;
 	data.inputPromptRefs.byRef[refKey] ??= {
@@ -790,7 +789,6 @@ function recordInputPromptRefUsed(data: AppMonitorData, rawKind: string, rawName
 	stats.lastUsedAt = timestamp;
 	data.inputPromptRefs.recent = { ...stats };
 	if (kind === "skill") data.inputPromptRefs.recentSkill = { ...stats };
-	if (kind === "scene") data.inputPromptRefs.recentScene = { ...stats };
 	updateMostUsedPromptRef(data, stats);
 }
 
@@ -802,12 +800,7 @@ function recordResourceLifecycle(
 	const kind = normalizeMetricKey(event.resourceKind);
 	const id = normalizeResourceId(event.resourceId);
 	const operation = normalizeMetricKey(event.operation);
-	if (
-		(kind !== "skill" && kind !== "scene" && kind !== "plugin" && kind !== "mcp") ||
-		id === "" ||
-		operation === "unknown"
-	)
-		return;
+	if ((kind !== "skill" && kind !== "plugin" && kind !== "mcp") || id === "" || operation === "unknown") return;
 	const source = event.source ? normalizeMetricKey(event.source) : "";
 	data.resources.events += 1;
 	data.resources.byOperation[operation] = (data.resources.byOperation[operation] ?? 0) + 1;
@@ -1011,9 +1004,6 @@ function updateMostUsedPromptRef(data: AppMonitorData, stats: AppMonitorData["in
 	}
 	if (stats.kind === "skill" && isMoreUsedPromptRef(stats, data.inputPromptRefs.mostUsedSkill)) {
 		data.inputPromptRefs.mostUsedSkill = { ...stats };
-	}
-	if (stats.kind === "scene" && isMoreUsedPromptRef(stats, data.inputPromptRefs.mostUsedScene)) {
-		data.inputPromptRefs.mostUsedScene = { ...stats };
 	}
 }
 

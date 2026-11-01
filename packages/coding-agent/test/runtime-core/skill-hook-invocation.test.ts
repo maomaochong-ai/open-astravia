@@ -71,10 +71,8 @@ function createFeature(
 		filePath: "C:/skills/review/SKILL.md",
 		baseDir: "C:/skills/review",
 		source: "user",
-		type: "skill",
 		disableModelInvocation: false,
 		content,
-		sceneTasks: [],
 	};
 	const resourceSource: CodingAgentPromptResourceSource = {
 		refreshContextResourcesIfChanged: async () => false,

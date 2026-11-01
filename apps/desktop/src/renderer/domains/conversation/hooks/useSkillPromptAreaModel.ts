@@ -142,8 +142,6 @@ export function useSkillPromptAreaModel({
 		textareaRef.current?.focus();
 	};
 
-	const isScene = skill?.type === "scene";
-
 	return {
 		prompt,
 		placeholder: placeholder ?? t("skillPromptArea.placeholder"),
@@ -155,7 +153,6 @@ export function useSkillPromptAreaModel({
 		cwd,
 		skill,
 		skillMissing,
-		isScene,
 		skillDisplayName: skill ? skill.alias || skill.name : "",
 		hasSkill: Boolean(skill),
 		anchorRect,

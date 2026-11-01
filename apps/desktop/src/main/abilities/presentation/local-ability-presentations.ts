@@ -61,19 +61,18 @@ export function listLocalAbilityPresentations(
 	}
 
 	for (const [slug, skill] of Object.entries(dependencies.readSkillsManifest())) {
-		const type = skill.type === "scene" ? "scene" : "skill";
 		try {
 			put(
 				presentations,
-				`${type}:${slug}`,
+				`skill:${slug}`,
 				loadAbilityPackagePresentation(
-					join(dependencies.getSkillBaseDir(type), slug),
-					{ type, slug, version: skill.version },
+					join(dependencies.getSkillBaseDir(), slug),
+					{ type: "skill", slug, version: skill.version },
 					skill.version,
 				),
 			);
 		} catch (error) {
-			log.warn(`${type} ${slug} presentation ignored`, error);
+			log.warn(`skill ${slug} presentation ignored`, error);
 		}
 	}
 

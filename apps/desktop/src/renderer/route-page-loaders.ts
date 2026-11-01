@@ -27,10 +27,6 @@ export const loadKnowledgeBasePage = async () => ({
 	default: (await import("./domains/knowledge-base/components/KnowledgeBasePage")).KnowledgeBasePage,
 });
 
-export const loadScenesPage = async () => ({
-	default: (await import("./domains/skills/components/ScenesPage")).ScenesPage,
-});
-
 export const loadSettingsPage = async () => ({
 	default: (await import("./domains/settings/components/SettingsPage")).SettingsPage,
 });

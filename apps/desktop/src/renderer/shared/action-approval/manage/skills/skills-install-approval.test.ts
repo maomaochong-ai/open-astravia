@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseSkillsInstallFromMarketInput } from "./SkillsInstallFromMarketApproval";
 
 describe("parseSkillsInstallFromMarketInput", () => {
-	it("accepts skill and scene install payloads", () => {
+	it("accepts skill install payloads", () => {
 		expect(
 			parseSkillsInstallFromMarketInput({
 				operation: "install-from-market",
@@ -21,7 +21,7 @@ describe("parseSkillsInstallFromMarketInput", () => {
 				type: "scene",
 				slug: "welcome",
 			}),
-		).toMatchObject({ type: "scene", slug: "welcome" });
+		).toBeNull();
 	});
 
 	it("rejects invalid payloads", () => {

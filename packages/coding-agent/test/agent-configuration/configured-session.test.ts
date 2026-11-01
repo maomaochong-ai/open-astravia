@@ -205,10 +205,8 @@ function skill(name: string): Skill {
 		filePath: `/virtual/${name}/SKILL.md`,
 		baseDir: `/virtual/${name}`,
 		source: "test",
-		type: "skill",
 		disableModelInvocation: false,
 		content: `---\nname: ${name}\ndescription: ${name}\n---\n${name}-body`,
-		sceneTasks: [],
 	};
 }
 const MODEL: Model<Api> = {

@@ -9,10 +9,10 @@ export function createCodingAgentWritePathPolicy(
 ): CodingAgentWritePathPolicy {
 	return {
 		getRejectionReason: (absolutePath) => {
-			if (boundaries.isProtectedSkillOrScenePath(absolutePath)) {
+			if (boundaries.isProtectedSkillPath(absolutePath)) {
 				return (
-					`Error: "${absolutePath}" is inside a skill/scene directory which is read-only. ` +
-					"Skills and scenes are global resources — never write artifacts into them. " +
+					`Error: "${absolutePath}" is inside a skill directory which is read-only. ` +
+					"Skills are global resources — never write artifacts into them. " +
 					"Write output files to the user's working directory instead."
 				);
 			}

@@ -171,10 +171,8 @@ function skill(filePath: string, baseDir: string): Skill {
 		filePath,
 		baseDir,
 		source: "test",
-		type: "skill",
 		disableModelInvocation: false,
 		content: "---\nname: sample\ndescription: sample\n---\nUse the sample workflow.\n",
-		sceneTasks: [],
 	};
 }
 

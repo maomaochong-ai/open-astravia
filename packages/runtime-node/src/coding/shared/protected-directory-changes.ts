@@ -12,7 +12,7 @@ export function snapshotDirectories(directories: readonly string[]): DirectorySn
 
 /**
  * Reports files a command created or modified inside protected directories. Entries that did not exist
- * before the command ran are newly authored skills or scenes rather than artifacts dumped into an
+ * before the command ran are newly authored skills rather than artifacts dumped into an
  * existing one, so they are not reported.
  */
 export function detectDirectoryChanges(

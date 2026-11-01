@@ -22,7 +22,7 @@ Do not place a global product Skill only in `~/.astravia/agent/skills`; that dir
 
 ## Understand the directory protection
 
-Skill and scene roots — `~/.astravia/skills`, `~/.astravia/agent/skills`, `~/.astravia/scene`, `<project-root>/.astravia/skills`, and the `.agents/skills` equivalents — are read-only so that generated artifacts never land in them. Creating a new `<root>/<skill-name>/` directory is exempt: once this session authors that directory, every file inside it stays writable for the rest of the session.
+Skill roots — `~/.astravia/skills`, `~/.astravia/agent/skills`, `<project-root>/.astravia/skills`, and the `.agents/skills` equivalents — are read-only so that generated artifacts never land in them. Creating a new `<root>/<skill-name>/` directory is exempt: once this session authors that directory, every file inside it stays writable for the rest of the session.
 
 An already-installed Skill stays read-only. `write` and `edit` reject its files, and a shell command that touches them returns a warning to move the output out. To change one, edit the source it was installed from — the plugin, the repository preset, or the project directory — or ask the user to uninstall it first. Never work around the rejection with shell redirection.
 

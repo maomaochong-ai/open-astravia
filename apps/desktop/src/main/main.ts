@@ -89,6 +89,7 @@ import { initializeSandboxCapability } from "./sandbox/capability.js";
 import { createDesktopSchedulerDependencies } from "./scheduler/desktop-scheduler-wiring.js";
 import { initScheduler, shutdownScheduler } from "./scheduler/scheduler.js";
 import { initializeDesktopSchedulerService } from "./scheduler/scheduler-service.js";
+import { acquireSingleInstanceLockWithRetry } from "./single-instance-lock.js";
 import { initializeMainTelemetry, shutdownMainTelemetry } from "./telemetry/index.js";
 import { registerThemeProtocol, THEME_PROTOCOL_PRIVILEGE } from "./themes/theme-protocol.js";
 import {
@@ -98,7 +99,7 @@ import {
 	rebuildTrayContextMenu,
 	setHideToTrayOnClose,
 } from "./tray-manager.js";
-import { consumePendingUpdateRelaunch } from "./update-relaunch-marker.js";
+import { consumePendingUpdateRelaunch, hasPendingUpdateRelaunch } from "./update-relaunch-marker.js";
 import { getAppVersion, runUpgradeE2e, updaterService } from "./updater.js";
 import {
 	createWindow,
@@ -350,7 +351,15 @@ app.on("open-url", (event, url) => {
 });
 
 // Windows/Linux: second instance passes URL via argv
-const gotSingleLock = isCliMode ? true : app.requestSingleInstanceLock();
+// 更新交棒后新进程可能在旧进程还没释放锁的时候就启动（Electron 在 shutdown 期间才
+// spawn relaunch 目标，Windows 看门狗还会自行拉起一次）。此时直接放弃会走 exit(0)
+// 静默消失，用户看到的是「点了重启，桌面没有应用」——所以只在更新重启时有限重试。
+const relaunchingAfterUpdate = !isCliMode && hasPendingUpdateRelaunch(getAstraviaHomePath());
+const gotSingleLock = isCliMode
+	? true
+	: acquireSingleInstanceLockWithRetry(() => app.requestSingleInstanceLock(), {
+			retry: relaunchingAfterUpdate,
+		});
 const pluginPackageOpenService = isCliMode ? undefined : createDesktopPluginPackageOpenService();
 pluginPackageOpenService?.enqueueFromArgv(process.argv);
 

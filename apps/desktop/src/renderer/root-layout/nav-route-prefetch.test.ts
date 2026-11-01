@@ -9,7 +9,6 @@ const loaders = vi.hoisted(() => ({
 	knowledge: vi.fn(async () => ({})),
 	newSession: vi.fn(async () => ({})),
 	workspace: vi.fn(async () => ({})),
-	scenes: vi.fn(async () => ({})),
 	settings: vi.fn(async () => ({})),
 }));
 
@@ -21,7 +20,6 @@ vi.mock("../route-page-loaders", () => ({
 	loadKnowledgeBasePage: loaders.knowledge,
 	loadNewSessionPage: loaders.newSession,
 	loadPluginWorkspaceViewRoute: loaders.workspace,
-	loadScenesPage: loaders.scenes,
 	loadSettingsPage: loaders.settings,
 }));
 
@@ -72,11 +70,11 @@ describe("sidebar route code prefetch", () => {
 	});
 
 	it("a failed hover remains retryable on the next intent", async () => {
-		loaders.scenes.mockRejectedValueOnce(new Error("chunk unavailable"));
-		const scene = item({ path: "/scenes" });
-		prefetchNavItem(scene);
+		loaders.agents.mockRejectedValueOnce(new Error("chunk unavailable"));
+		const agents = item({ path: "/agents" });
+		prefetchNavItem(agents);
 		await Promise.resolve();
-		prefetchNavItem(scene);
-		expect(loaders.scenes).toHaveBeenCalledTimes(2);
+		prefetchNavItem(agents);
+		expect(loaders.agents).toHaveBeenCalledTimes(2);
 	});
 });

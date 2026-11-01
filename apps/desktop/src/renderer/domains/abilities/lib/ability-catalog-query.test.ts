@@ -287,20 +287,25 @@ describe("queryAbilityCatalog", () => {
 		expect(after.items.map((item) => item.id)).toEqual([popular.id, other.id]);
 	});
 
-	it("filters by several types at once and treats an empty type list as no filter", () => {
+	it("filters by type and treats an empty type list as no filter", () => {
 		const skill = ability(1);
 		const plugin = pluginAbility(2);
-		const scene = { ...ability(3), id: "scene:ability-003", type: "scene" as const };
+		const otherPlugin = pluginAbility(3);
 
-		const both = queryAbilityCatalog([skill, plugin, scene], {
+		const onlyPlugins = queryAbilityCatalog([skill, plugin, otherPlugin], {
 			scope: "discover",
-			types: ["skill", "plugin"],
+			types: ["plugin"],
 			page: 1,
 			pageSize: 60,
 		});
-		const none = queryAbilityCatalog([skill, plugin, scene], { scope: "discover", types: [], page: 1, pageSize: 60 });
+		const none = queryAbilityCatalog([skill, plugin, otherPlugin], {
+			scope: "discover",
+			types: [],
+			page: 1,
+			pageSize: 60,
+		});
 
-		expect(both.items.map((item) => item.id).sort()).toEqual([plugin.id, skill.id].sort());
+		expect(onlyPlugins.items.map((item) => item.id).sort()).toEqual([otherPlugin.id, plugin.id].sort());
 		expect(none.total).toBe(3);
 	});
 
@@ -331,7 +336,7 @@ describe("queryAbilityCatalog", () => {
 
 		const counts = countAbilitiesByType(filterAbilityCatalog(items, { scope: "discover", keyword: "ability" }));
 
-		expect(counts).toEqual({ skill: 2, scene: 0, mcp: 0, plugin: 0, bundle: 0 });
+		expect(counts).toEqual({ skill: 2, mcp: 0, plugin: 0, bundle: 0 });
 		expect(countAbilitiesByType(filterAbilityCatalog(items, { scope: "discover" }))).toMatchObject({
 			skill: 3,
 			plugin: 1,

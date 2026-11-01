@@ -401,7 +401,7 @@ _Avoid_: 把服务端推送的应用内消息叫「系统通知」。
 
 ### 技能管理字段（skill management fields）
 
-[[技能市场]]里一个 Skill/Scene 的平台侧可管字段：`type`(skill|scene)、`category`、`tags`、`version`、`author`、`alias`、`description`、`is_enabled`、`download_count`。**真相源是平台数据库，不是 SKILL.md。** SKILL.md 的 `metadata` 块仅在**上传那一刻**作导入兜底（用来预填表单初值），入库后一切以 DB 为准、由 admin 编辑；agent 触发只读包内 SKILL.md 原文。
+[[技能市场]]里一个 Skill 的平台侧可管字段：`type`(skill)、`category`、`tags`、`version`、`author`、`alias`、`description`、`is_enabled`、`download_count`。**真相源是平台数据库，不是 SKILL.md。** SKILL.md 的 `metadata` 块仅在**上传那一刻**作导入兜底（用来预填表单初值），入库后一切以 DB 为准、由 admin 编辑；agent 触发只读包内 SKILL.md 原文。
 _Avoid_: 把 SKILL.md 的 `metadata` 当成运行期真相源——第三方 skill 不该为了上传被迫改造 metadata。
 
 ### market description
@@ -416,11 +416,11 @@ _Avoid_: 客户端装完重解析本地 SKILL.md 取版本——SKILL.md 常缺 
 
 ### skill category（技能分类）
 
-Skill/Scene 的分类，**独立受管实体**（id + 名称 + `scope` 区分 skill / scene），admin 有「分类管理」入口 CRUD，上传/编辑时按当前 type 过滤后**单选一个**。与 [[模型分组 tag]] 同构思路：从 metadata 自由文本解耦，改分类不需重传包。`tags` 仍是自由描述性标签、与 category 分离。
+Skill 的分类，**独立受管实体**（id + 名称 + `scope`），admin 有「分类管理」入口 CRUD，上传/编辑时按当前 type 过滤后**单选一个**。与 [[模型分组 tag]] 同构思路：从 metadata 自由文本解耦，改分类不需重传包。`tags` 仍是自由描述性标签、与 category 分离。
 
 ### skills-manifest
 
-客户端 `~/.astravia/skills-manifest.json`，记录每个已装 Skill/Scene 的安装态（`version`/`source`/`enabled`/`type`/`alias`/`marketDescription`）。本地文件扁平铺在 `~/.astravia/{skills,scene}/<name>/`，**同名同时只存一个版本**，路径不含版本号。manifest 里的 `version` 是 [[skill version]] 的更新比对基准。
+客户端 `~/.astravia/skills-manifest.json`，记录每个已装 Skill 的安装态（`version`/`source`/`enabled`/`type`/`alias`/`marketDescription`）。本地文件扁平铺在 `~/.astravia/skills/<name>/`，**同名同时只存一个版本**，路径不含版本号。manifest 里的 `version` 是 [[skill version]] 的更新比对基准。
 
 ### skill download_count（下载量）
 
@@ -435,9 +435,9 @@ Astravia 之外的、跨 Agent 通用的 Skill 存放约定：全局 `~/.agents/
 
 来源标记上与专属作用域区分：从此处加载的 skill 打 `source = "agents-user"`（全局）或 `"agents-project"`（项目级），区别于专属的 `"user"`/`"project"`，使 [[skills-manifest]] / desktop 列表能识别其为「通用、无平台托管」从而**只读呈现**（不可在[[技能市场]]卸载/启停/版本管理）。
 
-同名碰撞时 **Astravia 专属优先于通用**：通用 Agent Skill 目录在所有 Astravia 原生来源（`user`/`project`/`scene`）之后加载，先加载者胜，故加载顺序为 `user → project → scene → agents-user → agents-project`——通用 Agent Skill 是补充而非覆盖内置（含 scene）。两处目录均纳入 agent 路径保护（只读、禁止 agent 新增/修改），与 Astravia 自家 skill 目录同等对待。
+同名碰撞时 **Astravia 专属优先于通用**：通用 Agent Skill 目录在所有 Astravia 原生来源（`user`/`project`）之后加载，先加载者胜，故加载顺序为 `user → project → agents-user → agents-project`——通用 Agent Skill 是补充而非覆盖内置。两处目录均纳入 agent 路径保护（只读、禁止 agent 新增/修改），与 Astravia 自家 skill 目录同等对待。
 
-作用域支持是 coding-agent 核心**默认开**（CLI 也享受），desktop 侧由「Agent配置 → 扩展功能 → 适配通用 Agent Skill」开关控制（默认开、可关），关闭时向会话传入禁用标志。desktop 聊天侧技能选择器（`/` SlashPanel）经 `astravia:skills:list(cwd)` **按当前会话 cwd 列出**：既有全局 `~/.agents/skills`，也有该项目的 `<cwd>/.agents/skills`（不传 cwd 则只列全局来源）。技能**市场页**（技能广场）以独立的「通用 Agent Skill」**只读分区**展示全局 `~/.agents/skills`（按当前 tab 的 skill/scene 类型分流，可预览 SKILL.md，但不可安装/卸载/启停——这些是纯文件、无平台托管）。
+作用域支持是 coding-agent 核心**默认开**（CLI 也享受），desktop 侧由「Agent配置 → 扩展功能 → 适配通用 Agent Skill」开关控制（默认开、可关），关闭时向会话传入禁用标志。desktop 聊天侧技能选择器（`/` SlashPanel）经 `astravia:skills:list(cwd)` **按当前会话 cwd 列出**：既有全局 `~/.agents/skills`，也有该项目的 `<cwd>/.agents/skills`（不传 cwd 则只列全局来源）。技能**市场页**（技能广场）以独立的「通用 Agent Skill」**只读分区**展示全局 `~/.agents/skills`（可预览 SKILL.md，但不可安装/卸载/启停——这些是纯文件、无平台托管）。
 _Avoid_: 把 `agents-*` 来源当成可在市场管理的条目——它们无 manifest、无平台托管，纯文件、纯展示。
 
 ### 黑胶播放器（vinyl player）
@@ -537,7 +537,7 @@ _Avoid_: 把插件 MCP 写入 `~/.astravia/agent/mcp.json`——卸载与版本�
 **唯一消费者是 NewSessionPage**：欢迎页在[[技能管理字段|技能徽章]]下方按插件**分组**展示——每组组标题取插件 `name`，下挂其引导词。入选条件 = 插件 `enabled` 且 `guidingWords` 非空。点击一条引导词＝以其文本为 `overrideText` 走 `openSession → sendMessage(text)` **立即发送**（不填入输入框、不经 atom 异步，规避 stale read）。
 
 **展示用轮播限额**（非数据截断）：同时最多 3 组、每组最多 4 词；组数超 3 则组级 12 秒轮播、某组词超 4 则该组词级 3 秒轮播；未超出则静态。与 [[对话插件 API]] 的运行时 `insertText`(填而不发) / `sendPrompt`(发一轮) 是**两条独立通道**——引导词是会话**开始前**的声明式建议，对话 API 是会话**进行中**的命令式驱动。
-_Avoid_: 把引导词与 NewSessionPage 的[[技能管理字段|场景/技能]]混为一谈——后者来自 `skills.list()`（SKILL.md 体系），引导词来自 `plugins.list()`（plugin.json 体系），是两套数据源。
+_Avoid_: 把引导词与 NewSessionPage 的[[技能管理字段|技能]]混为一谈——后者来自 `skills.list()`（SKILL.md 体系），引导词来自 `plugins.list()`（plugin.json 体系），是两套数据源。
 
 ### 媒体流协议（media streaming protocol）
 
@@ -682,9 +682,9 @@ _Avoid_: 把工作流称作「后台任务」（那是 background-tasks 标签�
 
 ### Ability（能力）
 
-平台侧**可分发扩展单元的统一概念**：Skill / Scene / MCP Server / Plugin / Bundle 在服务端收敛为**一张 `abilities` 表**、靠 `type` 判别，在 desktop 收敛为**一个「能力」列表 + 一套详情页**。
+平台侧**可分发扩展单元的统一概念**：Skill / MCP Server / Plugin / Bundle 在服务端收敛为**一张 `abilities` 表**、靠 `type` 判别，在 desktop 收敛为**一个「能力」列表 + 一套详情页**。
 
-**统一只发生在「数据存放」与「概念呈现」两层，刻意不统一物理分发与安装**：skill 装 `~/.astravia/skills/`、scene 装 `~/.astravia/scene/`、plugin 装 `~/.astravia/plugins/`、MCP 写进 `~/.astravia/agent/mcp.json` 的一个 key ——三条安装轨道原样保留，因为它们本来就是三种不同的运行时机制。scene 是这一模式的既有先例：服务端与 skill 同表同归档，仅客户端目录不同。
+**统一只发生在「数据存放」与「概念呈现」两层，刻意不统一物理分发与安装**：skill 装 `~/.astravia/skills/`、plugin 装 `~/.astravia/plugins/`、MCP 写进 `~/.astravia/agent/mcp.json` 的一个 key ——三条安装轨道原样保留，因为它们本来就是三种不同的运行时机制。场景（scene）这一类型已移除：旧会话里的 scene 引用按 skill 展示，旧市场索引里的 scene 条目读取时忽略。
 
 标识为 `(type, slug)` 联合唯一，引用形式 `"skill:figma-ui"`。不来自市场的内置能力（`skill-presets`、系统插件）采用不会与市场冲突的 slug 命名空间，因此无需去重或优先级判定。
 
@@ -700,9 +700,9 @@ _Avoid_: 把工作流称作「后台任务」（那是 background-tasks 标签�
 
 `type = bundle` 的 [[Ability（能力）]]：一组**各自独立可用**的能力的松散组合。自身**永远无产物**（`artifact_key` 恒空），安装 = 逐成员走各自既有安装轨道，不引入任何新的打包/解包机制。
 
-成员以 `(type, slug)` 引用已上架的能力行为主；只有 **mcp** 允许「私有内联」（内联一段 config），因为 mcp 本就无产物。skill / scene / plugin 成员必须是引用——一旦允许内联带产物的成员，bundle 就要长出自己的打包格式与校验解包逻辑。
+成员以 `(type, slug)` 引用已上架的能力行为主；只有 **mcp** 允许「私有内联」（内联一段 config），因为 mcp 本就无产物。skill / plugin 成员必须是引用——一旦允许内联带产物的成员，bundle 就要长出自己的打包格式与校验解包逻辑。
 
-**bundle 不可嵌套 bundle**。可被组合的 type 只有 `skill / scene / plugin / mcp`，成员集合恒为一层，不存在递归展开。
+**bundle 不可嵌套 bundle**。可被组合的 type 只有 `skill / plugin / mcp`，成员集合恒为一层，不存在递归展开。
 
 **与 [[插件内聚]] 的判据**：bundle 是**松散**组合，成员对用户可见、可单独安装/卸载/启停；plugin 内聚（ADR-0040 的 `agent.mcpServers`、`agent.skillPaths`）是**紧耦合**，成员对用户不可见、随插件生死。要发「不单独上架的 skill/MCP」，答案是打进 plugin，不是塞进 bundle。
 
@@ -710,7 +710,7 @@ _Avoid_: 把工作流称作「后台任务」（那是 background-tasks 标签�
 
 `~/.astravia/abilities.json`，desktop 侧记录「装了哪些 [[Ability（能力）]]、什么版本」的**单一索引**，键为 `<type>:<slug>`。
 
-它**只是索引，不是安装位置**：skill / scene / plugin 的产物与 mcp 的配置仍分别落在各自既有位置，台账不复制内容。存在的理由是统一「已安装 / 版本 / 是否可更新」的判定——在它之前这三件事分别来自 skill 目录下的 manifest、`plugins-manifest.json`、以及「`mcp.json` 里有没有这个 key」，其中 mcp 连版本都没有，导致 admin 改了市场 MCP 的 config 后存量用户永远收不到更新。
+它**只是索引，不是安装位置**：skill / plugin 的产物与 mcp 的配置仍分别落在各自既有位置，台账不复制内容。存在的理由是统一「已安装 / 版本 / 是否可更新」的判定——在它之前这三件事分别来自 skill 目录下的 manifest、`plugins-manifest.json`、以及「`mcp.json` 里有没有这个 key」，其中 mcp 连版本都没有，导致 admin 改了市场 MCP 的 config 后存量用户永远收不到更新。
 
 [[bundle（能力套装）]] **不进台账**：它的安装态、启用态、可更新态全部由成员派生，因此不存在台账与实际状态漂移的可能。
 

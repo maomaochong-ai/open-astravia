@@ -18,7 +18,7 @@ export interface SkillInfo {
 	presentation?: SkillPresentation;
 	/** 插件贡献的 skill 来源插件 ID；其它来源未定义。 */
 	sourcePluginId?: string;
-	type: "skill" | "scene";
+	type: "skill";
 	/**
 	 * 已解析的本地展示图标（若有）：Skill 自身声明优先，其次继承 Provider；
 	 * 市场与内置映射仅在本字段缺失时补齐。
@@ -29,7 +29,7 @@ export interface SkillInfo {
 export interface MarketSkillMeta {
 	name: string;
 	description: string;
-	type: "skill" | "scene";
+	type: "skill";
 	version: string;
 	author: string;
 	tags: string[];
@@ -41,7 +41,7 @@ export interface InstalledMarketSkill {
 	installedAt: string;
 	source: "market";
 	enabled: boolean;
-	type?: "skill" | "scene";
+	type?: "skill";
 	alias?: string;
 	marketDescription?: string;
 }
@@ -53,7 +53,7 @@ export interface InstalledCustomSkill {
 	source: "custom";
 	enabled: boolean;
 	/** 由 SKILL.md 的 `metadata.type` 决定；缺省按 skill。 */
-	type: "skill" | "scene";
+	type: "skill";
 	alias?: string;
 	description: string;
 }
@@ -62,33 +62,32 @@ export type InstalledSkill = InstalledMarketSkill | InstalledCustomSkill;
 
 export interface SkillMarketInstallResult {
 	name: string;
-	type: "skill" | "scene";
+	type: "skill";
 	version: string;
 	updated: boolean;
 }
 
 export interface DesktopSkillsApi {
 	/**
-	 * 列出可调用资源；未登记清单、直接放入用户 Astravia 配置目录下 `scene` 的合法场景也会以 `source="scene"` 返回。
+	 * 列出可调用资源；旧清单里遗留的 scene 条目不再返回。
 	 * @param cwd 当前会话/项目 cwd，用于发现项目级 `<cwd>/.agents/skills` 与 `<cwd>/.astravia/skills`；省略则仅列全局来源。
 	 */
 	list(cwd?: string): Promise<SkillInfo[]>;
 	installFromMarket(
 		name: string,
 		archiveBuffer: ArrayBuffer,
-		type: "skill" | "scene",
+		type: "skill",
 		/** sha256：市场归档包摘要，安装前校验；存量技能无摘要时省略，跳过校验 */
 		meta?: { alias?: string; marketDescription?: string; version?: string; sha256?: string },
 	): Promise<void>;
 	/**
-	 * 按市场 slug 下载并安装能力（skill/scene）。主进程鉴权/匿名下载，不经过 renderer token。
+	 * 按市场 slug 下载并安装能力（skill）。主进程鉴权/匿名下载，不经过 renderer token。
 	 * 供 App Action 与官方插件使用。
 	 */
-	installFromMarketSlug(type: "skill" | "scene", slug: string): Promise<SkillMarketInstallResult>;
-	/** 安装类型由包内 SKILL.md 的 `metadata.type` 决定（scene 装进 `~/.astravia/scene/`）。 */
-	importCustom(archiveBuffer: ArrayBuffer): Promise<{ name: string; type: "skill" | "scene" }>;
-	uninstall(name: string, type: "skill" | "scene"): Promise<void>;
+	installFromMarketSlug(type: "skill", slug: string): Promise<SkillMarketInstallResult>;
+	importCustom(archiveBuffer: ArrayBuffer): Promise<{ name: string; type: "skill" }>;
+	uninstall(name: string, type: "skill"): Promise<void>;
 	toggle(name: string): Promise<void>;
 	getMarketManifest(): Promise<Record<string, InstalledSkill>>;
-	getSkillMdPath(name: string, type: "skill" | "scene"): Promise<string>;
+	getSkillMdPath(name: string, type: "skill"): Promise<string>;
 }

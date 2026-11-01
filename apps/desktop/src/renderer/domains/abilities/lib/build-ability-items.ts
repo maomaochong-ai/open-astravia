@@ -116,12 +116,7 @@ function terms(...values: Array<string | undefined | string[]>): string[] {
 	return out;
 }
 
-// ─── skill / scene ───
-
-/** 清单条目的类型，缺省按 skill 处理（早期条目没有 type 字段）。 */
-function manifestType(entry: InstalledSkill): "skill" | "scene" {
-	return entry.type === "scene" ? "scene" : "skill";
-}
+// ─── skill ───
 
 export function buildSkillAbilities(market: MarketAbility[], state: LocalAbilityState): SkillAbility[] {
 	const { ledger, skillManifest, localSkills, busyIds } = state;
@@ -131,12 +126,10 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 	const claimedNames = new Set<string>();
 
 	for (const entry of market) {
-		if (entry.type !== "skill" && entry.type !== "scene") continue;
+		if (entry.type !== "skill") continue;
 		const catalogSource = getMarketCatalogSource(entry);
 		const id = buildMarketAbilityId(entry);
-		// 本地清单是扁平 map（skill 与 scene 同命名空间），同名不同类型不能互相认领
-		const localEntry = skillManifest[entry.slug];
-		const local = localEntry && manifestType(localEntry) === entry.type ? localEntry : undefined;
+		const local = skillManifest[entry.slug];
 		const ledgerEntry = ledger[physicalLedgerKey(entry.type, entry.slug)];
 		const installed =
 			Boolean(local) &&
@@ -180,7 +173,7 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 
 	// 本地已装但市场已下架 / 自定义导入的 skill。
 	for (const [name, local] of Object.entries(skillManifest)) {
-		const type = manifestType(local);
+		const type = "skill" as const;
 		const ledgerEntry = ledger[physicalLedgerKey(type, name)];
 		const claimed = items.some((item) => item.slug === name && item.type === type && item.installed);
 		if (claimed) continue;

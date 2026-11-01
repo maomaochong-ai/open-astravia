@@ -14,6 +14,15 @@ import { join } from "node:path";
  */
 const MARKER_FILE_NAME = ".pending-update-relaunch";
 
+/** 只读判断：启动早期要据此决定单实例锁要不要重试，所以不能在这里消费。 */
+export function hasPendingUpdateRelaunch(stateDir: string): boolean {
+	try {
+		return existsSync(join(stateDir, MARKER_FILE_NAME));
+	} catch {
+		return false;
+	}
+}
+
 export function markPendingUpdateRelaunch(stateDir: string): void {
 	try {
 		writeFileSync(join(stateDir, MARKER_FILE_NAME), new Date().toISOString());

@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
-import { CodingAgentTodoRuntime } from "../../src/features/todo/todo-runtime.js";
 import { createCodingAgentPromptResourceResolver } from "../../src/resources/prompt-resource-resolver.js";
 import { expandPromptResourceReference } from "../../src/resources/prompt-resources/prompt-resource-expander.js";
 import type { Skill } from "../../src/resources/skills/index.js";
@@ -29,7 +28,7 @@ describe("Coding Agent prompt resource resolver", () => {
 		const resourceLoader = {
 			refreshSkillsIfChanged,
 			getSkills: () => ({
-				skills: existsSync(skillPath) ? [createSkill("review", "skill", skillDir, skillPath)] : [],
+				skills: existsSync(skillPath) ? [createSkill("review", skillDir, skillPath)] : [],
 				diagnostics: [],
 			}),
 		};
@@ -37,7 +36,6 @@ describe("Coding Agent prompt resource resolver", () => {
 			now: () => 42,
 			resolvePromptResource: createCodingAgentPromptResourceResolver({
 				resourceLoader,
-				todoState: new CodingAgentTodoRuntime(),
 			}),
 		});
 
@@ -77,99 +75,54 @@ describe("Coding Agent prompt resource resolver", () => {
 		expect(refreshSkillsIfChanged).toHaveBeenCalledTimes(3);
 	});
 
-	it("uses the session work-state port when expanding a Scene", async () => {
-		const sceneDir = join(root, "deploy");
-		const scenePath = join(sceneDir, "SKILL.md");
-		mkdirSync(sceneDir);
-		writeFileSync(scenePath, skillDocument("deploy", "deploy instructions", "scene"));
-		writeFileSync(join(sceneDir, "tasks.json"), JSON.stringify(["prepare", "publish"]));
-		const todoState = new CodingAgentTodoRuntime();
-		const adapter = new CodingAgentPromptRequestAdapter({
-			resolvePromptResource: createCodingAgentPromptResourceResolver({
-				resourceLoader: {
-					refreshSkillsIfChanged: async () => false,
-					getSkills: () => ({
-						skills: [createSkill("deploy", "scene", sceneDir, scenePath)],
-						diagnostics: [],
-					}),
-				},
-				todoState,
-			}),
-		});
-
-		const prepared = await preparePrompt(
-			adapter,
-			{ text: "ship it", promptRef: { kind: "scene", name: "deploy" } },
-			{ sessionId: "session-1", queueing: false },
-		);
-
-		expect(prepared.input.context?.[0]).toMatchObject({
-			type: "scene_expansion",
-			content: expect.stringContaining("deploy instructions"),
-		});
-		expect(todoState.getAll()).toEqual([
-			{ id: 1, content: "prepare", status: "pending" },
-			{ id: 2, content: "publish", status: "pending" },
-		]);
-		expect(todoState.getLockSource()).toBe("scene");
-	});
-
-	it("exposes Scene frontmatter hooks as a prompt-resource contribution", () => {
-		const sceneDir = join(root, "review");
-		const scenePath = join(sceneDir, "SKILL.md");
-		mkdirSync(sceneDir);
+	it("exposes Skill frontmatter hooks as a prompt-resource contribution", () => {
+		const skillDir = join(root, "review");
+		const skillPath = join(skillDir, "SKILL.md");
+		mkdirSync(skillDir);
 		writeFileSync(
-			scenePath,
+			skillPath,
 			skillDocument(
 				"review",
 				"review instructions",
-				"scene",
 				"hooks:\n  Stop:\n    - hooks:\n        - type: command\n          command: node verify.cjs\n",
 			),
 		);
-		const skill = createSkill("review", "scene", sceneDir, scenePath);
+		const skill = createSkill("review", skillDir, skillPath);
 
 		const expansion = expandPromptResourceReference(
 			"review it",
-			{ kind: "scene", name: "review" },
+			{ kind: "skill", name: "review" },
 			{
 				resourceLoader: {
 					getSkills: () => ({ skills: [skill], diagnostics: [] }),
 				},
-				todoState: new CodingAgentTodoRuntime(),
 			},
 		);
 
 		expect(expansion.promptResourceHookContribution).toMatchObject({
-			id: `skill:${scenePath}`,
-			sourcePath: scenePath,
+			id: `skill:${skillPath}`,
+			sourcePath: skillPath,
 			configuration: { Stop: expect.any(Array) },
 			env: {
-				CLAUDE_PLUGIN_ROOT: sceneDir,
-				CLAUDE_SKILL_DIR: sceneDir,
+				CLAUDE_PLUGIN_ROOT: skillDir,
+				CLAUDE_SKILL_DIR: skillDir,
 			},
 		});
 	});
 });
 
-function createSkill(name: string, type: Skill["type"], baseDir: string, filePath: string): Skill {
+function createSkill(name: string, baseDir: string, filePath: string): Skill {
 	return {
 		name,
 		description: `${name} description`,
 		filePath,
 		baseDir,
 		source: "test",
-		type,
 		disableModelInvocation: false,
 		content: readFileSync(filePath, "utf8"),
-		sceneTasks:
-			type === "scene" && existsSync(join(baseDir, "tasks.json"))
-				? (JSON.parse(readFileSync(join(baseDir, "tasks.json"), "utf8")) as string[])
-				: [],
 	};
 }
 
-function skillDocument(name: string, body: string, type?: "scene", extraFrontmatter = ""): string {
-	const metadata = type ? `metadata:\n  type: ${type}\n` : "";
-	return `---\nname: ${name}\ndescription: ${name} description\n${metadata}${extraFrontmatter}---\n${body}\n`;
+function skillDocument(name: string, body: string, extraFrontmatter = ""): string {
+	return `---\nname: ${name}\ndescription: ${name} description\n${extraFrontmatter}---\n${body}\n`;
 }

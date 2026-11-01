@@ -1,6 +1,6 @@
 ---
 name: publish-ability
-description: Publish a skill, scene, MCP server, plugin, or bundle to the Astravia ability marketplace. Use when the user asks to upload/publish/submit an ability, put a plugin on the marketplace, share a skill with other users, or migrate an existing package into Astravia.
+description: Publish a skill, MCP server, plugin, or bundle to the Astravia ability marketplace. Use when the user asks to upload/publish/submit an ability, put a plugin on the marketplace, share a skill with other users, or migrate an existing package into Astravia.
 metadata:
   version: 2.1.0
   author: Astravia
@@ -26,7 +26,6 @@ the built-in `astravia` MCP server. It is always available and needs no setup.
    | Type | What it is | Physical artifact |
    | --- | --- | --- |
    | `skill` | A `SKILL.md` workflow | `.zip` / `.tar.gz` containing `SKILL.md` |
-   | `scene` | A skill installed into the scene directory | same as `skill` |
    | `plugin` | A Astravia plugin | `.zip` containing `plugin.json` |
    | `mcp` | One entry in the user's `mcp.json` | none — config only |
    | `bundle` | A named group of already-published abilities | none — references only |
@@ -73,7 +72,7 @@ the built-in `astravia` MCP server. It is always available and needs no setup.
    node "$SKILL_DIR/scripts/publish.mjs" --input payload.json --dry-run
    ```
 
-   For `skill`/`scene`/`plugin` this also **opens the archive** and cross-checks the payload
+   For `skill`/`plugin` this also **opens the archive** and cross-checks the payload
    against `plugin.json`, `locales/*.json`, and `SKILL.md` frontmatter. That is the only place
    the "same data, two sources" mistakes surface: a translation key that does not match the
    package's own locale files, a `slug` or `version` that the server will ignore, a `astravia.json`

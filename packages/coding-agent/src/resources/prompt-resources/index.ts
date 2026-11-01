@@ -2,7 +2,6 @@ export type {
 	ParsedSkillBlock,
 	PromptResourceExpansion,
 	PromptResourceExpansionDependencies,
-	SceneTodoState,
 } from "./contracts.js";
 export {
 	expandPromptResourceCommand,

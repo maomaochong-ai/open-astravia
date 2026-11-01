@@ -48,7 +48,6 @@ export const UserMessage = memo(function UserMessage({
 				return index ? t("inputBar.capsule.imageBadge", { index }) : pathBasename(path);
 			},
 			getSkill: (name: string) => resolveSkillMeta("skill", name),
-			getScene: (name: string) => resolveSkillMeta("scene", name),
 			getMember: (participantId: string) => {
 				const participant = membersById.get(participantId);
 				return participant

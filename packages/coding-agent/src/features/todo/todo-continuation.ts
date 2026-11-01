@@ -2,7 +2,7 @@ import type { UserMessage } from "@astravia/ai";
 import type { TodoContinuationState } from "./contracts.js";
 
 /**
- * 只有被 scene 等机制锁定的 Todo 列表才会驱动续跑。
+ * 只有被宿主锁定的 Todo 列表才会驱动续跑。
  *
  * 普通 Todo 是用户可见的进度面板，不再对模型发主动提醒——那种“鞭策”会在用户
  * 已经改变意图之后继续推动旧计划。

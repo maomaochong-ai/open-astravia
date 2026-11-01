@@ -7,7 +7,6 @@ import {
 	loadKnowledgeBasePage,
 	loadNewSessionPage,
 	loadPluginWorkspaceViewRoute,
-	loadScenesPage,
 	loadSettingsPage,
 } from "../route-page-loaders";
 
@@ -30,8 +29,6 @@ export function navItemPageLoader(item: SidebarNavItem): PageLoader | null {
 			return loadBatchTasksPage;
 		case "/knowledge":
 			return loadKnowledgeBasePage;
-		case "/scenes":
-			return loadScenesPage;
 		default:
 			return null;
 	}

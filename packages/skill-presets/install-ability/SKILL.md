@@ -1,6 +1,6 @@
 ---
 name: install-ability
-description: 在本机 Astravia 中安装能力——插件（plugin）、Skill/场景（scene）与 MCP 服务器。用户说「装一个插件 / install plugin / 从能力市场安装 / 加一个 MCP server / 配置 MCP / 装个 skill」，或插件装完没生效、需要 reload、pending 版本没应用时使用。不用于安装 npm 依赖、IDE 插件、浏览器扩展，也不用于开发插件（那是 plugin-workbench）或创作 Skill（那是 create-skill）。
+description: 在本机 Astravia 中安装能力——插件（plugin）、Skill 与 MCP 服务器。用户说「装一个插件 / install plugin / 从能力市场安装 / 加一个 MCP server / 配置 MCP / 装个 skill」，或插件装完没生效、需要 reload、pending 版本没应用时使用。不用于安装 npm 依赖、IDE 插件、浏览器扩展，也不用于开发插件（那是 plugin-workbench）或创作 Skill（那是 create-skill）。
 metadata:
   version: 1.0.0
   author: Astravia
@@ -15,8 +15,8 @@ Astravia 的能力分三种，安装路径互不相同。**先分类，再动手
 | --- | --- | --- |
 | npm 包名、`.zip`、http(s) zip 链接、本地插件工程目录 | 插件 | `astravia-plugin-cli add` → 按需 `reload`（§2） |
 | 能力市场里的插件条目 | 插件 | 引导用户在能力市场页安装（§2.6） |
-| 能力市场里的 skill / scene（有 slug） | Skill / 场景 | `skills.manage install-from-market`（§3） |
-| 用户自己写的 / 仓库里的 SKILL.md | Skill / 场景 | 交给 `create-skill` skill（§3.2） |
+| 能力市场里的 skill（有 slug） | Skill | `skills.manage install-from-market`（§3） |
+| 用户自己写的 / 仓库里的 SKILL.md | Skill | 交给 `create-skill` skill（§3.2） |
 | `command` + `args`，或一个 MCP 的 http url | MCP | `mcp.manage upsert`（§4） |
 
 分不清时**先问用户**，不要凭包名猜类型：npm 上的 `@modelcontextprotocol/server-*` 是 MCP，不是 Astravia 插件。
@@ -101,7 +101,7 @@ plugins.manage {"operation":"reload","id":"<plugin-id>"}
 
 `plugins.query` → `{"operation":"get","id":"<id>"}`，确认 `enabled === true`、`activeVersion` 是目标版本、`pendingVersion` 不存在。
 
-## 3. Skill 与场景
+## 3. Skill
 
 ### 3.1 从能力市场装
 
@@ -109,7 +109,7 @@ plugins.manage {"operation":"reload","id":"<plugin-id>"}
 skills.manage {"operation":"install-from-market","type":"skill","slug":"<slug>"}
 ```
 
-`type` 为 `"skill"` 或 `"scene"`。**slug 不确定就别猜**：用 `navigation.open` 打开能力市场让用户挑，拿到准确 slug 再装。
+`type` 为 `"skill"`。**slug 不确定就别猜**：用 `navigation.open` 打开能力市场让用户挑，拿到准确 slug 再装。
 
 Skill 不需要 reload，装完即进入能力页。校验：`skills.query {"operation":"manifest"}`，确认目标 name 在清单里且 `enabled: true`。
 

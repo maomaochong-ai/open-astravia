@@ -39,7 +39,7 @@ export interface AbilityData {
 	/** 声明了安装后步骤的市场 MCP → 是否已完成，键为 `<sourceId>:<slug>`。 */
 	mcpSetupStatus: Record<string, boolean>;
 	skillManifest: Record<string, InstalledSkill>;
-	/** 通用 Agent / 内置 skill 与 scene（只读展示）。 */
+	/** 通用 Agent / 内置 skill（只读展示）。 */
 	localSkills: SkillInfo[];
 	plugins: InstalledPlugin[];
 	localPresentations: LocalAbilityPresentations;

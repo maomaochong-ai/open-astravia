@@ -127,13 +127,13 @@ export function automationDraftToPatch(draft: AutomationDraft): AutomationTaskPa
 
 // ── 任务正文开头的技能 token：表单里以技能胶囊展示，存储时还原为行内 token ──
 
-const LEADING_TOKEN = /^@(skill|scene):(?:"([^"]*)"|(\S+))(?:\s+|$)/;
+const LEADING_TOKEN = /^@skill:(?:"([^"]*)"|(\S+))(?:\s+|$)/;
 
 export function splitLeadingSkillToken(prompt: string): { skill: SelectedSkill | null; body: string } {
 	const match = LEADING_TOKEN.exec(prompt);
 	if (!match) return { skill: null, body: prompt };
-	const name = match[2] ?? match[3] ?? "";
-	return { skill: { name, type: match[1] as SelectedSkill["type"] }, body: prompt.slice(match[0].length) };
+	const name = match[1] ?? match[2] ?? "";
+	return { skill: { name, type: "skill" }, body: prompt.slice(match[0].length) };
 }
 
 export function joinLeadingSkillToken(skill: SelectedSkill | null, body: string): string {

@@ -111,7 +111,7 @@ describe("runtime write tool", () => {
 			const input = { path, content: "blocked" };
 			const runtimeResult = await runtime.execute(runtimeRequest(input));
 			expect(runtimeResult.content[0]).toMatchObject({
-				text: expect.stringContaining("inside a skill/scene directory"),
+				text: expect.stringContaining("inside a skill directory"),
 			});
 		},
 	);

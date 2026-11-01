@@ -17,7 +17,7 @@ describe("toRemoteSkillOptions", () => {
 					source: "plugin",
 					presentation: { surfaces: { skillPicker: "visible" } },
 				}),
-				skill("weekly", { type: "scene", source: "scene" }),
+				skill("weekly", { source: "user" }),
 			],
 			{ "skill:zeta": { used: 2, lastUsedAt: 10 } },
 		);
@@ -25,8 +25,8 @@ describe("toRemoteSkillOptions", () => {
 		expect(options.at(-1)).toEqual({
 			name: "weekly",
 			description: "weekly description",
-			type: "scene",
-			source: "scene",
+			type: "skill",
+			source: "user",
 		});
 	});
 

@@ -3,7 +3,7 @@ import type {
 	CodingAgentPromptRuntimeSourceContext,
 	CodingAgentPromptRuntimeSources,
 } from "@astravia/coding-agent/composition";
-import { getAgentDir, getAstraviaHomePath, getSceneDir, getUserSkillsDir } from "@astravia/coding-agent/config";
+import { getAgentDir, getAstraviaHomePath, getUserSkillsDir } from "@astravia/coding-agent/config";
 import {
 	configureThemeRuntime,
 	detectColorMode,
@@ -91,7 +91,6 @@ export function createDesktopSessionResourceRuntime(
 		extensionFactoryLoader: createCodingAgentNodeExtensionFactoryLoader(),
 		extensionCommandExecutor: createNodeCommandExecutor(),
 		skillLocations: {
-			sceneDir: getSceneDir(),
 			managedSkillsDir: getUserSkillsDir(),
 			manifestPath: host.resourceAccess.paths.join(getAstraviaHomePath(), "skills-manifest.json"),
 		},

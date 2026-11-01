@@ -14,7 +14,6 @@ import { installSkillFromMarketArchive, installSkillFromMarketSlug } from "../sk
 import {
 	getDesktopSkillService,
 	getSkillBaseDir,
-	type InstalledSkillType,
 	readSkillsManifest,
 	recordSkillResourceEvent,
 	writeSkillsManifest,
@@ -59,9 +58,8 @@ function findShallowestSkillMd(rootDir: string): string | null {
 
 export function registerSkillsIpc(): () => void {
 	const skills = getDesktopSkillService();
-	// 允许通用 fs IPC 读取技能 / 场景目录下的文件（用于 SKILL.md 预览等）
-	allowProjectRoot(getSkillBaseDir("skill"));
-	allowProjectRoot(getSkillBaseDir("scene"));
+	// 允许通用 fs IPC 读取技能目录下的文件（用于 SKILL.md 预览等）
+	allowProjectRoot(getSkillBaseDir());
 	// 通用 Agent Skill（只读）预览：放行全局 ~/.agents/skills。
 	allowProjectRoot(join(homedir(), ".agents", "skills"));
 	for (const root of getBuiltinSkillPaths()) {
@@ -86,12 +84,11 @@ export function registerSkillsIpc(): () => void {
 
 	ipcMain.handle(
 		"astravia:skills:install-from-market",
-		async (_event, name: unknown, archiveBuffer: unknown, type: unknown, meta: unknown) => {
+		async (_event, name: unknown, archiveBuffer: unknown, _type: unknown, meta: unknown) => {
 			assertNonEmptyString(name, "name");
 			if (!(archiveBuffer instanceof ArrayBuffer) && !Buffer.isBuffer(archiveBuffer)) {
 				throw new Error("Invalid archive buffer");
 			}
-			const itemType: "skill" | "scene" = type === "scene" ? "scene" : "skill";
 			const metaObj = (meta != null && typeof meta === "object" ? meta : {}) as {
 				alias?: string;
 				marketDescription?: string;
@@ -99,20 +96,19 @@ export function registerSkillsIpc(): () => void {
 				sha256?: string;
 			};
 			const buffer = Buffer.isBuffer(archiveBuffer) ? archiveBuffer : Buffer.from(archiveBuffer as ArrayBuffer);
-			await installSkillFromMarketArchive(name, itemType, buffer, metaObj);
+			await installSkillFromMarketArchive(name, "skill", buffer, metaObj);
 		},
 	);
 
-	/** Action / 官方插件：按市场 slug 下载并安装能力（skill/scene）。 */
-	ipcMain.handle("astravia:skills:install-from-market-slug", async (_event, type: unknown, slug: unknown) => {
+	/** Action / 官方插件：按市场 slug 下载并安装能力（skill）。 */
+	ipcMain.handle("astravia:skills:install-from-market-slug", async (_event, _type: unknown, slug: unknown) => {
 		assertNonEmptyString(slug, "slug");
-		const itemType: "skill" | "scene" = type === "scene" ? "scene" : "skill";
-		return installSkillFromMarketSlug(itemType, slug);
+		return installSkillFromMarketSlug("skill", slug);
 	});
 
-	ipcMain.handle("astravia:skills:uninstall", async (_event, name: unknown, type: unknown) => {
+	ipcMain.handle("astravia:skills:uninstall", async (_event, name: unknown) => {
 		assertNonEmptyString(name, "name");
-		await skills.uninstall(name, type === "scene" ? "scene" : type === "skill" ? "skill" : undefined);
+		await skills.uninstall(name);
 	});
 
 	ipcMain.handle("astravia:skills:toggle", async (_event, name: unknown) => {
@@ -124,10 +120,9 @@ export function registerSkillsIpc(): () => void {
 		return skills.getManifest();
 	});
 
-	ipcMain.handle("astravia:skills:get-skill-md-path", async (_event, name: unknown, type: unknown) => {
+	ipcMain.handle("astravia:skills:get-skill-md-path", async (_event, name: unknown) => {
 		assertNonEmptyString(name, "name");
-		const itemType: "skill" | "scene" = type === "scene" ? "scene" : "skill";
-		const skillMd = join(getSkillBaseDir(itemType), name, "SKILL.md");
+		const skillMd = join(getSkillBaseDir(), name, "SKILL.md");
 		if (existsSync(skillMd)) {
 			return skillMd;
 		}
@@ -186,11 +181,7 @@ export function registerSkillsIpc(): () => void {
 				throw new Error("name 仅允许小写字母、数字、连字符（1–64 字符）");
 			}
 
-			// 类型口径与 agent 侧一致：只认 frontmatter 的 metadata.type，scene 装进 ~/.astravia/scene/。
-			// 装错目录不只是分类不对——agent 是按目录判定场景的，装进 skills/ 就拿不到
-			// tasks.json 锁定 todo 等场景语义。
-			const importType: InstalledSkillType = fm.type === "scene" ? "scene" : "skill";
-			const skillsBaseDir = getSkillBaseDir(importType);
+			const skillsBaseDir = getSkillBaseDir();
 			const targetDir = join(skillsBaseDir, fm.name);
 			const manifest = readSkillsManifest();
 			if (manifest[fm.name] || existsSync(targetDir)) {
@@ -219,20 +210,20 @@ export function registerSkillsIpc(): () => void {
 				installedAt: new Date().toISOString(),
 				source: "custom",
 				enabled: true,
-				type: importType,
+				type: "skill",
 				alias: fm.alias,
 				description: fm.description,
 			};
 			writeSkillsManifest(manifest);
-			recordAbilityInstall(importType, fm.name, fm.version || "0.0.0");
+			recordAbilityInstall("skill", fm.name, fm.version || "0.0.0");
 			recordSkillResourceEvent({
 				name: fm.name,
-				type: importType,
+				type: "skill",
 				source: "custom",
 				operation: "imported",
 			});
 
-			return { name: fm.name, type: importType };
+			return { name: fm.name, type: "skill" as const };
 		} finally {
 			await rm(extractDir, { recursive: true, force: true }).catch(() => {});
 		}

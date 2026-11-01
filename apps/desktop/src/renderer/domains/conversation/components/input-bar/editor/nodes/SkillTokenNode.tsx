@@ -1,13 +1,8 @@
-import { sceneTokenText, skillTokenText } from "@shared/lib/input-tokens";
+import { skillTokenText } from "@shared/lib/input-tokens";
 import { DecoratorNode, type LexicalNode, type NodeKey, type SerializedLexicalNode, type Spread } from "lexical";
 import { SkillTokenChip } from "./SkillTokenChip";
 
-export type SerializedSkillTokenNode = Spread<
-	{ name: string; alias?: string; icon?: string; abilityType?: AbilityTokenType },
-	SerializedLexicalNode
->;
-
-export type AbilityTokenType = "skill" | "scene";
+export type SerializedSkillTokenNode = Spread<{ name: string; alias?: string; icon?: string }, SerializedLexicalNode>;
 
 /**
  * 行内 skill 引用。软引用：文本里只留 `@skill:名字`，
@@ -19,23 +14,20 @@ export class SkillTokenNode extends DecoratorNode<JSX.Element> {
 	__alias?: string;
 	/** 市场目录里的图标（`solar:xxx` 或图片 URL）；缺省时落 skill 默认图。 */
 	__icon?: string;
-	/** `scene` 仅改变编辑/展示形态；发送边界仍转换成唯一的 promptRef 硬展开。 */
-	__abilityType: AbilityTokenType;
 
 	static getType(): string {
 		return "skill-token";
 	}
 
 	static clone(node: SkillTokenNode): SkillTokenNode {
-		return new SkillTokenNode(node.__name, node.__alias, node.__icon, node.__abilityType, node.__key);
+		return new SkillTokenNode(node.__name, node.__alias, node.__icon, node.__key);
 	}
 
-	constructor(name: string, alias?: string, icon?: string, abilityType: AbilityTokenType = "skill", key?: NodeKey) {
+	constructor(name: string, alias?: string, icon?: string, key?: NodeKey) {
 		super(key);
 		this.__name = name;
 		this.__alias = alias;
 		this.__icon = icon;
-		this.__abilityType = abilityType;
 	}
 
 	createDOM(): HTMLElement {
@@ -63,15 +55,11 @@ export class SkillTokenNode extends DecoratorNode<JSX.Element> {
 	}
 
 	getTextContent(): string {
-		return this.__abilityType === "scene" ? sceneTokenText(this.__name) : skillTokenText(this.__name);
+		return skillTokenText(this.__name);
 	}
 
 	getName(): string {
 		return this.__name;
-	}
-
-	getAbilityType(): AbilityTokenType {
-		return this.__abilityType;
 	}
 
 	getAlias(): string | undefined {
@@ -83,12 +71,7 @@ export class SkillTokenNode extends DecoratorNode<JSX.Element> {
 	}
 
 	static importJSON(serialized: SerializedSkillTokenNode): SkillTokenNode {
-		return new SkillTokenNode(
-			serialized.name,
-			serialized.alias,
-			serialized.icon,
-			serialized.abilityType ?? "skill",
-		);
+		return new SkillTokenNode(serialized.name, serialized.alias, serialized.icon);
 	}
 
 	exportJSON(): SerializedSkillTokenNode {
@@ -97,28 +80,16 @@ export class SkillTokenNode extends DecoratorNode<JSX.Element> {
 			name: this.__name,
 			...(this.__alias ? { alias: this.__alias } : {}),
 			...(this.__icon ? { icon: this.__icon } : {}),
-			...(this.__abilityType === "scene" ? { abilityType: this.__abilityType } : {}),
 		};
 	}
 
 	decorate(): JSX.Element {
-		return (
-			<SkillTokenChip
-				name={this.__name}
-				alias={this.__alias}
-				icon={this.__icon}
-				type={this.__abilityType}
-			/>
-		);
+		return <SkillTokenChip name={this.__name} alias={this.__alias} icon={this.__icon} />;
 	}
 }
 
 export function $createSkillTokenNode(name: string, alias?: string, icon?: string): SkillTokenNode {
 	return new SkillTokenNode(name, alias, icon);
-}
-
-export function $createSceneTokenNode(name: string, alias?: string, icon?: string): SkillTokenNode {
-	return new SkillTokenNode(name, alias, icon, "scene");
 }
 
 export function $isSkillTokenNode(node: LexicalNode | null | undefined): node is SkillTokenNode {

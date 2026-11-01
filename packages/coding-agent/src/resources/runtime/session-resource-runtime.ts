@@ -225,10 +225,7 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 
 		const skillPaths = this.options.noSkills
 			? this.merge(additionalSkills, this.additionalSkillPaths)
-			: this.merge(
-					[...enabledSkills, ...additionalSkills, this.options.skillLocations.sceneDir],
-					this.additionalSkillPaths,
-				);
+			: this.merge([...enabledSkills, ...additionalSkills], this.additionalSkillPaths);
 		await this.enqueueSkillOperation(async () => {
 			this.nonRuntimeSkillPaths = skillPaths;
 			this.lastSkillPaths = this.merge(this.nonRuntimeSkillPaths, this.runtimeSkillPaths);
@@ -312,7 +309,6 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 			resourceAccess: this.options.resourceAccess,
 			cwd: this.options.cwd,
 			agentDir: this.options.agentDir,
-			sceneDir: this.options.skillLocations.sceneDir,
 			managedSkillsDir: this.options.skillLocations.managedSkillsDir,
 			manifestPath: this.options.skillLocations.manifestPath,
 			paths: resolvedPaths,
@@ -321,9 +317,7 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 			signal,
 			override: this.options.skillsOverride,
 		});
-		this.skills = this.filterDefaultSkillOverrides(result.skills).map((skill) =>
-			Object.freeze({ ...skill, sceneTasks: Object.freeze([...skill.sceneTasks]) }),
-		);
+		this.skills = this.filterDefaultSkillOverrides(result.skills).map((skill) => Object.freeze({ ...skill }));
 		this.skillDiagnostics = result.diagnostics;
 		this.metadata.apply(
 			extensionPaths,
