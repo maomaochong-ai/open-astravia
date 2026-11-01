@@ -58,20 +58,4 @@ describe("buildSkillTokenMetaMap", () => {
 		);
 		expect(map.get("skill:astravia-ui-design")?.icon).toBe("astravia-plugin://astravia-ui-design/icon.png");
 	});
-
-	it("scene 与同名 skill 分别解析，且场景继续使用自己的图标", () => {
-		const scene = { ...publishAbility, type: "scene" as const, alias: "审查场景" };
-		const map = buildSkillTokenMetaMap(
-			[publishAbility, scene],
-			new Map([
-				["skill:publish-ability", "solar:rocket-2-bold"],
-				["scene:publish-ability", "solar:clapperboard-open-bold"],
-			]),
-		);
-		expect(map.get("skill:publish-ability")?.label).toBe("发布能力");
-		expect(map.get("scene:publish-ability")).toEqual({
-			label: "审查场景",
-			icon: "solar:clapperboard-open-bold",
-		});
-	});
 });

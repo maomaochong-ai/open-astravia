@@ -182,12 +182,12 @@ export interface ContextUsageData {
 	composition?: ContextCompositionReport;
 }
 
-// ─── Slash panel (skill/scene selection) ───
+// ─── Slash panel (skill selection) ───
 
 export interface SelectedSkill {
 	name: string;
 	alias?: string;
-	type: "skill" | "scene";
+	type: "skill";
 }
 
 // ─── Mentioned files (@file selection) ───

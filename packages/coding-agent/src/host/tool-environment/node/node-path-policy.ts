@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { createNodePathBoundaryClassifier } from "@astravia/runtime-node/coding";
 import { CONFIG_DIR_NAME } from "../../../identity.js";
 import type { CodingAgentPathPolicyBoundaries } from "../../../tool-policy/path/path-policy-boundaries.js";
-import { getAgentDir, getKnowledgeDir, getSceneDir, getUserSkillsDir } from "../../node-config.js";
+import { getAgentDir, getKnowledgeDir, getUserSkillsDir } from "../../node-config.js";
 
 export interface CodingAgentNodePathPolicy {
 	readonly boundaries: CodingAgentPathPolicyBoundaries;
@@ -15,7 +15,6 @@ export function createCodingAgentNodePathPolicy(cwd: string): CodingAgentNodePat
 	const protectedCommandDirectories = [
 		resolve(join(getAgentDir(), "skills")),
 		resolve(getUserSkillsDir()),
-		resolve(getSceneDir()),
 		resolve(cwd, CONFIG_DIR_NAME, "skills"),
 	];
 	return {
@@ -37,7 +36,7 @@ function adaptNodePathBoundaries(
 	classifier: ReturnType<typeof createNodePathBoundaryClassifier>,
 ): CodingAgentPathPolicyBoundaries {
 	return {
-		isProtectedSkillOrScenePath: classifier.isReadOnlyPath,
+		isProtectedSkillPath: classifier.isReadOnlyPath,
 		isKnowledgeWikiPath: classifier.isManagedPath,
 	};
 }

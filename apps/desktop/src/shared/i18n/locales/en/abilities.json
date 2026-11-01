@@ -1,7 +1,7 @@
 {
 	"page": {
 		"title": "Abilities",
-		"subtitle": "Give your agent more to work with: skills, scenes, MCP, plugins and bundles"
+		"subtitle": "Give your agent more to work with: skills, MCP, plugins and bundles"
 	},
 	"banner": {
 		"title": "Discover more abilities",
@@ -10,7 +10,6 @@
 	"loading": "Loading…",
 	"type": {
 		"skill": "Skill",
-		"scene": "Scene",
 		"mcp": "MCP",
 		"plugin": "Plugin",
 		"bundle": "Bundle"

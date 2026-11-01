@@ -173,15 +173,12 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 		context: RuntimeInputRequestPreparationContext,
 	): Promise<CodingAgentPromptResourceExpansion> {
 		if (!request.promptRef) return { text: request.text };
-		if (/^\/(?:skill|scene):/.test(request.text)) {
-			throw new Error("Prompt must not contain a Skill / Scene command when promptRef is provided");
+		if (/^\/skill:/.test(request.text)) {
+			throw new Error("Prompt must not contain a Skill command when promptRef is provided");
 		}
 		const name = request.promptRef.name.trim();
 		if (!name) throw new Error("Prompt resource name must not be empty");
 		const promptRef = { ...request.promptRef, name };
-		if (!this.resolvePromptResource && promptRef.kind === "scene") {
-			throw new Error(`Scene prompt resource resolver is unavailable: ${promptRef.name}`);
-		}
 		return this.resolvePromptResource
 			? this.resolvePromptResource(request.text, promptRef, context)
 			: { text: request.text, promptRef };
@@ -238,7 +235,7 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 		}
 
 		const promptRef = expansion.promptRef ?? request.promptRef;
-		if (promptRef && !expansion.skillInjection && !expansion.sceneInjection) {
+		if (promptRef && !expansion.skillInjection) {
 			records.push({
 				...hiddenContext(PROMPT_RESOURCE_REFERENCE_TYPE, "", { promptRef }),
 				modelVisible: false,
@@ -247,11 +244,6 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 		if (expansion.skillInjection) {
 			records.push(
 				hiddenContext("skill_expansion", expansion.skillInjection, promptRef ? { promptRef } : undefined),
-			);
-		}
-		if (expansion.sceneInjection) {
-			records.push(
-				hiddenContext("scene_expansion", expansion.sceneInjection, promptRef ? { promptRef } : undefined),
 			);
 		}
 		return records;

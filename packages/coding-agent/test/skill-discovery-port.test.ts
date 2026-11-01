@@ -8,12 +8,10 @@ import type {
 import { loadSkills } from "../src/resources/skills/index.js";
 
 describe("Skill discovery ResourceAccessPort", () => {
-	it("materializes ordered Skill and Scene content without host filesystem access", async () => {
+	it("materializes ordered Skill content without host filesystem access", async () => {
 		const files = new Map([
 			["/agent/skills/user/SKILL.md", skillDocument("user", "User body")],
 			["/workspace/.astravia/skills/project/SKILL.md", skillDocument("project", "Project body")],
-			["/scene/deploy/SKILL.md", skillDocument("deploy", "Deploy body")],
-			["/scene/deploy/tasks.json", JSON.stringify(["prepare", "publish"])],
 			["/workspace/.agents/skills/generic/SKILL.md", skillDocument("generic", "Generic body")],
 		]);
 		const resourceAccess = createMemoryResourceAccess(files);
@@ -22,25 +20,23 @@ describe("Skill discovery ResourceAccessPort", () => {
 			resourceAccess,
 			cwd: "/workspace",
 			agentDir: "/agent",
-			sceneDir: "/scene",
 			includeAgentSkills: true,
 		});
 
 		expect(result.skills.map(({ name, source }) => [name, source])).toEqual([
 			["user", "user"],
 			["project", "project"],
-			["deploy", "scene"],
 			["generic", "agents-project"],
 		]);
-		const scene = result.skills.find(({ name }) => name === "deploy");
-		expect(scene).toMatchObject({
-			content: expect.stringContaining("Deploy body"),
-			sceneTasks: ["prepare", "publish"],
-		});
+		const project = result.skills.find(({ name }) => name === "project");
+		expect(project?.content).toContain("Project body");
 
-		files.set("/scene/deploy/SKILL.md", skillDocument("deploy", "Changed after materialization"));
-		expect(scene?.content).toContain("Deploy body");
-		expect(scene?.content).not.toContain("Changed after materialization");
+		files.set(
+			"/workspace/.astravia/skills/project/SKILL.md",
+			skillDocument("project", "Changed after materialization"),
+		);
+		expect(project?.content).toContain("Project body");
+		expect(project?.content).not.toContain("Changed after materialization");
 	});
 
 	it("propagates cancellation instead of converting it into a diagnostic", async () => {

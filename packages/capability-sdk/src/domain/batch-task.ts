@@ -19,7 +19,6 @@ export const BATCH_EXECUTION_MODES = {
 
 export const BATCH_SKILL_TYPES = {
 	SKILL: "skill",
-	SCENE: "scene",
 } as const;
 
 export const BATCH_COMMAND_STATUSES = {
@@ -48,7 +47,7 @@ const batchTaskExecutionModeType = Type.Union([
 	Type.Literal(BATCH_EXECUTION_MODES.FULL_ACCESS),
 ]);
 
-const batchSkillTypeType = Type.Union([Type.Literal(BATCH_SKILL_TYPES.SKILL), Type.Literal(BATCH_SKILL_TYPES.SCENE)]);
+const batchSkillTypeType = Type.Literal(BATCH_SKILL_TYPES.SKILL);
 
 const batchCommandStatusType = Type.Union([
 	Type.Literal(BATCH_COMMAND_STATUSES.ACCEPTED),

@@ -1,3 +1,4 @@
+import { Button } from "@astravia-org/ui/button";
 import type { JSX } from "react";
 
 function cn(...parts: Array<string | false | null | undefined>): string {
@@ -8,7 +9,7 @@ export interface AddProjectMenuTriggerViewProps {
 	label: string;
 	onClick: () => void;
 	open: boolean;
-	variant: "icon" | "navItem";
+	variant: "icon" | "navItem" | "primary" | "secondary";
 }
 
 export function AddProjectMenuTriggerView({
@@ -17,6 +18,15 @@ export function AddProjectMenuTriggerView({
 	open,
 	variant,
 }: AddProjectMenuTriggerViewProps): JSX.Element {
+	if (variant === "secondary") {
+		return (
+			<Button variant="secondary" size="lg" className="no-drag w-full text-[13px]" onClick={onClick}>
+				<span className="icon-[solar--add-folder-linear] h-4 w-4 shrink-0" />
+				{label}
+			</Button>
+		);
+	}
+
 	if (variant === "navItem") {
 		return (
 			<button

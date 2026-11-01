@@ -133,7 +133,7 @@ export interface AbilityBase {
 }
 
 export interface SkillAbility extends AbilityBase {
-	type: "skill" | "scene";
+	type: "skill";
 	/** listSkills 的来源标识（`agents-user` / `builtin` 等）。 */
 	skillSource?: string;
 	skillProvenance?: SkillProvenance;

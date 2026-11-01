@@ -36,7 +36,6 @@ it("shares one admitted resource version, preserves existing bindings and retrie
 			},
 		},
 		skillLocations: {
-			sceneDir: join(root, "scene"),
 			managedSkillsDir: join(root, "managed"),
 			manifestPath: join(root, "manifest.json"),
 		},

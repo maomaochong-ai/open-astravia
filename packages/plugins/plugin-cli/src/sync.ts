@@ -177,7 +177,7 @@ export function syncMarketplaceIndex(input: SyncInput): SyncResult {
 
 		if (type === "plugin") reconcilePlugin({ entry, slug, abilityDir, schemaVersion: manifest.schemaVersion, minAppVersion: manifest.minAppVersion, changes, problems });
 		else if (type === "mcp") reconcileIdentityFile({ entry, slug, abilityDir, fileName: "mcp.json", changes, problems });
-		// skill / scene 目录里没有身份文件，目录存在即算通过。
+		// skill 目录里没有身份文件，目录存在即算通过。
 	}
 
 	// 未登记的目录只报告、不作为 problem：作者可能正在开发一个还不打算上架的东西。

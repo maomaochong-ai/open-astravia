@@ -9,7 +9,6 @@ import {
 
 export const SKILL_TYPES = {
 	SKILL: "skill",
-	SCENE: "scene",
 } as const;
 
 export const INSTALLED_SKILL_SOURCES = {
@@ -19,7 +18,7 @@ export const INSTALLED_SKILL_SOURCES = {
 
 const skillEmptyInputType = Type.Object({}, { additionalProperties: false });
 
-const skillTypeType = Type.Union([Type.Literal(SKILL_TYPES.SKILL), Type.Literal(SKILL_TYPES.SCENE)]);
+const skillTypeType = Type.Literal(SKILL_TYPES.SKILL);
 export const SKILL_PRESENTATION_SURFACES = {
 	ABILITY_CATALOG: "abilityCatalog",
 	AGENT_CONFIGURATION: "agentConfiguration",

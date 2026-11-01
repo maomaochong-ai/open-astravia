@@ -21,7 +21,7 @@ export interface CodingAgentTodoRuntimeOptions {
 /**
  * 一个 Session 内 Todo 的唯一状态所有者。
  *
- * Tool、Continuation、Prompt Scene 与宿主 Controller 都读取同一个 TodoStore；
+ * Tool、Continuation 与宿主 Controller 都读取同一个 TodoStore；
  * Runtime Core 仅通过通用 Conversation Document participant 保存 custom entry。
  */
 export class CodingAgentTodoRuntime implements CodingAgentTodoRuntimePort {
@@ -70,16 +70,6 @@ export class CodingAgentTodoRuntime implements CodingAgentTodoRuntimePort {
 	initializeTodoItems(contents: readonly string[], lockSource?: TodoLockSource): void {
 		this.state.createMany([...contents]);
 		if (lockSource) this.state.lock(lockSource);
-	}
-
-	readSceneTodoState(): { readonly locked: boolean; readonly itemCount: number } {
-		return { locked: this.state.isLocked(), itemCount: this.state.getAll().length };
-	}
-
-	initializeSceneTodoItems(contents: readonly string[]): void {
-		this.state.clear();
-		this.state.createMany([...contents]);
-		this.state.lock("scene");
 	}
 
 	readItems(): readonly TodoItem[] {

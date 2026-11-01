@@ -260,7 +260,6 @@ async function buildPromptRequest(task: ScheduledTask): Promise<PromptRequest> {
 	const modelKey = task.model?.key ?? (await getDesktopModelSettingsService().list()).defaultModel ?? undefined;
 	return {
 		text: prepared.text,
-		...(prepared.sceneName ? { promptRef: { kind: "scene" as const, name: prepared.sceneName } } : {}),
 		...(modelKey ? { modelKey } : {}),
 		...(task.model?.reasoning ? { reasoning: task.model.reasoning } : {}),
 		metadata: { [CODING_AGENT_UNATTENDED_TURN_METADATA_KEY]: true, automationTaskId: task.id },

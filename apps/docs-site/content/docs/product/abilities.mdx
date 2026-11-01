@@ -1,9 +1,9 @@
 ---
 title: 使用能力
-description: 在「能力」页安装并管理技能、场景、MCP、插件与套装。
+description: 在「能力」页安装并管理技能、MCP、插件与套装。
 ---
 
-侧栏 **能力**（路由 `/abilities`）是扩展入口。页面副标题含义：给 agent 加点本事——**技能、场景、MCP、插件与能力套装**。
+侧栏 **能力**（路由 `/abilities`）是扩展入口。页面副标题含义：给 agent 加点本事——**技能、MCP、插件与能力套装**。
 
 <MediaFrame portrait>
   <img src="/images/product/capabilities.webp" alt="Astravia 能力页，展示连接器、技能和插件列表" width="1024" height="1365" />
@@ -15,7 +15,6 @@ description: 在「能力」页安装并管理技能、场景、MCP、插件与�
 | 类型 | 作用 |
 | --- | --- |
 | 技能 | 任务指令与工作流提示 |
-| 场景 | 预设工作方式；能力页可管理，另有独立路由 `/scenes`（不一定出现在侧栏） |
 | MCP | 连接外部工具与数据源 |
 | 插件 | 扩展桌面 UI 与 Agent 能力 |
 | 套装 | 一次组织多项能力，安装时可勾选成员 |
@@ -25,7 +24,6 @@ description: 在「能力」页安装并管理技能、场景、MCP、插件与�
 | 你的目标 | 优先选择 | 原因 |
 | --- | --- | --- |
 | 让 Agent 遵循稳定方法 | 技能 | 以指令和流程指导一次任务 |
-| 预设一套工作方式和上下文 | 场景 | 适合重复进入同类工作状态 |
 | 调用外部服务或数据 | MCP | 提供结构化工具连接 |
 | 扩展桌面界面、文件或消息 | 插件 | 能进入宿主 UI 和 Agent 生命周期 |
 | 一次安装一组协同能力 | 套装 | 统一发现和选择成员 |
@@ -86,6 +84,6 @@ Astravia 官方来源（`maomaochong-ai/astravia-official-marketplace`）作为�
 - **移除**：卸载本地安装内容。
 - **更新 / 重载**：有新版本或开发调试时使用。
 - 同一能力标识已被其它来源占用时，不会自动覆盖，需在详情中确认来源。
-- MCP 产物写入 `~/.astravia/agent/mcp.json`；技能 / 场景 / 插件分别落在 `~/.astravia/skills`、`~/.astravia/scene`、`~/.astravia/plugins` 等目录；安装索引见 `~/.astravia/abilities.json`。
+- MCP 产物写入 `~/.astravia/agent/mcp.json`；技能 / 插件分别落在 `~/.astravia/skills`、`~/.astravia/plugins` 等目录；安装索引见 `~/.astravia/abilities.json`。
 
 需要开发插件时阅读 [插件开发](/plugins/overview/)；只连接工具服务时阅读 [MCP 连接器](/product/mcp/)。

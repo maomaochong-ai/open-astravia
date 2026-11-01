@@ -7,7 +7,7 @@ import {
 } from "../ApprovalParts";
 import { useManageApprovalFrame } from "../useManageApprovalShell";
 
-interface Input { operation: "uninstall"; name: string; type?: "skill" | "scene"; }
+interface Input { operation: "uninstall"; name: string; type?: "skill"; }
 
 function parseInput(input: unknown): Input | null {
 	if (typeof input !== "object" || input === null || Array.isArray(input)) return null;

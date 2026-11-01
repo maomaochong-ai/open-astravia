@@ -15,7 +15,7 @@
     "enabled": true,
     "type": "skill",
     "alias": "安装能力",
-    "description": "在本机 Astravia 中安装插件、Skill/场景与 MCP 能力，并在插件升级挂起待应用版本时立即重载。"
+    "description": "在本机 Astravia 中安装插件、Skill 与 MCP 能力，并在插件升级挂起待应用版本时立即重载。"
   },
   "publish-ability": {
     "name": "publish-ability",
@@ -25,6 +25,6 @@
     "requiresCloud": true,
     "type": "skill",
     "alias": "发布能力",
-    "description": "把 skill、scene、MCP、插件或能力套装提交到 Astravia 能力市场，讲清必填字段、多语言与审核流程。"
+    "description": "把 skill、MCP、插件或能力套装提交到 Astravia 能力市场，讲清必填字段、多语言与审核流程。"
   }
 }

@@ -20,7 +20,7 @@ interface BatchItemMeta {
 export interface BatchSkillRef {
 	name: string;
 	alias?: string;
-	type: "skill" | "scene";
+	type: "skill";
 }
 
 interface BatchProjectMeta {

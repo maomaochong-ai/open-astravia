@@ -55,7 +55,6 @@ describe("Coding Agent SDK dynamic resources", () => {
 			expect.objectContaining({
 				name: "dynamic-browser",
 				source: "sdk:dynamic",
-				type: "skill",
 				provenance: { kind: "provided", providerType: "sdk", providerId: "dynamic" },
 			}),
 		]);

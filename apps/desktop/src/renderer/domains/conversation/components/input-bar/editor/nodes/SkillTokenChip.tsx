@@ -11,19 +11,17 @@ export function SkillTokenChip({
 	name,
 	alias,
 	icon,
-	type,
 }: {
 	name: string;
 	alias?: string;
 	icon?: string;
-	type: "skill" | "scene";
 }): JSX.Element {
 	const resolve = useSkillTokenMeta();
-	const meta = resolve(type, name);
+	const meta = resolve("skill", name);
 	const resolvedIcon = icon ?? meta?.icon;
 	return (
 		<TokenChip
-			iconNode={<SkillTypeIcon type={type} icon={resolvedIcon} className="h-3 w-3" />}
+			iconNode={<SkillTypeIcon icon={resolvedIcon} className="h-3 w-3" />}
 			label={alias || meta?.label || name}
 			title={name}
 		/>

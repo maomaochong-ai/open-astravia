@@ -43,7 +43,7 @@ describe("buildPersonalizationBlock", () => {
 describe("skill references in user messages", () => {
 	it("tells the model how to handle an @skill reference that matches no listed skill", () => {
 		const prompt = formatSkillsForPrompt([
-			{ name: "pdf", description: "Handle PDF files", type: "skill", disableModelInvocation: false },
+			{ name: "pdf", description: "Handle PDF files", disableModelInvocation: false },
 		]);
 
 		expect(prompt).toContain("`@skill:name`");

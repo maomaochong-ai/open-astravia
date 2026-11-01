@@ -7,11 +7,9 @@ export interface SkillFrontmatter {
 	description?: string;
 	"disable-model-invocation"?: boolean;
 	hooks?: unknown;
-	metadata?: { type?: string; [key: string]: unknown };
+	metadata?: { [key: string]: unknown };
 	[key: string]: unknown;
 }
-
-export type SkillType = "skill" | "scene";
 
 /** Skill 的结构化来源事实；与目录/安装来源正交。 */
 export type SkillProvenance =
@@ -28,10 +26,8 @@ export interface Skill {
 	readonly baseDir: string;
 	readonly source: string;
 	readonly provenance?: SkillProvenance;
-	readonly type: SkillType;
 	readonly disableModelInvocation: boolean;
 	readonly content: string;
-	readonly sceneTasks: readonly string[];
 }
 
 export interface LoadSkillsResult {
@@ -50,7 +46,6 @@ export interface LoadSkillsOptions {
 	readonly resourceAccess: ResourceAccessPort;
 	readonly cwd: string;
 	readonly agentDir?: string;
-	readonly sceneDir?: string;
 	readonly skillPaths?: readonly string[];
 	readonly includeDefaults?: boolean;
 	readonly includeAgentSkills?: boolean;

@@ -32,7 +32,7 @@ export const pluginSkillMethods = {
 			{},
 		);
 		const entry = manifest[name];
-		if (!entry) throw new Error(`Installed skill/scene not found: ${name}`);
+		if (!entry) throw new Error(`Installed skill not found: ${name}`);
 		if (entry.enabled === enabled) return { name, enabled };
 		return this.client(sessionId, { official: true }).invoke(DOMAIN_SKILL_CAPABILITIES.SET_ENABLED, {
 			name,
@@ -51,8 +51,8 @@ export const pluginSkillMethods = {
 			{},
 		);
 		const entry = manifest[name];
-		if (!entry) throw new Error(`Installed skill/scene not found: ${name}`);
-		const resolvedType = type ?? (entry.type === "scene" ? "scene" : "skill");
+		if (!entry) throw new Error(`Installed skill not found: ${name}`);
+		const resolvedType = type ?? "skill";
 		return this.client(sessionId, { official: true }).invoke(DOMAIN_SKILL_CAPABILITIES.UNINSTALL, {
 			name,
 			type: resolvedType,

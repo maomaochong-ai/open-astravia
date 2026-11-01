@@ -39,14 +39,14 @@ export interface AppMonitorInputActionUsage {
 	actionKind: AppMonitorInputActionKind;
 }
 
-export type AppMonitorInputPromptRefKind = "scene" | "skill";
+export type AppMonitorInputPromptRefKind = "skill";
 
 export interface AppMonitorInputPromptRefUsage {
 	kind: AppMonitorInputPromptRefKind;
 	name: string;
 }
 
-export type AppMonitorResourceKind = "skill" | "scene" | "plugin" | "mcp";
+export type AppMonitorResourceKind = "skill" | "plugin" | "mcp";
 
 export type AppMonitorResourceOperation =
 	| "installed"

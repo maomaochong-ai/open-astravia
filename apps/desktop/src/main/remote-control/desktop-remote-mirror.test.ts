@@ -299,23 +299,18 @@ describe("DesktopRemoteMirror", () => {
 		mirror.stop();
 	});
 
-	it("sends a phone prompt's scene as promptRef, keeps skills as text, and echoes what the phone typed", async () => {
+	it("keeps skills as text and echoes what the phone typed", async () => {
 		const { mirror, request, emitted, prompts } = harness();
 		await mirror.start();
 		await request("session.list");
 		const key = keyForPath(CONVERSATION_PATH);
 		await request("session.open", undefined, key);
 
-		await request("session.prompt", { text: '@scene:weekly @skill:"pdf tools" 写周报' }, key);
-		expect(prompts).toEqual([
-			{ sessionId: "rt-chat", text: '@skill:"pdf tools" 写周报', promptRef: { kind: "scene", name: "weekly" } },
-		]);
+		await request("session.prompt", { text: '@skill:"pdf tools" 写周报' }, key);
+		expect(prompts).toEqual([{ sessionId: "rt-chat", text: '@skill:"pdf tools" 写周报' }]);
 		expect(emitted.find((event) => event.name === "session.message")?.payload).toMatchObject({
 			kind: "user",
-			text: '@scene:weekly @skill:"pdf tools" 写周报',
-		});
-		await expect(request("session.prompt", { text: "@scene:a @scene:b go" }, key)).rejects.toMatchObject({
-			code: "invalid_frame",
+			text: '@skill:"pdf tools" 写周报',
 		});
 		mirror.stop();
 	});

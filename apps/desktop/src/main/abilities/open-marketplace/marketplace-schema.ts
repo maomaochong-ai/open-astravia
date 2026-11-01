@@ -177,11 +177,6 @@ const skillAbilitySchema = abilityBaseSchema.extend({
 	source: sourceSchema,
 	config: z.object({}).passthrough().default({}),
 });
-const sceneAbilitySchema = abilityBaseSchema.extend({
-	type: z.literal("scene"),
-	source: sourceSchema,
-	config: z.object({}).passthrough().default({}),
-});
 const pluginAbilitySchema = abilityBaseSchema.extend({
 	type: z.literal("plugin"),
 	source: sourceSchema,
@@ -205,7 +200,7 @@ const mcpAbilitySchema = abilityBaseSchema.extend({
 		.default({}),
 });
 const bundleMemberSchema = z.object({
-	type: z.enum(["skill", "scene", "mcp", "plugin"]),
+	type: z.enum(["skill", "mcp", "plugin"]),
 	slug: z.string().regex(SLUG_PATTERN),
 	source: sourceSchema.optional(),
 	/** Schema v3 bundle-only plugins keep release metadata in the index. */
@@ -219,7 +214,6 @@ const bundleAbilitySchema = abilityBaseSchema.extend({
 
 export const marketplaceAbilitySchema = z.discriminatedUnion("type", [
 	skillAbilitySchema,
-	sceneAbilitySchema,
 	mcpAbilitySchema,
 	pluginAbilitySchema,
 	bundleAbilitySchema,
@@ -256,7 +250,22 @@ export function normalizeMarketplaceSourcePath(value: string): string {
 	return normalized;
 }
 
-export function parseMarketplaceManifest(input: unknown): MarketplaceManifest {
+/** 场景功能已移除：旧市场索引里仍可能带 scene 条目，读取时直接忽略，避免整份索引校验失败。 */
+function withoutLegacySceneAbilities(input: unknown): unknown {
+	if (input == null || typeof input !== "object" || Array.isArray(input)) return input;
+	const abilities = (input as Record<string, unknown>).abilities;
+	if (!Array.isArray(abilities)) return input;
+	return {
+		...(input as Record<string, unknown>),
+		abilities: abilities.filter(
+			(ability) =>
+				!(ability != null && typeof ability === "object" && (ability as { type?: unknown }).type === "scene"),
+		),
+	};
+}
+
+export function parseMarketplaceManifest(rawInput: unknown): MarketplaceManifest {
+	const input = withoutLegacySceneAbilities(rawInput);
 	if (input != null && typeof input === "object" && !Array.isArray(input)) {
 		const abilities = (input as Record<string, unknown>).abilities;
 		if (Array.isArray(abilities)) {

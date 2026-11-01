@@ -1,7 +1,7 @@
 {
 	"page": {
 		"title": "能力",
-		"subtitle": "给 agent 加点本事：技能、场景、MCP、插件与能力套装"
+		"subtitle": "给 agent 加点本事：技能、MCP、插件与能力套装"
 	},
 	"banner": {
 		"title": "发现更多能力",
@@ -10,7 +10,6 @@
 	"loading": "加载中…",
 	"type": {
 		"skill": "技能",
-		"scene": "场景",
 		"mcp": "MCP",
 		"plugin": "插件",
 		"bundle": "套装"

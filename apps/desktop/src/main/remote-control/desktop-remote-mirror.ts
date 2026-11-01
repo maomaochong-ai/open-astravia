@@ -25,7 +25,7 @@ import type {
 	SessionStateSnapshot,
 	SettingsPatch,
 } from "@astravia/runtime-core";
-import { MultipleSceneReferencesError, prepareInputPrompt } from "../../renderer/shared/lib/input-tokens/prepare.js";
+import { prepareInputPrompt } from "../../renderer/shared/lib/input-tokens/prepare.js";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 import type {
 	DesktopConversationService,
@@ -651,9 +651,7 @@ export class DesktopRemoteMirror {
 	}
 
 	/**
-	 * `text` is what the phone typed and is echoed as is, scene token included;
-	 * the runtime gets `prepared`, where a scene travels as `promptRef` the way
-	 * the desktop composer sends it.
+	 * `text` is what the phone typed and is echoed as is; the runtime gets `prepared`.
 	 */
 	private async prompt(
 		handle: SessionHandle,
@@ -665,7 +663,6 @@ export class DesktopRemoteMirror {
 		if (this.options.runtime.getState(tracked.sessionId).isStreaming) {
 			throw new RemoteOperationError("busy", "Desktop session is already processing a turn", true);
 		}
-		// The runtime records the text without the scene token.
 		tracked.pendingUserText = prepared.text;
 		const at = this.now();
 		await this.emitMessage(handle.key, { kind: "user", text, at });
@@ -1048,19 +1045,9 @@ function modelState(
 	};
 }
 
-/** Skills stay as `@skill:` text; the one scene a prompt may name becomes `promptRef`. */
+/** Skills stay as `@skill:` text. */
 function prepareRemotePrompt(text: string): PromptRequest {
-	try {
-		const prepared = prepareInputPrompt(text);
-		return prepared.sceneName
-			? { text: prepared.text, promptRef: { kind: "scene", name: prepared.sceneName } }
-			: { text: prepared.text };
-	} catch (error) {
-		if (error instanceof MultipleSceneReferencesError) {
-			throw new RemoteOperationError("invalid_frame", "a prompt may reference one scene at most");
-		}
-		throw error;
-	}
+	return { text: prepareInputPrompt(text).text };
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

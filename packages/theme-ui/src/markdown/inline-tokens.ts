@@ -1,13 +1,12 @@
 import { normalizeLocalFileLinksInMarkdown } from "./markdown-link";
 import type { HastElement, HastRoot, HastText } from "./nodes";
 /**
- * 用户消息里的行内 token（skill / scene 引用、文件、图片）。
+ * 用户消息里的行内 token（skill 引用、文件、图片）。
  * 语法归宿主所有——theme-ui 只负责渲染，解析函数由 inlineTokens.parse 注入。
  */
 export type InlineTokenPiece =
 	| { kind: "text"; text: string }
 	| { kind: "skill"; name: string }
-	| { kind: "scene"; name: string }
 	| { kind: "connector"; name: string }
 	| { kind: "member"; participantId: string; handle: string }
 	| { kind: "file"; path: string; isDirectory?: boolean }
@@ -29,8 +28,6 @@ export interface InlineTokenSupport {
 	 * 否则气泡里的胶囊与输入框里刚插入的那枚对不上。查不到时回退成 slug + 默认图。
 	 */
 	getSkill?: (name: string) => { label: string; icon?: string } | undefined;
-	/** scene 与 skill 共用视觉语言，但使用场景图标和独立元数据命名空间。 */
-	getScene?: (name: string) => { label: string; icon?: string } | undefined;
 	/** Team member metadata resolved by stable participant identity. */
 	getMember?: (participantId: string) => { label: string; avatar?: string; meta?: string } | undefined;
 }
@@ -44,7 +41,7 @@ interface InlineTokenAnnotationRange {
 }
 
 export type InlineTokenAnnotation =
-	| ({ readonly kind: "skill" | "scene" | "connector"; readonly name: string } & InlineTokenAnnotationRange)
+	| ({ readonly kind: "skill" | "connector"; readonly name: string } & InlineTokenAnnotationRange)
 	| ({
 			readonly kind: "file" | "image";
 			readonly path: string;
@@ -81,7 +78,7 @@ export function rehypeInlineTokens(parse: (text: string) => InlineTokenPiece[]) 
 							properties: {
 								"data-token-kind": piece.kind,
 								"data-token-value":
-									piece.kind === "skill" || piece.kind === "scene" || piece.kind === "connector"
+									piece.kind === "skill" || piece.kind === "connector"
 										? piece.name
 										: piece.kind === "member"
 											? piece.participantId

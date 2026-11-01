@@ -52,9 +52,9 @@ function optionalListRecursiveOptions(value: unknown): { names?: string[]; ignor
 	return options;
 }
 
-function optionalSkillType(value: unknown): "skill" | "scene" | undefined {
+function optionalSkillType(value: unknown): "skill" | undefined {
 	if (value === undefined) return undefined;
-	if (value !== "skill" && value !== "scene") throw new Error("type must be skill or scene");
+	if (value !== "skill") throw new Error("type must be skill");
 	return value;
 }
 

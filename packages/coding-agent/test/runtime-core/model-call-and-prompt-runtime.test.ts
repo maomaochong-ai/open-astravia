@@ -436,14 +436,14 @@ describe("Coding Agent model call and prompt runtime", () => {
 			resolvePromptResource: (text, promptRef) => ({
 				text,
 				promptRef,
-				sceneInjection: "<scene>deploy</scene>",
+				skillInjection: "<skill>deploy</skill>",
 			}),
 		});
 		const queuedPrompt = await preparePrompt(
 			queued,
 			{
 				text: "now",
-				promptRef: { kind: "scene", name: "deploy" },
+				promptRef: { kind: "skill", name: "deploy" },
 				attachments: [{ kind: "file", path: "C:\\workspace\\deploy.md" }],
 				streamingBehavior: "followUp",
 			},
@@ -454,22 +454,10 @@ describe("Coding Agent model call and prompt runtime", () => {
 		expect(queuedPrompt.input.message.content).toEqual([{ type: "text", text: "now" }]);
 		expect(queuedPrompt.input.context?.map(({ type, modelVisible }) => ({ type, modelVisible }))).toEqual([
 			{ type: "prompt_attachment_context", modelVisible: true },
-			{ type: "scene_expansion", modelVisible: true },
+			{ type: "skill_expansion", modelVisible: true },
 		]);
 		expect(queuedPrompt.input.context?.[0]?.content).toContain("deploy.md");
-		expect(queuedPrompt.input.context?.[1]?.content).toBe("<scene>deploy</scene>");
-	});
-
-	it("rejects a Scene instead of silently dropping it when the resolver is unavailable", async () => {
-		const adapter = new CodingAgentPromptRequestAdapter({ now: () => 42 });
-
-		await expect(
-			preparePrompt(
-				adapter,
-				{ text: "run it", promptRef: { kind: "scene", name: "review" } },
-				{ sessionId: "session-1", queueing: false },
-			),
-		).rejects.toThrow("Scene prompt resource resolver is unavailable: review");
+		expect(queuedPrompt.input.context?.[1]?.content).toBe("<skill>deploy</skill>");
 	});
 
 	it("compiles the exact legacy structured prompt from the current model-call tools and context", async () => {

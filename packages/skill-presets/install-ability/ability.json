@@ -20,7 +20,7 @@
 				"items": [
 					{
 						"title": "先分类再安装",
-						"description": "区分插件、Skill/场景与 MCP，各走各自的安装通道。",
+						"description": "区分插件、Skill 与 MCP，各走各自的安装通道。",
 						"icon": "solar:widget-5-linear"
 					},
 					{
@@ -59,7 +59,7 @@
 						"items": [
 							{
 								"title": "Classify first",
-								"description": "Plugins, Skills/scenes, and MCP servers each have their own install path.",
+								"description": "Plugins, Skills, and MCP servers each have their own install path.",
 								"icon": "solar:widget-5-linear"
 							},
 							{

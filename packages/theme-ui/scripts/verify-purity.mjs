@@ -21,9 +21,7 @@ async function walk(dir) {
 }
 
 const requiredExports = [
-	"SceneCard",
 	"SkillCard",
-	"DefaultSceneCarousel",
 	"DefaultSkillBadgeRow",
 	"InputBarToolbarButton",
 	"InputBarCapsule",
@@ -36,7 +34,6 @@ const requiredExports = [
 	"ActivityPanelFrame",
 	"CodePreview",
 	"KnowledgeFilesSkeleton",
-	"SkillToggleSwitch",
 	"ProjectsPanelSplitHandle",
 	"AddProjectMenuItem",
 	"SelectField",
@@ -73,7 +70,6 @@ const exportHome = {
 	ActivityPanelFrame: "activity",
 	CodePreview: "activity",
 	KnowledgeFilesSkeleton: "knowledge",
-	SkillToggleSwitch: "skills",
 	ProjectsPanelSplitHandle: "sidebar",
 	AddProjectMenuItem: "sidebar",
 	SelectField: "settings",

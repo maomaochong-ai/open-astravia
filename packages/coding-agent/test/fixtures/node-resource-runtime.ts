@@ -1,5 +1,5 @@
 import { createNodeCommandExecutor, createNodeResourcePackageHost } from "@astravia/runtime-node/host";
-import { getAgentDir, getAstraviaHomePath, getSceneDir, getUserSkillsDir } from "../../src/config.js";
+import { getAgentDir, getAstraviaHomePath, getUserSkillsDir } from "../../src/config.js";
 import { createCodingAgentNodeExtensionFactoryLoader } from "../../src/host/extensions/node-extension-factory-loader.js";
 import { createCodingAgentNodeSettingsRuntime } from "../../src/host/node-state-services.js";
 import { loadThemeFromContent } from "../../src/modes/interactive/theme/theme.js";
@@ -98,7 +98,6 @@ export function createTestSessionResourceRuntime(
 		extensionFactoryLoader: options.extensionFactoryLoader ?? createCodingAgentNodeExtensionFactoryLoader(),
 		extensionCommandExecutor: options.extensionCommandExecutor ?? createNodeCommandExecutor(),
 		skillLocations: options.skillLocations ?? {
-			sceneDir: getSceneDir(),
 			managedSkillsDir: getUserSkillsDir(),
 			manifestPath: resourceAccess.paths.join(getAstraviaHomePath(), "skills-manifest.json"),
 		},

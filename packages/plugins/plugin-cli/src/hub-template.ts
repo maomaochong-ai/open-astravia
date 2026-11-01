@@ -14,7 +14,7 @@ export function renderHubAgentsGuide(input: { name: string }): string {
 	return `<!-- astravia-guide-revision: ${AGENTS_GUIDE_REVISION} -->
 # ${input.name}
 
-Astravia 能力市场仓库。本仓库索引若干**能力**（plugin / mcp / skill / scene / bundle），
+Astravia 能力市场仓库。本仓库索引若干**能力**（plugin / mcp / skill / bundle），
 每个能力是 \`abilities/\` 下的一个自包含目录。
 
 ## 开发时站在能力目录里，不是站在这里

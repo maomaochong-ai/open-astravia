@@ -12,7 +12,7 @@ export interface BuiltinSkillRegistration {
 	version: string;
 	source: "builtin";
 	enabled: boolean;
-	type: "skill" | "scene";
+	type: "skill";
 	alias?: string;
 	description?: string;
 	/** 依赖 astravia 云服务（登录 / 官方市场）的技能：lite 构建下整个隐藏、不加载。 */

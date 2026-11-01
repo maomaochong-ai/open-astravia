@@ -409,7 +409,7 @@ export class OpenMarketplaceService {
 		}
 	}
 
-	async install(type: "skill" | "scene" | "plugin", slug: string): Promise<void> {
+	async install(type: "skill" | "plugin", slug: string): Promise<void> {
 		await this.ensureSnapshotFresh();
 		const active = await this.readActiveMarketplace();
 		if (!active) throw new Error("No validated open marketplace snapshot is available");

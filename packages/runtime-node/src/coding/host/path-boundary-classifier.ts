@@ -18,7 +18,7 @@ export function createNodePathBoundaryClassifier(
 	const readOnlyDirectories = options.readOnlyDirectories.map(resolveProtectedRoot);
 	const managedDirectory = resolveProtectedRoot(options.managedDirectory);
 	// Entries this session authored from scratch. Creating a new `<root>/<skill-name>` subtree is the
-	// sanctioned way to add a skill or scene, so it stays writable for the follow-up files (references,
+	// sanctioned way to add a skill, so it stays writable for the follow-up files (references,
 	// scripts, assets) and for revisions of the SKILL.md that was just written.
 	const authoredEntries = new Set<string>();
 	return {

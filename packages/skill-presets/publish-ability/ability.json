@@ -20,7 +20,7 @@
 				"items": [
 					{
 						"title": "识别能力形态",
-						"description": "确认是 Skill、场景、MCP、插件还是能力套装。"
+						"description": "确认是 Skill、MCP、插件还是能力套装。"
 					},
 					{
 						"title": "整理展示内容",
@@ -51,7 +51,7 @@
 						"items": [
 							{
 								"title": "Identify the ability type",
-								"description": "Choose Skill, scene, MCP, plugin, or bundle."
+								"description": "Choose Skill, MCP, plugin, or bundle."
 							},
 							{
 								"title": "Prepare the presentation",

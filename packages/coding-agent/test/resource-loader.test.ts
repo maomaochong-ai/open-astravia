@@ -30,7 +30,6 @@ function createCodingAgentSessionResourceRuntime(options: CreateTestSessionResou
 		...options,
 		resourceAccess,
 		skillLocations: options.skillLocations ?? {
-			sceneDir: join(isolatedRoot, "scene"),
 			managedSkillsDir: join(isolatedRoot, "managed-skills"),
 			manifestPath: join(isolatedRoot, "skills-manifest.json"),
 		},
@@ -665,10 +664,8 @@ Content`,
 				filePath: "/fake/path",
 				baseDir: "/fake",
 				source: "custom",
-				type: "skill",
 				disableModelInvocation: false,
 				content: "Injected content",
-				sceneTasks: [],
 			};
 			const loader = createCodingAgentSessionResourceRuntime({
 				cwd,

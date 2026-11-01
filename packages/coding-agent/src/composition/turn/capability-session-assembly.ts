@@ -452,10 +452,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		resolvePromptResource: selectAgentPromptResourceResolver(
 			options.prompt.promptResourceResolver ??
 				(promptResourceSource
-					? createCodingAgentPromptResourceResolver({
-							resourceLoader: promptResourceSource,
-							todoState: options.todoRuntime,
-						})
+					? createCodingAgentPromptResourceResolver({ resourceLoader: promptResourceSource })
 					: undefined),
 			() => options.agentConfiguration.readAdmitted(),
 		),

@@ -18,7 +18,6 @@ const labels: CommandMenuSourceLabels = {
 	sessionUnavailable: "No access",
 	settingsGroupHint: "Settings",
 	abilitySkill: "Skill",
-	abilityScene: "Scene",
 	abilityPlugin: "Plugin",
 	searchMarketplace: "Search the marketplace",
 };
@@ -139,16 +138,16 @@ describe("buildWorkspaceViewEntries", () => {
 });
 
 describe("buildInstalledAbilityEntries", () => {
-	it("covers skills, scenes and plugins with a marketplace-search action carrying the exact name", () => {
+	it("covers skills and plugins with a marketplace-search action carrying the exact name", () => {
 		const skills: SkillInfo[] = [
 			{ name: "commit", alias: "Commit helper", description: "Write commits", source: "market", type: "skill" },
-			{ name: "story", description: "", source: "builtin", type: "scene" },
+			{ name: "story", description: "", source: "builtin", type: "skill" },
 		];
 		const plugins = [{ id: "astravia.git", name: "Git" }] as unknown as InstalledPlugin[];
 		const entries = buildInstalledAbilityEntries({ skills, plugins }, labels);
 
 		expect(entries.map((entry) => entry.title)).toEqual(["Commit helper", "story", "Git"]);
-		expect(entries.map((entry) => entry.badge)).toEqual(["Skill", "Scene", "Plugin"]);
+		expect(entries.map((entry) => entry.badge)).toEqual(["Skill", "Skill", "Plugin"]);
 		// 面板里列出的都是已装能力，落到「发现」分区会搜不到自己。
 		expect(entries[0].action).toEqual({ kind: "openAbilities", query: "Commit helper", scope: "mine" });
 		expect(entries.every((entry) => entry.action.kind === "openAbilities" && entry.action.scope === "mine")).toBe(

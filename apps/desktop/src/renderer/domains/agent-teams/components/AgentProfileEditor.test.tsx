@@ -239,9 +239,9 @@ describe("AgentProfileEditor", () => {
 				agent={agent}
 				capabilities={[
 					{
-						id: "scene-one",
-						kind: "scene",
-						title: "Scene One",
+						id: "skill-one",
+						kind: "skill",
+						title: "Skill One",
 						description: "",
 						enabledGlobally: false,
 					},

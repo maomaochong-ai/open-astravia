@@ -34,7 +34,6 @@ export interface CommandMenuSourceLabels {
 	readonly sessionUnavailable: string;
 	readonly settingsGroupHint: string;
 	readonly abilitySkill: string;
-	readonly abilityScene: string;
 	readonly abilityPlugin: string;
 	readonly searchMarketplace: string;
 }
@@ -149,8 +148,8 @@ export function buildInstalledAbilityEntries(
 			groupKey: "abilities",
 			title,
 			subtitle: getSkillDisplayDescription(skill) || undefined,
-			icon: skill.type === "scene" ? "icon-[solar--clapperboard-play-linear]" : "icon-[solar--magic-stick-3-linear]",
-			badge: skill.type === "scene" ? labels.abilityScene : labels.abilitySkill,
+			icon: "icon-[solar--magic-stick-3-linear]",
+			badge: labels.abilitySkill,
 			order: order++,
 			action: { kind: "openAbilities", query: title, scope: "mine" },
 		});

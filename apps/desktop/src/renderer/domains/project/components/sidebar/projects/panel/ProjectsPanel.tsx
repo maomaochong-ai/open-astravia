@@ -22,43 +22,54 @@ export function ProjectsPanel(props: ProjectsPanelProps): JSX.Element {
 	const showDefaultRegion = Boolean(model.defaultProject);
 	// Full-panel empty only when neither region has content (rare: no default project either).
 	const showEmpty = !hasUserProjects && !showDefaultRegion;
-	// When default conversation exists but no user projects, still show the empty
-	// placeholder in the projects region (noOtherProjects was already computed for this).
-	const showProjectsEmpty = model.noOtherProjects && showDefaultRegion;
-	const showProjectsRegion = hasUserProjects || showProjectsEmpty;
+	// 没有用户项目时整个项目区隐藏，引导卡片改放在对话区下方。
+	const showProjectsRegion = hasUserProjects;
+
+	const defaultCwd = model.defaultProject?.cwd;
+	const newConversation = (): void => {
+		if (defaultCwd) model.actions.defaultNewSession(defaultCwd);
+	};
+
+	// 全新用户（没有任何项目、对话区也空着）才展示起步卡片。
+	const showStartCard =
+		!hasUserProjects &&
+		!model.defaultSessionsLoading &&
+		model.defaultSessions.length === 0 &&
+		model.defaultConversationFilter === "conversation";
 
 	const defaultSection =
 		showDefaultRegion && model.defaultProject ? (
-			<DefaultConversationSection
-				activeSessionPath={model.activeSessionPath}
-				activeTeamSessionId={model.activeTeamSessionId}
-				defaultConversationFilter={model.defaultConversationFilter}
-				listClassName={props.defaultSessionListClassName}
-				project={model.defaultProject}
-				scrollParent={scrollEl}
-				sessionsCwd={model.defaultSessionsCwd}
-				sessions={model.defaultSessions}
-				sessionsLoading={model.defaultSessionsLoading}
-				onNewSession={model.actions.defaultNewSession}
-				onRenameSession={model.actions.renameSession}
-				onSelectSession={model.actions.defaultSelectSession}
-			/>
+			<>
+				<DefaultConversationSection
+					activeSessionPath={model.activeSessionPath}
+					activeTeamSessionId={model.activeTeamSessionId}
+					defaultConversationFilter={model.defaultConversationFilter}
+					listClassName={props.defaultSessionListClassName}
+					project={model.defaultProject}
+					scrollParent={scrollEl}
+					sessionsCwd={model.defaultSessionsCwd}
+					sessions={model.defaultSessions}
+					sessionsLoading={model.defaultSessionsLoading}
+					onNewSession={model.actions.defaultNewSession}
+					onRenameSession={model.actions.renameSession}
+					onSelectSession={model.actions.defaultSelectSession}
+				/>
+				{showStartCard && <ProjectsPanelEmptyState onNewConversation={newConversation} />}
+			</>
 		) : null;
 	if (model.projectsLoading) return <ProjectsLoadingView />;
 
 	return (
 		<ProjectsPanelView
 			defaultSection={defaultSection}
-			emptyState={<ProjectsPanelEmptyState />}
+			emptyState={<ProjectsPanelEmptyState onNewConversation={newConversation} />}
 			menus={<ProjectsPanelMenus model={model} />}
 			onScrollRef={setScrollEl}
 			scrollElement={scrollEl}
 			projectsSection={
 				hasUserProjects ? (
 					<ProjectGroupsSection model={model} scrollParent={scrollEl} />
-				) : (
-					<ProjectsPanelEmptyState />
-				)
+				) : null
 			}
 			quickScrollLabels={{
 				bottom: t("sidebar.projects.scrollToBottom"),

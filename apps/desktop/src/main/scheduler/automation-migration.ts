@@ -12,7 +12,7 @@ export interface LegacyScheduledTask {
 	cwd?: string;
 	modelKey?: string;
 	executionMode?: string;
-	skill?: { name: string; alias?: string; type: "skill" | "scene" };
+	skill?: { name: string; alias?: string; type: "skill" };
 	createdAt: number;
 	updatedAt: number;
 	lastRunAt: number | null;

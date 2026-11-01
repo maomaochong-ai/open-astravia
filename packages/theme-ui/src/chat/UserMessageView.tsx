@@ -63,7 +63,6 @@ export interface UserMessageViewLabels {
 	edit: string;
 	fork: string;
 	skillBadge: string;
-	sceneBadge: string;
 	branchPrev: string;
 	branchNext: string;
 	branchPosition: string;
@@ -155,21 +154,15 @@ export function UserMessageText({
 
 export function SkillBadgeView({
 	name,
-	type = "skill",
 	skillLabel,
-	sceneLabel,
 }: {
 	name: string;
-	type?: "skill" | "scene";
 	skillLabel: string;
-	sceneLabel: string;
 }): JSX.Element {
-	const icon = type === "scene" ? "icon-[solar--clapperboard-open-linear]" : "icon-[solar--magic-stick-linear]";
-	const label = type === "scene" ? sceneLabel : skillLabel;
 	return (
 		<span className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-0.5 text-[12px] font-medium text-primary">
-			<span className={`${icon} h-3 w-3`} />
-			<span className="text-primary/75">{label}</span>
+			<span className="icon-[solar--magic-stick-linear] h-3 w-3" />
+			<span className="text-primary/75">{skillLabel}</span>
 			{name}
 		</span>
 	);

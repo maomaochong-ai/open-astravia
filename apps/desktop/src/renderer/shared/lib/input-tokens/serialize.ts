@@ -12,11 +12,6 @@ export function skillTokenText(name: string): string {
 	return `@skill:${quoteIfNeeded(name)}`;
 }
 
-/** 单个 scene token 的编辑态文本形式；发送前会转为结构化 promptRef。 */
-export function sceneTokenText(name: string): string {
-	return `@scene:${quoteIfNeeded(name)}`;
-}
-
 /** 单个连接器 token 的文本形式。 */
 export function connectorTokenText(name: string): string {
 	return `@mcp:${quoteIfNeeded(name)}`;
@@ -47,8 +42,6 @@ function segmentToText(segment: InputSegment): string {
 			return `@${segment.handle}`;
 		case "skill":
 			return skillTokenText(segment.name);
-		case "scene":
-			return sceneTokenText(segment.name);
 		case "connector":
 			return connectorTokenText(segment.name);
 		case "file":
@@ -73,7 +66,7 @@ export interface SerializedInputSegments {
 }
 
 export type SerializedInputToken =
-	| ({ readonly kind: "skill" | "scene" | "connector"; readonly name: string } & SerializedInputTokenRange)
+	| ({ readonly kind: "skill" | "connector"; readonly name: string } & SerializedInputTokenRange)
 	| ({
 			readonly kind: "file" | "image";
 			readonly path: string;
@@ -94,7 +87,7 @@ interface SerializedInputTokenRange {
 /**
  * segments → 发给模型的文本。
  * token 必须有明确的词边界才能被 parseInputSegments 还原，因此 token 与
- * 相邻 token / 正文之间按需补一个空格（`@scene:review正文` 会被误认成一个名字）。
+ * 相邻 token / 正文之间按需补一个空格（`@skill:review正文` 会被误认成一个名字）。
  */
 export function serializeInputSegments(segments: readonly InputSegment[]): SerializedInputSegments {
 	let out = "";
@@ -124,7 +117,7 @@ export function serializeInputSegments(segments: readonly InputSegment[]): Seria
 				start,
 				end: out.length,
 			});
-		} else if (segment.kind === "skill" || segment.kind === "scene" || segment.kind === "connector") {
+		} else if (segment.kind === "skill" || segment.kind === "connector") {
 			tokens.push({ kind: segment.kind, name: segment.name, start, end: out.length });
 		} else if (segment.kind === "file" || segment.kind === "image") {
 			tokens.push({
@@ -186,15 +179,6 @@ export function deriveSkillNames(segments: readonly InputSegment[]): string[] {
 	const names: string[] = [];
 	for (const segment of segments) {
 		if (segment.kind === "skill" && !names.includes(segment.name)) names.push(segment.name);
-	}
-	return names;
-}
-
-/** 文本流里引用到的 scene 名；正常 UI 始终只有一个，发送边界仍会做唯一性校验。 */
-export function deriveSceneNames(segments: readonly InputSegment[]): string[] {
-	const names: string[] = [];
-	for (const segment of segments) {
-		if (segment.kind === "scene" && !names.includes(segment.name)) names.push(segment.name);
 	}
 	return names;
 }

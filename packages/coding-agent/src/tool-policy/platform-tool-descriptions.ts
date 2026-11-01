@@ -9,7 +9,7 @@ Default to foreground commands. Set \`run_in_background: true\` for servers, wat
 
 Use dedicated tools for file reads, edits, writes, path search, content search, directory listing, PDF extraction, image OCR, and skill invocation. Use ${toolName} for scripts, package managers, git, compilers, interpreters, pipelines, and operations without a dedicated tool.
 
-Skill and scene directories are read-only. Write generated output to the working directory, never into a skill or scene directory.
+Skill directories are read-only. Write generated output to the working directory, never into a skill directory.
 
 Git safety: never run destructive git commands, force-push, discard working-tree changes, skip hooks, stage all files, or amend commits unless the user explicitly requests the operation. Stage specific paths only.${platformNote}`;
 }

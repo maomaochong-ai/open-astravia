@@ -5,7 +5,6 @@ export type {
 	Skill,
 	SkillFrontmatter,
 	SkillProvenance,
-	SkillType,
 } from "./contracts.js";
 export { loadSkills, loadSkillsFromDir } from "./discovery.js";
 export { formatSkillsForPrompt } from "./prompt.js";

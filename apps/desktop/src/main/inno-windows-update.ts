@@ -353,6 +353,11 @@ export class InnoWindowsUpdateController {
 		return [executablePath];
 	}
 
+	/** 看门狗兜底要拉起的可执行文件：`app.relaunch()` 在硬退路径上不保证 spawn。 */
+	preparedExecutablePath(): string | undefined {
+		return this.prepared?.executablePath;
+	}
+
 	async activate(): Promise<void> {
 		const prepared = this.prepared;
 		if (!prepared) throw new Error("Inno Setup Windows update is not ready");

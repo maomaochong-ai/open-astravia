@@ -139,8 +139,7 @@ export interface RemoteModelOption {
 }
 
 /**
- * A skill or scene the phone may reference by writing `@skill:<name>` /
- * `@scene:<name>` into a prompt. Already filtered and ordered as the desktop
+ * A skill the phone may reference by writing `@skill:<name>` into a prompt. Already filtered and ordered as the desktop
  * composer's picker shows them.
  */
 export interface RemoteSkillOption {
@@ -149,7 +148,7 @@ export interface RemoteSkillOption {
 	/** Display name; omitted when it equals `name`. */
 	readonly alias?: string;
 	readonly description: string;
-	readonly type: "skill" | "scene";
+	readonly type: "skill";
 	/** Where it was installed: `builtin`, `plugin`, `user`, `project`, `market`, `agents-user`… */
 	readonly source: string;
 }

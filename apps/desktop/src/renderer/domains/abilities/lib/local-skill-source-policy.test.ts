@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isReadonlyLocalSkillSource } from "./local-skill-source-policy";
 
 describe("isReadonlyLocalSkillSource", () => {
-	it.each(["agents-user", "agents-project", "builtin", "scene"])("保留只读来源 %s", (source) => {
+	it.each(["agents-user", "agents-project", "builtin"])("保留只读来源 %s", (source) => {
 		expect(isReadonlyLocalSkillSource(source)).toBe(true);
 	});
 

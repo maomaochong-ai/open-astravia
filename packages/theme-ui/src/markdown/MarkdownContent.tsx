@@ -322,14 +322,11 @@ export const MarkdownContent = memo(function MarkdownContent({
 						/>
 					);
 				}
-				if (kind === "skill" || kind === "scene") {
-					const ability =
-						kind === "scene"
-							? inlineTokensRef.current?.getScene?.(value)
-							: inlineTokensRef.current?.getSkill?.(value);
+				if (kind === "skill") {
+					const ability = inlineTokensRef.current?.getSkill?.(value);
 					return (
 						<InlineTokenChip
-							iconNode={<SkillTypeIcon type={kind} icon={ability?.icon} className="h-3 w-3" />}
+							iconNode={<SkillTypeIcon icon={ability?.icon} className="h-3 w-3" />}
 							label={ability?.label ?? value}
 							title={value}
 						/>

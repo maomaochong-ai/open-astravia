@@ -7,7 +7,7 @@ import {
 	createCodingAgentSessionCommandEnvironment,
 	createCodingAgentWritePathPolicy,
 } from "@astravia/coding-agent/composition";
-import { CONFIG_DIR_NAME, getKnowledgeDir, getSceneDir, getUserSkillsDir } from "@astravia/coding-agent/config";
+import { CONFIG_DIR_NAME, getKnowledgeDir, getUserSkillsDir } from "@astravia/coding-agent/config";
 import { CODING_AGENT_READ_TOOL_OPTIONS } from "@astravia/coding-agent/host";
 import type { SettingsRuntime } from "@astravia/coding-agent/settings";
 import {
@@ -101,7 +101,6 @@ function createCliNodeToolHost(
 	const protectedCommandDirectories = [
 		resolve(agentDir, "skills"),
 		resolve(getUserSkillsDir()),
-		resolve(getSceneDir()),
 		resolve(cwd, CONFIG_DIR_NAME, "skills"),
 	];
 	const pathClassifier = createNodePathBoundaryClassifier({
@@ -113,7 +112,7 @@ function createCliNodeToolHost(
 		managedDirectory: join(getKnowledgeDir(), "wiki"),
 	});
 	const boundaries = {
-		isProtectedSkillOrScenePath: pathClassifier.isReadOnlyPath,
+		isProtectedSkillPath: pathClassifier.isReadOnlyPath,
 		isKnowledgeWikiPath: pathClassifier.isManagedPath,
 	};
 	const resolveShell = () => {

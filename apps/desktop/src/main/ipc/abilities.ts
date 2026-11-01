@@ -151,8 +151,8 @@ export function registerAbilitiesIpc(): () => void {
 	ipcMain.handle(
 		"astravia:abilities:install-open-ability",
 		async (_event, type: unknown, slug: unknown, sourceId: unknown) => {
-			if ((type !== "skill" && type !== "scene" && type !== "plugin") || typeof slug !== "string" || !slug.trim()) {
-				throw new Error("installOpenAbility requires a skill/scene/plugin type and non-empty slug");
+			if ((type !== "skill" && type !== "plugin") || typeof slug !== "string" || !slug.trim()) {
+				throw new Error("installOpenAbility requires a skill/plugin type and non-empty slug");
 			}
 			const resolvedSourceId = sourceId === undefined ? undefined : requireString(sourceId, "sourceId");
 			await openMarketplace.install(type, slug, resolvedSourceId);

@@ -2,19 +2,19 @@ import { isAttachmentPath, isImagePath } from "./paths";
 import type { InputSegment, LegacyPromptRef, ParsedInput } from "./types";
 
 /**
- * 行内 token 扫描：`@skill:名字` / `@scene:名字` / `@mcp:名字` / `@/abs/path`。
+ * 行内 token 扫描：`@skill:名字` / `@mcp:名字` / `@/abs/path`。
  * 只在词首（行首或空白后）起匹配，`a@b.com`、代码里的 `arr@idx` 不会被误认。
  *
  * 裸写形式排除全角句读——中文里 `@/a/b.ts。还有` 没有空白可依，
  * 只能靠这些字符断开路径（文件名中出现它们的情况可忽略；真有就加引号）。
  */
 const BARE = String.raw`[^\s"。，、；：！？（）【】「」『』]+`;
-const TOKEN_RE = new RegExp(`(?<=^|\\s)@(?:(skill|scene|mcp):(?:"([^"]*)"|(${BARE}))|(?:"([^"]*)"|(${BARE})))`, "g");
+const TOKEN_RE = new RegExp(`(?<=^|\\s)@(?:(skill|mcp):(?:"([^"]*)"|(${BARE}))|(?:"([^"]*)"|(${BARE})))`, "g");
 
 /** 裸路径末尾的半角句读；它们属于句子而不属于路径。 */
 const TRAILING_PUNCTUATION = /[,;:!?)\]]+$/;
 
-/** 旧格式：行首 `/skill:name` 或 `/scene:name`，其后紧跟一个换行。 */
+/** 旧格式：行首 `/skill:name`（旧会话里的 `/scene:name` 按 skill 展示），其后紧跟一个换行。 */
 const LEGACY_REF_RE = /^\/(skill|scene):([^\n]+)\n?([\s\S]*)$/;
 
 /** 旧格式：紧随其后的 `@<绝对路径>` 整行。 */
@@ -50,7 +50,7 @@ function takeLegacyPrefixes(text: string): {
 
 	const refMatch = remaining.match(LEGACY_REF_RE);
 	if (refMatch) {
-		legacyRef = { kind: refMatch[1] as LegacyPromptRef["kind"], name: refMatch[2].trim() };
+		legacyRef = { kind: "skill", name: refMatch[2].trim() };
 		remaining = refMatch[3];
 	}
 
@@ -79,7 +79,7 @@ function scanInline(body: string, segments: InputSegment[]): void {
 			const name = quotedName ?? bareName ?? "";
 			if (name === "") continue;
 			pushText(segments, body.slice(cursor, start));
-			const kind = namespace === "mcp" ? "connector" : namespace === "scene" ? "scene" : "skill";
+			const kind = namespace === "mcp" ? "connector" : "skill";
 			segments.push({ kind, name });
 			cursor = start + raw.length;
 			continue;

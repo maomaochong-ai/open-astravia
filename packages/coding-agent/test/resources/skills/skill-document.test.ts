@@ -24,9 +24,7 @@ function skill(content: string): Skill {
 		filePath: "C:/skills/review/SKILL.md",
 		baseDir: "C:/skills/review",
 		source: "test",
-		type: "skill",
 		disableModelInvocation: false,
 		content,
-		sceneTasks: [],
 	};
 }

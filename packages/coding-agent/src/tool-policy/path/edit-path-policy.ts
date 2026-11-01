@@ -9,10 +9,10 @@ export function createCodingAgentEditPathPolicy(
 ): CodingAgentEditPathPolicy {
 	return {
 		getRejectionReason: (absolutePath) => {
-			if (boundaries.isProtectedSkillOrScenePath(absolutePath)) {
+			if (boundaries.isProtectedSkillPath(absolutePath)) {
 				return (
-					`"${absolutePath}" is inside a skill/scene directory which is read-only. ` +
-					"Skills and scenes are global resources — never modify them. " +
+					`"${absolutePath}" is inside a skill directory which is read-only. ` +
+					"Skills are global resources — never modify them. " +
 					"Write output files to the user's working directory instead."
 				);
 			}

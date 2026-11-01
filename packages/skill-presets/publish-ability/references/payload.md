@@ -6,17 +6,17 @@ The JSON passed to `publish.mjs --input`.
 
 | Field | Required for | Notes |
 | --- | --- | --- |
-| `type` | all | `skill` / `scene` / `mcp` / `plugin` / `bundle` |
+| `type` | all | `skill` / `mcp` / `plugin` / `bundle` |
 | `detail` | all | Everything shown in the marketplace. See below. |
-| `package_path` | `skill`, `scene`, `plugin` | Absolute path to the local archive. `plugin` must be `.zip`; `skill`/`scene` accept `.zip` or `.tar.gz`. |
+| `package_path` | `skill`, `plugin` | Absolute path to the local archive. `plugin` must be `.zip`; `skill` accept `.zip` or `.tar.gz`. |
 | `slug` | `mcp`, `bundle` | Machine identifier, unique per type. Letters, digits, `.` `_` `-` only. For packaged types the slug comes from the manifest (`plugin.json` `id`, `SKILL.md` `name`) — passing one is ignored. |
 | `mcp_config` | `mcp` | The config block written verbatim into the user's `mcp.json`, e.g. `{command, args}` or `{type: "http", url}`. |
 | `members` | `bundle` | Member list, always one level — a bundle cannot nest a bundle. Members must already be published. |
 | `category` | no | Managed category **name**, not an id. Read the live list with `scripts/categories.mjs` — an unmatched name is not an error, it silently lands in uncategorised. Matching is case-insensitive and also accepts a category's translated name. |
-| `version` | no | Letters, digits, `.` `_` `-` only. Honoured for `skill`/`scene`/`mcp`/`bundle`. **For `plugin` it is rejected** — the version always comes from `plugin.json`, so a value here would be silently ignored. Omitted → `1.0.0` for a new entry, patch+1 on re-submission. |
+| `version` | no | Letters, digits, `.` `_` `-` only. Honoured for `skill`/`mcp`/`bundle`. **For `plugin` it is rejected** — the version always comes from `plugin.json`, so a value here would be silently ignored. Omitted → `1.0.0` for a new entry, patch+1 on re-submission. |
 
 Where a package carries the same information, the payload wins and the package is the fallback:
-`skill`/`scene` fall back to `SKILL.md` frontmatter (`metadata.category`, `metadata.version`,
+`skill` fall back to `SKILL.md` frontmatter (`metadata.category`, `metadata.version`,
 `metadata.tags`), `plugin` to `plugin.json`. On a re-submission that specifies neither, the
 existing category is kept rather than cleared.
 
@@ -33,7 +33,7 @@ columns for display fields.
 | `content` | yes | Detail-page body, markdown |
 | `license` | no | e.g. `MIT` |
 | `icon` | no | Empty, one of the built-in Solar names below, or an `http(s)://` URL. See [Icons](#icons). |
-| `tags` | no | Free-form; orthogonal to `category`. For `skill`/`scene` the package's own `SKILL.md` frontmatter tags apply unless you set this. |
+| `tags` | no | Free-form; orthogonal to `category`. For `skill` the package's own `SKILL.md` frontmatter tags apply unless you set this. |
 | `showcases` | no | Structured hero panels, see below. **Replaced wholesale** — an empty array clears them. |
 | `meta` | no | Ordered list of `{key?, label?, value}`; `key` must be `homepage`/`repository`/`docs`/`license`, otherwise use `label`. **Replaced wholesale.** |
 | `i18n` | no | Translations, see [Multi-language](#multi-language) |

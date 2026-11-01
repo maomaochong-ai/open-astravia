@@ -59,10 +59,8 @@ function skill(name: string): Skill {
 		filePath: `/skills/${name}/SKILL.md`,
 		baseDir: `/skills/${name}`,
 		source: "user",
-		type: "skill",
 		disableModelInvocation: false,
 		content: `---\nname: ${name}\ndescription: ${name} skill\n---\nbody of ${name}\n`,
-		sceneTasks: [],
 	};
 }
 

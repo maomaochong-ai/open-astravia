@@ -92,16 +92,16 @@ describe("projectUserMessage", () => {
 			createConversationUserMessage({
 				id: "legacy",
 				text: "检查 @skill:legal @/workspace/spec.md",
-				promptRef: { kind: "scene", name: "review" },
+				promptRef: { kind: "skill", name: "review" },
 			}),
 		);
 
 		expect(projection.inlineTokenAnnotations.map((annotation) => annotation.kind)).toEqual([
-			"scene",
+			"skill",
 			"skill",
 			"file",
 		]);
-		expect(projection.displayText).toBe("@scene:review 检查 @skill:legal @/workspace/spec.md");
+		expect(projection.displayText).toBe("@skill:review 检查 @skill:legal @/workspace/spec.md");
 	});
 
 	it("编辑器明确保存为正文的 token 外形文本不会被重新猜成 token", () => {

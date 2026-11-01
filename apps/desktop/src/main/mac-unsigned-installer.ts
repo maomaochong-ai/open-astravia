@@ -79,11 +79,47 @@ STAGE="$(/usr/bin/mktemp -d "\${TMPDIR:-/tmp}/astravia-update.XXXXXX")" || exit 
 cleanup() { /bin/rm -rf "$STAGE"; }
 trap cleanup EXIT
 
+# 交棒后应用已经退出：任何一步失败都会把用户留在桌面全空的状态。为此失败路径一律走
+# abort——先记日志，再把应用拉回来，最后以非零码退出。
+RELAUNCHED=0
+SKIP_RELAUNCH=0
+relaunch_app() {
+	[ "$SKIP_RELAUNCH" -eq 1 ] && return 0
+	[ "$RELAUNCHED" -eq 1 ] && return 0
+	if [ ! -d "$APP" ]; then
+		echo "[$(date -u +%FT%TZ)] no bundle at $APP, nothing to relaunch"
+		return 1
+	fi
+	if ${relaunch} "$APP"; then
+		RELAUNCHED=1
+		echo "[$(date -u +%FT%TZ)] relaunched"
+		return 0
+	fi
+	# open 失败（LaunchServices 缓存损坏、新包尚未被索引）时直接执行二进制，
+	# 否则用户看到的仍然是「点重启就没了」。
+	BIN="$(/usr/bin/find "$APP/Contents/MacOS" -maxdepth 1 -type f -perm -u+x 2>/dev/null | /usr/bin/head -n 1)"
+	if [ -n "$BIN" ]; then
+		( "$BIN" >/dev/null 2>&1 & )
+		RELAUNCHED=1
+		echo "[$(date -u +%FT%TZ)] relaunched $BIN directly"
+		return 0
+	fi
+	echo "[$(date -u +%FT%TZ)] relaunch failed: no executable inside $APP"
+	return 1
+}
+abort() {
+	echo "[$(date -u +%FT%TZ)] $1"
+	relaunch_app || true
+	exit 1
+}
+
 # 1. 等旧进程真正退出：运行中的可执行文件被覆盖会 ETXTBSY。
 deadline=$(( $(/bin/date +%s) + ${Math.ceil(waitMs / 1000)} ))
 while /bin/kill -0 ${plan.pid} 2>/dev/null; do
 	if [ "$(/bin/date +%s)" -ge "$deadline" ]; then
 		echo "[$(date -u +%FT%TZ)] pid ${plan.pid} still alive after ${waitMs}ms, abort"
+		# 旧实例还活着：此时再拉起一个会变成双开，用户自己关掉旧窗口即可。
+		SKIP_RELAUNCH=1
 		exit 1
 	fi
 	/bin/sleep 0.3
@@ -91,13 +127,13 @@ done
 echo "[$(date -u +%FT%TZ)] pid ${plan.pid} is gone"
 
 # 2. 解包到暂存目录，确认里面确实有一个 .app。
-/usr/bin/ditto -x -k --sequesterRsrc "$ARCHIVE" "$STAGE" || { echo "[$(date -u +%FT%TZ)] unzip failed"; exit 1; }
+/usr/bin/ditto -x -k --sequesterRsrc "$ARCHIVE" "$STAGE" || abort "unzip failed"
 NEW_APP="$(/usr/bin/find "$STAGE" -maxdepth 2 -name '*.app' -type d | /usr/bin/head -n 1)"
 if [ -z "$NEW_APP" ] && [ -f "$STAGE/Contents/Info.plist" ]; then
 	# ditto 对 .app 打包时会把 bundle 内容放在归档根，而不是 <名字>.app/ 之下。
 	NEW_APP="$STAGE"
 fi
-[ -n "$NEW_APP" ] && [ -d "$NEW_APP" ] || { echo "[$(date -u +%FT%TZ)] no .app inside archive"; exit 1; }
+[ -n "$NEW_APP" ] && [ -d "$NEW_APP" ] || abort "no .app inside archive"
 echo "[$(date -u +%FT%TZ)] staged $NEW_APP"
 
 # 3. 去 quarantine：否则首次启动弹「无法验证开发者」，用户一取消就退回旧版。
@@ -106,20 +142,18 @@ echo "[$(date -u +%FT%TZ)] staged $NEW_APP"
 # 4. 换包：旧包先改名，替换失败就还原，绝不留半个包。
 BACKUP="$APP.old"
 /bin/rm -rf "$BACKUP"
-/bin/mv "$APP" "$BACKUP" || { echo "[$(date -u +%FT%TZ)] cannot move aside $APP"; exit 1; }
+/bin/mv "$APP" "$BACKUP" || abort "cannot move aside $APP"
 if ! /usr/bin/ditto "$NEW_APP" "$APP"; then
-	echo "[$(date -u +%FT%TZ)] copy failed, restoring"
 	/bin/rm -rf "$APP"
 	/bin/mv "$BACKUP" "$APP"
-	exit 1
+	abort "copy failed, restored the old bundle"
 fi
 /usr/bin/xattr -dr com.apple.quarantine "$APP" 2>/dev/null || true
 /bin/rm -rf "$BACKUP"
 echo "[$(date -u +%FT%TZ)] replaced $APP"
 
 # 5. 重新启动。运行中不允许残留旧实例，所以这里不带 -n。
-${relaunch} "$APP"
-echo "[$(date -u +%FT%TZ)] relaunched"
+relaunch_app || abort "relaunch failed"
 `;
 }
 

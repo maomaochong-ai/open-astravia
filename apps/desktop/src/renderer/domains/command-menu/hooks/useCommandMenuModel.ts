@@ -158,7 +158,6 @@ export function useCommandMenuModel({ onOpenSession }: UseCommandMenuModelArgs):
 			sessionUnavailable: t("commandMenu.sessionUnavailable"),
 			settingsGroupHint: t("commandMenu.groups.settings"),
 			abilitySkill: t("commandMenu.badges.skill"),
-			abilityScene: t("commandMenu.badges.scene"),
 			abilityPlugin: t("commandMenu.badges.plugin"),
 			searchMarketplace: t("commandMenu.searchMarketplace"),
 		}),

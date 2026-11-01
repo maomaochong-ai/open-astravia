@@ -85,10 +85,7 @@ describe("Coding Agent model context", () => {
 		expect(writePrompt).toContain("Use write only for new files or complete rewrites");
 
 		expect(
-			formatModelVisibleSkills([
-				{ name: "a&b", description: "<read>", type: "skill", disableModelInvocation: false },
-				{ name: "hidden", description: "hidden", type: "scene", disableModelInvocation: false },
-			]),
+			formatModelVisibleSkills([{ name: "a&b", description: "<read>", disableModelInvocation: false }]),
 		).toContain("<name>a&amp;b</name>\n    <description>&lt;read&gt;</description>");
 	});
 });

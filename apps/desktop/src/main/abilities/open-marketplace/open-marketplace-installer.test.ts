@@ -46,7 +46,7 @@ async function createFixture(version = "1.0.0"): Promise<{
 		],
 	});
 	const ability = manifest.abilities[0];
-	if (!ability || (ability.type !== "skill" && ability.type !== "scene")) throw new Error("Fixture ability missing");
+	if (!ability || ability.type !== "skill") throw new Error("Fixture ability missing");
 	return { root, snapshotRoot, ability };
 }
 

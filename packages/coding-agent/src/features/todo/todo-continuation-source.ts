@@ -14,7 +14,7 @@ export interface CodingAgentTodoContinuationSourceOptions {
 /**
  * Session-local Todo continuation。
  *
- * 只有锁定列表（scene 等机制写入）会在每次自然停止时继续提醒，直到全部完成；
+ * 只有锁定列表（宿主预填的列表）会在每次自然停止时继续提醒，直到全部完成；
  * 普通 Todo 不再产生续跑消息。
  */
 export class CodingAgentTodoContinuationSource implements CodingAgentContinuationSource {

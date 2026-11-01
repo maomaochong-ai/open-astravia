@@ -101,7 +101,7 @@ describe("与包内译文的一致性", () => {
 	});
 });
 
-describe("skill / scene", () => {
+describe("skill", () => {
 	function skillPkg(overrides = {}) {
 		return {
 			root: "",

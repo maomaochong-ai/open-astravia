@@ -88,9 +88,7 @@ function createSkill(): Skill {
 		filePath: "C:/skills/pdf/SKILL.md",
 		baseDir: "C:/skills/pdf",
 		source: "test",
-		type: "skill",
 		disableModelInvocation: false,
 		content: "---\nname: pdf\n---\nFollow the PDF workflow.",
-		sceneTasks: [],
 	};
 }

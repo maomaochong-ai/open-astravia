@@ -126,19 +126,18 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		expect(() => assembly.rebindSession("session-2")).not.toThrow();
 	});
 
-	it("expands a Scene through an explicit host-owned Prompt Runtime", async () => {
-		const root = isolatedDirectory("turn-capability-scene-");
+	it("expands a Skill through an explicit host-owned Prompt Runtime", async () => {
+		const root = isolatedDirectory("turn-capability-skill-");
 		temporaryDirectories.push(root);
 		const workspace = join(root, "workspace");
 		const agentDir = join(root, "agent");
-		const sceneName = "assembly-scene";
-		const sceneDir = join(workspace, ".astravia", "skills", sceneName);
-		mkdirSync(sceneDir, { recursive: true });
+		const skillName = "assembly-skill";
+		const skillDir = join(workspace, ".astravia", "skills", skillName);
+		mkdirSync(skillDir, { recursive: true });
 		writeFileSync(
-			join(sceneDir, "SKILL.md"),
-			`---\nname: ${sceneName}\ndescription: assembly scene\nmetadata:\n  type: scene\n---\nRun the assembly scene.\n`,
+			join(skillDir, "SKILL.md"),
+			`---\nname: ${skillName}\ndescription: assembly skill\n---\nRun the assembly skill.\n`,
 		);
-		writeFileSync(join(sceneDir, "tasks.json"), JSON.stringify(["inspect", "report"]));
 
 		const codingTools = createCodingToolsRuntimeComposition({
 			cwd: workspace,
@@ -184,7 +183,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 				resolve: () => ({ mode: "explicit", toolNames: [] }),
 				readAgentMode: () => undefined,
 				readAgentPlugins: () => ({
-					skillPathContributions: [{ pluginId: "scene-plugin", paths: [sceneDir] }],
+					skillPathContributions: [{ pluginId: "skill-plugin", paths: [skillDir] }],
 				}),
 				readActiveToolNamesOverride: () => undefined,
 			},
@@ -207,20 +206,18 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			imageSettingsSnapshots: new CodingAgentImageSettingsSnapshotRouter(),
 		});
 		disposals.push(() => assembly.dispose());
-		expect(runtimeSourceFactory).toHaveBeenCalledWith({ runtimeSkillPaths: [sceneDir] });
+		expect(runtimeSourceFactory).toHaveBeenCalledWith({ runtimeSkillPaths: [skillDir] });
 
 		const prepared = await preparePrompt(
 			assembly.promptAdapter,
-			{ text: "review it", promptRef: { kind: "scene", name: sceneName } },
+			{ text: "review it", promptRef: { kind: "skill", name: skillName } },
 			{ sessionId: "session-1", queueing: false },
 		);
 
 		expect(prepared.input.context?.[0]).toMatchObject({
-			type: "scene_expansion",
-			content: expect.stringContaining("Run the assembly scene."),
+			type: "skill_expansion",
+			content: expect.stringContaining("Run the assembly skill."),
 		});
-		expect(todoRuntime.getLockSource()).toBe("scene");
-		expect(todoRuntime.getAll()).toHaveLength(2);
 	});
 
 	it("previews the initial system prompt from the freshly loaded resource generation", async () => {

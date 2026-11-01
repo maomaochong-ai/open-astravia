@@ -89,7 +89,7 @@ export function filterAbilityCatalog(items: AbilityItem[], filter: AbilityCatalo
 
 /** 按 type 计数，筛选面板用它给每个类型标数量。 */
 export function countAbilitiesByType(items: AbilityItem[]): Record<AbilityType, number> {
-	const counts: Record<AbilityType, number> = { skill: 0, scene: 0, mcp: 0, plugin: 0, bundle: 0 };
+	const counts: Record<AbilityType, number> = { skill: 0, mcp: 0, plugin: 0, bundle: 0 };
 	for (const item of items) counts[item.type] += 1;
 	return counts;
 }

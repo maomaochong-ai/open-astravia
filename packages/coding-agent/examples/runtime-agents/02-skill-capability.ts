@@ -192,7 +192,7 @@ function createSkillFeature(readCurrentSkills: () => readonly Skill[]): AgentFea
 }
 
 function createSkillContribution(skills: readonly Skill[]): ModelCallContribution {
-	const visibleSkills = skills.filter((skill) => !skill.disableModelInvocation && skill.type !== "scene");
+	const visibleSkills = skills.filter((skill) => !skill.disableModelInvocation);
 	const content = formatSkillsForPrompt(visibleSkills);
 	const tool = createInvokeSkillTool({
 		getSkills: () => visibleSkills,
@@ -205,7 +205,7 @@ function createSkillContribution(skills: readonly Skill[]): ModelCallContributio
 }
 
 function captureSkills(skills: readonly Skill[]): readonly Skill[] {
-	return skills.map((skill) => ({ ...skill, sceneTasks: [...skill.sceneTasks] }));
+	return skills.map((skill) => ({ ...skill }));
 }
 
 function readFrontmatterBody(content: string): string {

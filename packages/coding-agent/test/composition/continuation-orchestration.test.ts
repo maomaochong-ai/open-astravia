@@ -281,8 +281,8 @@ describe("Coding Agent continuation orchestration", () => {
 			sessionId: "continuation-session",
 			cwd: "C:\\workspace",
 		});
-		// 只有锁定（scene）列表才驱动续跑，普通 Todo 不再产生提醒。
-		todoRuntime.initializeSceneTodoItems(["Finish implementation"]);
+		// 只有锁定列表才驱动续跑，普通 Todo 不再产生提醒。
+		todoRuntime.initializeTodoItems(["Finish implementation"], "scene");
 		await todoRuntime.flush();
 
 		await session.prompt({ text: "start" });

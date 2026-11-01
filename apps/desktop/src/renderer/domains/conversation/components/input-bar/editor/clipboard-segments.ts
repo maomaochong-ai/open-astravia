@@ -28,7 +28,6 @@ function isInputSegment(value: unknown): value is InputSegment {
 				optionalString(value, "meta")
 			);
 		case "skill":
-		case "scene":
 			return typeof value.name === "string" && optionalString(value, "alias") && optionalString(value, "icon");
 		case "connector":
 			return typeof value.name === "string" && optionalString(value, "label") && optionalString(value, "iconUrl");

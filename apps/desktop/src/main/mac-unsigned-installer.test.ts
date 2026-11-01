@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -61,6 +61,15 @@ async function spawnShortLivedProcess(): Promise<number> {
 	return pid;
 }
 
+/** 假的「重启命令」：把收到的参数记到文件，供用例断言是否真的拉起了应用。 */
+async function writeRelaunchRecorder(root: string): Promise<{ scriptPath: string; markerPath: string }> {
+	const scriptPath = join(root, "relaunch-recorder.sh");
+	const markerPath = join(root, "relaunch-calls.txt");
+	await writeFile(scriptPath, `#!/bin/bash\necho "$1" >> ${JSON.stringify(markerPath)}\n`, "utf8");
+	await chmod(scriptPath, 0o755);
+	return { scriptPath, markerPath };
+}
+
 /**
  * 脚本本身是纯文本，可以任何平台断言；真正跑 `bash` + `ditto` 的用例只在 macOS
  * 成立——CI 的 ubuntu / windows runner 上没有这些命令，也不存在 `.app` 这种布局。
@@ -85,7 +94,7 @@ describe("mac unsigned installer", () => {
 		const unzip = script.indexOf("/usr/bin/ditto -x -k");
 		const swap = script.indexOf('/bin/mv "$APP" "$BACKUP"');
 		const quarantine = script.lastIndexOf("/usr/bin/xattr -dr com.apple.quarantine");
-		const relaunch = script.indexOf('open "$APP"');
+		const relaunch = script.indexOf('relaunch_app || abort "relaunch failed"');
 		expect(wait).toBeGreaterThan(-1);
 		expect(unzip).toBeGreaterThan(wait);
 		expect(swap).toBeGreaterThan(unzip);
@@ -191,6 +200,65 @@ describe("mac unsigned installer", () => {
 		});
 		expect(exitCode).toBe(1);
 		await expect(readFile(join(appPath, "Contents", "MacOS", "version.txt"), "utf8")).resolves.toBe("0.5.80");
+	});
+
+	it.skipIf(!onMacOS)("relaunches the installed app even when the update cannot be applied", async () => {
+		const root = await temporaryRoot();
+		const appPath = join(root, "Astravia.app");
+		await writeFakeApp(appPath, "0.5.80");
+		const archivePath = join(root, "broken.zip");
+		await writeFile(archivePath, "not a zip", "utf8");
+		const recorder = await writeRelaunchRecorder(root);
+
+		const scriptPath = await launchMacUnsignedInstaller({
+			appPath,
+			archivePath,
+			pid: await exitedPid(),
+			cacheRoot: join(root, "cache"),
+			scriptName: "broken-relaunch",
+			waitMs: 5_000,
+			relaunch: recorder.scriptPath,
+			dryRun: true,
+		});
+
+		const exitCode = await new Promise<number | null>((resolve, reject) => {
+			const child = spawn("/bin/bash", [scriptPath], { stdio: "ignore" });
+			child.once("error", reject);
+			child.once("exit", (code) => resolve(code));
+		});
+
+		// 交棒后应用已经退出：解包失败也不能把用户留在桌面全空，至少要拉回旧版本。
+		expect(exitCode).toBe(1);
+		await expect(readFile(recorder.markerPath, "utf8")).resolves.toContain(appPath);
+		await expect(readFile(join(appPath, "Contents", "MacOS", "version.txt"), "utf8")).resolves.toBe("0.5.80");
+	});
+
+	it.skipIf(!onMacOS)("does not start a second copy while the old process is still running", async () => {
+		const root = await temporaryRoot();
+		const appPath = join(root, "Astravia.app");
+		await writeFakeApp(appPath, "0.5.80");
+		const recorder = await writeRelaunchRecorder(root);
+
+		const scriptPath = await launchMacUnsignedInstaller({
+			appPath,
+			archivePath: join(root, "unused.zip"),
+			pid: process.pid,
+			cacheRoot: join(root, "cache"),
+			scriptName: "alive-relaunch",
+			waitMs: 400,
+			relaunch: recorder.scriptPath,
+			dryRun: true,
+		});
+
+		const exitCode = await new Promise<number | null>((resolve, reject) => {
+			const child = spawn("/bin/bash", [scriptPath], { stdio: "ignore" });
+			child.once("error", reject);
+			child.once("exit", (code) => resolve(code));
+		});
+
+		// 旧实例还活着时再拉起一个会变成双开，让用户自己关旧窗口。
+		expect(exitCode).toBe(1);
+		await expect(access(recorder.markerPath)).rejects.toThrow();
 	});
 
 	it("treats an ad-hoc bundle as one Squirrel cannot verify", () => {

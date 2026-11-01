@@ -13,9 +13,7 @@ import { isSystemAttachmentPath, isUserImageFile, parseUserPrefixes } from "../.
 import type { AppshotCardData } from "../AppshotCard";
 
 function matchesPromptRef(segment: InputSegment, ref: { readonly kind: string; readonly name: string }): boolean {
-	return (
-		(segment.kind === "skill" || segment.kind === "scene") && segment.kind === ref.kind && segment.name === ref.name
-	);
+	return segment.kind === "skill" && segment.kind === ref.kind && segment.name === ref.name;
 }
 
 function isAppshotPath(path: string): boolean {
@@ -52,10 +50,7 @@ export function projectUserMessage(message: ConversationUserMessageViewModel): U
 	const bodySegments = segments.filter(
 		(segment) => (segment.kind !== "image" && segment.kind !== "file") || !isAppshotPath(segment.path),
 	);
-	if (
-		(promptRef?.kind === "skill" || promptRef?.kind === "scene") &&
-		!bodySegments.some((segment) => matchesPromptRef(segment, promptRef))
-	) {
+	if (promptRef?.kind === "skill" && !bodySegments.some((segment) => matchesPromptRef(segment, promptRef))) {
 		bodySegments.unshift({ kind: promptRef.kind, name: promptRef.name });
 	}
 

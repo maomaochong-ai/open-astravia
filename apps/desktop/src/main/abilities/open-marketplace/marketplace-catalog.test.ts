@@ -154,11 +154,8 @@ describe("loadMarketplaceCatalog", () => {
 		expect(readFileSync(join(directory, "mcp.json"), "utf8")).not.toContain("autoApprove");
 	});
 
-	it("supports scene and plugin members through their existing package validators", () => {
+	it("supports plugin members through their existing package validators", () => {
 		const { root, directory, raw, metadata } = fixture();
-		raw.abilities[0].config.members[0].type = "scene";
-		writeFileSync(join(directory, "ability.json"), JSON.stringify({ ...metadata, type: "scene" }));
-		expect(loadMarketplaceCatalog(root, parseMarketplaceManifest(raw)).abilities[1].type).toBe("scene");
 		raw.abilities[0].config.members[0].type = "plugin";
 		writeFileSync(join(directory, "ability.json"), JSON.stringify({ ...metadata, type: "plugin" }));
 		writeFileSync(

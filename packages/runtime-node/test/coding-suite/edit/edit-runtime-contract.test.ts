@@ -276,7 +276,7 @@ describe("runtime edit tool", () => {
 					pathPolicy: createTestEditPathPolicy({ cwd, knowledgeRoot: join(cwd, "knowledges") }),
 				}).execute(runtimeRequest(input)),
 			);
-			expect(runtimeError).toContain("inside a skill/scene directory");
+			expect(runtimeError).toContain("inside a skill directory");
 		},
 	);
 

@@ -108,7 +108,6 @@ export async function loadSkillResources(options: {
 	resourceAccess: ResourceAccessPort;
 	cwd: string;
 	agentDir: string;
-	sceneDir: string;
 	managedSkillsDir: string;
 	manifestPath: string;
 	paths: readonly string[];
@@ -127,20 +126,13 @@ export async function loadSkillResources(options: {
 					resourceAccess: options.resourceAccess,
 					cwd: options.cwd,
 					agentDir: options.agentDir,
-					sceneDir: options.sceneDir,
 					skillPaths: options.paths,
 					includeDefaults: false,
 					includeAgentSkills: options.includeAgentSkills,
 					signal: options.signal,
 				});
 	const paths = options.resourceAccess.paths;
-	const sceneDir = paths.resolve(options.sceneDir);
-	let skills = loaded.skills.map((skill) => {
-		const filePath = paths.resolve(skill.filePath);
-		return filePath === sceneDir || filePath.startsWith(`${sceneDir}${paths.separator}`)
-			? { ...skill, type: "scene" as const, source: "scene" }
-			: skill;
-	});
+	let { skills } = loaded;
 	const disabledNames = await readDisabledMarketSkillNames(
 		options.resourceAccess,
 		options.manifestPath,
@@ -150,11 +142,7 @@ export async function loadSkillResources(options: {
 		const managedSkillsDir = paths.resolve(options.managedSkillsDir);
 		skills = skills.filter((skill) => {
 			const filePath = paths.resolve(skill.filePath);
-			const managed =
-				filePath === managedSkillsDir ||
-				filePath.startsWith(`${managedSkillsDir}${paths.separator}`) ||
-				filePath === sceneDir ||
-				filePath.startsWith(`${sceneDir}${paths.separator}`);
+			const managed = filePath === managedSkillsDir || filePath.startsWith(`${managedSkillsDir}${paths.separator}`);
 			return !managed || !disabledNames.has(skill.name);
 		});
 	}

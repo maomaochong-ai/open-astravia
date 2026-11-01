@@ -54,13 +54,6 @@ const STATIC_TARGETS: readonly StaticNavigationTarget[] = [
 		aliases: ["技能", "能力", "abilities", "能力市场"],
 	},
 	{
-		id: "scenes",
-		title: "场景",
-		description: "场景列表页。",
-		hashPath: "/scenes",
-		aliases: ["场景", "scene", "scenes"],
-	},
-	{
 		id: "knowledge",
 		title: "知识库",
 		description: "知识库主页面。",

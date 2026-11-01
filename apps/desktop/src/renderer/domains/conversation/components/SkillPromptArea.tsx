@@ -57,7 +57,6 @@ export function SkillPromptArea(props: SkillPromptAreaProps): JSX.Element {
 			autoFocus={model.autoFocus}
 			slashOpen={model.slashOpen}
 			skillMissing={model.skillMissing}
-			isScene={model.isScene}
 			skillDisplayName={model.skillDisplayName}
 			hasSkill={Boolean(model.skill)}
 			anchorRect={model.anchorRect}

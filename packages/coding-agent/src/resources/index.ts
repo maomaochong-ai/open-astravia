@@ -39,7 +39,6 @@ export {
 	type PromptResourceExpansion,
 	type PromptResourceExpansionDependencies,
 	parseSkillBlock,
-	type SceneTodoState,
 } from "./prompt-resources/index.js";
 export {
 	expandPromptTemplate,
@@ -65,5 +64,4 @@ export {
 	type Skill,
 	type SkillFrontmatter,
 	type SkillProvenance,
-	type SkillType,
 } from "./skills/index.js";

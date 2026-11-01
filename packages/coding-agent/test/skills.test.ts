@@ -213,10 +213,8 @@ describe("skills", () => {
 					filePath: "/path/to/skill/SKILL.md",
 					baseDir: "/path/to/skill",
 					source: "test",
-					type: "skill",
 					disableModelInvocation: false,
 					content: "",
-					sceneTasks: [],
 				},
 			];
 
@@ -238,10 +236,8 @@ describe("skills", () => {
 					filePath: "/path/to/skill/SKILL.md",
 					baseDir: "/path/to/skill",
 					source: "test",
-					type: "skill",
 					disableModelInvocation: false,
 					content: "",
-					sceneTasks: [],
 				},
 			];
 
@@ -261,10 +257,8 @@ describe("skills", () => {
 					filePath: "/path/to/skill/SKILL.md",
 					baseDir: "/path/to/skill",
 					source: "test",
-					type: "skill",
 					disableModelInvocation: false,
 					content: "",
-					sceneTasks: [],
 				},
 			];
 
@@ -283,10 +277,8 @@ describe("skills", () => {
 					filePath: "/path/one/SKILL.md",
 					baseDir: "/path/one",
 					source: "test",
-					type: "skill",
 					disableModelInvocation: false,
 					content: "",
-					sceneTasks: [],
 				},
 				{
 					name: "skill-two",
@@ -294,10 +286,8 @@ describe("skills", () => {
 					filePath: "/path/two/SKILL.md",
 					baseDir: "/path/two",
 					source: "test",
-					type: "skill",
 					disableModelInvocation: false,
 					content: "",
-					sceneTasks: [],
 				},
 			];
 
@@ -316,10 +306,8 @@ describe("skills", () => {
 					filePath: "/path/visible/SKILL.md",
 					baseDir: "/path/visible",
 					source: "test",
-					type: "skill",
 					disableModelInvocation: false,
 					content: "",
-					sceneTasks: [],
 				},
 				{
 					name: "hidden-skill",
@@ -327,10 +315,8 @@ describe("skills", () => {
 					filePath: "/path/hidden/SKILL.md",
 					baseDir: "/path/hidden",
 					source: "test",
-					type: "skill",
 					disableModelInvocation: true,
 					content: "",
-					sceneTasks: [],
 				},
 			];
 
@@ -349,10 +335,8 @@ describe("skills", () => {
 					filePath: "/path/hidden/SKILL.md",
 					baseDir: "/path/hidden",
 					source: "test",
-					type: "skill",
 					disableModelInvocation: true,
 					content: "",
-					sceneTasks: [],
 				},
 			];
 
@@ -364,13 +348,11 @@ describe("skills", () => {
 	describe("loadSkills with options", () => {
 		const emptyAgentDir = resolve(__dirname, "fixtures/empty-agent");
 		const emptyCwd = resolve(__dirname, "fixtures/empty-cwd");
-		const emptySceneDir = resolve(__dirname, "fixtures/empty-scene");
 
 		it("should load from explicit skillPaths", async () => {
 			const { skills, diagnostics } = await loadTestSkills({
 				agentDir: emptyAgentDir,
 				cwd: emptyCwd,
-				sceneDir: emptySceneDir,
 				skillPaths: [join(fixturesDir, "valid-skill")],
 				// Keep this assertion hermetic against the developer's real ~/.agents/skills.
 				includeAgentSkills: false,
@@ -384,7 +366,6 @@ describe("skills", () => {
 			const { skills, diagnostics } = await loadTestSkills({
 				agentDir: emptyAgentDir,
 				cwd: emptyCwd,
-				sceneDir: emptySceneDir,
 				skillPaths: ["/non/existent/path"],
 				includeAgentSkills: false,
 			});
@@ -410,7 +391,6 @@ describe("skills", () => {
 
 	describe("generic Agent Skill dirs (.agents/skills)", () => {
 		const emptyAgentDir = resolve(__dirname, "fixtures/empty-agent");
-		const emptySceneDir = resolve(__dirname, "fixtures/empty-scene");
 		// Built at runtime in a temp dir: `.agents/` is gitignored, so these fixtures
 		// can't live under test/fixtures and must be created on the fly.
 		let tmpRoot: string;
@@ -459,7 +439,6 @@ describe("skills", () => {
 			const { skills } = await loadTestSkills({
 				agentDir: emptyAgentDir,
 				cwd: agentsProjectCwd,
-				sceneDir: emptySceneDir,
 				includeDefaults: false,
 				includeAgentSkills: true,
 			});
@@ -474,7 +453,6 @@ describe("skills", () => {
 			const { skills } = await loadTestSkills({
 				agentDir: emptyAgentDir,
 				cwd: agentsProjectCwd,
-				sceneDir: emptySceneDir,
 				includeDefaults: false,
 				includeAgentSkills: false,
 			});
@@ -485,7 +463,6 @@ describe("skills", () => {
 			const { skills, diagnostics } = await loadTestSkills({
 				agentDir: emptyAgentDir,
 				cwd: agentsPriorityCwd,
-				sceneDir: emptySceneDir,
 				includeDefaults: true,
 				includeAgentSkills: true,
 			});
@@ -506,7 +483,6 @@ describe("skills", () => {
 			const { skills } = await loadTestSkills({
 				agentDir: emptyAgentDir,
 				cwd: agentsPriorityCwd,
-				sceneDir: emptySceneDir,
 				includeDefaults: false,
 				includeAgentSkills: true,
 				skillPaths: [join(agentsPriorityCwd, CONFIG_DIR_NAME, "skills")],

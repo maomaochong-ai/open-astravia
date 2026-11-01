@@ -4,7 +4,7 @@ import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 
 export interface SkillListLabels {
 	/** source → 展示用的小标签（内置 / 插件 / 场景 …）；不传则不渲染这枚 badge。 */
-	sourceLabel?: (source: string, type: SkillInfo["type"]) => string;
+	sourceLabel?: (source: string) => string;
 	emptyNoMatch: string;
 	/** 空态卡片里的第二行提示（有过滤词但没命中）。 */
 	emptyNoMatchHint: string;
@@ -24,7 +24,7 @@ export interface SkillListProps {
 	 * 不传则全量渲染。
 	 */
 	limit?: number;
-	/** 市场目录里的图标（`solar:xxx` 或图片 URL）；返回 undefined 时落 type 默认图。 */
+	/** 市场目录里的图标（`solar:xxx` 或图片 URL）；返回 undefined 时落默认图。 */
 	resolveIcon?: (skill: SkillInfo) => string | undefined;
 	onHover: (index: number) => void;
 	onSelect: (skill: SkillInfo) => void;

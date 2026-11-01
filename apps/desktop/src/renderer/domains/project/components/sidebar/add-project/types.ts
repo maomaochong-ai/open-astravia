@@ -1,6 +1,6 @@
 export interface AddProjectMenuProps {
 	className?: string;
-	variant?: "icon" | "navItem";
+	variant?: "icon" | "navItem" | "primary" | "secondary";
 }
 
 export type AddProjectMenuAction = "newProject" | "openProject" | "importProject" | "addFromRemoteHost";

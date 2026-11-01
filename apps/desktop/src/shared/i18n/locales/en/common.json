@@ -88,7 +88,7 @@
 			"skills": {
 				"enableTitle": "Turn on ability",
 				"disableTitle": "Turn off ability",
-				"enableSummary": "Once on, the AI can use this ability (skill/scene) in chat when needed.",
+				"enableSummary": "Once on, the AI can use this ability (skill) in chat when needed.",
 				"disableSummary": "Once off, this ability will not be used. Files are not uninstalled.",
 				"enableConfirm": "Turn on",
 				"disableConfirm": "Turn off",
@@ -147,13 +147,11 @@
 			"skillName": "Ability name",
 			"abilitySlug": "Ability slug",
 			"skill": "Skill",
-			"scene": "Scene",
 			"appId": "App ID",
 			"appSecret": "App Secret",
 			"verificationToken": "Verification Token",
 			"encryptKey": "Encrypt Key",
 			"env": "Environment (KEY=VALUE)",
-			"resourceType": "Type",
 			"name": "Name",
 			"newName": "New name",
 			"path": "Path",
@@ -326,7 +324,7 @@
 			"ops": {
 				"set-enabled": {
 					"title": "Enable/Disable Ability Confirmation",
-					"summary": "Change whether this ability (skill/scene) is enabled.",
+					"summary": "Change whether this ability (skill) is enabled.",
 					"confirm": "Confirm status change",
 					"badge": "Ability",
 					"impact": "Ability enabled state takes effect immediately."
@@ -341,7 +339,7 @@
 				},
 				"install-from-market": {
 					"title": "Install Ability from Market Confirmation",
-					"summary": "Download and install this ability (skill or scene) from the market.",
+					"summary": "Download and install this ability (skill) from the market.",
 					"confirm": "Install",
 					"badge": "Install",
 					"impact": "The ability will be downloaded and appear on the Abilities page, enabled by default."
@@ -939,7 +937,6 @@
 			"knowledgeAll": "All Knowledge Bases",
 			"knowledge": "Knowledge Base",
 			"skills": "Skills",
-			"scenes": "Scenes",
 			"plugins": "Plugins",
 			"settings": "Settings",
 			"project": "Project Details",
@@ -1075,7 +1072,6 @@
 		},
 		"badges": {
 			"skill": "Skill",
-			"scene": "Scene",
 			"plugin": "Plugin"
 		},
 		"sessionTypes": {

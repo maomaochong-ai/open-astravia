@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { filterSkills, lookupSkillUsage, type RankableSkill, sortSkillsForPanel } from "./skill-ranking";
 
-function skill(name: string, source: string, type: RankableSkill["type"] = "skill"): RankableSkill {
-	return { name, source, type };
+function skill(name: string, source: string): RankableSkill {
+	return { name, source, type: "skill" };
 }
 
 describe("sortSkillsForPanel", () => {
@@ -23,12 +23,6 @@ describe("sortSkillsForPanel", () => {
 			"skill:recent": { used: 0, lastUsedAt: 999 },
 		});
 		expect(sorted.map((item) => item.name)).toEqual(["recent", "apple", "zebra"]);
-	});
-
-	it("场景与 skill 同列排序，各自查自己的统计 key", () => {
-		const skills = [skill("release", "scene", "scene"), skill("review", "builtin")];
-		const sorted = sortSkillsForPanel(skills, { "scene:release": { used: 5, lastUsedAt: 10 } });
-		expect(sorted.map((item) => item.name)).toEqual(["release", "review"]);
 	});
 });
 

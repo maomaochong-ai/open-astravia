@@ -26,7 +26,7 @@ interface MarketplaceWorker {
 	list(): Promise<OpenMarketplaceSnapshot>;
 	listCached(): Promise<OpenMarketplaceSnapshot>;
 	refresh(): Promise<OpenMarketplaceSnapshot>;
-	install(type: "skill" | "scene" | "plugin", slug: string): Promise<void>;
+	install(type: "skill" | "plugin", slug: string): Promise<void>;
 	prepareMcp(
 		slug: string,
 		onProgress?: (progress: OpenMarketplaceMcpRuntimeProgress) => void,
@@ -140,11 +140,7 @@ export class OpenMarketplaceManager {
 		return this.listSource(id, true);
 	}
 
-	async install(
-		type: "skill" | "scene" | "plugin",
-		slug: string,
-		sourceId = DEFAULT_MARKETPLACE_SOURCE_ID,
-	): Promise<void> {
+	async install(type: "skill" | "plugin", slug: string, sourceId = DEFAULT_MARKETPLACE_SOURCE_ID): Promise<void> {
 		const source = this.requireSource(sourceId);
 		if (!source.enabled) throw new Error(`Marketplace source is disabled: ${sourceId}`);
 		await this.workerFor(source).install(type, slug);

@@ -200,6 +200,26 @@ describe("auto-merge actions", () => {
 		});
 	});
 
+	it("merges the dev→main promotion as a merge commit so dev stays an ancestor of main", async () => {
+		const { fetchImpl, calls } = createTransport({
+			[`PUT /repos/${SLUG}/pulls/7/merge`]: { body: { sha: "merge33", merged: true } },
+		});
+		const client = createGitHubClient({ token: "test-token", fetchImpl });
+		const promotion = pullRequest({
+			base: { ref: "main" },
+			head: { sha: "head111", ref: "dev", repo: { full_name: SLUG } },
+		});
+		const result = await mergePullRequest(client, { owner: OWNER, repo: REPO, pullRequest: promotion });
+		expect(result).toEqual({ merged: true, sha: "merge33" });
+		expect(calls[0].body.merge_method).toBe("merge");
+		const comment = renderAutomationComment({
+			pullRequest: promotion,
+			report: { blocked: [], waiting: [] },
+			merged: true,
+		});
+		expect(comment).toContain("a merge commit");
+	});
+
 	it("reports why GitHub refused the merge", async () => {
 		const { fetchImpl } = createTransport({
 			[`PUT /repos/${SLUG}/pulls/7/merge`]: { status: 405, body: { message: "Pull request is not mergeable" } },

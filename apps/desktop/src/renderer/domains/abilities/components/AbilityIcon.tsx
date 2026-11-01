@@ -40,7 +40,7 @@ export function AbilityIcon({
 					onError={() => setFailedIcon(icon)}
 				/>
 			) : isIconifyIcon(icon) ? (
-				<SkillTypeIcon type={type === "scene" ? "scene" : "skill"} icon={icon} className={iconClassName} />
+				<SkillTypeIcon icon={icon} className={iconClassName} />
 			) : type === "skill" ? (
 				<SkillDefaultIcon className={iconClassName} />
 			) : (

@@ -14,7 +14,6 @@ import type {
 /** type → 卡片角标图标 class（写在 TS 中便于 UnoCSS 扫描）。 */
 export const ABILITY_TYPE_ICON: Record<AbilityType, string> = {
 	skill: "icon-[solar--magic-stick-3-linear]",
-	scene: "icon-[solar--clapperboard-open-linear]",
 	mcp: "icon-[solar--server-square-cloud-linear]",
 	plugin: "icon-[solar--plug-circle-linear]",
 	bundle: "icon-[solar--box-minimalistic-linear]",
@@ -23,7 +22,6 @@ export const ABILITY_TYPE_ICON: Record<AbilityType, string> = {
 /** type → i18n key（abilities ns）。 */
 export const ABILITY_TYPE_LABEL_KEY = {
 	skill: "type.skill",
-	scene: "type.scene",
 	mcp: "type.mcp",
 	plugin: "type.plugin",
 	bundle: "type.bundle",

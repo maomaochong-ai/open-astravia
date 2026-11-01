@@ -9,7 +9,7 @@ function normalizedName(item: AbilityItem): string {
  * 其同名条目按 ADR-0020 一律让位于 Astravia 原生 skill，因此不占安装位、不判冲突。
  */
 function occupiesInstallSlot(item: AbilityItem): boolean {
-	if (item.type !== "skill" && item.type !== "scene") return true;
+	if (item.type !== "skill") return true;
 	return !item.skillSource?.startsWith("agents-");
 }
 

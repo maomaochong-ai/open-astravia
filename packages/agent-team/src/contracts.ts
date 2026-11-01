@@ -7,7 +7,7 @@ import type {
 
 export const AGENT_TEAM_SCHEMA_VERSION = 1 as const;
 
-export type AgentAbilityKind = "skill" | "scene" | "mcp" | "plugin" | (string & {});
+export type AgentAbilityKind = "skill" | "mcp" | "plugin" | (string & {});
 
 export interface AgentAbilitySelection {
 	/**
