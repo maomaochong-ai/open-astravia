@@ -163,11 +163,11 @@ Desktop build task 显式依赖 `@astravia-org/plugin-vite`。开发前置构建
 
 新增或修改 workspace 依赖后必须执行正常的 `bun install`；`bun install --lockfile-only` 只更新锁文件，不创建包级 workspace 链接。可用 `bunx turbo run build --dry=json --filter=<package>` 检查任务闭包和依赖原因。
 
-`test:changed` 不调用包级 `test` 或 `test:pkg`：已修改测试文件直接运行，源码（包括公共入口和合同源码）交给 Vitest `related` 选择真实依赖它的测试，两者同时存在时会从 related 阶段排除已直接运行的测试。共享源码已有更窄且经审查的宿主合同测试时使用显式映射；删除文件、缺少可定向 Vitest 入口或找不到关联测试时直接失败，要求补回归测试或显式映射，不会建议或自动转为整包/全仓测试。包内测试脚本若包含测试所需的前置命令，会先执行前置命令再运行选中的测试，例如 `astravia-ui-design` 的 `build:runner`。
+`test:changed` 不调用包级 `test` 或 `test:pkg`：已修改测试文件直接运行，源码（包括公共入口和合同源码）交给 Vitest `related` 选择真实依赖它的测试，两者同时存在时会从 related 阶段排除已直接运行的测试。共享源码已有更窄且经审查的宿主合同测试时使用显式映射；缺少可定向 Vitest 入口或找不到关联测试时直接失败，不会建议或自动转为整包/全仓测试。删除文件同样默认失败，只有在脚本里登记了继续钉住该契约的替代测试后才放行。包内测试脚本若包含测试所需的前置命令，会先执行前置命令再运行选中的测试，例如 `astravia-ui-design` 的 `build:runner`。
 
 `bun.lock` 会比较基线与当前锁文件中每个 workspace 的完整已解析依赖闭包，并把变化定位到 workspace 的直接依赖；随后只把实际 import 这些依赖的源码或测试交给同一文件级选择器。纯格式变化和只被根工具使用的依赖变化不会触发产品包测试；无法定位依赖或 importer 时直接失败。workspace 的 `package.json`、Vitest/Vite/TypeScript 配置由 `check` 校验，不触发产品包测试；根 `package.json`、Turbo、workflow、质量脚本和 `plugin.json` 选择对应的质量合同测试，不会运行整个 `test:quality`，其中插件清单由仓库级 Schema 测试验证。测试启动前会由 Turbo 构建所选测试消费的 workspace 依赖，确保干净 checkout 中指向 `dist` 的包导出可被解析，同时不会构建 Desktop、Docs 或 Remote Relay 这些叶子应用本身。锁文件或 Git 基线无法可靠读取、解析时同样直接失败。
 
-`test:impact` 面向本地短反馈循环：显式测试文件直接运行，普通源码交给 Vitest 的 `related` 依赖图选择。拥有测试文件的 workspace 应声明可定向的包级 `test` 入口。共享 UI 的跨宿主行为，或 Vitest 的依赖图明显大于组件合同时，只要已有宿主组件测试从公开入口直接覆盖该源码，就可以在脚本中登记窄范围的源码到测试映射。没有关联测试、删除文件或缺少可定向入口都直接报错，不再回退整包测试；根配置只运行其对应的质量门禁。`bun.lock` 委托 `test:changed` 做 workspace 依赖闭包分析。CI 继续使用 `test:changed`，同时获得相同的文件级选择。
+`test:impact` 面向本地短反馈循环：显式测试文件直接运行，普通源码交给 Vitest 的 `related` 依赖图选择。拥有测试文件的 workspace 应声明可定向的包级 `test` 入口。共享 UI 的跨宿主行为，或 Vitest 的依赖图明显大于组件合同时，只要已有宿主组件测试从公开入口直接覆盖该源码，就可以在脚本中登记窄范围的源码到测试映射。没有关联测试、未登记替代测试的删除文件或缺少可定向入口都直接报错，不再回退整包测试；根配置只运行其对应的质量门禁。`bun.lock` 委托 `test:changed` 做 workspace 依赖闭包分析。CI 继续使用 `test:changed`，同时获得相同的文件级选择。
 
 `check:quick` 复用同一套 Git 变更选择器，因此不带路径时不会漏掉未暂存或未跟踪文件；`check:quick -- <file...>` 可限制为本次任务实际修改的文件。删除文件会从 Biome 输入中排除；修改任意 `biome.json` / `biome.jsonc` 或根 `.editorconfig` 时，会自动回退为全仓 Biome，避免配置影响未被检查。私钥、冲突标记与包边界只扫描选中的文件，其余生成物和架构守卫按路径命中。它不做类型检查，不能替代任务结束时的完整 `check`。
 

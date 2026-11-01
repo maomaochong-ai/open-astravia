@@ -527,6 +527,26 @@ describe("affected package selection", () => {
 		]);
 	});
 
+	it("resolves a registered retired source to the tests that keep its contract", () => {
+		const retired = createImpactTestPlan(["apps/desktop/src/renderer/domains/skills/index.ts"]);
+		expect(retired.selectionErrors).toEqual([]);
+		expect(retired.targets).toMatchObject([
+			{
+				key: "desktop",
+				directTests: [
+					"src/main/abilities/open-marketplace/marketplace-schema.test.ts",
+					"src/renderer/domains/abilities/components/detail/AbilityDetailBlocks.test.tsx",
+				],
+				relatedSources: [],
+			},
+		]);
+		expect(
+			createImpactTestPlan(["apps/desktop/src/renderer/domains/skills/unregistered.ts"]).selectionErrors,
+		).toEqual([
+			"apps/desktop/src/renderer/domains/skills/unregistered.ts was deleted; add an explicit regression test or mapping",
+		]);
+	});
+
 	it("never exposes a package-test fallback from the changed-test runner", () => {
 		const implementation = readFileSync(join(repoRoot, "scripts/quality/test-impact.mjs"), "utf8");
 		expect(implementation).not.toContain("full package");

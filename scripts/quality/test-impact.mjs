@@ -160,6 +160,17 @@ const EXPLICIT_SOURCE_TESTS = new Map([
 	["packages/theme-ui/src/file-explorer/FileTreeCreateRow.tsx", desktopTests(FILE_TREE_CREATE_RENAME_TEST)],
 	["packages/theme-ui/src/file-explorer/FileTreeNodeView.tsx", desktopTests(FILE_TREE_CREATE_RENAME_TEST)],
 	["packages/theme-ui/src/shared/index.ts", desktopTests(ACTIVITY_PANEL_TABS_TEST, FILE_TREE_CREATE_RENAME_TEST)],
+	// 官方 API 与主题 SDK 是纯契约包（plugin-sdk 没有测试入口，theme-sdk 只有类型检查），
+	// 它们的消费方测试在桌面与 theme-ui 侧：官方技能 API 的参数形状、侧栏导航项与页头标题键。
+	[
+		"packages/plugins/plugin-sdk/src/official.ts",
+		desktopTests("src/renderer/domains/plugins/runtime/plugin-official-skills.test.ts"),
+	],
+	["packages/theme-sdk/src/sidebar/types.ts", desktopTests("src/renderer/root-layout/nav-route-prefetch.test.ts")],
+	[
+		"packages/theme-sdk/src/app-shell/types.ts",
+		{ workspaceKey: "theme-ui", tests: ["src/app-shell/PageHeaderContent.test.tsx"] },
+	],
 ]);
 
 /**
@@ -175,6 +186,34 @@ const EXPLICIT_DEPENDENCY_SOURCES = new Map([
 	["sherpa-onnx-win-x64", PLATFORM_NATIVE_PACKAGE_TESTS],
 	["sherpa-onnx-darwin-arm64", PLATFORM_NATIVE_PACKAGE_TESTS],
 	["sherpa-onnx-darwin-x64", PLATFORM_NATIVE_PACKAGE_TESTS],
+]);
+
+/**
+ * 下线的源码在变更集里是删除状态，没有 import 图可分析。登记它留下的契约继续由哪些测试钉住，
+ * 删除才可能通过选择阶段；没有登记的删除仍然直接失败。
+ */
+const RETIRED_SCENE_TESTS = desktopTests(
+	"src/main/abilities/open-marketplace/marketplace-schema.test.ts",
+	"src/renderer/domains/abilities/components/detail/AbilityDetailBlocks.test.tsx",
+);
+const RETIRED_SOURCE_TESTS = new Map([
+	["apps/desktop/src/renderer/domains/skills/components/SceneCard.tsx", RETIRED_SCENE_TESTS],
+	["apps/desktop/src/renderer/domains/skills/components/ScenesPage.tsx", RETIRED_SCENE_TESTS],
+	["apps/desktop/src/renderer/domains/skills/components/SkillCard.tsx", RETIRED_SCENE_TESTS],
+	["apps/desktop/src/renderer/domains/skills/components/SkillTagGroup.tsx", RETIRED_SCENE_TESTS],
+	["apps/desktop/src/renderer/domains/skills/components/SkillToggleSwitch.tsx", RETIRED_SCENE_TESTS],
+	["apps/desktop/src/renderer/domains/skills/components/SkillsPageView.tsx", RETIRED_SCENE_TESTS],
+	["apps/desktop/src/renderer/domains/skills/hooks/useSkillsPageModel.ts", RETIRED_SCENE_TESTS],
+	["apps/desktop/src/renderer/domains/skills/index.ts", RETIRED_SCENE_TESTS],
+	["apps/desktop/src/renderer/domains/skills/lib/merge-scenes.test.ts", RETIRED_SCENE_TESTS],
+	["apps/desktop/src/renderer/domains/skills/lib/merge-scenes.ts", RETIRED_SCENE_TESTS],
+	["packages/theme-ui/src/chat/DefaultSceneCarousel.tsx", RETIRED_SCENE_TESTS],
+	["packages/theme-ui/src/chat/SceneCard.tsx", RETIRED_SCENE_TESTS],
+	["packages/theme-ui/src/skills/SceneCardView.tsx", RETIRED_SCENE_TESTS],
+	["packages/theme-ui/src/skills/SkillCardView.tsx", RETIRED_SCENE_TESTS],
+	["packages/theme-ui/src/skills/SkillDetailDialogView.tsx", RETIRED_SCENE_TESTS],
+	["packages/theme-ui/src/skills/SkillTagGroupView.tsx", RETIRED_SCENE_TESTS],
+	["packages/theme-ui/src/skills/SkillToggleSwitch.tsx", RETIRED_SCENE_TESTS],
 ]);
 
 function workspaceForFile(file) {
@@ -314,6 +353,16 @@ export function createImpactTestPlan(
 	const runQuality = qualityTests.length > 0;
 	const selectionErrors = [];
 
+	const applyMapping = (file, mapping, kind) => {
+		const testWorkspace = WORKSPACE_PACKAGES.find((candidate) => candidate.key === mapping.workspaceKey);
+		const missingTests = mapping.tests.filter((test) => !pathExists(`${testWorkspace?.dir ?? ""}/${test}`));
+		if (!testWorkspace?.scripts.test || missingTests.length > 0) {
+			selectionErrors.push(`${file} has an invalid ${kind} test mapping`);
+			return;
+		}
+		const target = targetForWorkspace(grouped, testWorkspace, selectionErrors);
+		target?.directTests.push(...mapping.tests);
+	};
 	const grouped = new Map();
 	for (const impact of lockfileImpacts) {
 		const workspace = WORKSPACE_PACKAGES.find((candidate) => candidate.key === impact.key);
@@ -364,7 +413,12 @@ export function createImpactTestPlan(
 		if (!workspace) continue;
 		const relativeFile = file.slice(workspace.dir.length + 1);
 		if (!pathExists(file)) {
-			selectionErrors.push(`${file} was deleted; add an explicit regression test or mapping`);
+			const retired = RETIRED_SOURCE_TESTS.get(file);
+			if (!retired) {
+				selectionErrors.push(`${file} was deleted; add an explicit regression test or mapping`);
+				continue;
+			}
+			applyMapping(file, retired, "retired source");
 			continue;
 		}
 		if (RUNTIME_CONTRACT_PATTERN.test(relativeFile)) {
@@ -375,14 +429,7 @@ export function createImpactTestPlan(
 		}
 		const mapped = EXPLICIT_SOURCE_TESTS.get(file);
 		if (mapped) {
-			const testWorkspace = WORKSPACE_PACKAGES.find((candidate) => candidate.key === mapped.workspaceKey);
-			const missingTests = mapped.tests.filter((test) => !pathExists(`${testWorkspace?.dir ?? ""}/${test}`));
-			if (!testWorkspace?.scripts.test || missingTests.length > 0) {
-				selectionErrors.push(`${file} has an invalid explicit test mapping`);
-				continue;
-			}
-			const target = targetForWorkspace(grouped, testWorkspace, selectionErrors);
-			target?.directTests.push(...mapped.tests);
+			applyMapping(file, mapped, "explicit");
 			continue;
 		}
 		if (!CODE_FILE_PATTERN.test(relativeFile)) continue;
