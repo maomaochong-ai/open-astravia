@@ -70,24 +70,22 @@ describe("selectIdleSessionsToEvict", () => {
 describe("InteractiveSessionResidencyTracker", () => {
 	it("evicts idle sessions beyond the default warm window after later touches", () => {
 		const tracker = new InteractiveSessionResidencyTracker();
-		tracker.touch("s1", 1);
-		tracker.touch("s2", 2);
-		tracker.touch("s3", 3);
-		tracker.touch("s4", 4);
-		tracker.touch("s2", 5);
+		const ids = sessionIds(IDLE_RESIDENT_SESSION_LIMIT + 1);
+		ids.forEach((sessionId, index) => {
+			tracker.touch(sessionId, index + 1);
+		});
+		tracker.touch(ids[1], ids.length + 1);
 
-		expect(tracker.idsToEvict(new Set())).toEqual(["s1"]);
-		expect(IDLE_RESIDENT_SESSION_LIMIT).toBe(3);
+		expect(tracker.idsToEvict(new Set())).toEqual([ids[0]]);
+		expect(IDLE_RESIDENT_SESSION_LIMIT).toBe(8);
 	});
 
 	it("orders same-tick opens by call order so the newest session stays warm", () => {
 		const tracker = new InteractiveSessionResidencyTracker();
-		tracker.touch("s1");
-		tracker.touch("s2");
-		tracker.touch("s3");
-		tracker.touch("s4");
+		const ids = sessionIds(IDLE_RESIDENT_SESSION_LIMIT + 1);
+		for (const sessionId of ids) tracker.touch(sessionId);
 
-		expect(tracker.idsToEvict(new Set())).toEqual(["s1"]);
+		expect(tracker.idsToEvict(new Set())).toEqual([ids[0]]);
 	});
 
 	it("stops tracking a forgotten session so it cannot be selected again", () => {
@@ -115,8 +113,9 @@ describe("InteractiveSessionResidencyTracker", () => {
 });
 
 describe("reconcileIdleInteractiveSessions user flows", () => {
-	it("after opening four idle conversations, only the three most recent stay live", async () => {
-		const host = createInteractiveHost(["s1", "s2", "s3", "s4"]);
+	it("after opening more idle conversations than the warm window, only the most recent stay live", async () => {
+		const ids = sessionIds(IDLE_RESIDENT_SESSION_LIMIT + 1);
+		const host = createInteractiveHost(ids);
 		for (const sessionId of host.live.keys()) host.tracker.touch(sessionId);
 
 		await reconcileIdleInteractiveSessions({
@@ -125,12 +124,14 @@ describe("reconcileIdleInteractiveSessions user flows", () => {
 			dispose: (sessionId) => host.dispose(sessionId),
 		});
 
-		expect([...host.live.keys()]).toEqual(["s2", "s3", "s4"]);
-		expect(host.tracker.trackedIds()).toEqual(["s2", "s3", "s4"]);
+		const expected = ids.slice(1);
+		expect([...host.live.keys()]).toEqual(expected);
+		expect(host.tracker.trackedIds()).toEqual(expected);
 	});
 
 	it("keeps a background-running conversation even if it is the oldest", async () => {
-		const host = createInteractiveHost(["old-running", "a", "b", "c", "d"]);
+		const ids = sessionIds(IDLE_RESIDENT_SESSION_LIMIT + 1);
+		const host = createInteractiveHost(["old-running", ...ids]);
 		for (const sessionId of host.live.keys()) host.tracker.touch(sessionId);
 		host.running.add("old-running");
 
@@ -140,14 +141,15 @@ describe("reconcileIdleInteractiveSessions user flows", () => {
 			dispose: (sessionId) => host.dispose(sessionId),
 		});
 
-		expect([...host.live.keys()]).toEqual(["old-running", "b", "c", "d"]);
+		expect([...host.live.keys()]).toEqual(["old-running", ...ids.slice(1)]);
 		expect(host.running.has("old-running")).toBe(true);
 	});
 
 	it("switching back to an older idle conversation keeps it in the warm window", async () => {
-		const host = createInteractiveHost(["s1", "s2", "s3", "s4"]);
+		const ids = sessionIds(IDLE_RESIDENT_SESSION_LIMIT + 1);
+		const host = createInteractiveHost(ids);
 		for (const sessionId of host.live.keys()) host.tracker.touch(sessionId);
-		host.tracker.touch("s1");
+		host.tracker.touch(ids[0]);
 
 		await reconcileIdleInteractiveSessions({
 			tracker: host.tracker,
@@ -155,11 +157,13 @@ describe("reconcileIdleInteractiveSessions user flows", () => {
 			dispose: (sessionId) => host.dispose(sessionId),
 		});
 
-		expect([...host.live.keys()]).toEqual(["s1", "s3", "s4"]);
+		expect([...host.live.keys()]).toEqual([ids[0], ...ids.slice(2)]);
 	});
 
 	it("does not drop a session from tracking when dispose fails, so a later reconcile can retry", async () => {
-		const host = createInteractiveHost(["s1", "s2", "s3", "s4"]);
+		const ids = sessionIds(IDLE_RESIDENT_SESSION_LIMIT + 1);
+		const doomed = ids[0];
+		const host = createInteractiveHost(ids);
 		for (const sessionId of host.live.keys()) host.tracker.touch(sessionId);
 		const errors: string[] = [];
 
@@ -167,23 +171,23 @@ describe("reconcileIdleInteractiveSessions user flows", () => {
 			tracker: host.tracker,
 			runningIds: host.runningIds(),
 			dispose: async (sessionId) => {
-				if (sessionId === "s1") throw new Error("lock held");
+				if (sessionId === doomed) throw new Error("lock held");
 				await host.dispose(sessionId);
 			},
 			onDisposeError: (sessionId) => errors.push(sessionId),
 		});
 
-		expect(errors).toEqual(["s1"]);
-		expect(host.tracker.has("s1")).toBe(true);
-		expect(host.live.has("s1")).toBe(true);
+		expect(errors).toEqual([doomed]);
+		expect(host.tracker.has(doomed)).toBe(true);
+		expect(host.live.has(doomed)).toBe(true);
 
 		await reconcileIdleInteractiveSessions({
 			tracker: host.tracker,
 			runningIds: host.runningIds(),
 			dispose: (sessionId) => host.dispose(sessionId),
 		});
-		expect(host.live.has("s1")).toBe(false);
-		expect(host.tracker.has("s1")).toBe(false);
+		expect(host.live.has(doomed)).toBe(false);
+		expect(host.tracker.has(doomed)).toBe(false);
 	});
 });
 
@@ -194,6 +198,11 @@ describe("collectRunningInteractiveSessionIds", () => {
 		]).toEqual(["live"]);
 	});
 });
+
+/** 热窗口是产品参数：测试跟着它跑，而不是把具体数字再写一遍。 */
+function sessionIds(count: number): string[] {
+	return Array.from({ length: count }, (_, index) => `s${index + 1}`);
+}
 
 function getSessionPath(sessionId: string): string | undefined {
 	if (sessionId === "missing") return undefined;

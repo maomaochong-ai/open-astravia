@@ -370,6 +370,7 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 		create: vi.fn((config: { sessionPath?: string }) =>
 			config.sessionPath === firstSessionPath ? firstCreate.promise : secondCreate.promise,
 		),
+		delete: vi.fn(async () => undefined),
 		getFullHistory: vi.fn(async (sessionId: string) =>
 			sessionId === "runtime-second" ? userHistory("second preview", "second-preview") : [],
 		),
@@ -484,6 +485,8 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 	expect(store.get(chatMessagesAtom)).toBe(previewMessages);
 	expect(mocks.perfSessionSwitchComplete).toHaveBeenCalledWith("cancelled", "open-first");
 	expect(mocks.perfSessionSwitchComplete).toHaveBeenCalledWith("completed", "open-second");
+	// 被取代的已有会话只是取回了 Runtime 句柄，它的文件就是用户真正的对话：绝不删。
+	expect(sessionApi.delete).not.toHaveBeenCalled();
 });
 
 it("会话恢复期间立即接受发送并在订阅就绪后派发到目标 Runtime", { timeout: 10_000 }, async () => {
@@ -778,4 +781,203 @@ it("新会话首发不等整轮 prompt 跑完就回填会话状态", { timeout: 
 	expect(store.get(pendingSessionCreationAtom)).toBeNull();
 
 	runningTurn.resolve(undefined);
+});
+
+it("新会话在 create 返回前被取代时回收刚建出来的空壳", { timeout: 10_000 }, async () => {
+	const { activeSessionAtom } = await import("@shared/store/atoms");
+	const { useSessionManager } = await import("./useSessionManager");
+	const store = getDefaultStore();
+	const frames: FrameRequestCallback[] = [];
+	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+		frames.push(callback);
+		return frames.length;
+	});
+	const shellPath = "C:\\sessions\\shell.conversation.jsonl";
+	const shellCreate = deferred<{ cwd: string; sessionId: string; sessionPath: string }>();
+	const existingViewer = deferred<{ history: ReturnType<typeof userHistory> }>();
+	const sessionApi = {
+		autoTitle: vi.fn(),
+		create: vi.fn((config: { sessionPath?: string }) =>
+			config.sessionPath === undefined
+				? shellCreate.promise
+				: Promise.resolve({ cwd, sessionId: "runtime-existing", sessionPath: secondSessionPath }),
+		),
+		delete: vi.fn(async () => undefined),
+		getFullHistory: vi.fn(async () => []),
+		getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
+		getSessionPath: vi.fn(async (sessionId: string) =>
+			sessionId === "runtime-shell" ? shellPath : secondSessionPath,
+		),
+		openViewer: vi.fn(() => existingViewer.promise),
+		getState: vi.fn(async () => ({
+			activeToolNames: [],
+			contextPercent: null,
+			contextWindow: 128_000,
+			executionMode: "sandbox" as const,
+			isStreaming: false,
+			messageCount: 0,
+			model: null,
+			scenario: "project" as const,
+		})),
+		prompt: vi.fn(),
+		subscribe: vi.fn(async () => vi.fn()),
+		updateSettings: vi.fn(async () => undefined),
+	};
+	Object.defineProperty(window, "astravia", {
+		configurable: true,
+		value: {
+			batchTasks: { resumeTaskWithText: vi.fn() },
+			config: { get: vi.fn() },
+			dialog: { persistImages: vi.fn() },
+			session: withSessionAttach(sessionApi),
+		},
+	});
+	store.set(activeSessionAtom, null);
+
+	function Probe() {
+		manager = useSessionManager();
+		return null;
+	}
+
+	await act(async () => {
+		root = createRoot(container as HTMLDivElement);
+		root.render(createElement(Probe));
+	});
+
+	// 用户新建一个会话说了一半就点开会话列表里的另一个会话。
+	let newOpening: Promise<void> | undefined;
+	await act(async () => {
+		newOpening = manager?.openSession(cwd, undefined, "sandbox", {
+			navigateBeforeCreate: true,
+			interactionId: "open-new",
+		});
+		await Promise.resolve();
+	});
+	await act(async () => {
+		frames.shift()?.(0);
+		frames.shift()?.(16);
+		await Promise.resolve();
+	});
+	expect(sessionApi.create).toHaveBeenCalledOnce();
+
+	let existingOpening: Promise<void> | undefined;
+	await act(async () => {
+		existingOpening = manager?.openSession(cwd, secondSessionPath, undefined, { interactionId: "open-existing" });
+		await Promise.resolve();
+		await Promise.resolve();
+	});
+
+	// create 现在才返回：没人认领这个新空壳，只能回收掉。
+	await act(async () => {
+		shellCreate.resolve({ cwd, sessionId: "runtime-shell", sessionPath: shellPath });
+		await newOpening;
+	});
+	expect(sessionApi.delete).toHaveBeenCalledWith(shellPath);
+
+	await act(async () => {
+		existingViewer.resolve({ history: userHistory("existing preview", "existing-preview") });
+		frames.shift()?.(0);
+		frames.shift()?.(16);
+		await existingOpening;
+	});
+});
+
+it("已有会话的 create 在返回前被取代时不会删掉它的文件", { timeout: 10_000 }, async () => {
+	const { activeSessionAtom } = await import("@shared/store/atoms");
+	const { useSessionManager } = await import("./useSessionManager");
+	const store = getDefaultStore();
+	const frames: FrameRequestCallback[] = [];
+	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+		frames.push(callback);
+		return frames.length;
+	});
+	async function flushFrames(): Promise<void> {
+		await act(async () => {
+			for (let index = 0; index < 4; index += 1) frames.shift()?.(index);
+			await Promise.resolve();
+		});
+	}
+	const firstCreate = deferred<{ cwd: string; sessionId: string; sessionPath: string }>();
+	const firstViewer = deferred<{ history: ReturnType<typeof userHistory> }>();
+	const secondViewer = deferred<{ history: ReturnType<typeof userHistory> }>();
+	const sessionApi = {
+		autoTitle: vi.fn(),
+		create: vi.fn((config: { sessionPath?: string }) =>
+			config.sessionPath === firstSessionPath
+				? firstCreate.promise
+				: Promise.resolve({ cwd, sessionId: "runtime-second", sessionPath: secondSessionPath }),
+		),
+		delete: vi.fn(async () => undefined),
+		getFullHistory: vi.fn(async () => []),
+		getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
+		getSessionPath: vi.fn(async (sessionId: string) =>
+			sessionId === "runtime-first" ? firstCanonicalPath : secondSessionPath,
+		),
+		openViewer: vi.fn((path: string) => (path === firstSessionPath ? firstViewer.promise : secondViewer.promise)),
+		getState: vi.fn(async () => ({
+			activeToolNames: [],
+			contextPercent: null,
+			contextWindow: 128_000,
+			executionMode: "full-access" as const,
+			isStreaming: false,
+			messageCount: 0,
+			model: null,
+			scenario: "project" as const,
+		})),
+		prompt: vi.fn(),
+		subscribe: vi.fn(async () => vi.fn()),
+		updateSettings: vi.fn(async () => undefined),
+	};
+	Object.defineProperty(window, "astravia", {
+		configurable: true,
+		value: {
+			batchTasks: { resumeTaskWithText: vi.fn() },
+			config: { get: vi.fn() },
+			dialog: { persistImages: vi.fn() },
+			session: withSessionAttach(sessionApi),
+		},
+	});
+	store.set(activeSessionAtom, null);
+
+	function Probe() {
+		manager = useSessionManager();
+		return null;
+	}
+
+	await act(async () => {
+		root = createRoot(container as HTMLDivElement);
+		root.render(createElement(Probe));
+	});
+
+	// 第一个会话已经发出 create，主进程还在装配（真机上这一步要 0.3s 到 24s）。
+	let firstOpening: Promise<void> | undefined;
+	await act(async () => {
+		firstOpening = manager?.openSession(cwd, firstSessionPath, undefined, { interactionId: "open-first" });
+		await Promise.resolve();
+	});
+	await act(async () => {
+		firstViewer.resolve({ history: userHistory("first preview", "first-preview") });
+		await Promise.resolve();
+	});
+	await flushFrames();
+	expect(sessionApi.create).toHaveBeenCalledOnce();
+
+	// 用户等不及，又点开了另一个会话。
+	let secondOpening: Promise<void> | undefined;
+	await act(async () => {
+		secondOpening = manager?.openSession(cwd, secondSessionPath, undefined, { interactionId: "open-second" });
+		await Promise.resolve();
+	});
+
+	// create 现在才回来：它带回的路径就是用户真正的对话文件。
+	await act(async () => {
+		firstCreate.resolve({ cwd, sessionId: "runtime-first", sessionPath: firstCanonicalPath });
+		await firstOpening;
+	});
+	expect(sessionApi.delete).not.toHaveBeenCalled();
+
+	await act(async () => {
+		secondViewer.resolve({ history: userHistory("second preview", "second-preview") });
+		await secondOpening;
+	});
 });
