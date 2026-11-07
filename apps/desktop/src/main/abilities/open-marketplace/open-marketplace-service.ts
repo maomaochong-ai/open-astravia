@@ -734,7 +734,10 @@ export class OpenMarketplaceService {
 					error instanceof MarketplaceContentError ||
 					(error instanceof MarketplaceRequestError &&
 						(error.code === "not-found" || error.code === "auth-required" || error.code === "forbidden"));
-				if (terminal) return reject(error);
+				if (terminal) {
+					reject(error);
+					return;
+				}
 				if (pending === 0) reject(lastError);
 			};
 			for (const url of urls) {
@@ -753,9 +756,7 @@ export class OpenMarketplaceService {
 		const timer = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
 		try {
 			const response = await this.fetchManifest(url, {
-				headers: token
-					? githubApiHeaders("application/vnd.github+json", token)
-					: githubHeaders("application/json"),
+				headers: token ? githubApiHeaders("application/vnd.github+json", token) : githubHeaders("application/json"),
 				redirect: "follow",
 				signal: controller.signal,
 			});
