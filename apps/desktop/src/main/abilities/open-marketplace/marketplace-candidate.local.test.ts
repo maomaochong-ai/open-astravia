@@ -7,6 +7,12 @@ import { getPluginsBaseDir, listPlugins } from "../../plugins/plugin-catalog";
 import { parseMarketplaceManifest } from "./marketplace-schema";
 import { OpenMarketplaceService } from "./open-marketplace-service";
 
+// 用当前桌面端版本运行，而不是写死的数字：源码里某个插件抬高 minAppVersion 时，
+// 这个判定应该在真实版本上继续成立，而不是因为夹具停在旧版本变红。
+const desktopAppVersion = (
+	JSON.parse(readFileSync(new URL("../../../../package.json", import.meta.url), "utf-8")) as { version: string }
+).version;
+
 const testPaths = vi.hoisted(() => {
 	const root = `${process.env.TEMP ?? process.cwd()}/astravia-marketplace-candidate-${process.pid}-${Math.random().toString(36).slice(2)}`;
 	const previousHome = process.env.ASTRAVIA_HOME;
@@ -94,7 +100,7 @@ it.skipIf(!candidateRoot)(
 			return response(readFileSync(join(artifactsRoot ?? join(candidateRoot, ".release-artifacts"), filename)));
 		});
 		const service = new OpenMarketplaceService({
-			appVersion: "0.5.59",
+			appVersion: desktopAppVersion,
 			rootDir: join(isolatedRoot, "marketplace"),
 			repository: manifest.repository,
 			sourceRef: "gh-pages",

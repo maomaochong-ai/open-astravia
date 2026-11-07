@@ -960,13 +960,47 @@ describe("OpenMarketplaceService", () => {
 
 		expect(snapshot.marketplaceVersion).toBe("2026.07.1");
 		expect(snapshot.error).toBeUndefined();
-		await vi.waitFor(() => expect(fetchManifest).toHaveBeenCalledOnce());
+		// 两个候选主机同时请求，先到的那份算数。
+		await vi.waitFor(() => expect(fetchManifest).toHaveBeenCalledTimes(2));
 		expect(fetchManifest).toHaveBeenCalledWith(
-			"https://github.com/example/astravia-abilities/raw/refs/heads/main/.astravia/marketplace.json",
+			"https://raw.githubusercontent.com/example/astravia-abilities/refs/heads/main/.astravia/marketplace.json",
 			expect.objectContaining({ redirect: "follow" }),
 		);
 		expect(fetchArchive).not.toHaveBeenCalled();
 	});
+	it(
+		"keeps syncing when the direct manifest host is unreachable",
+		async () => {
+			const rootDir = await temporaryRoot();
+			const fetchManifest = vi.fn(async (url: string) => {
+				// 直连主机被掐时，跳转地址仍然能把清单取回来。
+				if (url.startsWith("https://raw.githubusercontent.com/")) throw new Error("ECONNRESET");
+				return manifestResponse(archive());
+			});
+			const seed = new OpenMarketplaceService({
+				appVersion: APP_VERSION,
+				rootDir,
+				fetchArchive: async () => response(archive()),
+			});
+			await seed.refresh();
+			const service = new OpenMarketplaceService({
+				appVersion: APP_VERSION,
+				rootDir,
+				fetchArchive: async () => response(archive()),
+				fetchManifest,
+			});
+
+			const snapshot = await service.list();
+
+			expect(snapshot.error).toBeUndefined();
+			expect(snapshot.marketplaceVersion).toBe("2026.07.1");
+			await vi.waitFor(() => expect(fetchManifest).toHaveBeenCalledTimes(2));
+			expect(fetchManifest.mock.calls.map((call) => call[0]).sort()).toEqual([
+				"https://github.com/example/astravia-abilities/raw/refs/heads/main/.astravia/marketplace.json",
+				"https://raw.githubusercontent.com/example/astravia-abilities/refs/heads/main/.astravia/marketplace.json",
+			]);
+		},
+	);
 
 	it("updates the cache in the background and exposes it on the next list", async () => {
 		const rootDir = await temporaryRoot();
@@ -1022,7 +1056,7 @@ describe("OpenMarketplaceService", () => {
 
 		expect(snapshot).toMatchObject({ marketplaceVersion: "2026.07.1", stale: false });
 		expect(snapshot.error).toBeUndefined();
-		await vi.waitFor(() => expect(fetchManifest).toHaveBeenCalledOnce());
+		await vi.waitFor(() => expect(fetchManifest).toHaveBeenCalledTimes(2));
 		await vi.waitFor(() =>
 			expect(marketplaceLog.error).toHaveBeenCalledWith(
 				"marketplace sync failed",

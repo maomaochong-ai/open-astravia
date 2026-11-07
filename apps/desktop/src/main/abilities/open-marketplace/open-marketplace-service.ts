@@ -27,7 +27,7 @@ const MAX_ARCHIVE_BYTES = 25 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 2 * 1024 * 1024;
 const MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES = 10_000;
-const DOWNLOAD_TIMEOUT_MS = 15_000;
+const DOWNLOAD_TIMEOUT_MS = 20_000;
 /**
  * 归档下载按「停顿」判超时，而不是按总时长。
  *
@@ -37,7 +37,9 @@ const DOWNLOAD_TIMEOUT_MS = 15_000;
  */
 const ARCHIVE_HEADER_TIMEOUT_MS = 20_000;
 const ARCHIVE_STALL_TIMEOUT_MS = 30_000;
-const ARCHIVE_TOTAL_TIMEOUT_MS = 180_000;
+// 总时长得给慢链路留余地：约 7 MB 的归档在 25 KB/s 下需要 280 秒，180 秒会在字节仍在
+// 流入时把它掐断，而客户端只能报一个 sync-failed。真正断流由 30 秒停顿闸门负责。
+const ARCHIVE_TOTAL_TIMEOUT_MS = 600_000;
 const ARCHIVE_ATTEMPTS = 2;
 const ARCHIVE_RETRY_DELAY_MS = 1_000;
 const log = getAppLogger("open-marketplace");
@@ -187,10 +189,23 @@ function normalizeArchiveEntryPath(value: string): string {
 	return normalized;
 }
 
-function marketplaceManifestUrl(repository: string, ref: string): string {
+/**
+ * 清单的候选地址。
+ *
+ * `github.com/<repo>/raw/...` 是一个 302 跳转，跳到 raw.githubusercontent.com；
+ * 部分网络里这次跳转会直接挂死，而直连 CDN 主机只有一跳。两条路同时请求，
+ * 先到的那份算数：两条都通时结果与以前一致，任一条被掐时刷新照样能完成。
+ */
+function marketplaceManifestUrls(repository: string, ref: string): string[] {
 	const parsed = new URL(repository);
 	const encodedRef = ref.split("/").map(encodeURIComponent).join("/");
-	return `${parsed.origin}${parsed.pathname}/raw/refs/heads/${encodedRef}/.astravia/marketplace.json`;
+	const segments = parsed.pathname.split("/").filter(Boolean);
+	const direct =
+		segments.length === 2
+			? `https://raw.githubusercontent.com/${encodeURIComponent(segments[0] ?? "")}/${encodeURIComponent(segments[1] ?? "")}/refs/heads/${encodedRef}/.astravia/marketplace.json`
+			: undefined;
+	const redirected = `${parsed.origin}${parsed.pathname}/raw/refs/heads/${encodedRef}/.astravia/marketplace.json`;
+	return direct ? [direct, redirected] : [redirected];
 }
 
 function githubRepositoryCoordinates(repository: string): { owner: string; repository: string } {
@@ -701,30 +716,57 @@ export class OpenMarketplaceService {
 	}
 
 	private async downloadManifest(): Promise<MarketplaceManifest> {
+		const token = this.getAccessToken()?.trim();
+		// 带 token 时只有 api.github.com 会读 Authorization，没有第二条路可走。
+		const urls = token
+			? [githubManifestUrl(this.repository, this.sourceRef)]
+			: marketplaceManifestUrls(this.repository, this.sourceRef);
+		if (urls.length === 1) return this.downloadManifestOnce(urls[0] ?? "", token);
+		// 两个主机同时请求，先拿到的那份算数。串行会让一个挂死的主机拖住整次刷新：
+		// 实测 raw 主机会卡满超时，而跳转地址 2 秒就返回了。
+		return new Promise<MarketplaceManifest>((resolve, reject) => {
+			let pending = urls.length;
+			let lastError: unknown;
+			let contentError: unknown;
+			const settle = (error: unknown): void => {
+				// 内容问题与 404/403 是确定结论，换主机也是同一份字节或同一道门，不必等另一条挂着的路。
+				const terminal =
+					error instanceof MarketplaceContentError ||
+					(error instanceof MarketplaceRequestError &&
+						(error.code === "not-found" || error.code === "auth-required" || error.code === "forbidden"));
+				if (terminal) return reject(error);
+				if (pending === 0) reject(lastError);
+			};
+			for (const url of urls) {
+				void this.downloadManifestOnce(url, token).then(resolve, (error: unknown) => {
+					if (error instanceof MarketplaceContentError) contentError ??= error;
+					else lastError = error;
+					pending -= 1;
+					settle(contentError ?? lastError);
+				});
+			}
+		});
+	}
+
+	private async downloadManifestOnce(url: string, token: string | undefined): Promise<MarketplaceManifest> {
 		const controller = new AbortController();
 		const timer = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
 		try {
-			const token = this.getAccessToken()?.trim();
-			const response = await this.fetchManifest(
-				token
-					? githubManifestUrl(this.repository, this.sourceRef)
-					: marketplaceManifestUrl(this.repository, this.sourceRef),
-				{
-					headers: token
-						? githubApiHeaders("application/vnd.github+json", token)
-						: githubHeaders("application/json"),
-					redirect: "follow",
-					signal: controller.signal,
-				},
-			);
+			const response = await this.fetchManifest(url, {
+				headers: token
+					? githubApiHeaders("application/vnd.github+json", token)
+					: githubHeaders("application/json"),
+				redirect: "follow",
+				signal: controller.signal,
+			});
 			if (!response.ok) throw requestError(response.status, "Open marketplace manifest download");
 			const declaredLength = Number(response.headers.get("content-length"));
 			if (Number.isFinite(declaredLength) && declaredLength > MAX_MANIFEST_BYTES) {
-				throw new Error("Open marketplace manifest is too large");
+				throw new MarketplaceContentError("Open marketplace manifest is too large");
 			}
 			const text = await response.text();
 			if (Buffer.byteLength(text, "utf-8") > MAX_MANIFEST_BYTES) {
-				throw new Error("Open marketplace manifest is too large");
+				throw new MarketplaceContentError("Open marketplace manifest is too large");
 			}
 			if (!token) return parseMarketplaceManifest(JSON.parse(text) as unknown);
 			const payload: unknown = JSON.parse(text);
