@@ -33,16 +33,16 @@ const LIGHT_BORDER = "#b9c9a6";
 const LIGHT_INPUT = "#c8d8b4";
 const LIGHT_MUTED_FG = "#42513a";
 
-const DARK_BG = "#192313";
-const DARK_FG = "#dde5d4";
-const DARK_CARD = "#26341c";
-const DARK_POPOVER = "#2a3b20";
-const DARK_MUTED = "#1f2a17";
-const DARK_SECONDARY = "#2d3e21";
-const DARK_ACCENT = "#324525";
-const DARK_BORDER = "#496637";
-const DARK_INPUT = "#53733e";
-const DARK_MUTED_FG = "#9aa793";
+const DARK_BG = "#1d2717";
+const DARK_FG = "#d7e0cc";
+const DARK_CARD = "#304025";
+const DARK_POPOVER = "#36492a";
+const DARK_MUTED = "#26311d";
+const DARK_SECONDARY = "#3a4d2c";
+const DARK_ACCENT = "#3f5430";
+const DARK_BORDER = "#557342";
+const DARK_INPUT = "#5f804a";
+const DARK_MUTED_FG = "#9eaa97";
 
 export const forestTheme: ThemeDef = {
 	id: "forest",

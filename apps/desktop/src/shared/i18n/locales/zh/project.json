@@ -244,7 +244,9 @@
 		"closeLeft": "关闭左侧标签页",
 		"closeRight": "关闭右侧标签页",
 		"closeOthers": "关闭其他标签页",
-		"closeAll": "关闭全部标签页"
+		"closeAll": "关闭全部标签页",
+		"enterFullScreen": "进入全屏",
+		"exitFullScreen": "退出全屏"
 	},
 	"tour": {
 		"sidebar": {

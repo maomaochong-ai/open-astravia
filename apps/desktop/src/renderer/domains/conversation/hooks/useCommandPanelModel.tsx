@@ -119,7 +119,8 @@ export function useCommandPanelModel({
 
 	const operation = useMemo<CommandPanelOperationItem | undefined>(() => {
 		if (!allowCompaction || !activeSession || !operationMatches || compactionEligibility.status === "ineligible") return undefined;
-		const percent = contextRing ? Math.round(Math.min(100, Math.max(0, contextRing.percent))) : null;
+		// `contextRing.percent` 已经是 0–100 的进度口径，这里只取整。
+		const percent = contextRing ? Math.round(contextRing.percent) : null;
 		const description = contextRing?.isCompacting
 			? t("slashPanel.compaction.compacting")
 			: queuedCompaction || queueingCompaction

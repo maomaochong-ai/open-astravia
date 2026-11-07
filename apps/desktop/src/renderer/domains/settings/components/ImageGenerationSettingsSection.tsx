@@ -2,9 +2,60 @@ import { MotionSelect, SettingRow, SettingSection } from "@astravia-org/theme-ui
 import { SETTINGS_SECTION } from "../registry";
 import type { ImageGenerationSettingsModel } from "./useImageGenerationSettingsModel";
 
+/**
+ * 只有「自动选择」一项说明当前没有任何图像 provider（开源构建没有内置 provider，
+ * 需要用户在能力页安装）。此时不再禁用下拉：禁用会让入口看起来坏掉，
+ * 而点开看到唯一的自动项、旁边给出安装入口，才说明真实状态。
+ */
+function providerMissing(options: readonly { value: string }[]): boolean {
+	return options.length <= 1;
+}
+
+interface ImageSelectProps {
+	ariaLabel: string;
+	installLabel: string;
+	missing: boolean;
+	onChange: (value: string) => void;
+	onInstall: () => void;
+	options: readonly { value: string; label: string }[];
+	value: string;
+}
+
+function ImageRouteSelect({
+	ariaLabel,
+	installLabel,
+	missing,
+	onChange,
+	onInstall,
+	options,
+	value,
+}: ImageSelectProps): JSX.Element {
+	return (
+		<div className="flex flex-col items-end gap-1">
+			<MotionSelect
+				value={value}
+				onValueChange={onChange}
+				options={options}
+				triggerClassName="min-w-[220px]"
+				aria-label={ariaLabel}
+			/>
+			{missing && (
+				<button
+					type="button"
+					onClick={onInstall}
+					className="text-[12px] font-medium text-primary underline-offset-2 hover:underline"
+				>
+					{installLabel}
+				</button>
+			)}
+		</div>
+	);
+}
+
 export function ImageGenerationSettingsSection({ model }: { model: ImageGenerationSettingsModel }): JSX.Element {
-	const hasTextToImageOptions = model.textToImageOptions.length > 1;
-	const hasImageToImageOptions = model.imageToImageOptions.length > 1;
+	const textToImageMissing = providerMissing(model.textToImageOptions);
+	const imageToImageMissing = providerMissing(model.imageToImageOptions);
+
 	return (
 		<div className="mt-6">
 			<SettingSection
@@ -18,29 +69,31 @@ export function ImageGenerationSettingsSection({ model }: { model: ImageGenerati
 					<>
 						<SettingRow
 							title={model.labels.textToImage}
-							description={hasTextToImageOptions ? undefined : model.labels.noProviders}
+							description={textToImageMissing ? model.labels.noProviders : undefined}
 						>
-							<MotionSelect
-								value={model.textToImageRouteId}
-								onValueChange={(value) => void model.actions.setTextToImageRoute(value)}
+							<ImageRouteSelect
+								ariaLabel={model.labels.textToImage}
+								installLabel={model.labels.installProvider}
+								missing={textToImageMissing}
+								onChange={(value) => void model.actions.setTextToImageRoute(value)}
+								onInstall={model.actions.openMarketplace}
 								options={model.textToImageOptions}
-								disabled={!hasTextToImageOptions}
-								triggerClassName="min-w-[220px]"
-								aria-label={model.labels.textToImage}
+								value={model.textToImageRouteId}
 							/>
 						</SettingRow>
 						<SettingRow
 							title={model.labels.imageToImage}
-							description={hasImageToImageOptions ? undefined : model.labels.noProviders}
+							description={imageToImageMissing ? model.labels.noProviders : undefined}
 							border={false}
 						>
-							<MotionSelect
-								value={model.imageToImageRouteId}
-								onValueChange={(value) => void model.actions.setImageToImageRoute(value)}
+							<ImageRouteSelect
+								ariaLabel={model.labels.imageToImage}
+								installLabel={model.labels.installProvider}
+								missing={imageToImageMissing}
+								onChange={(value) => void model.actions.setImageToImageRoute(value)}
+								onInstall={model.actions.openMarketplace}
 								options={model.imageToImageOptions}
-								disabled={!hasImageToImageOptions}
-								triggerClassName="min-w-[220px]"
-								aria-label={model.labels.imageToImage}
+								value={model.imageToImageRouteId}
 							/>
 						</SettingRow>
 					</>

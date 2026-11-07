@@ -255,6 +255,8 @@ var noScreenshot = false
 var excludePid: pid_t?
 var checkPermissionsMode = false
 var requestPermissionsMode = false
+/// 只请求指定的某一项服务；nil 表示两项都请求（旧行为）。
+var requestServiceArg: String?
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 var index = 0
@@ -272,6 +274,12 @@ while index < arguments.count {
 		checkPermissionsMode = true
 	case "--request-permissions":
 		requestPermissionsMode = true
+		// 可选值：accessibility | screen-recording。一次只请求一项，
+		// 否则系统会同时弹出两个授权框，用户看到的就是「点了很多次、弹很多个框」。
+		if index + 1 < arguments.count, !arguments[index + 1].hasPrefix("--") {
+			index += 1
+			requestServiceArg = arguments[index]
+		}
 	default:
 		fail("bad-args", "unknown argument: \(arguments[index])")
 	}
@@ -283,9 +291,18 @@ if checkPermissionsMode {
 }
 
 if requestPermissionsMode {
-	_ = CGRequestScreenCaptureAccess()
-	let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-	_ = AXIsProcessTrustedWithOptions([promptKey: true] as CFDictionary)
+	let wantsAccessibility = requestServiceArg == nil || requestServiceArg == "accessibility"
+	let wantsScreenRecording = requestServiceArg == nil || requestServiceArg == "screen-recording"
+	if let requested = requestServiceArg, !wantsAccessibility, !wantsScreenRecording {
+		fail("bad-args", "unknown permission service: \(requested)")
+	}
+	if wantsScreenRecording {
+		_ = CGRequestScreenCaptureAccess()
+	}
+	if wantsAccessibility {
+		let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+		_ = AXIsProcessTrustedWithOptions([promptKey: true] as CFDictionary)
+	}
 	emitPermissions()
 }
 

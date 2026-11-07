@@ -7,6 +7,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@astravia-org/ui";
+import { memo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useAbilityText } from "../hooks/useAbilityText";
@@ -16,19 +17,28 @@ import { AbilityStatusBadges } from "./AbilityBadges";
 import { AbilityOperationStatus } from "./AbilityOperationStatus";
 import { loadAbilityDetailView } from "./detail/loadAbilityDetailView";
 
-function McpMenuItems({ item, model }: { item: McpAbility; model: AbilitiesModel }): JSX.Element {
+/**
+ * 卡片只需要这几个回调，而且它们必须是稳定引用：传整个 `model` 对象（每次渲染新建）
+ * 会让 `memo` 永远失效，插件装得越多，一次搜索输入就要重渲越多行。
+ */
+export type AbilityCardActions = Pick<
+	AbilitiesModel,
+	"install" | "uninstall" | "toggle" | "reloadPlugin" | "setup" | "configure" | "edit" | "revokeAuthorization"
+>;
+
+function McpMenuItems({ item, actions }: { item: McpAbility; actions: AbilityCardActions }): JSX.Element {
 	const { t } = useTranslation("abilities");
 	return (
 		<>
 			{item.setupRequired && (
-				<DropdownMenuItem onSelect={() => model.setup(item)}>
+				<DropdownMenuItem onSelect={() => actions.setup(item)}>
 					<span className="icon-[solar--settings-linear] h-3.5 w-3.5" />
 					{t("actions.finishSetup")}
 				</DropdownMenuItem>
 			)}
 			{item.usesOAuth && (
 				<DropdownMenuItem
-					onSelect={() => (item.authorized ? model.revokeAuthorization(item) : model.setup(item))}
+					onSelect={() => (item.authorized ? actions.revokeAuthorization(item) : actions.setup(item))}
 				>
 					<span
 						className={cn(
@@ -40,13 +50,13 @@ function McpMenuItems({ item, model }: { item: McpAbility; model: AbilitiesModel
 				</DropdownMenuItem>
 			)}
 			{item.canConfigure && (
-				<DropdownMenuItem onSelect={() => model.configure(item)}>
+				<DropdownMenuItem onSelect={() => actions.configure(item)}>
 					<span className="icon-[solar--key-minimalistic-square-linear] h-3.5 w-3.5" />
 					{t("actions.configure")}
 				</DropdownMenuItem>
 			)}
 			{item.canEdit && (
-				<DropdownMenuItem onSelect={() => model.edit(item)}>
+				<DropdownMenuItem onSelect={() => actions.edit(item)}>
 					<span className="icon-[solar--pen-2-linear] h-3.5 w-3.5" />
 					{t("actions.edit")}
 				</DropdownMenuItem>
@@ -57,11 +67,11 @@ function McpMenuItems({ item, model }: { item: McpAbility; model: AbilitiesModel
 
 function InstalledMoreMenu({
 	item,
-	model,
+	actions,
 	onOpenDetail,
 }: {
 	item: AbilityItem;
-	model: AbilitiesModel;
+	actions: AbilityCardActions;
 	onOpenDetail: () => void;
 }): JSX.Element | null {
 	const { t } = useTranslation("abilities");
@@ -82,7 +92,7 @@ function InstalledMoreMenu({
 					{t("actions.viewDetails")}
 				</DropdownMenuItem>
 				{item.type === "plugin" && (
-					<DropdownMenuItem onSelect={() => model.reloadPlugin(item)}>
+					<DropdownMenuItem onSelect={() => actions.reloadPlugin(item)}>
 						<span className="icon-[solar--restart-linear] h-3.5 w-3.5" />
 						{item.pendingVersion
 							? t("plugin.reloadVersion", { version: item.pendingVersion })
@@ -90,13 +100,13 @@ function InstalledMoreMenu({
 					</DropdownMenuItem>
 				)}
 				{item.needsUpdate && (
-					<DropdownMenuItem onSelect={() => (item.type === "bundle" ? onOpenDetail() : model.install(item))}>
+					<DropdownMenuItem onSelect={() => (item.type === "bundle" ? onOpenDetail() : actions.install(item))}>
 						<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" />
 						{t("actions.update")}
 					</DropdownMenuItem>
 				)}
-				{item.type === "mcp" && <McpMenuItems item={item} model={model} />}
-				<DropdownMenuItem onSelect={() => model.toggle(item)}>
+				{item.type === "mcp" && <McpMenuItems item={item} actions={actions} />}
+				<DropdownMenuItem onSelect={() => actions.toggle(item)}>
 					<span
 						className={cn(
 							"h-3.5 w-3.5",
@@ -108,7 +118,7 @@ function InstalledMoreMenu({
 				{item.type !== "bundle" && (
 					<>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem className="text-destructive" onSelect={() => model.uninstall(item)}>
+						<DropdownMenuItem className="text-destructive" onSelect={() => actions.uninstall(item)}>
 							<span className="icon-[solar--trash-bin-trash-linear] h-3.5 w-3.5" />
 							{t("actions.remove")}
 						</DropdownMenuItem>
@@ -119,7 +129,13 @@ function InstalledMoreMenu({
 	);
 }
 
-export function AbilityCard({ item, model }: { item: AbilityItem; model: AbilitiesModel }): JSX.Element {
+export const AbilityCard = memo(function AbilityCard({
+	item,
+	actions,
+}: {
+	item: AbilityItem;
+	actions: AbilityCardActions;
+}): JSX.Element {
 	const { t } = useTranslation("abilities");
 	const navigate = useNavigate();
 	const { title, description } = useAbilityText()(item);
@@ -161,7 +177,7 @@ export function AbilityCard({ item, model }: { item: AbilityItem; model: Abiliti
 			{!item.busy && (
 				<div className="shrink-0" onClick={(event) => event.stopPropagation()}>
 					{item.installed ? (
-						<InstalledMoreMenu item={item} model={model} onOpenDetail={openDetail} />
+						<InstalledMoreMenu item={item} actions={actions} onOpenDetail={openDetail} />
 					) : (
 						<Button
 							variant="ghost"
@@ -169,7 +185,7 @@ export function AbilityCard({ item, model }: { item: AbilityItem; model: Abiliti
 							aria-label={t("actions.add")}
 							title={t("actions.add")}
 							className="rounded-lg border border-transparent bg-transparent text-muted-foreground/60 transition-colors hover:border-border hover:bg-muted hover:text-foreground"
-							onClick={() => (item.type === "bundle" ? openDetail() : model.install(item))}
+							onClick={() => (item.type === "bundle" ? openDetail() : actions.install(item))}
 						>
 							<span className="icon-[solar--add-linear] h-4 w-4" />
 						</Button>
@@ -178,4 +194,4 @@ export function AbilityCard({ item, model }: { item: AbilityItem; model: Abiliti
 			)}
 		</div>
 	);
-}
+});

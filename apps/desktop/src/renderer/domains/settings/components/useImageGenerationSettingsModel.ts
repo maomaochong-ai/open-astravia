@@ -1,4 +1,5 @@
 import type { MediaProviderDescriptor } from "@astravia-org/capability-sdk";
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SETTINGS_SECTION } from "../registry";
@@ -16,6 +17,7 @@ export interface ImageGenerationProviderOption {
 
 export interface ImageGenerationSettingsModel {
 	actions: {
+		openMarketplace: () => void;
 		setImageToImageRoute: (value: string) => Promise<void>;
 		setTextToImageRoute: (value: string) => Promise<void>;
 	};
@@ -24,6 +26,7 @@ export interface ImageGenerationSettingsModel {
 	labels: {
 		description: string;
 		imageToImage: string;
+		installProvider: string;
 		loading: string;
 		noProviders: string;
 		textToImage: string;
@@ -108,6 +111,7 @@ function optionsForMode(
 
 export function useImageGenerationSettingsModel(): ImageGenerationSettingsModel {
 	const { t } = useTranslation("settings");
+	const navigate = useNavigate();
 	const [providers, setProviders] = useState<MediaProviderDescriptor[]>([]);
 	const [textToImageProviderId, setTextToImageProviderId] = useState<string | undefined>();
 	const [textToImageModelId, setTextToImageModelId] = useState<string | undefined>();
@@ -200,6 +204,9 @@ export function useImageGenerationSettingsModel(): ImageGenerationSettingsModel 
 
 	return {
 		actions: {
+			// 内置图像 provider 只随云端构建注册，开源版一个 provider 都没有；
+			// 下拉不因此禁用，而是把用户送到能力页装一个可用的图像服务。
+			openMarketplace: () => void navigate({ to: "/abilities" }),
 			setImageToImageRoute: (value) => setRoute("image-to-image", value),
 			setTextToImageRoute: (value) => setRoute("text-to-image", value),
 		},
@@ -208,6 +215,7 @@ export function useImageGenerationSettingsModel(): ImageGenerationSettingsModel 
 		labels: {
 			description: t("agentSettings.imageGeneration.description"),
 			imageToImage: t("agentSettings.imageGeneration.imageToImage"),
+			installProvider: t("agentSettings.imageGeneration.installProvider"),
 			loading: t("agentSettings.imageGeneration.loading"),
 			noProviders: t("agentSettings.imageGeneration.noProviders"),
 			textToImage: t("agentSettings.imageGeneration.textToImage"),

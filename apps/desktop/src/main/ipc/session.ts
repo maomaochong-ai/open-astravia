@@ -30,6 +30,8 @@ import {
 	CODING_AGENT_SUBAGENTS_OBSERVATION,
 	CODING_AGENT_SUBAGENTS_READ,
 	CODING_AGENT_TODO_CLEAR,
+	CODING_AGENT_TODO_OBSERVATION,
+	CODING_AGENT_TODO_READ,
 	isCodingAgentPermissionMode,
 } from "@astravia/coding-agent/session-extensions";
 import type { SessionEvent, SessionExecutionMode, SettingsPatch } from "@astravia/runtime-core";
@@ -1651,6 +1653,27 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				source: "extension",
 				...sessionExtensionObservation(CODING_AGENT_SUBAGENTS_OBSERVATION, subagents),
 			});
+		}
+
+		// 回放待办快照：待办只在变化时推送，renderer 重载、或从别的会话切回来时
+		// atom 已经清空，而 runtime 里的清单还完整。缺这一次回放，用户看到的是
+		// 「清单凭空消失，要等下一次 todo 工具调用才重新出现」。
+		// 回放是锦上添花：取不到就跳过，不能让整次订阅跟着失败。
+		try {
+			const todoItems = await runtime.invokeSessionExtension(sessionId, CODING_AGENT_TODO_READ, undefined);
+			if (todoItems.length > 0 && !webContents.isDestroyed()) {
+				webContents.send(CHANNELS.EVENT, subscriptionId, {
+					schemaVersion: 1,
+					channel: "runtime",
+					sessionId,
+					eventId: randomUUID(),
+					timestamp: Date.now(),
+					source: "extension",
+					...sessionExtensionObservation(CODING_AGENT_TODO_OBSERVATION, todoItems),
+				});
+			}
+		} catch {
+			// session 可能已被销毁，回放失败不影响订阅本身。
 		}
 	};
 

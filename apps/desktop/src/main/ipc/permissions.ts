@@ -2,7 +2,11 @@ import { access } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { ipcMain, Notification, shell } from "electron";
-import { checkHelperPermissions, requestHelperPermissions } from "../appshot/appshot-service.js";
+import {
+	checkHelperPermissions,
+	hasRequestedHelperPermissions,
+	requestHelperPermissions,
+} from "../appshot/appshot-service.js";
 import { HELPER_REGISTERED_PANES, PANE_URLS, type PermissionKind } from "./permission-panes.js";
 
 export type PermissionStatus = "granted" | "denied" | "unknown";
@@ -91,9 +95,13 @@ export function registerPermissionsIpc(): () => void {
 		}
 		const permissionKind = kind as PermissionKind;
 		// helper 从没请求过时，系统设置对应列表里不会有 Astravia Computer Use 这一条，
-		// 用户就找不到可以勾选的地方。先让 helper 发起一次请求（已授权时不会弹框），再打开面板。
+		// 用户就找不到可以勾选的地方。但每项服务只请求一次：重复请求只会再叠一个系统框，
+		// 而不会多出可勾选项 —— 真正生效的是面板里的勾选。
 		if (HELPER_REGISTERED_PANES.has(permissionKind)) {
-			await requestHelperPermissions();
+			const service = permissionKind === "accessibility" ? "accessibility" : "screen-recording";
+			if (!hasRequestedHelperPermissions(service)) {
+				await requestHelperPermissions(service);
+			}
 		}
 		await shell.openExternal(PANE_URLS[permissionKind]);
 	});

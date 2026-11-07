@@ -92,7 +92,12 @@ export function PluginTabPickerView({
 					/>
 				</button>
 			</PopoverTrigger>
-			<PopoverContent align="end" sideOffset={6} className="w-60 gap-0 p-1.5">
+			{/* 面板多了以后列表会超出视口且无法滚动，这里限定高度并让列表自己滚。 */}
+			<PopoverContent
+				align="end"
+				sideOffset={6}
+				className="max-h-[min(72vh,480px)] w-60 gap-0 overflow-y-auto overscroll-contain p-1.5"
+			>
 				{availableTabs.length > 0 && onAttachTab && (
 					<>
 						<div className="px-2 pb-1.5 pt-1 text-[11px] font-medium text-muted-foreground">

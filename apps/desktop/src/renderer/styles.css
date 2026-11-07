@@ -1105,21 +1105,22 @@ a {
 
 
 /* ── 主题专属侧栏配色 ──────────────────────────────────────────────
-   四套彩色主题的侧栏底色统一比主画布**深一档**（对比度：深色 1.09–1.17，
-   浅色 1.08–1.19），让侧栏先读成一条独立的「脊」，再读成画布的一部分。
+   四套彩色主题的侧栏底色统一比主画布**深一档**（深色 1.09–1.11，浅色 1.08–1.19），让侧栏先读成一条独立的「脊」，再读成画布的一部分。
    浅色曾经取「比画布更亮」的一侧，四套主题都挤在 1.01–1.06 的亮度区间里，
    看上去像同一块米白，层次感反而比深色更平——浅色要的层次只能靠向下压暗拿到。
 
-   主画布本身在四套主题里抬过一档（2026-10 优化“深色太暗、浅色单调”）：
-   画布提亮后侧栏不能再沿用旧值，否则两者的对比会压到 1.05 以下，侧栏的脊就没了。
+   2026-11 又一次抬亮主画布（深色画布亮度 0.012–0.015 → 0.0165–0.0177）：深色原先把
+   薄荷、羊皮纸压到 0.012 附近，低亮屏上读成一片发黑，长期阅读刺眼。画布抬亮后侧栏
+   如果沿用旧值，两者的对比会碾到 1.03–1.06：薄荷与羊皮纸的侧栏还会反超画布，
+   脊没了、两块色糊在一起。这里按新画布重算，四套的侧栏/画布对比统一在 1.09–1.11。
 
    深色下四套主题还各自往不同色相偏：森林橄榄绿、蜜蜂蜜金、薄荷青绿、羊皮纸赭红。
    不偏色的后果是“森林”与“薄荷”的深色侧栏只差 RGB 距离 5.8，根本读成同一套主题；
-   现在两两距离拉到了 14 以上（薄荷↔羊皮纸 42）。
+   现在两两距离拉到了 14 以上（薄荷↔羊皮纸 37.7）。
 
     open-astravia 的侧栏面板使用 bg-muted，这里按 data-theme 在侧栏子树内
    覆盖 --muted；data-mode 区分明暗。--border 取该主题 border 与侧栏底色的混色
-   （对比度 1.17–1.25）：侧栏里覆盖面板、分组标题密度远高于主画布，直接用主题
+   （深色现为 1.19–1.21，浅色 1.17–1.25）：侧栏里覆盖面板、分组标题密度远高于主画布，直接用主题
    原色会在整片面板上连成一圈亮线；需要更重的分隔时用 bg-* 叠色，不要回头加深
    这个 token。底色统一由 --sidebar-bg 提供，mac 与 win/linux 共用同一份。 */
 
@@ -1163,9 +1164,9 @@ a {
 }
 
 :root[data-theme="forest"][data-mode="dark"] .sidebar-surface {
-	--muted: #101a0c;
-	--border: #2b3b24;
-	--sidebar-bg: #152313;
+	--muted: #111a12;
+	--border: #222f1b;
+	--sidebar-bg: #121f14;
 }
 :root[data-theme="forest"][data-mode="light"] .sidebar-surface {
 	--muted: #ccd8bd;
@@ -1174,9 +1175,9 @@ a {
 }
 
 :root[data-theme="bee"][data-mode="dark"] .sidebar-surface {
-	--muted: #181608;
-	--border: #34301a;
-	--sidebar-bg: #22210e;
+	--muted: #1c1608;
+	--border: #2e2b15;
+	--sidebar-bg: #211a07;
 }
 :root[data-theme="bee"][data-mode="light"] .sidebar-surface {
 	--muted: #ebdcae;
@@ -1185,9 +1186,9 @@ a {
 }
 
 :root[data-theme="mint"][data-mode="dark"] .sidebar-surface {
-	--muted: #0d2526;
-	--border: #1f423c;
-	--sidebar-bg: #0a2b2e;
+	--muted: #0a1a1b;
+	--border: #1b2d31;
+	--sidebar-bg: #0a1f20;
 }
 :root[data-theme="mint"][data-mode="light"] .sidebar-surface {
 	--muted: #c3ded7;
@@ -1196,9 +1197,9 @@ a {
 }
 
 :root[data-theme="parchment"][data-mode="dark"] .sidebar-surface {
-	--muted: #241610;
-	--border: #3f2b1e;
-	--sidebar-bg: #33201a;
+	--muted: #22110f;
+	--border: #332624;
+	--sidebar-bg: #2a1310;
 }
 :root[data-theme="parchment"][data-mode="light"] .sidebar-surface {
 	--muted: #e4d5bd;

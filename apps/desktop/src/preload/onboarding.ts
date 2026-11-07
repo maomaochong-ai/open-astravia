@@ -45,8 +45,8 @@ const api: OnboardingBridge = {
 	checkPermissions(): Promise<HelperPermissions> {
 		return ipcRenderer.invoke(CHECK_PERMISSIONS);
 	},
-	requestPermissions(): Promise<HelperPermissions> {
-		return ipcRenderer.invoke(REQUEST_PERMISSIONS);
+	requestPermissions(service?: OnboardingPaneKind): Promise<HelperPermissions> {
+		return ipcRenderer.invoke(REQUEST_PERMISSIONS, service);
 	},
 	resetPermissions(): Promise<void> {
 		return ipcRenderer.invoke(RESET_PERMISSIONS);

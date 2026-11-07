@@ -46,6 +46,10 @@ export interface DesktopWindowApi {
 	close(): Promise<void>;
 	isMaximized(): Promise<boolean>;
 	onMaximizedChanged(handler: (isMaximized: boolean) => void): () => void;
+	/** 切换窗口全屏，返回切换后的状态。 */
+	toggleFullScreen(): Promise<boolean>;
+	isFullScreen(): Promise<boolean>;
+	onFullScreenChanged(handler: (isFullScreen: boolean) => void): () => void;
 	/** 切换窗口置顶，返回切换后的状态。 */
 	toggleAlwaysOnTop(): Promise<boolean>;
 	isAlwaysOnTop(): Promise<boolean>;

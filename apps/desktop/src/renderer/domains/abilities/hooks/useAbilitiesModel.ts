@@ -31,6 +31,7 @@ import {
 	type AbilityItem,
 	type AbilityScope,
 	EMPTY_ABILITY_FILTER,
+	type McpAbility,
 } from "../types";
 import { useAbilityActions } from "./useAbilityActions";
 import { useAbilityData } from "./useAbilityData";
@@ -186,6 +187,47 @@ export function useAbilitiesModel(options: UseAbilitiesModelOptions = {}): Abili
 	);
 	const detailErrors = useMemo(() => (actions.error ? [actions.error] : []), [actions.error]);
 
+	// 卡片是长列表的行组件，靠 `memo` 跳过没变的行；回调每次渲染都新建就会把 memo 全部打穿，
+	// 于是每敲一个字、每完成一个操作都要重渲整页（市场装得越多越卡）。
+	// `actions` / `mcp` 是每次渲染新建的对象字面量，直接依赖它们会让下面的 useCallback
+	// 每次失效，行组件的 memo 也就跟着全部打穿。只引用其中稳定的具体回调。
+	const { promptMcpSetup } = actions;
+	const { onAuthorizeOAuth, onConfigureBuiltinSecrets, onRevokeOAuth, onToggleEditServer } = mcp;
+	const setupAbility = useCallback(
+		(item: McpAbility) => {
+			// 安装后步骤（扫码登录等）不在客户端完成，只能把做法讲清楚。
+			if (item.postInstallSetup) {
+				promptMcpSetup(item);
+				return;
+			}
+			if (item.canConfigure && item.preset) {
+				onConfigureBuiltinSecrets(item.serverName, item.preset);
+				return;
+			}
+			if (item.usesOAuth && !item.authorized) void onAuthorizeOAuth(item.serverName);
+		},
+		[promptMcpSetup, onConfigureBuiltinSecrets, onAuthorizeOAuth],
+	);
+	const configureAbility = useCallback(
+		(item: McpAbility) => {
+			// 声明了安装后步骤的能力，「配置」就是去完成那一步（扫码），
+			// 可选参数留给「编辑配置」，不要再把用户送进一个与登录无关的凭证表单。
+			if (item.postInstallSetup) {
+				promptMcpSetup(item);
+				return;
+			}
+			onConfigureBuiltinSecrets(item.serverName, item.preset);
+		},
+		[promptMcpSetup, onConfigureBuiltinSecrets],
+	);
+	const editAbility = useCallback((item: McpAbility) => onToggleEditServer(item.serverName), [onToggleEditServer]);
+	const revokeAbilityAuthorization = useCallback(
+		(item: McpAbility) => {
+			void onRevokeOAuth(item.serverName);
+		},
+		[onRevokeOAuth],
+	);
+
 	return {
 		scope,
 		setScope: changeScope,
@@ -215,31 +257,10 @@ export function useAbilitiesModel(options: UseAbilitiesModelOptions = {}): Abili
 		installBundleMembers: actions.installBundleMembers,
 		uninstall: actions.uninstall,
 		toggle: actions.toggle,
-		setup: (item) => {
-			// 安装后步骤（扫码登录等）不在客户端完成，只能把做法讲清楚。
-			if (item.postInstallSetup) {
-				actions.promptMcpSetup(item);
-				return;
-			}
-			if (item.canConfigure && item.preset) {
-				mcp.onConfigureBuiltinSecrets(item.serverName, item.preset);
-				return;
-			}
-			if (item.usesOAuth && !item.authorized) void mcp.onAuthorizeOAuth(item.serverName);
-		},
-		configure: (item) => {
-			// 声明了安装后步骤的能力，「配置」就是去完成那一步（扫码），
-			// 可选参数留给「编辑配置」，不要再把用户送进一个与登录无关的凭证表单。
-			if (item.postInstallSetup) {
-				actions.promptMcpSetup(item);
-				return;
-			}
-			mcp.onConfigureBuiltinSecrets(item.serverName, item.preset);
-		},
-		edit: (item) => mcp.onToggleEditServer(item.serverName),
-		revokeAuthorization: (item) => {
-			void mcp.onRevokeOAuth(item.serverName);
-		},
+		setup: setupAbility,
+		configure: configureAbility,
+		edit: editAbility,
+		revokeAuthorization: revokeAbilityAuthorization,
 		setPluginPermission: actions.setPluginPermission,
 		applyPluginSetup: actions.applyPluginSetup,
 		setPluginCommand: actions.setPluginCommand,

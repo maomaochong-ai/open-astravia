@@ -28,7 +28,8 @@ export interface OnboardingBridge {
 	// App 语言真相源（desktop-config），preload 求值期同步 sendSync 取得。
 	initialLanguage: string;
 	checkPermissions(): Promise<HelperPermissions>;
-	requestPermissions(): Promise<HelperPermissions>;
+	// 传 service 时只请求那一项：两项一起请求会同时弹出两个系统授权框。
+	requestPermissions(service?: OnboardingPaneKind): Promise<HelperPermissions>;
 	resetPermissions(): Promise<void>;
 	openPane(kind: OnboardingPaneKind): Promise<void>;
 	startDrag(): void;

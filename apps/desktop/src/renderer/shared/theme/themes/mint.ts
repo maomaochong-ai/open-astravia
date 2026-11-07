@@ -13,8 +13,8 @@ import { defaultTheme } from "./default";
 // 浅色四层表面彼此 ≥12。
 // 深色原先压到过 0.0051——黑到没有光感，侧栏、卡面、画布糊成一片，看不出层次；
 // 浅色原先只靠“卡面比画布亮一点点”做层次，四层都落在同一档米白里，读上去像一块布。
-// 浅色改成向下逐级压暗拉开层差。深色抬到 0.0128：青绿在过暗处会变成发黑的蓝，
-// 抬亮后色相才回得来。
+// 浅色改成向下逐级压暗拉开层差。深色原先把青绿压到 0.0128，在低亮屏上一片发黑的蓝，
+// 长期阅读刺眼；抬到 0.0173 并略微降低前景亮度后，画布才看得出是青绿而不是黑。
 
 const PRIMARY_LIGHT = "#127a6b";
 const PRIMARY_DARK = "#5fd4b0";
@@ -31,16 +31,16 @@ const LIGHT_BORDER = "#a5d3cb";
 const LIGHT_INPUT = "#b6dcd6";
 const LIGHT_MUTED_FG = "#33564f";
 
-const DARK_BG = "#122023";
-const DARK_FG = "#e0f0ea";
-const DARK_CARD = "#1a2f33";
-const DARK_POPOVER = "#1d3539";
-const DARK_MUTED = "#16262a";
-const DARK_SECONDARY = "#1f373c";
-const DARK_ACCENT = "#223d42";
-const DARK_BORDER = "#37636b";
-const DARK_INPUT = "#3e7079";
-const DARK_MUTED_FG = "#86a8a1";
+const DARK_BG = "#172629";
+const DARK_FG = "#d7ece4";
+const DARK_CARD = "#233c41";
+const DARK_POPOVER = "#28454a";
+const DARK_MUTED = "#1d2f34";
+const DARK_SECONDARY = "#2b484e";
+const DARK_ACCENT = "#2e4e54";
+const DARK_BORDER = "#43727a";
+const DARK_INPUT = "#4a7f88";
+const DARK_MUTED_FG = "#8aaba4";
 
 export const mintTheme: ThemeDef = {
 	id: "mint",

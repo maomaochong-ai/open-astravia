@@ -271,6 +271,14 @@ function attachMainWindowLifecycle(mainWindow: BrowserWindow): void {
 	mainWindow.on("maximize", sendWindowMaximizedChanged);
 	mainWindow.on("unmaximize", sendWindowMaximizedChanged);
 
+	// 全屏不进最大化事件序列（macOS 上两者完全独立），需要单独广播，
+	// 否则宿主标签栏的全屏切换按钮无法跟着系统行为（Esc / 绿灯）同步状态。
+	const sendWindowFullScreenChanged = () => {
+		mainWindow.webContents.send("astravia:window:full-screen-changed", mainWindow.isFullScreen());
+	};
+	mainWindow.on("enter-full-screen", sendWindowFullScreenChanged);
+	mainWindow.on("leave-full-screen", sendWindowFullScreenChanged);
+
 	// On macOS: close button hides window (follows macOS platform convention)
 	// On Windows/Linux: close button hides to tray
 	mainWindow.on("close", (event) => {
@@ -610,6 +618,18 @@ if (!gotSingleLock) {
 
 		ipcMain.handle("astravia:window:is-maximized", () => {
 			return getMainWindow()?.isMaximized() ?? false;
+		});
+
+		ipcMain.handle("astravia:window:toggle-full-screen", () => {
+			const mainWindow = getMainWindow();
+			if (!mainWindow) return false;
+			const next = !mainWindow.isFullScreen();
+			mainWindow.setFullScreen(next);
+			return next;
+		});
+
+		ipcMain.handle("astravia:window:is-full-screen", () => {
+			return getMainWindow()?.isFullScreen() ?? false;
 		});
 
 		ipcMain.handle("astravia:window:toggle-always-on-top", () => {

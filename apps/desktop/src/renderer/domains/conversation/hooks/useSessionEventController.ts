@@ -48,6 +48,10 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 	const flushTimerRef = useRef<number | null>(null);
 	const heldWritesRef = useRef<{ runtimeId: string; actions: ConversationFeedAction[] } | null>(null);
 	const activeTurnIdRef = useRef<string | null>(null);
+	// 全量历史重载是 O(历史长度) 的构建（IPC 反序列化 + fullHistoryToChat），Turn 密集收尾
+	// 时两次重载会同时在飞，大上下文下两份峰值叠在一起正是渲染进程被打崩的那条路径。
+	// 同一 Runtime 串行化：在飞期间只记「还要再来一次」，回来后再跑最新快照。
+	const historySyncRef = useRef(new Map<string, { inFlight: boolean; queued: boolean }>());
 
 	const writeFeed = useCallback((action: ConversationFeedAction & { readonly runtimeId: string }) => {
 		const held = heldWritesRef.current;
@@ -120,15 +124,34 @@ export function useSessionEventController({ activeSessionRef }: SessionEventCont
 	/** Durable history supplies entry ids, branches and timing that live events do not carry. */
 	const syncDurableHistory = useCallback(
 		(runtimeId: string, context: string) => {
-			const revision = nextConversationHistoryRevision();
-			void window.astravia.session
-				.getFullHistory(runtimeId)
-				.then((history) => {
-					writeFeed({ type: "history.loaded", runtimeId, items: fullHistoryToChat(history), revision });
-				})
-				.catch((error) => {
-					console.warn(`[useSessionManager] history refresh after ${context} failed`, error);
-				});
+			const entry = historySyncRef.current.get(runtimeId) ?? { inFlight: false, queued: false };
+			historySyncRef.current.set(runtimeId, entry);
+			if (entry.inFlight) {
+				// 已经有一次重载在飞：它落地时读的就是最新持久化结果，这里只确保「再来一次」。
+				entry.queued = true;
+				return;
+			}
+			const run = (reason: string): void => {
+				entry.inFlight = true;
+				const revision = nextConversationHistoryRevision();
+				void window.astravia.session
+					.getFullHistory(runtimeId)
+					.then((history) => {
+						writeFeed({ type: "history.loaded", runtimeId, items: fullHistoryToChat(history), revision });
+					})
+					.catch((error) => {
+						console.warn(`[useSessionManager] history refresh after ${reason} failed`, error);
+					})
+					.finally(() => {
+						if (entry.queued) {
+							entry.queued = false;
+							run("a later terminal event");
+							return;
+						}
+						entry.inFlight = false;
+					});
+			};
+			run(context);
 		},
 		[writeFeed],
 	);

@@ -147,4 +147,23 @@ describe("useContextRingModel", () => {
 		expect(unknownThreshold?.color).toBe("var(--destructive)");
 		expect(unknownThreshold?.tooltip).toBe("contextRing.tooltip.usage");
 	});
+
+	it("caps the ring at a full circle while the tooltip still reports the real overflow", () => {
+		// 超窗时圆环只能是满的，但 tooltip 必须还是真实占用——两处各 clamp 一遍就会分叉。
+		const tooltips: string[] = [];
+		const t = (key: string, params?: Record<string, unknown>) => {
+			const rendered = `${key}|${String(params?.percent ?? "")}`;
+			tooltips.push(rendered);
+			return rendered;
+		};
+		const model = buildContextRingModel(
+			{ usage: { percent: 105, contextTokens: 1_050_000, contextWindow: 1_000_000 }, isCompacting: false },
+			t as unknown as typeof contextRingModelCapture.t,
+			null,
+		);
+
+		expect(model?.percent).toBe(100);
+		expect(model?.offset).toBe(0);
+		expect(tooltips[0]).toBe("contextRing.tooltip.usage|105.0");
+	});
 });

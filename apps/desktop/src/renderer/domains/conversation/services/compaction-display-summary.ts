@@ -40,8 +40,11 @@ export type CompactionHeadingKey = (typeof HEADING_KEYS)[keyof typeof HEADING_KE
 /** 取不到译文时返回 undefined，调用方保留原文。 */
 export type CompactionHeadingResolver = (key: CompactionHeadingKey) => string | undefined;
 
-/** ATX 标题行：`## ` / `### ` 后跟标题文本。 */
-const HEADING_LINE = /^(#{2,4})[ \t]+(.+?)[ \t]*$/;
+/** 模板标题行：多行模式下一次扫完全文，不切行也不分配数组。 */
+const HEADING_LINE = /^(#{2,4})[ \t]+(.+?)[ \t]*$/gm;
+
+/** 单行匹配：慢路径逐行看标题时用，不能带全局标志，否则 exec 的 lastIndex 会跨行残留。 */
+const HEADING_SINGLE = /^(#{2,4})[ \t]+(.+?)[ \t]*$/;
 
 /** 代码围栏：摘要里附的代码片段可能出现 `## 注释`，那不是小节标题。 */
 const FENCE_LINE = /^[ \t]*(?:```|~~~)/;
@@ -51,8 +54,24 @@ const FENCE_LINE = /^[ \t]*(?:```|~~~)/;
  *
  * 只替换与模板完全一致的标题行，模型自己写的中文标题、正文里同名的加粗词都不动；
  * 代码围栏内一律跳过。未知语言（`resolve` 返回 undefined）时原样返回。
+ *
+ * 流式期间每次增量都会重跑全文，所以常规路径是单遍 `replace`；
+ * 只有真的带代码围栏时才退到位行跟踪的慢路径。
  */
 export function localizeCompactionHeadings(summary: string, resolve: CompactionHeadingResolver): string {
+	if (!summary.includes("```") && !summary.includes("~~~")) {
+		let changed = false;
+		const replaced = summary.replace(HEADING_LINE, (line: string, hashes: string, title: string) => {
+			const key = HEADING_KEYS[title as keyof typeof HEADING_KEYS];
+			if (!key) return line;
+			const text = resolve(key);
+			if (text === undefined || text === title) return line;
+			changed = true;
+			return `${hashes} ${text}`;
+		});
+		return changed ? replaced : summary;
+	}
+
 	let inFence = false;
 	let changed = false;
 	const lines = summary.split("\n").map((line) => {
@@ -61,7 +80,7 @@ export function localizeCompactionHeadings(summary: string, resolve: CompactionH
 			return line;
 		}
 		if (inFence) return line;
-		const heading = HEADING_LINE.exec(line);
+		const heading = HEADING_SINGLE.exec(line);
 		if (!heading?.[1] || !heading[2]) return line;
 		const key = HEADING_KEYS[heading[2] as keyof typeof HEADING_KEYS];
 		if (!key) return line;
@@ -74,10 +93,13 @@ export function localizeCompactionHeadings(summary: string, resolve: CompactionH
 }
 
 export function toCompactionDisplaySummary(summary: string, resolveHeading?: CompactionHeadingResolver): string {
-	const cleaned = summary
-		.replace(WORK_STATE_BLOCK, "")
-		.replace(SUMMARY_MARKER, "")
-		.replace(EXCESS_BLANK_LINES, "\n\n")
-		.trim();
-	return resolveHeading ? localizeCompactionHeadings(cleaned, resolveHeading) : cleaned;
+	// 两个标记都只在摘要末尾可能出现，而流式期间每来一段增量都会重跑一次全文清洗；
+	// 先做一次定长扫描，不含标记就不分配新串。
+	let cleaned = summary;
+	if (cleaned.includes("<runtime-work-state>")) cleaned = cleaned.replace(WORK_STATE_BLOCK, "");
+	// 开标签与闭标签都要命中，所以探子必须是 `summary>` 而不是 `<summary>`。
+	if (cleaned.includes("summary>")) cleaned = cleaned.replace(SUMMARY_MARKER, "");
+	cleaned = cleaned.replace(EXCESS_BLANK_LINES, "\n\n").trim();
+	if (!resolveHeading) return cleaned;
+	return localizeCompactionHeadings(cleaned, resolveHeading);
 }

@@ -34,11 +34,16 @@ export function registerOnboardingIpc(): () => void {
 		return perms;
 	});
 
-	ipcMain.handle(ONBOARDING_CHANNELS.REQUEST_PERMISSIONS, async (): Promise<HelperPermissions> => {
-		const perms = await requestHelperPermissions();
-		sendPermissionsUpdated(perms);
-		return perms;
-	});
+	ipcMain.handle(
+		ONBOARDING_CHANNELS.REQUEST_PERMISSIONS,
+		async (_event, service: unknown): Promise<HelperPermissions> => {
+			// 只接受两个已知服务名；未传时保持旧行为（两项都请求）。
+			const requested = service === "accessibility" || service === "screen-recording" ? service : undefined;
+			const perms = await requestHelperPermissions(requested);
+			sendPermissionsUpdated(perms);
+			return perms;
+		},
+	);
 
 	ipcMain.handle(ONBOARDING_CHANNELS.RESET_PERMISSIONS, async (): Promise<void> => {
 		await resetHelperPermissions();

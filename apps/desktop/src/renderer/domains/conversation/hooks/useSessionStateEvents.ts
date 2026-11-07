@@ -34,7 +34,7 @@ import {
 } from "@shared/store/message-queue-atoms";
 import { showToast } from "@shared/store/toast-atoms";
 import { getDefaultStore, useSetAtom } from "jotai";
-import { type MutableRefObject, useCallback } from "react";
+import { type MutableRefObject, useCallback, useEffect } from "react";
 import { toChatErrorDetails, turnStatsCache } from "../services/chat-service";
 import { clearCachedContextComposition, writeCachedContextComposition } from "../services/context-composition-cache";
 import { activeAssistantStartedAt } from "../services/conversation-feed";
@@ -72,6 +72,16 @@ export function useSessionStateEvents({ activeSessionRef, syncDurableHistory }: 
 	const setTodoItems = useSetAtom(todoItemsBySessionAtom);
 	const setPlanModeStates = useSetAtom(planModeStateBySessionAtom);
 	const setGoalStates = useSetAtom(goalStateBySessionAtom);
+
+	// 断网时 `retry.end` / 轮次终态事件可能根本没发出来（内核在重连中就已放弃发送），
+	// 「正在重新连接，上次请求失败」会一直卡在对话区，网络恢复后也不消失。
+	// 浏览器/Electron 的网络事件是这条链路上唯一可靠的恢复信号，用它把残留提示清掉；
+	// 仍在真实重试的会话会重新收到 `retry.start` 而恢复显示。
+	useEffect(() => {
+		const handleOnline = () => setRetryProgress(null);
+		window.addEventListener("online", handleOnline);
+		return () => window.removeEventListener("online", handleOnline);
+	}, [setRetryProgress]);
 
 	const applyExtensionEvent = useCallback(
 		(runtimeId: string, event: Extract<SessionEvent, { readonly type: "session.extension" }>) => {

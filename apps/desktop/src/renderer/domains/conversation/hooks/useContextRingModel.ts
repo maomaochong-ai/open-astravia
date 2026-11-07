@@ -145,9 +145,12 @@ export function buildContextRingModel(
 		: (composition?.estimate.tokens ??
 			composition?.estimate.knownTokens ??
 			((ctx.percent ?? 0) * ctx.contextWindow) / 100);
-	const percent = ctx.contextWindow > 0 ? (contextTokens / ctx.contextWindow) * 100 : (ctx.percent ?? 0);
-	const clamped = Math.min(100, Math.max(0, percent));
-	const offset = CONTEXT_RING_CIRCUMFERENCE - (clamped / 100) * CONTEXT_RING_CIRCUMFERENCE;
+	const rawPercent = ctx.contextWindow > 0 ? (contextTokens / ctx.contextWindow) * 100 : (ctx.percent ?? 0);
+	// 圆环的 `percent` 就是进度（0–100），与 `offset` 同一口径：写成未截断值时
+	// 消费方各自再 clamp 一遍，两处比例一旦分叉就会出现「环满了但数字还在涨」。
+	// 超窗的真实占用仍由 tooltip 用 `rawPercent` 显示。
+	const percent = Math.min(100, Math.max(0, rawPercent));
+	const offset = CONTEXT_RING_CIRCUMFERENCE - (percent / 100) * CONTEXT_RING_CIRCUMFERENCE;
 
 	// 红色必须代表「已经到了或过了自动压缩的触发线」，而不是一个写死的百分比：压缩策略的
 	// 触发线是 max(窗口 - 预留, 窗口 × (1 - 最小空闲比例))，1M 窗口上就是 96.4%，而写死的 90%
@@ -159,7 +162,7 @@ export function buildContextRingModel(
 	const willCompact =
 		ctx.compactionThresholdTokens !== undefined
 			? contextTokens >= ctx.compactionThresholdTokens
-			: percent > thresholdPercent;
+			: rawPercent > thresholdPercent;
 	const color = isCompacting || willCompact ? "var(--destructive)" : "var(--primary)";
 
 	const tooltip = isCompacting
@@ -170,7 +173,7 @@ export function buildContextRingModel(
 						? "contextRing.tooltip.usage"
 						: "contextRing.tooltip.usageWithThreshold",
 					{
-						percent: percent.toFixed(1),
+						percent: rawPercent.toFixed(1),
 						window: formatTokens(ctx.contextWindow),
 						tokens: formatTokens(contextTokens),
 						threshold: thresholdPercent.toFixed(0),

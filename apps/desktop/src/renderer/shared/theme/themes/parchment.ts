@@ -31,16 +31,16 @@ const LIGHT_BORDER = "#d3bfa4";
 const LIGHT_INPUT = "#dfcbb1";
 const LIGHT_MUTED_FG = "#5f4d3f";
 
-const DARK_BG = "#251a18";
-const DARK_FG = "#f2eae0";
-const DARK_CARD = "#362624";
-const DARK_POPOVER = "#3c2b28";
-const DARK_MUTED = "#2c1f1e";
-const DARK_SECONDARY = "#402d2a";
-const DARK_ACCENT = "#46322f";
-const DARK_BORDER = "#75534e";
-const DARK_INPUT = "#845e58";
-const DARK_MUTED_FG = "#ab9c8e";
+const DARK_BG = "#2b201d";
+const DARK_FG = "#eee4d7";
+const DARK_CARD = "#42312f";
+const DARK_POPOVER = "#4b3835";
+const DARK_MUTED = "#342726";
+const DARK_SECONDARY = "#503b38";
+const DARK_ACCENT = "#55403d";
+const DARK_BORDER = "#82615c";
+const DARK_INPUT = "#916c67";
+const DARK_MUTED_FG = "#aea092";
 
 export const parchmentTheme: ThemeDef = {
 	id: "parchment",

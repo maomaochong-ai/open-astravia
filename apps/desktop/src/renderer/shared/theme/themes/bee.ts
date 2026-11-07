@@ -30,16 +30,16 @@ const LIGHT_BORDER = "#d5c48f";
 const LIGHT_INPUT = "#e5d5a2";
 const LIGHT_MUTED_FG = "#5b5240";
 
-const DARK_BG = "#24210f";
-const DARK_FG = "#f0e9d6";
-const DARK_CARD = "#353116";
-const DARK_POPOVER = "#3b3719";
-const DARK_MUTED = "#2b2812";
-const DARK_SECONDARY = "#3e391b";
-const DARK_ACCENT = "#453f1d";
-const DARK_BORDER = "#675f2c";
-const DARK_INPUT = "#746c32";
-const DARK_MUTED_FG = "#a19678";
+const DARK_BG = "#262311";
+const DARK_FG = "#ede4cd";
+const DARK_CARD = "#403b1c";
+const DARK_POPOVER = "#484321";
+const DARK_MUTED = "#312e16";
+const DARK_SECONDARY = "#4c4624";
+const DARK_ACCENT = "#534c26";
+const DARK_BORDER = "#736b35";
+const DARK_INPUT = "#80773b";
+const DARK_MUTED_FG = "#a49a7d";
 
 export const beeTheme: ThemeDef = {
 	id: "bee",

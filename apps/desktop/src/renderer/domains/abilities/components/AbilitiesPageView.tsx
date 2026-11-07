@@ -1,7 +1,7 @@
 import { SegmentedControl } from "@astravia-org/theme-ui/shared";
 import { Button } from "@astravia-org/ui";
 import { motion } from "motion/react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CapabilitiesTour } from "@shared/tour";
 import { SettingsAiAssist } from "../../settings/ai-assist";
@@ -16,7 +16,7 @@ import {
 	type AbilityScope,
 } from "../types";
 import { AbilitiesBanner } from "./AbilitiesBanner";
-import { AbilityCard } from "./AbilityCard";
+import { AbilityCard, type AbilityCardActions } from "./AbilityCard";
 import { AbilityFilterPopover, countActiveAbilityFilters } from "./AbilityFilterPopover";
 import { AbilityMcpDialogs } from "./AbilityMcpDialogs";
 import { AddAbilityMenu } from "./AddAbilityMenu";
@@ -40,6 +40,29 @@ export function AbilitiesPageView({
 	const [sourcesDialogOpen, setSourcesDialogOpen] = useState(false);
 	const isPublic = model.scope === "discover" || (model.scope as string) === "public";
 	const filtered = countActiveAbilityFilters(model.filter) > 0;
+	// 卡片是长列表的行组件：只有把回调引用固定下来，`memo` 才能在搜索/操作状态下跳过没变的行。
+	const cardActions = useMemo<AbilityCardActions>(
+		() => ({
+			install: model.install,
+			uninstall: model.uninstall,
+			toggle: model.toggle,
+			reloadPlugin: model.reloadPlugin,
+			setup: model.setup,
+			configure: model.configure,
+			edit: model.edit,
+			revokeAuthorization: model.revokeAuthorization,
+		}),
+		[
+			model.install,
+			model.uninstall,
+			model.toggle,
+			model.reloadPlugin,
+			model.setup,
+			model.configure,
+			model.edit,
+			model.revokeAuthorization,
+		],
+	);
 
 	return (
 		<div className="relative flex h-full w-full flex-1 flex-col overflow-hidden">
@@ -205,7 +228,7 @@ export function AbilitiesPageView({
 											</div>
 											<div className="grid grid-cols-2 gap-x-3 gap-y-0.5 lg:grid-cols-3">
 												{group.items.map((item) => (
-													<AbilityCard key={item.id} item={item} model={model} />
+													<AbilityCard key={item.id} item={item} actions={cardActions} />
 												))}
 											</div>
 										</section>
@@ -213,7 +236,7 @@ export function AbilitiesPageView({
 								) : (
 									<div className="grid grid-cols-2 gap-x-3 gap-y-0.5 lg:grid-cols-3">
 										{model.items.map((item) => (
-											<AbilityCard key={item.id} item={item} model={model} />
+											<AbilityCard key={item.id} item={item} actions={cardActions} />
 										))}
 									</div>
 								)}

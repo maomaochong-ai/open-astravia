@@ -153,11 +153,14 @@ function runHelper(outDir: string, noScreenshot: boolean): Promise<HelperResult>
 }
 
 /** spawn helper 以 --check-permissions/--request-permissions 模式，解析 {accessibility,screenRecording} JSON。 */
-function runHelperPermissionsMode(mode: "--check-permissions" | "--request-permissions"): Promise<HelperPermissions> {
+function runHelperPermissionsMode(
+	mode: "--check-permissions" | "--request-permissions",
+	service?: HelperPermissionService,
+): Promise<HelperPermissions> {
 	const bin = resolveAppshotHelperBinary();
 	clearHelperQuarantine();
 	return new Promise<HelperPermissions>((resolvePromise, rejectPromise) => {
-		const child = spawn(bin, [mode], { stdio: ["ignore", "pipe", "pipe"] });
+		const child = spawn(bin, service ? [mode, service] : [mode], { stdio: ["ignore", "pipe", "pipe"] });
 		const stdoutChunks: Buffer[] = [];
 		const stderrChunks: Buffer[] = [];
 		let settled = false;
@@ -198,11 +201,24 @@ function runHelperPermissionsMode(mode: "--check-permissions" | "--request-permi
 	});
 }
 
-// in-flight 合流：多个调用方（主窗口 PermissionsSettings、引导窗 OnboardingApp）可能在同一时刻
-// 各自因 window focus 触发权限查询/请求，不去重会并发 spawn 多个 helper 子进程，且后 resolve 的
-// 调用可能覆盖先 resolve 的更新的 UI 状态。查/请求各自独立合流（语义不同，不能共用一个 in-flight）。
+// 查询类 in-flight 合流：多个调用方（主窗口 PermissionsSettings、引导窗 OnboardingApp）可能在同一时刻
+// 各自因 window focus 触发权限查询，不去重会并发 spawn 多个 helper 子进程，且后 resolve 的
+// 调用可能覆盖先 resolve 的更新的 UI 状态。请求不走合流（不同服务不能互相吞掉），改串行队列。
 let checkPermissionsInFlight: Promise<HelperPermissions> | null = null;
-let requestPermissionsInFlight: Promise<HelperPermissions> | null = null;
+let requestQueue: Promise<unknown> = Promise.resolve();
+
+/** helper 可以单独请求的 TCC 服务。 */
+export type HelperPermissionService = "accessibility" | "screen-recording";
+
+/**
+ * 本进程已经请求过的 helper 权限服务。
+ *
+ * helper 是独立 TCC 主体，每次 `--request-permissions` 都会重新弹系统授权框，而且
+ * 一次请求两项时系统会同时叠出两个框。引导窗「请求权限 → 立即去系统设置」与设置页
+ * 「立即请求」会连续触发，用户看到的就是「点一次弹好几个框」。按服务各记一次，
+ * 后续路径直接把用户送到系统设置 —— 那里才是真正能勾选的地方。
+ */
+const requestedHelperServices = new Set<HelperPermissionService>();
 
 /** 查询 helper（独立 TCC 主体）当前的辅助功能/屏幕录制权限状态，不弹系统授权框。 */
 export function checkHelperPermissions(): Promise<HelperPermissions> {
@@ -220,20 +236,38 @@ export function checkHelperPermissions(): Promise<HelperPermissions> {
 	return task;
 }
 
-/** 触发 helper 弹系统权限授权框（引导流程用），返回请求后的最新状态。 */
-export function requestHelperPermissions(): Promise<HelperPermissions> {
+/**
+ * 触发 helper 弹系统权限授权框（引导流程用），返回请求后的最新状态。
+ *
+ * 传 `service` 时只请求那一项：两项一起请求会让 macOS 同时弹两个授权框。
+ */
+export function requestHelperPermissions(service?: HelperPermissionService): Promise<HelperPermissions> {
 	if (process.platform !== "darwin") return Promise.resolve({ accessibility: false, screenRecording: false });
-	if (requestPermissionsInFlight) return requestPermissionsInFlight;
-	const task = runHelperPermissionsMode("--request-permissions")
-		.catch((err) => {
+	if (service) {
+		requestedHelperServices.add(service);
+	} else {
+		requestedHelperServices.add("accessibility");
+		requestedHelperServices.add("screen-recording");
+	}
+	// 同一时刻只能有一个系统授权框，所以请求串行执行而不是合流：
+	// 合流会把「屏幕录制」的请求吞成「辅助功能」那次的结果，系统面板里就永远
+	// 不会出现这项服务的可勾选项。串行则各弹一次、各达到系统。
+	const run = () =>
+		runHelperPermissionsMode("--request-permissions", service).catch((err) => {
 			log.warn("requestHelperPermissions failed", err);
 			return { accessibility: false, screenRecording: false };
-		})
-		.finally(() => {
-			requestPermissionsInFlight = null;
 		});
-	requestPermissionsInFlight = task;
+	const task = requestQueue.then(run, run);
+	requestQueue = task.then(
+		() => undefined,
+		() => undefined,
+	);
 	return task;
+}
+
+/** 本进程是否已经请求过 helper 权限（用于避免重复弹系统授权框）。 */
+export function hasRequestedHelperPermissions(service?: HelperPermissionService): boolean {
+	return service ? requestedHelperServices.has(service) : requestedHelperServices.size > 0;
 }
 
 /**

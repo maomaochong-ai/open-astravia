@@ -89,23 +89,27 @@ export function OnboardingApp(): JSX.Element {
 
 	// requestPermissions 走 helper 自己的 --request-permissions：只有 helper 这个独立 TCC
 	// 主体能触发系统授权框并把自己的条目注册进列表，主进程代劳没有这个效果。
+	//
+	// 一次只请求一个尚未授权的服务：两项一起请求时 macOS 会同时弹出两个授权框，
+	// 用户看到的「多次弹窗」往往就是这一次请求的结果。
 	const handleRequest = useCallback(async () => {
 		const bridge = window.astraviaOnboarding;
 		if (!bridge) return;
 		setDragError(false);
 		setRequesting(true);
 		try {
-			const perms = await bridge.requestPermissions();
+			const target = permissions?.accessibility ? "screen-recording" : "accessibility";
+			const perms = await bridge.requestPermissions(target);
 			setPermissions(perms);
 			// 系统授权框只把 helper 注册进隐私列表，真正的勾选必须在系统设置里完成。
-			// 请求后仍未授权就直接把用户带到第一个待授权面板，否则看起来像按钮没反应。
-			if (!perms.accessibility) handleOpenPane("accessibility");
-			else if (!perms.screenRecording) handleOpenPane("screen-recording");
+			// 请求后仍未授权就直接把用户带到对应面板，否则看起来像按钮没反应。
+			if (target === "accessibility" && !perms.accessibility) handleOpenPane("accessibility");
+			else if (target === "screen-recording" && !perms.screenRecording) handleOpenPane("screen-recording");
 		} finally {
 			setRequesting(false);
 			setLoading(false);
 		}
-	}, [handleOpenPane]);
+	}, [handleOpenPane, permissions]);
 
 	// helper 用 ad-hoc 签名时 TCC 以 cdhash 记身份，重建后就对不上旧勾选，界面上表现为
 	// 「系统设置里已勾选但仍是未授权」。清空记录后重新拖入才能建立有效条目。

@@ -5,6 +5,7 @@ import { type ComponentType, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDockedContentReady } from "../../hooks/useDockedContentReady";
 import { useDockedOutlet } from "../../hooks/useDockedOutlet";
+import { FullScreenToggleButton } from "../FullScreenToggleButton";
 import { PluginTabPicker } from "../PluginTabPicker";
 import { ActivityTabContextMenu } from "./ActivityTabContextMenu";
 import { ActivityTabSurface } from "./ActivityTabSurface";
@@ -69,15 +70,19 @@ export function ActivityPanelView({
 					availableTabs={model.availableTabs}
 					onAttachTab={actions.onAttachTab}
 				/>
-			) : null;
+		) : null;
+	// 全屏按钮和标签菜单同属右侧的工具位，只要面板可见就一直可用；
+	// 不跟随「没有溢出标签」等条件隐藏，否则用户进入全屏后找不到退出口。
+	const fullScreenToggle = renderDockedPanel ? <FullScreenToggleButton className="mr-2" /> : null;
 	const [dockedOutlet, registerDockedOutlet] = useDockedOutlet();
 
 	const panelBody = renderDockedPanel ? (
 		<>
-			{tabBar || tabPicker ? (
+			{tabBar || tabPicker || fullScreenToggle ? (
 				<ActivityPanelPrimitive.Header>
 					{tabBar}
 					{tabPicker}
+					{fullScreenToggle}
 				</ActivityPanelPrimitive.Header>
 			) : null}
 			<Frame>
