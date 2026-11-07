@@ -32,7 +32,7 @@ import {
 } from "./lib.mjs";
 import { changedLockfileWorkspaceImpacts, changedLockfileWorkspaceKeys } from "./lockfile-impact.mjs";
 import { createChangedTestPlan, parseArgs } from "./test-changed.mjs";
-import { createImpactTestPlan, parseImpactArgs } from "./test-impact.mjs";
+import { createImpactTestPlan, emptyRelatedSelectionIsCovered, parseImpactArgs } from "./test-impact.mjs";
 
 describe("changed file selection", () => {
 	it("combines committed, working tree, and untracked paths", () => {
@@ -545,6 +545,12 @@ describe("affected package selection", () => {
 		).toEqual([
 			"apps/desktop/src/renderer/domains/skills/unregistered.ts was deleted; add an explicit regression test or mapping",
 		]);
+	});
+
+	it("treats an empty related selection as covered once direct tests ran", () => {
+		// 源文件唯一的导入方就是它自己的 companion 测试；related 阶段把 direct 测试排除后必然为空。
+		expect(emptyRelatedSelectionIsCovered(["src/activity/PluginTabPickerView.test.tsx"])).toBe(true);
+		expect(emptyRelatedSelectionIsCovered([])).toBe(false);
 	});
 
 	it("never exposes a package-test fallback from the changed-test runner", () => {

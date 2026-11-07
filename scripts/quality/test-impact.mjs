@@ -469,6 +469,15 @@ function runCapturedBun(args, cwd) {
 	};
 }
 
+/**
+ * `vitest related` runs after the direct tests are excluded, so a source whose only
+ * importer is its own companion test leaves an empty selection. That is coverage, not
+ * a missing test: the regression test already ran in the direct batch.
+ */
+export function emptyRelatedSelectionIsCovered(directTests) {
+	return directTests.length > 0;
+}
+
 function runTargetedTests(target) {
 	const cwd = join(repoRoot, target.dir);
 	const runner = join(repoRoot, "scripts/quality/run-vitest.mjs");
@@ -499,6 +508,10 @@ function runTargetedTests(target) {
 	);
 	if (related.code === 0) return 0;
 	if (!/No test files found|No test suite found/i.test(related.output)) return related.code;
+	if (emptyRelatedSelectionIsCovered(target.directTests)) {
+		ok(`[test:impact] ${target.key}: related sources covered by direct tests`);
+		return 0;
+	}
 
 	console.error(`[test:impact] ${target.key}: no related tests found; add a regression test or explicit test mapping`);
 	return 1;
