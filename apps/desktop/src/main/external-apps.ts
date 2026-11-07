@@ -1,4 +1,5 @@
 import { execFile, spawn } from "node:child_process";
+import type { Dirent } from "node:fs";
 import { access, readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -171,6 +172,12 @@ async function listKnownApplications(): Promise<ExternalApplication[]> {
 	// 内置路径只能盖住默认安装位置：便携版、scoop/winget 布局、装在别的盘上的 VS Code
 	// 都会漏。App Paths 是 Windows 自己记的「这个 exe 在哪」，拿它兜底。
 	for (const app of await listWindowsAppPaths()) {
+		if (!known.some((candidate) => sameApplication(candidate, app))) known.push(app);
+	}
+	// 固定路径与 App Paths 之外还有一份真实位置：按用户装的编辑器在 `%LOCALAPPDATA%\Programs`，
+	// JetBrains Toolbox 把 IDE 藏在 `…\Toolbox\apps\<IDE>\ch-0\<ver>\bin`。只列固定路径就会
+	// 「检测不到本机编程软件」，所以再扫一遍这两棵目录，用已知 exe 名认应用。
+	for (const app of await listWindowsUserPrograms()) {
 		if (!known.some((candidate) => sameApplication(candidate, app))) known.push(app);
 	}
 	return known;
@@ -609,6 +616,7 @@ async function listWindowsAppPaths(): Promise<ExternalApplication[]> {
 const WINDOWS_EXE_NAMES: Record<string, string> = {
 	"code.exe": "Visual Studio Code",
 	"code - insiders.exe": "Visual Studio Code Insiders",
+	"vscodium.exe": "VSCodium",
 	"cursor.exe": "Cursor",
 	"trae.exe": "Trae",
 	"trae cn.exe": "Trae CN",
@@ -616,10 +624,21 @@ const WINDOWS_EXE_NAMES: Record<string, string> = {
 	"zed.exe": "Zed",
 	"sublime_text.exe": "Sublime Text",
 	"qoder.exe": "Qoder IDE",
+	"codebuddy.exe": "CodeBuddy",
+	// JetBrains 安装器同时保留 32/64 位 exe，Toolbox 装的则是 idea.exe 这种短名。
 	"idea64.exe": "IntelliJ IDEA",
+	"idea.exe": "IntelliJ IDEA",
 	"webstorm64.exe": "WebStorm",
+	"webstorm.exe": "WebStorm",
 	"pycharm64.exe": "PyCharm",
+	"pycharm.exe": "PyCharm",
 	"goland64.exe": "GoLand",
+	"goland.exe": "GoLand",
+	"datagrip64.exe": "DataGrip",
+	"rider64.exe": "Rider",
+	"rubymine64.exe": "RubyMine",
+	"phpstorm64.exe": "PhpStorm",
+	"studio64.exe": "Android Studio",
 	"wt.exe": "Windows Terminal",
 	"powershell.exe": "PowerShell",
 	"pwsh.exe": "PowerShell",
@@ -627,9 +646,94 @@ const WINDOWS_EXE_NAMES: Record<string, string> = {
 	"bash.exe": "Git Bash",
 };
 
+/** 已知 exe 的友好名；不认识的返回 null（菜单不能凭空给应用命名）。 */
+export function windowsKnownApplicationName(exePath: string): string | null {
+	const file = exePath.split(/[\\/]/).pop() ?? exePath;
+	return WINDOWS_EXE_NAMES[file.toLowerCase()] ?? null;
+}
+
 export function windowsApplicationName(exePath: string): string {
 	const file = exePath.split(/[\\/]/).pop() ?? exePath;
-	return WINDOWS_EXE_NAMES[file.toLowerCase()] ?? file.replace(/\.exe$/i, "");
+	return windowsKnownApplicationName(exePath) ?? file.replace(/\.exe$/i, "");
+}
+
+/**
+ * 只把认得出名字的 exe 变成菜单项。
+ *
+ * 目录扫描会碰到 install、uninstall、crashpad_handler 这类东西：它们也是 .exe，
+ * 但都不是用户想拿来开目录的应用，靠 `WINDOWS_EXE_NAMES` 白名单滤掉最安全。
+ */
+export function windowsProgramsFromExecutables(executables: readonly string[]): ExternalApplication[] {
+	const apps: ExternalApplication[] = [];
+	const seen = new Set<string>();
+	for (const exePath of executables) {
+		const name = windowsKnownApplicationName(exePath);
+		if (name === null) continue;
+		const kind = inferApplicationKind(name);
+		if (kind === "other") continue;
+		const key = exePath.toLowerCase();
+		if (seen.has(key)) continue;
+		seen.add(key);
+		apps.push({ id: exePath, name, applicationPath: exePath, kind, isDefault: false });
+	}
+	return apps;
+}
+
+/**
+ * Windows 上「自己装的应用」不在默认安装位置、也不一定进 App Paths：
+ * Cursor / VSCodium 这类按用户装的编辑器在 `%LOCALAPPDATA%\Programs`，
+ * JetBrains Toolbox 把 IDE 放在 `…\Toolbox\apps\<IDE>\ch-0\<ver>\bin`。
+ * 只靠固定路径列表就会「检测不到本机编程软件」，所以再按目录扫一遍。
+ */
+const WINDOWS_PROGRAM_SCAN_ROOTS = (): Array<{ root: string; depth: number }> => {
+	const localAppData = process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local");
+	return [
+		{ root: join(localAppData, "Programs"), depth: 2 },
+		{ root: join(localAppData, "JetBrains", "Toolbox", "apps"), depth: 4 },
+	];
+};
+
+/** 单次扫描的目录预算：Programs 下偶尔会有构建缓存这类深目录，菜单不能为它卡住。 */
+const WINDOWS_PROGRAM_SCAN_BUDGET = 400;
+
+async function collectWindowsExecutables(root: string, depth: number): Promise<string[]> {
+	const found: string[] = [];
+	const queue: Array<{ dir: string; level: number }> = [{ dir: root, level: 0 }];
+	let budget = WINDOWS_PROGRAM_SCAN_BUDGET;
+	while (queue.length > 0 && budget > 0) {
+		const next = queue.shift();
+		if (!next) break;
+		budget -= 1;
+		let entries: Dirent[];
+		try {
+			entries = await readdir(next.dir, { withFileTypes: true });
+		} catch {
+			continue;
+		}
+		for (const entry of entries) {
+			const full = join(next.dir, entry.name);
+			if (entry.isDirectory()) {
+				if (next.level + 1 < depth) queue.push({ dir: full, level: next.level + 1 });
+				continue;
+			}
+			if (/\.exe$/i.test(entry.name)) found.push(full);
+		}
+	}
+	return found;
+}
+
+async function listWindowsUserPrograms(): Promise<ExternalApplication[]> {
+	const executables: string[] = [];
+	for (const { root, depth } of WINDOWS_PROGRAM_SCAN_ROOTS()) {
+		executables.push(...(await collectWindowsExecutables(root, depth)));
+	}
+	const apps: ExternalApplication[] = [];
+	for (const app of windowsProgramsFromExecutables(executables)) {
+		// 目录枚举与菜单点击之间可能差很久，exe 已被卸载的不进菜单。
+		if (!(await pathExists(app.applicationPath))) continue;
+		apps.push(app);
+	}
+	return apps;
 }
 
 function prettifyWindowsAppName(registryKey: string): string {

@@ -31,12 +31,12 @@ const LIGHT_BORDER = "#d3bfa4";
 const LIGHT_INPUT = "#dfcbb1";
 const LIGHT_MUTED_FG = "#5f4d3f";
 
-const DARK_BG = "#2b201d";
+const DARK_BG = "#2f2421";
 const DARK_FG = "#eee4d7";
-const DARK_CARD = "#42312f";
-const DARK_POPOVER = "#4b3835";
-const DARK_MUTED = "#342726";
-const DARK_SECONDARY = "#503b38";
+const DARK_CARD = "#463533";
+const DARK_POPOVER = "#4f3c39";
+const DARK_MUTED = "#382b2a";
+const DARK_SECONDARY = "#543f3c";
 const DARK_ACCENT = "#55403d";
 const DARK_BORDER = "#82615c";
 const DARK_INPUT = "#916c67";

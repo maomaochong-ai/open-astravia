@@ -1105,14 +1105,17 @@ a {
 
 
 /* ── 主题专属侧栏配色 ──────────────────────────────────────────────
-   四套彩色主题的侧栏底色统一比主画布**深一档**（深色 1.09–1.11，浅色 1.08–1.19），让侧栏先读成一条独立的「脊」，再读成画布的一部分。
+   四套彩色主题的侧栏底色统一比主画布**深一档**（深色 1.077，浅色 1.08–1.19），让侧栏先读成一条独立的「脊」，再读成画布的一部分。
    浅色曾经取「比画布更亮」的一侧，四套主题都挤在 1.01–1.06 的亮度区间里，
    看上去像同一块米白，层次感反而比深色更平——浅色要的层次只能靠向下压暗拿到。
 
-   2026-11 又一次抬亮主画布（深色画布亮度 0.012–0.015 → 0.0165–0.0177）：深色原先把
-   薄荷、羊皮纸压到 0.012 附近，低亮屏上读成一片发黑，长期阅读刺眼。画布抬亮后侧栏
-   如果沿用旧值，两者的对比会碾到 1.03–1.06：薄荷与羊皮纸的侧栏还会反超画布，
-   脊没了、两块色糊在一起。这里按新画布重算，四套的侧栏/画布对比统一在 1.09–1.11。
+   2026-11 又一次抬亮主画布（深色画布亮度 0.012–0.015 → 0.0191–0.0199）：深色原先把
+   薄荷、羊皮纸压到 0.012 附近，低亮屏上读成一片发黑，长期阅读刺眼。
+
+   2026-11 用户第二次反馈「深色侧栏与主区过深」：画布已顶到色板守卫上限 0.02，剩下的
+   观感问题全在侧栏——它原本停在 0.008–0.012，比画布还黑一档，整条左栏读成一块黑洞。
+   现在侧栏跟着画布抬到 0.0142–0.0149，只比画布深 1.077，脊改由 1px 分隔线与面板色承担；
+   浅色仍是 1.08–1.19 的向下压暗，不动。
 
    深色下四套主题还各自往不同色相偏：森林橄榄绿、蜜蜂蜜金、薄荷青绿、羊皮纸赭红。
    不偏色的后果是“森林”与“薄荷”的深色侧栏只差 RGB 距离 5.8，根本读成同一套主题；
@@ -1150,23 +1153,23 @@ a {
 :root:is([data-theme="forest"], [data-theme="bee"], [data-theme="mint"], [data-theme="parchment"])[data-mode="dark"] {
 	--sidebar-sheen: linear-gradient(
 		to bottom,
-		color-mix(in srgb, #ffffff 5%, transparent),
-		transparent 240px
+		color-mix(in srgb, #ffffff 3%, transparent),
+		transparent 160px
 	);
 }
 
 :root:is([data-theme="forest"], [data-theme="bee"], [data-theme="mint"], [data-theme="parchment"])[data-mode="light"] {
 	--sidebar-sheen: linear-gradient(
 		to bottom,
-		color-mix(in srgb, #ffffff 60%, transparent),
-		transparent 200px
+		color-mix(in srgb, #ffffff 22%, transparent),
+		transparent 120px
 	);
 }
 
 :root[data-theme="forest"][data-mode="dark"] .sidebar-surface {
-	--muted: #111a12;
-	--border: #222f1b;
-	--sidebar-bg: #121f14;
+	--muted: #14200f;
+	--border: #2a3a22;
+	--sidebar-bg: #192313;
 }
 :root[data-theme="forest"][data-mode="light"] .sidebar-surface {
 	--muted: #ccd8bd;
@@ -1175,9 +1178,9 @@ a {
 }
 
 :root[data-theme="bee"][data-mode="dark"] .sidebar-surface {
-	--muted: #1c1608;
-	--border: #2e2b15;
-	--sidebar-bg: #211a07;
+	--muted: #1e1b0b;
+	--border: #33301a;
+	--sidebar-bg: #23200e;
 }
 :root[data-theme="bee"][data-mode="light"] .sidebar-surface {
 	--muted: #ebdcae;
@@ -1186,9 +1189,9 @@ a {
 }
 
 :root[data-theme="mint"][data-mode="dark"] .sidebar-surface {
-	--muted: #0a1a1b;
-	--border: #1b2d31;
-	--sidebar-bg: #0a1f20;
+	--muted: #0f1c1f;
+	--border: #233a3e;
+	--sidebar-bg: #142326;
 }
 :root[data-theme="mint"][data-mode="light"] .sidebar-surface {
 	--muted: #c3ded7;
@@ -1197,9 +1200,9 @@ a {
 }
 
 :root[data-theme="parchment"][data-mode="dark"] .sidebar-surface {
-	--muted: #22110f;
-	--border: #332624;
-	--sidebar-bg: #2a1310;
+	--muted: #221815;
+	--border: #3a2b27;
+	--sidebar-bg: #291e1b;
 }
 :root[data-theme="parchment"][data-mode="light"] .sidebar-surface {
 	--muted: #e4d5bd;

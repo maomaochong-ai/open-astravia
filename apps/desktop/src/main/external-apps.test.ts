@@ -10,6 +10,7 @@ import {
 	parseWindowsShellVerbs,
 	windowsApplicationName,
 	windowsLaunchPlan,
+	windowsProgramsFromExecutables,
 } from "./external-apps.js";
 
 /**
@@ -270,8 +271,39 @@ describe("windowsApplicationName", () => {
 });
 
 /**
- * 编辑器与终端窗口会一直开到用户关它为止：等子进程退出等于让按钮一直转圈。
+ * 用户自装的编辑器不在固定安装目录，也不一定进 App Paths：菜单曾经因此
+ * 「检测不到本机编程软件」。目录扫描把两者都盖住，但只能靠 exe 名认应用。
  */
+describe("windowsProgramsFromExecutables", () => {
+	it("认得按用户装的编辑器与 JetBrains Toolbox 的深路径", () => {
+		const apps = windowsProgramsFromExecutables([
+			"C:\\Users\\me\\AppData\\Local\\Programs\\cursor\\Cursor.exe",
+			"C:\\Users\\me\\AppData\\Local\\Programs\\VSCodium\\VSCodium.exe",
+			"C:\\Users\\me\\AppData\\Local\\JetBrains\\Toolbox\\apps\\IntelliJ IDEA Ultimate\\ch-0\\243.1\\bin\\idea64.exe",
+		]);
+
+		expect(apps.map((app) => app.name)).toEqual(["Cursor", "VSCodium", "IntelliJ IDEA"]);
+		expect(apps.every((app) => app.kind === "editor")).toBe(true);
+	});
+
+	it("安装器附件与未知 exe 不进菜单", () => {
+		const apps = windowsProgramsFromExecutables([
+			"C:\\Users\\me\\AppData\\Local\\Programs\\cursor\\Uninstall Cursor.exe",
+			"C:\\Users\\me\\AppData\\Local\\Programs\\cursor\\crashpad_handler.exe",
+			"C:\\Users\\me\\AppData\\Local\\Programs\\autostart-helper.exe",
+		]);
+
+		expect(apps).toEqual([]);
+	});
+
+	it("同一个 exe 出现两次只留一条", () => {
+		const apps = windowsProgramsFromExecutables(["C:\\Apps\\Code.exe", "c:\\apps\\code.exe"]);
+
+		expect(apps).toHaveLength(1);
+		expect(windowsApplicationName(apps[0].applicationPath)).toBe("Visual Studio Code");
+	});
+});
+
 describe("launchDetached", () => {
 	it("长驻进程一启动就返回，不等它退出", async () => {
 		const marker = join(tmpdir(), `astravia-detached-${process.pid}-${Date.now()}`);

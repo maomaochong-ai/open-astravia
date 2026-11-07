@@ -156,7 +156,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 	const labels = useMemo<InputBarModel["labels"]>(() => ({
 		capsule: { removeDefault: t("inputBar.capsule.removeDefault"), removeImage: t("inputBar.capsule.removeImage"), removeTooltip: (path) => t("inputBar.capsule.removeTooltip", { path }), activeGroup: (count) => t("inputBar.capsule.activeGroup", { count }) },
 		permission: { deny: t("inputBar.permission.deny"), allow: t("inputBar.permission.allow"), allowSession: t("inputBar.permission.allowSession") },
-		toolbar: { skills: t("inputBar.toolbar.skills"), addImage: t("inputBar.toolbar.addImage"), attachFile: t("inputBar.toolbar.attachFile"), queue: t("inputBar.drawer.queueLabel") },
+		toolbar: { skills: t("inputBar.toolbar.skills"), addImage: t("inputBar.toolbar.addImage"), attachFile: t("inputBar.toolbar.attachFile"), queue: t("inputBar.drawer.queueLabel"), guide: t("inputBar.toolbar.guide") },
 	}), [t]);
 	const contextMenu: InputBarContextMenuViewProps | null = contextMenuModel.contextMenu;
 
@@ -229,6 +229,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 			handleSelectImages: attachments.handleSelectImages,
 			handleSelectFiles: attachments.handleSelectFiles,
 			handleSend: trigger.handleSend,
+			handleGuide: trigger.handleGuide,
 			handleAbort: trigger.handleAbort,
 			cancelPendingEdit: attachments.cancelPendingEdit,
 		},

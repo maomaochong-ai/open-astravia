@@ -3,7 +3,12 @@ import { type ContextUsageData, contextUsageAtom, isCompactingAtom } from "@shar
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { buildContextRingDetails, type ContextRingDetailsModel, formatTokens } from "../services/context-ring-details";
+import {
+	buildContextRingDetails,
+	type ContextRingDetailsModel,
+	formatTokens,
+	formatUsagePercent,
+} from "../services/context-ring-details";
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
@@ -173,10 +178,10 @@ export function buildContextRingModel(
 						? "contextRing.tooltip.usage"
 						: "contextRing.tooltip.usageWithThreshold",
 					{
-						percent: rawPercent.toFixed(1),
+						percent: formatUsagePercent(percent),
+						threshold: formatUsagePercent(thresholdPercent),
 						window: formatTokens(ctx.contextWindow),
 						tokens: formatTokens(contextTokens),
-						threshold: thresholdPercent.toFixed(0),
 					},
 				)
 			: t("contextRing.tooltip.unknown", { window: formatTokens(ctx.contextWindow) });

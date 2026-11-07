@@ -624,7 +624,8 @@
 		"toolbar": {
 			"addImage": "添加图片",
 			"attachFile": "附加文件引用",
-			"skills": "技能"
+			"skills": "技能",
+			"guide": "引导会话（立即注入，不中断当前回答）"
 		},
 		"speech": {
 			"actions": {

@@ -1,10 +1,11 @@
 import { TabBar } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import { ActivityPanel as ActivityPanelPrimitive } from "@astravia-org/theme-ui/activity/ActivityPanel";
-import { type ComponentType, useRef, useState } from "react";
+import { type ComponentType, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDockedContentReady } from "../../hooks/useDockedContentReady";
 import { useDockedOutlet } from "../../hooks/useDockedOutlet";
+import { useActivityTabMaximize } from "../../hooks/useActivityTabMaximize";
 import { FullScreenToggleButton } from "../FullScreenToggleButton";
 import { PluginTabPicker } from "../PluginTabPicker";
 import { ActivityTabContextMenu } from "./ActivityTabContextMenu";
@@ -73,7 +74,18 @@ export function ActivityPanelView({
 		) : null;
 	// 全屏按钮和标签菜单同属右侧的工具位，只要面板可见就一直可用；
 	// 不跟随「没有溢出标签」等条件隐藏，否则用户进入全屏后找不到退出口。
-	const fullScreenToggle = renderDockedPanel ? <FullScreenToggleButton className="mr-2" /> : null;
+	const fullScreen = useActivityTabMaximize(desktopRef);
+	const { isMaximized, exit: exitFullScreen } = fullScreen;
+	const fullScreenToggle = renderDockedPanel ? (
+		<FullScreenToggleButton isFullScreen={isMaximized} onToggle={fullScreen.toggle} />
+	) : null;
+	// 面板铺满时宽度直接取内容行的实测值；首帧还没量到时先沿旧宽度，
+	// 避免出现一帧 width=0 的闪烁。
+	const panelWidth = isMaximized && fullScreen.width > 0 ? fullScreen.width : model.width;
+	// 面板关闭后不把「铺满」带到下一次打开，否则再开时会铺满且没有可拖的边界。
+	useEffect(() => {
+		if (!model.isOpen) exitFullScreen();
+	}, [exitFullScreen, model.isOpen]);
 	const [dockedOutlet, registerDockedOutlet] = useDockedOutlet();
 
 	const panelBody = renderDockedPanel ? (
@@ -81,8 +93,8 @@ export function ActivityPanelView({
 			{tabBar || tabPicker || fullScreenToggle ? (
 				<ActivityPanelPrimitive.Header>
 					{tabBar}
-					{tabPicker}
 					{fullScreenToggle}
+					{tabPicker}
 				</ActivityPanelPrimitive.Header>
 			) : null}
 			<Frame>
@@ -98,9 +110,9 @@ export function ActivityPanelView({
 			<ActivityPanelPrimitive.Root
 				isOpen={model.isOpen}
 				isResizing={model.isResizing}
-				width={model.width}
-				minWidth={model.minWidth}
-				maxWidth={model.maxWidth}
+				width={panelWidth}
+				minWidth={isMaximized ? panelWidth : model.minWidth}
+				maxWidth={isMaximized ? panelWidth : model.maxWidth}
 				onOpenChange={(open) => {
 					if (!open) actions.onClose();
 				}}
@@ -110,7 +122,7 @@ export function ActivityPanelView({
 			>
 				<ActivityPanelPrimitive.Desktop ref={desktopRef} present={!model.narrowSheet}>
 					<ActivityPanelPrimitive.Surface>{panelBody}</ActivityPanelPrimitive.Surface>
-					<ActivityPanelPrimitive.ResizeHandle />
+					{isMaximized ? null : <ActivityPanelPrimitive.ResizeHandle />}
 				</ActivityPanelPrimitive.Desktop>
 				<ActivityPanelPrimitive.Sheet present={model.bottomSheet}>
 					{panelBody}

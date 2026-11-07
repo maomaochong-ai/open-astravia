@@ -1,74 +1,37 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { FullScreenToggleButton } from "./FullScreenToggleButton";
 
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-let fullScreen = false;
-let emitChange: ((value: boolean) => void) | undefined;
-const toggleFullScreen = vi.fn(async () => {
-	fullScreen = !fullScreen;
-	emitChange?.(fullScreen);
-	return fullScreen;
-});
-
-beforeEach(() => {
-	fullScreen = false;
-	emitChange = undefined;
-	toggleFullScreen.mockClear();
-	Object.defineProperty(window, "astravia", {
-		configurable: true,
-		value: {
-			window: {
-				isFullScreen: async () => fullScreen,
-				onFullScreenChanged: (handler: (value: boolean) => void) => {
-					emitChange = handler;
-					return () => {
-						emitChange = undefined;
-					};
-				},
-				toggleFullScreen,
-			},
-		},
-	});
-});
-
 afterEach(cleanup);
 
 describe("FullScreenToggleButton", () => {
-	it("starts from the window's real state, so the first click goes the right way", async () => {
-		// 用户可能已经用绿灯或 Esc 进过全屏，按钮不能假设自己是「未全屏」。
-		fullScreen = true;
-		render(<FullScreenToggleButton />);
+	it("未铺满时显示放大图标，点击后把状态交给调用方", () => {
+		const onToggle = vi.fn();
+		render(<FullScreenToggleButton isFullScreen={false} onToggle={onToggle} />);
+		const button = screen.getByRole("button");
 
-		await waitFor(() => expect(screen.getByRole("button").getAttribute("aria-pressed")).toBe("true"));
-		expect(screen.getByRole("button").getAttribute("aria-label")).toBe("tabPicker.exitFullScreen");
+		expect(button.getAttribute("aria-label")).toBe("tabPicker.enterFullScreen");
+		expect(button.getAttribute("aria-pressed")).toBe("false");
+		expect(button.innerHTML).toContain("icon-[solar--maximize-square-3-linear]");
+
+		fireEvent.click(button);
+
+		expect(onToggle).toHaveBeenCalledTimes(1);
 	});
 
-	it("toggles the host window and follows the state pushed back from the main process", async () => {
-		render(<FullScreenToggleButton />);
-		await waitFor(() => expect(screen.getByRole("button").getAttribute("aria-pressed")).toBe("false"));
-		expect(screen.getByRole("button").getAttribute("aria-label")).toBe("tabPicker.enterFullScreen");
+	it("铺满后换成缩小图标，避免一直显示同一个图标", () => {
+		render(<FullScreenToggleButton isFullScreen onToggle={vi.fn()} />);
+		const button = screen.getByRole("button");
 
-		fireEvent.click(screen.getByRole("button"));
-
-		expect(toggleFullScreen).toHaveBeenCalledTimes(1);
-		await waitFor(() => expect(screen.getByRole("button").getAttribute("aria-pressed")).toBe("true"));
-		expect(screen.getByRole("button").getAttribute("aria-label")).toBe("tabPicker.exitFullScreen");
-	});
-
-	it("degrades quietly when the bridge has no window api instead of taking the tab bar down", () => {
-		// 旧版 preload 只注入部分能力：缺方法时按钮仍在、状态停留在未全屏。
-		Object.defineProperty(window, "astravia", { configurable: true, value: {} });
-
-		render(<FullScreenToggleButton />);
-
-		expect(screen.getByRole("button").getAttribute("aria-pressed")).toBe("false");
-		fireEvent.click(screen.getByRole("button"));
-		expect(toggleFullScreen).not.toHaveBeenCalled();
+		expect(button.getAttribute("aria-label")).toBe("tabPicker.exitFullScreen");
+		expect(button.getAttribute("aria-pressed")).toBe("true");
+		expect(button.innerHTML).toContain("icon-[solar--minimize-square-3-linear]");
+		expect(button.innerHTML).not.toContain("icon-[solar--maximize-square-3-linear]");
 	});
 });

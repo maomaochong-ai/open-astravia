@@ -93,6 +93,12 @@ export function useInputBarTriggerModel({
 		void onSend(undefined, { interactionId, streamingBehavior: "followUp" });
 		perfSendMark("handler-return", interactionId);
 	}, [onSend]);
+	// 引导会话：消息直接注入当前回合（steer），不排队、不中断正在跑的回答。
+	const handleGuide = useCallback(() => {
+		const interactionId = perfSendBegin("guide-button");
+		void onSend(undefined, { interactionId, streamingBehavior: "steer" });
+		perfSendMark("handler-return", interactionId);
+	}, [onSend]);
 	const handleAbort = useCallback(async () => {
 		try {
 			await onAbort();
@@ -196,6 +202,7 @@ export function useInputBarTriggerModel({
 		handleConnectorSelect,
 		handleEnter,
 		handlePlusClick,
+		handleGuide,
 		handleSend,
 		handleSlashClose: dismissTrigger,
 		handleSlashSelect,

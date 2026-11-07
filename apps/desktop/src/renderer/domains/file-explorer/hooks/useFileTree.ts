@@ -12,7 +12,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { emitPluginFileExplorerFilesChanged } from "../../plugins/runtime/plugin-file-explorer-host";
 import { createFileTreeVisibleCache, type FileTreeVisibleCache } from "./file-tree-visible-cache";
-import { createDirectoryReloadScheduler } from "./file-tree-watch-coalesce";
+import { createDirectoryReloadScheduler, watchPathKey } from "./file-tree-watch-coalesce";
 
 /**
  * @param cwdOverride 显式指定的根目录。不传则回退到当前活动 session 的 cwd，
@@ -221,46 +221,45 @@ export function useFileTree(cwdOverride?: string | null) {
 		}
 	}, [rootCwd, setCache, setExpandedDirs, setLoadingDirs, loadDir]);
 
-	// Watch expanded directories + root for filesystem changes
-	const watchedDirsRef = useRef<Set<string>>(new Set());
+	// Watch expanded directories + root for filesystem changes.
+	// 登记的键是 `watchPathKey`，主进程广播回来的是 resolve 过的路径；
+	// 换目录时只做增量 diff，不在每次展开时把所有 watcher 拆掉重建——
+	// 那段空窗期里发生的变化在 Windows 上会直接丢掉。
+	const watchedDirsRef = useRef<Map<string, string>>(new Map());
 	useEffect(() => {
-		const dirsToWatch = new Set<string>();
-		if (rootCwd) dirsToWatch.add(rootCwd);
-		for (const dir of expandedDirs) dirsToWatch.add(dir);
+		const desired = new Map<string, string>();
+		if (rootCwd) desired.set(watchPathKey(rootCwd), rootCwd);
+		for (const dir of expandedDirs) desired.set(watchPathKey(dir), dir);
 
-		const prev = watchedDirsRef.current;
+		const previous = watchedDirsRef.current;
 
-		// Start watching new dirs
-		for (const dir of dirsToWatch) {
-			if (!prev.has(dir)) {
-				void window.astravia.fs.watchDir(dir);
-			}
+		for (const [key, dir] of desired) {
+			if (!previous.has(key)) void window.astravia.fs.watchDir(dir);
 		}
-		// Stop watching removed dirs
-		for (const dir of prev) {
-			if (!dirsToWatch.has(dir)) {
-				void window.astravia.fs.unwatchDir(dir);
-			}
+		for (const [key, dir] of previous) {
+			if (!desired.has(key)) void window.astravia.fs.unwatchDir(dir);
 		}
 
-		watchedDirsRef.current = dirsToWatch;
-
-		return () => {
-			// Cleanup on unmount: unwatch all
-			for (const dir of watchedDirsRef.current) {
-				void window.astravia.fs.unwatchDir(dir);
-			}
-			watchedDirsRef.current = new Set();
-		};
+		watchedDirsRef.current = desired;
 	}, [rootCwd, expandedDirs]);
+
+	// Unmount 才放掉全部 watcher。
+	useEffect(() => {
+		return () => {
+			// 必须读卸载时的当前值：上面的 effect 每次都会整体替换这个 Map，
+			// 捕获挂载瞬间那个空 Map 会漏掉后来挂上的监听。
+			for (const dir of watchedDirsRef.current.values()) void window.astravia.fs.unwatchDir(dir);
+			watchedDirsRef.current.clear();
+		};
+	}, []);
 
 	// Subscribe to dir-changed events from main process
 	useEffect(() => {
-		const scheduler = createDirectoryReloadScheduler((dirPath: string) => {
-			emitPluginFileExplorerFilesChanged([{ type: "changed", path: dirPath }]);
-			if (watchedDirsRef.current.has(dirPath)) {
-				void loadDir(dirPath);
-			}
+		const scheduler = createDirectoryReloadScheduler((changedPath: string) => {
+			const watchedDir = watchedDirsRef.current.get(watchPathKey(changedPath));
+			emitPluginFileExplorerFilesChanged([{ type: "changed", path: watchedDir ?? changedPath }]);
+			// 用渲染层自己那份路径重新读，否则缓存里会多出一份只在大小写/分隔符上不同的键。
+			if (watchedDir !== undefined) void loadDir(watchedDir);
 		});
 		const unsub = window.astravia.fs.onDirChanged((dirPath: string) => {
 			scheduler.notify(dirPath);

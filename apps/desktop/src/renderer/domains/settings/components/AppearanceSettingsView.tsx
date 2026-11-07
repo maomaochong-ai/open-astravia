@@ -15,9 +15,11 @@ import themeLock from "../assets/theme-lock.webp";
 import { SETTINGS_SECTION } from "../registry";
 import { MotionSelect, SettingHeading } from "@astravia-org/theme-ui/settings";
 import type { SidebarStyle } from "@shared/theme/sidebar-style";
+import { uiFontStack } from "@shared/theme/ui-font";
 import type {
 	AppearanceCursorOption,
 	AppearanceOrnamentOption,
+	AppearanceFontOption,
 	AppearanceLanguageOption,
 	AppearanceModeOption,
 	AppearanceSettingsModel,
@@ -272,6 +274,42 @@ function SidebarStylePreview({ style }: { style: SidebarStyle }): JSX.Element {
 	);
 }
 
+/**
+ * 字体卡：预览用该字体自己的字体栈写一行示例，选中前就能看出字形差。
+ * 示例文字不翻译——它展示的是字形而不是内容。
+ */
+const FontCard = memo(function FontCard({
+	active,
+	hint,
+	id,
+	label,
+	onSelect,
+}: AppearanceFontOption & {
+	onSelect: (family: AppearanceFontOption["id"]) => void;
+}): JSX.Element {
+	return (
+		<button
+			type="button"
+			onClick={() => onSelect(id)}
+			className={cn(
+				"group relative flex min-h-[72px] flex-col justify-center gap-1 rounded-xl border bg-card px-3.5 py-3 text-left transition-all",
+				active ? SELECTION_ACTIVE : SELECTION_IDLE,
+			)}
+		>
+			<span
+				aria-hidden="true"
+				className="text-[17px] leading-tight text-foreground"
+				style={{ fontFamily: uiFontStack(id) ?? undefined }}
+			>
+				Astravia 字体 Aa
+			</span>
+			<div className="text-[13px] font-medium text-foreground">{label}</div>
+			<div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">{hint}</div>
+			{active && <SelectionCheckBadge />}
+		</button>
+	);
+});
+
 const SidebarStyleCard = memo(function SidebarStyleCard({
 	active,
 	hint,
@@ -525,6 +563,16 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 							active={model.mode === mode.value}
 							onSelect={model.actions.changeMode}
 						/>
+					))}
+				</div>
+			</div>
+
+			<div className="mb-6">
+				<SettingHeading title={model.labels.sections.font} section={SETTINGS_SECTION["appearance-font"]} className="mb-1" />
+				<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.uiFontHint}</p>
+				<div className="grid grid-cols-2 gap-3">
+					{model.uiFontOptions.map((option) => (
+						<FontCard key={option.id} {...option} onSelect={model.actions.setUiFont} />
 					))}
 				</div>
 			</div>

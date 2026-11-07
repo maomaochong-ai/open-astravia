@@ -5,6 +5,7 @@ import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
 import { useNewSessionTexture } from "@shared/hooks/useNewSessionTexture";
 import { useSidebarStyle } from "@shared/hooks/useSidebarStyle";
 import { useTheme } from "@shared/hooks/useTheme";
+import { useUiFont } from "@shared/hooks/useUiFont";
 import type { ThemeMode } from "@shared/store/atoms";
 import { type CursorStyle, STOAT_CURSOR_PREVIEW_URL } from "@shared/theme/cursor";
 import { NEW_SESSION_TEXTURE_CATALOG, type NewSessionTextureId } from "@shared/theme/new-session-texture";
@@ -13,6 +14,7 @@ import { useThemeRuntime } from "@shared/theme/runtime";
 import type { SidebarStyle } from "@shared/theme/sidebar-style";
 import { THEMES } from "@shared/theme/themes";
 import type { ThemeDef } from "@shared/theme/tokens";
+import type { UiFontFamily } from "@shared/theme/ui-font";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { isAppearanceUiThemeEnabled } from "@/shared/feature-flags";
@@ -83,6 +85,12 @@ export interface AppearanceSidebarStyleOption {
 	label: string;
 }
 
+export interface AppearanceFontOption {
+	active: boolean;
+	hint: string;
+	id: UiFontFamily;
+	label: string;
+}
 export interface AppearanceSettingsModel {
 	actions: {
 		changeLanguage: (language: LanguagePreference) => void;
@@ -93,6 +101,7 @@ export interface AppearanceSettingsModel {
 		setOrnament: (id: OrnamentId) => void;
 		setSidebarStyle: (style: SidebarStyle) => void;
 		setTexture: (id: NewSessionTextureId) => void;
+		setUiFont: (family: UiFontFamily) => void;
 	};
 	activeUiThemeId: string;
 	cursorOptions: AppearanceCursorOption[];
@@ -107,6 +116,7 @@ export interface AppearanceSettingsModel {
 			cursor: string;
 			language: string;
 			mode: string;
+			font: string;
 			ornament: string;
 			sidebar: string;
 			texture: string;
@@ -115,6 +125,7 @@ export interface AppearanceSettingsModel {
 		};
 		textureHint: string;
 		title: string;
+		uiFontHint: string;
 	};
 	/** 用户语言偏好（含 system），用于选择器高亮。 */
 	language: LanguagePreference;
@@ -124,6 +135,8 @@ export interface AppearanceSettingsModel {
 	narrow: boolean;
 	ornamentId: OrnamentId;
 	ornamentOptions: AppearanceOrnamentOption[];
+	uiFontOptions: AppearanceFontOption[];
+	uiFont: UiFontFamily;
 	/** 是否展示「界面主题」区段（`ASTRAVIA_SHOW_UI_THEME=true`） */
 	showUiTheme: boolean;
 	sidebarStyle: SidebarStyle;
@@ -216,6 +229,29 @@ const SIDEBAR_STYLE_OPTIONS = [
 	},
 ] as const;
 
+const UI_FONT_OPTIONS = [
+	{
+		id: "system" as const,
+		labelKey: "uiFontSystemTitle",
+		hintKey: "uiFontSystemHint",
+	},
+	{
+		id: "rounded" as const,
+		labelKey: "uiFontRoundedTitle",
+		hintKey: "uiFontRoundedHint",
+	},
+	{
+		id: "serif" as const,
+		labelKey: "uiFontSerifTitle",
+		hintKey: "uiFontSerifHint",
+	},
+	{
+		id: "mono" as const,
+		labelKey: "uiFontMonoTitle",
+		hintKey: "uiFontMonoHint",
+	},
+] as const;
+
 const COLOR_THEME_LABEL_KEYS = {
 	mono: "colorThemes.mono",
 	default: "colorThemes.default",
@@ -232,6 +268,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	const { languagePreference, setLanguage } = useLanguage();
 	const { style: cursorStyle, setStyle: setCursorStyle } = useCursorStyle();
 	const { style: sidebarStyle, setStyle: setSidebarStyle } = useSidebarStyle();
+	const { family: uiFont, setFamily: setUiFont } = useUiFont();
 	const { ornamentId, setOrnament } = useHeroOrnament();
 	const { textureId, setTexture } = useNewSessionTexture();
 	const { t } = useTranslation("settings");
@@ -327,6 +364,17 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		[sidebarStyle, t],
 	);
 
+	const uiFontOptions = useMemo<AppearanceFontOption[]>(
+		() =>
+			UI_FONT_OPTIONS.map((option) => ({
+				id: option.id,
+				active: uiFont === option.id,
+				label: t(option.labelKey),
+				hint: t(option.hintKey),
+			})),
+		[t, uiFont],
+	);
+
 	const themes = useMemo(
 		() =>
 			THEMES.map((theme) => {
@@ -349,6 +397,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 				cursor: t(SETTINGS_SECTION["appearance-cursor"].titleKey),
 				language: t(SETTINGS_SECTION["appearance-language"].titleKey),
 				mode: t(SETTINGS_SECTION["appearance-mode"].titleKey),
+				font: t(SETTINGS_SECTION["appearance-font"].titleKey),
 				ornament: t(SETTINGS_SECTION["appearance-ornament"].titleKey),
 				sidebar: t(SETTINGS_SECTION["appearance-sidebar"].titleKey),
 				texture: t(SETTINGS_SECTION["appearance-texture"].titleKey),
@@ -357,6 +406,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 			},
 			textureHint: t("textureHint"),
 			title: t("appearanceTitle"),
+			uiFontHint: t("uiFontHint"),
 		}),
 		[t],
 	);
@@ -404,8 +454,22 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 					value: style,
 				});
 			},
+			setUiFont: (family) => {
+				setUiFont(family);
+				recordSettingsUsage({ tab: "appearance", action: "changed", target: "ui-font", value: family });
+			},
 		}),
-		[selectTheme, setCursorStyle, setLanguage, setMode, setOrnament, setSidebarStyle, setTexture, setThemeName],
+		[
+			selectTheme,
+			setCursorStyle,
+			setLanguage,
+			setMode,
+			setOrnament,
+			setSidebarStyle,
+			setTexture,
+			setThemeName,
+			setUiFont,
+		],
 	);
 
 	return {
@@ -428,6 +492,8 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		textureOptions,
 		themeName,
 		themes,
+		uiFont,
+		uiFontOptions,
 		uiThemes,
 	};
 }

@@ -417,6 +417,7 @@ export function TeamComposerConnector({
 				addImage: model.labels.attachImage,
 				attachFile: model.labels.attachFile,
 				queue: t("inputBar.drawer.queueLabel"),
+				guide: t("inputBar.toolbar.guide"),
 			},
 		},
 		actions: {
@@ -431,6 +432,7 @@ export function TeamComposerConnector({
 			handleSelectImages: actions.selectImages,
 			handleSelectFiles: actions.selectFiles,
 			handleSend: trigger.handleSend,
+			handleGuide: trigger.handleGuide,
 			handleAbort: trigger.handleAbort,
 			cancelPendingEdit: () => undefined,
 		},

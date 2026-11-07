@@ -245,3 +245,11 @@ export function formatTokens(count: number): string {
 	if (count < 1_000_000) return `${Math.round(count / 1_000)}k`;
 	return `${(count / 1_000_000).toFixed(1)}M`;
 }
+
+/**
+ * 用量百分比的唯一展示口径。压缩环提示与斜杠面板的压缩条目都取这一个取整结果，
+ * 否则同一份用量会出现「99.6%」和「99%」两个数字。
+ */
+export function formatUsagePercent(percent: number): string {
+	return Math.round(Math.min(100, Math.max(0, percent))).toString();
+}

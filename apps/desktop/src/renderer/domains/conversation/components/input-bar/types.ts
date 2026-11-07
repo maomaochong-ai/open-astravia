@@ -77,6 +77,7 @@ export interface InputBarLabels {
 		addImage: string;
 		attachFile: string;
 		queue: string;
+		guide: string;
 	};
 }
 
@@ -277,6 +278,8 @@ export interface InputBarModel {
 		handleSelectImages: () => Promise<void>;
 		handleSelectFiles: () => Promise<void>;
 		handleSend: () => void;
+		/** 引导会话：把当前输入以 steer 注入正在进行的回合，不排队也不中断模型。 */
+		handleGuide: () => void;
 		handleAbort: () => Promise<void>;
 		cancelPendingEdit: () => void;
 	};

@@ -69,9 +69,11 @@ export function InputBarTrailingActions({ model }: { readonly model: InputBarMod
 				isEmpty={model.isEmpty}
 				isStreaming={model.isStreaming}
 				queueTitle={model.labels.toolbar.queue}
+				guideTitle={model.labels.toolbar.guide}
 				pending={model.sendPending}
 				onAbort={model.actions.handleAbort}
 				onSend={model.actions.handleSend}
+				onGuide={model.actions.handleGuide}
 			/>
 		</>
 	);

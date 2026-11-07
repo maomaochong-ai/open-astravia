@@ -12,6 +12,7 @@ import type {
 	CommandPanelProps,
 } from "../components/command-panel/types";
 import type { ConnectorGridItem } from "./useConnectorGrid";
+import { formatUsagePercent } from "../services/context-ring-details";
 import { useConnectorGrid } from "./useConnectorGrid";
 import {
 	type InputActionBarModel,
@@ -119,8 +120,9 @@ export function useCommandPanelModel({
 
 	const operation = useMemo<CommandPanelOperationItem | undefined>(() => {
 		if (!allowCompaction || !activeSession || !operationMatches || compactionEligibility.status === "ineligible") return undefined;
-		// `contextRing.percent` 已经是 0–100 的进度口径，这里只取整。
-		const percent = contextRing ? Math.round(contextRing.percent) : null;
+		// `contextRing.percent` 已经是 0–100 的进度口径；取整走与压缩环提示相同的格式化，
+		// 否则同一份用量会在两个地方显示成不同数字。
+		const percent = contextRing ? formatUsagePercent(contextRing.percent) : null;
 		const description = contextRing?.isCompacting
 			? t("slashPanel.compaction.compacting")
 			: queuedCompaction || queueingCompaction

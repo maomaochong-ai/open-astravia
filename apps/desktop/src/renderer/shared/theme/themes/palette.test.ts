@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { ThemeColorTokens } from "@astravia-org/theme-sdk/appearance";
 import { describe, expect, it } from "vitest";
 import type { ThemeDef } from "../tokens.js";
@@ -177,5 +178,29 @@ describe("四套主题彼此可分辨", () => {
 		const [, mintGreen, mintBlue] = channels(mintTheme.dark.background);
 		expect(forestGreen).toBeGreaterThan(forestBlue);
 		expect(mintBlue).toBeGreaterThan(mintGreen);
+	});
+});
+
+/**
+ * 深色侧栏的底色没有写在主题对象里，而是以 `--sidebar-bg` 出现在 styles.css 的
+ * `.sidebar-surface` 块。它曾经比画布还黑一档（亮度 0.008–0.012），四套主题的深色
+ * 左栏都读成一块黑洞——那是「侧栏过深」的实际来源。这里把「比画布深一档」这件事
+ * 锁在 1.04–1.10 的窄带里：低到看不见脊，高到重新变黑，都会在这里失败。
+ */
+describe("深色侧栏与画布只差一档", () => {
+	const css = readFileSync(new URL("../../../styles.css", import.meta.url), "utf8");
+
+	function darkSidebar(themeId: string): string {
+		const block = css.match(
+			new RegExp(`\\[data-theme="${themeId}"\\]\\[data-mode="dark"\\]\\s*\\.sidebar-surface\\s*{([^}]*)}`),
+		);
+		const value = block?.[1].match(/--sidebar-bg:\s*(#[0-9a-f]{6})/i);
+		if (!value) throw new Error(`styles.css 里找不到 ${themeId} 的深色 --sidebar-bg`);
+		return value[1];
+	}
+
+	it.each(THEMES)("$id 的深色侧栏比画布深 1.04–1.10", (theme) => {
+		expect(contrast(darkSidebar(theme.id), theme.dark.background)).toBeGreaterThanOrEqual(1.04);
+		expect(contrast(darkSidebar(theme.id), theme.dark.background)).toBeLessThanOrEqual(1.1);
 	});
 });

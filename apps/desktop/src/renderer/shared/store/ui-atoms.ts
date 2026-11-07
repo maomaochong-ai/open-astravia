@@ -13,6 +13,7 @@ import { type CursorStyle, getStoredCursorStyle } from "../theme/cursor";
 import { getStoredNewSessionTextureId, type NewSessionTextureId } from "../theme/new-session-texture";
 import { getStoredOrnamentId, type OrnamentId } from "../theme/ornament";
 import { getStoredSidebarStyle, type SidebarStyle } from "../theme/sidebar-style";
+import { getStoredUiFont, type UiFontFamily } from "../theme/ui-font";
 
 // ─── i18n ───
 // 初值取主进程同步暴露的语言状态（preference + 解析后 language）。
@@ -105,6 +106,9 @@ export type { CursorStyle };
 export const cursorStyleAtom = atom<CursorStyle>(getStoredCursorStyle());
 export type { SidebarStyle };
 export const sidebarStyleAtom = atom<SidebarStyle>(getStoredSidebarStyle());
+export type { UiFontFamily };
+/** 界面字体只换 `--font-sans` 这一个令牌，不影响主题与布局。 */
+export const uiFontAtom = atom<UiFontFamily>(getStoredUiFont());
 export type { OrnamentId };
 /** 新会话页装饰件位当前挂着谁。 */
 export const heroOrnamentAtom = atom<OrnamentId>(getStoredOrnamentId());

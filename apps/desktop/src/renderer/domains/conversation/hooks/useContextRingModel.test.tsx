@@ -6,6 +6,7 @@ import type { ContextCompositionReport } from "@astravia/runtime-core";
 import { createStore, Provider } from "jotai";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { formatUsagePercent } from "../services/context-ring-details";
 import { buildContextRingModel, useContextRingScopeModels, useDefaultContextRingModel } from "./useContextRingModel";
 
 const contextRingModelCapture = vi.hoisted(() => ({
@@ -148,8 +149,9 @@ describe("useContextRingModel", () => {
 		expect(unknownThreshold?.tooltip).toBe("contextRing.tooltip.usage");
 	});
 
-	it("caps the ring at a full circle while the tooltip still reports the real overflow", () => {
-		// 超窗时圆环只能是满的，但 tooltip 必须还是真实占用——两处各 clamp 一遍就会分叉。
+	it("formats the tooltip percent with the same rounding the ring uses", () => {
+		// 超窗时圆环只能是满的；提示里的百分比也必须与环、与斜杠面板同一口径，
+		// 真实占用由 tokens / window 两个字段承载，不在百分比上再分叉。
 		const tooltips: string[] = [];
 		const t = (key: string, params?: Record<string, unknown>) => {
 			const rendered = `${key}|${String(params?.percent ?? "")}`;
@@ -164,6 +166,23 @@ describe("useContextRingModel", () => {
 
 		expect(model?.percent).toBe(100);
 		expect(model?.offset).toBe(0);
-		expect(tooltips[0]).toBe("contextRing.tooltip.usage|105.0");
+		expect(tooltips[0]).toBe("contextRing.tooltip.usage|100");
+	});
+
+	it("reports the same percent the slash panel shows for the same usage", () => {
+		// 用户会同时看到环的提示和斜杠面板里的压缩条目；两边取整口径一旦不同就会报「对不上」。
+		const percents: string[] = [];
+		const t = (key: string, params?: Record<string, unknown>) => {
+			percents.push(String(params?.percent ?? ""));
+			return key;
+		};
+		const model = buildContextRingModel(
+			{ usage: { percent: 68.46, contextTokens: 684_600, contextWindow: 1_000_000 }, isCompacting: false },
+			t as unknown as typeof contextRingModelCapture.t,
+			null,
+		);
+
+		expect(percents[0]).toBe("68");
+		expect(percents[0]).toBe(formatUsagePercent(model?.percent ?? 0));
 	});
 });

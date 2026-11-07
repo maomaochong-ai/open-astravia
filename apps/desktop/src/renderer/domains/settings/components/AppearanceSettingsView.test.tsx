@@ -39,6 +39,7 @@ function model(
 				setOrnament: vi.fn(),
 				setSidebarStyle: vi.fn(),
 				setTexture: vi.fn(),
+				setUiFont: vi.fn(),
 			},
 			overrides.actions,
 		),
@@ -54,6 +55,7 @@ function model(
 				cursor: "鼠标指针",
 				language: "语言",
 				mode: "外观模式",
+				font: "字体",
 				ornament: "装饰件",
 				sidebar: "侧边栏样式",
 				texture: "纹理",
@@ -62,6 +64,7 @@ function model(
 			},
 			textureHint: "textureHint",
 			title: "外观",
+			uiFontHint: "uiFontHint",
 		},
 		language: "system",
 		languages: [],
@@ -81,6 +84,11 @@ function model(
 		themeName: "default",
 		themes: [],
 		uiThemes: [],
+		uiFont: "system",
+		uiFontOptions: [
+			{ active: true, hint: "uiFontSystemHint", id: "system", label: "系统默认" },
+			{ active: false, hint: "uiFontSerifHint", id: "serif", label: "衬线" },
+		],
 		...overrides,
 	};
 }
@@ -131,5 +139,17 @@ describe("AppearanceSettingsView 的新会话页装饰区域", () => {
 		view.rerender(<AppearanceSettingsView model={{ ...initial, mode: "light" }} />);
 
 		expect(renderMarioPreview).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("AppearanceSettingsView 的字体区域", () => {
+	it("点「衬线」把字体选择交回模型，命中的那张带选中态", async () => {
+		const setUiFont = vi.fn();
+		const view = render(<AppearanceSettingsView model={model({ actions: { setUiFont } })} />);
+
+		await userEvent.click(view.getByText("衬线"));
+
+		expect(setUiFont).toHaveBeenCalledWith("serif");
+		expect(view.getByText("系统默认").closest("button")?.querySelector('[class*="mdi--check"]')).not.toBeNull();
 	});
 });

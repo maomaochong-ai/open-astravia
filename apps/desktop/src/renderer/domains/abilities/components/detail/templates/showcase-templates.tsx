@@ -32,8 +32,10 @@ function ChatBubbles({
 				animate={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.32, delay: 0 }}
 				className={cn(
-					"ml-auto line-clamp-3 rounded-xl rounded-br-md border border-border/60 bg-background/85 text-foreground backdrop-blur-sm",
-					compact ? "max-w-full px-2.5 py-1.5 text-[11px] leading-snug" : "max-w-[92%] px-3 py-2 text-[12px] leading-snug",
+					"ml-auto rounded-xl rounded-br-md border border-border/60 bg-background/85 text-foreground backdrop-blur-sm",
+					compact
+						? "line-clamp-2 max-w-full px-2.5 py-1.5 text-[11px] leading-snug"
+						: "line-clamp-3 max-w-[92%] px-3 py-2 text-[12px] leading-snug",
 				)}
 			>
 				{userPrompt}
@@ -47,8 +49,10 @@ function ChatBubbles({
 				<BotAvatar className="mt-1 shrink-0" />
 				<div
 					className={cn(
-						"min-w-0 flex-1 line-clamp-3 rounded-xl rounded-tl-md border border-primary/25 bg-primary/10 text-foreground backdrop-blur-sm",
-						compact ? "px-2.5 py-1.5 text-[11px] leading-snug" : "px-3 py-2 text-[12px] leading-snug",
+						"min-w-0 flex-1 rounded-xl rounded-tl-md border border-primary/25 bg-primary/10 text-foreground backdrop-blur-sm",
+						compact
+							? "line-clamp-2 px-2.5 py-1.5 text-[11px] leading-snug"
+							: "line-clamp-3 px-3 py-2 text-[12px] leading-snug",
 					)}
 				>
 					{assistantReply}
@@ -122,8 +126,10 @@ export function ShowcaseChatThread({ userPrompt, assistantReply, brandName, bran
 	return (
 		<ReplayableScene label="ability-showcase-chat-thread">
 			<div className="p-3">
-					<div className="mx-auto flex h-44 max-w-[22rem] flex-col overflow-hidden rounded-xl border border-border/60 bg-card/90">
-						<div className="flex items-center gap-2 border-b border-border/50 px-3 py-2">
+					{/* 窗口要装得下「头部 + 两枚两行气泡 + 输入条」：h-44 时正文只剩 70px，
+					    两枚两行气泡要 94px，顶部气泡会被圆角切掉，所以留到 h-52。 */}
+					<div className="mx-auto flex h-52 max-w-[22rem] flex-col overflow-hidden rounded-xl border border-border/60 bg-card/90">
+						<div className="flex shrink-0 items-center gap-2 border-b border-border/50 px-3 py-2">
 							{brandIconUrl ? (
 								<img src={brandIconUrl} alt="" className="h-6 w-6 rounded-md object-cover" />
 							) : (
@@ -134,10 +140,10 @@ export function ShowcaseChatThread({ userPrompt, assistantReply, brandName, bran
 								<div className="mt-0.5 h-1 w-10 rounded-full bg-emerald-400/70" />
 							</div>
 						</div>
-						<div className="flex flex-1 flex-col justify-end gap-2 px-3 py-2.5">
+						<div className="flex min-h-0 flex-1 flex-col justify-end gap-2 overflow-hidden px-3 py-2.5">
 							<ChatBubbles userPrompt={userPrompt} assistantReply={assistantReply} compact />
 						</div>
-						<div className="border-t border-border/50 px-3 py-2">
+						<div className="shrink-0 border-t border-border/50 px-3 py-2">
 							<div className="h-7 rounded-full bg-foreground/[0.04] ring-1 ring-border/40" />
 						</div>
 					</div>

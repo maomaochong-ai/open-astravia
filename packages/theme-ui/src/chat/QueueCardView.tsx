@@ -154,7 +154,7 @@ function QueueItemRow({
 					onClick={() => onRecall(item.id)}
 					title={recallTitle}
 					aria-label={recallTitle}
-					className="flex shrink-0 items-center text-muted-foreground/50 opacity-0 transition-all hover:text-foreground group-hover:opacity-100"
+					className="flex shrink-0 items-center text-muted-foreground/70 transition-colors hover:text-foreground"
 				>
 					<span className="icon-[solar--pen-2-linear] text-sm" />
 				</button>
@@ -164,7 +164,7 @@ function QueueItemRow({
 				onClick={() => onRemove(item.id)}
 				title={deleteTitle}
 				aria-label={deleteTitle}
-				className="flex shrink-0 items-center text-muted-foreground/50 opacity-0 transition-all hover:text-destructive group-hover:opacity-100"
+				className="flex shrink-0 items-center text-muted-foreground/70 transition-colors hover:text-destructive"
 			>
 				<span className="icon-[solar--trash-bin-trash-linear] text-sm" />
 			</button>

@@ -196,7 +196,16 @@ const RETIRED_SCENE_TESTS = desktopTests(
 	"src/main/abilities/open-marketplace/marketplace-schema.test.ts",
 	"src/renderer/domains/abilities/components/detail/AbilityDetailBlocks.test.tsx",
 );
+/**
+ * 旧的全屏开关 hook 已并入 `useActivityTabMaximize`：删掉它时，
+ * 行为由新 hook 的单测与按钮组件测试接管，不能让删除本身变成「无关联测试」。
+ */
+const RETIRED_FULLSCREEN_TOGGLE_TESTS = desktopTests(
+	"src/renderer/domains/activity-panel/hooks/useActivityTabMaximize.test.tsx",
+	"src/renderer/domains/activity-panel/components/FullScreenToggleButton.test.tsx",
+);
 const RETIRED_SOURCE_TESTS = new Map([
+	["apps/desktop/src/renderer/domains/activity-panel/hooks/useFullScreenToggle.ts", RETIRED_FULLSCREEN_TOGGLE_TESTS],
 	["apps/desktop/src/renderer/domains/skills/components/SceneCard.tsx", RETIRED_SCENE_TESTS],
 	["apps/desktop/src/renderer/domains/skills/components/ScenesPage.tsx", RETIRED_SCENE_TESTS],
 	["apps/desktop/src/renderer/domains/skills/components/SkillCard.tsx", RETIRED_SCENE_TESTS],

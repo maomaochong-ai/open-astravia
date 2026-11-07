@@ -624,7 +624,8 @@
 		"toolbar": {
 			"addImage": "Add image",
 			"attachFile": "Attach file reference",
-			"skills": "Skills"
+			"skills": "Skills",
+			"guide": "Guide the session (sends now without interrupting the current answer)"
 		},
 		"speech": {
 			"actions": {
