@@ -22,8 +22,8 @@ describe("下载入口的 DOM 契约", () => {
 		}
 	});
 
-	it("导航与 Hero 的下载按钮选择器各自唯一命中", () => {
-		expect(countClassMatches(indexHtml, ["nav__download"])).toBe(1);
+	it("导航不再提供下载按钮，Hero 下载按钮选择器唯一命中", () => {
+		expect(countClassMatches(indexHtml, ["nav__download"])).toBe(0);
 		expect(countClassMatches(indexHtml, ["btn--primary", "btn--lg"])).toBe(1);
 	});
 

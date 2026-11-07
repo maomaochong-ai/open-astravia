@@ -33,9 +33,8 @@ export function initDownloadPlatformHighlight() {
 	});
 }
 
-/* 下载链接：按系统与芯片选择产物，4 处同步更新（nav、hero CTA、下载区 primary、版本标签） */
+/* 下载链接：按系统与芯片选择产物，3 处同步更新（hero CTA、下载区 primary、版本标签） */
 export function initDownloadLinks() {
-	const navDownload = document.querySelector<HTMLAnchorElement>(".nav__download");
 	const heroDownload = document.querySelector<HTMLAnchorElement>(".hero .btn--primary.btn--lg");
 	const dlPrimary = document.getElementById("dlPrimary") as HTMLAnchorElement | null;
 	const dlPrimaryText = document.getElementById("dlPrimaryText");
@@ -48,7 +47,6 @@ export function initDownloadLinks() {
 		if (dlPrimary) dlPrimary.href = target.href;
 		if (dlPrimaryText) dlPrimaryText.textContent = target.label;
 		if (dlPrimaryVersion) dlPrimaryVersion.textContent = target.versionLabel;
-		if (navDownload) navDownload.href = target.href;
 		if (heroDownload) heroDownload.href = target.href;
 	}
 

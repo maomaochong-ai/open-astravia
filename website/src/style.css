@@ -421,11 +421,6 @@ code {
 	border-color: var(--line);
 }
 
-.nav__download {
-	padding: 7px 14px;
-	font-size: 13.5px;
-}
-
 .nav__toggle {
 	display: none;
 	background: none;

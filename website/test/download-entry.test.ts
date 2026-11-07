@@ -35,7 +35,6 @@ function downloadEntry() {
 		primary: document.getElementById("dlPrimary") as HTMLAnchorElement,
 		primaryText: document.getElementById("dlPrimaryText"),
 		primaryVersion: document.getElementById("dlPrimaryVersion"),
-		nav: document.querySelector<HTMLAnchorElement>(".nav__download"),
 		hero: document.querySelector<HTMLAnchorElement>(".hero .btn--primary.btn--lg"),
 	};
 }
@@ -45,7 +44,7 @@ beforeEach(() => {
 });
 
 describe("官网下载入口", () => {
-	it("Apple 芯片 Mac 先按 arm64 落地，导航与 Hero 同步", async () => {
+	it("Apple 芯片 Mac 先按 arm64 落地，Hero 与下载区同步", async () => {
 		setDevice({ userAgent: MAC_UA, architecture: "arm" });
 		const entry = downloadEntry();
 		initDownloadLinks();
@@ -55,7 +54,6 @@ describe("官网下载入口", () => {
 		expect(entry.primaryVersion?.textContent).toBe(`v${VERSION} · DMG`);
 		await vi.waitFor(() => expect(entry.primaryText?.textContent).toBe("MAC ARM64 (APPLE SILICON)"));
 		expect(entry.primaryVersion?.textContent).toBe(`v${VERSION} · DMG`);
-		expect(entry.nav?.href).toBe(entry.primary.href);
 		expect(entry.hero?.href).toBe(entry.primary.href);
 	});
 
@@ -66,7 +64,6 @@ describe("官网下载入口", () => {
 
 		await vi.waitFor(() => expect(entry.primary.href).toBe(`${BASE}/Astravia-${VERSION}.dmg`));
 		expect(entry.primaryText?.textContent).toBe("MAC X64 (INTEL)");
-		expect(entry.nav?.href).toBe(entry.primary.href);
 		expect(entry.hero?.href).toBe(entry.primary.href);
 	});
 
