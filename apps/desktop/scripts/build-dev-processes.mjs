@@ -9,6 +9,41 @@ const repoRoot = join(desktopRoot, "..", "..");
 const cachePath = join(desktopRoot, ".desktop-dev", "dev-process-build-cache.json");
 const force = process.argv.includes("--force");
 
+// 版本号只影响窗口标题与「关于」页，不打进任何构建产物；但 bun.lock 和
+// apps/desktop/package.json 是四个任务共同的输入，整份内容参与哈希，于是每升一次
+// 版本号（每个 release 都升）启动开发壳就会全量重建四个任务，main 一个人要十几分钟。
+// 这里只抹掉这两份文件里 workspace 自身的 version，依赖版本逐个照常参与。
+const versionAgnosticInputs = new Map([
+	[
+		join(repoRoot, "bun.lock"),
+		(text) => text.replace(/("name": "@astravia\/desktop",\s*"version": ")[^"]+(")/, "$1$2"),
+	],
+	[join(desktopRoot, "package.json"), (text) => JSON.stringify({ ...JSON.parse(text), version: undefined })],
+]);
+
+// dev 壳经常和正式壳一起开。四个 vite build 并发时会把整机的响应性吃满，
+// 所以构建子进程降一级调度优先级：产物不变，只是不再和前台抢 CPU。
+const nicedSpawn = process.platform === "win32";
+function spawnBun(args, options) {
+	return nicedSpawn ? spawn("bun", args, options) : spawn("nice", ["-n", "10", "bun", ...args], options);
+}
+
+// 同时最多两个构建任务。串行会明显变慢，四个并发会明显变卡，两个是两者的折中；
+// 需要抢时间时用 ASTRAVIA_DEV_BUILD_CONCURRENCY 调高。
+const buildConcurrency = Math.max(1, Number(process.env.ASTRAVIA_DEV_BUILD_CONCURRENCY) || 2);
+
+async function runWithConcurrency(items, limit, worker) {
+	let cursor = 0;
+	const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+		while (cursor < items.length) {
+			const index = cursor;
+			cursor += 1;
+			await worker(items[index]);
+		}
+	});
+	await Promise.all(runners);
+}
+
 const commonInputs = [
 	join(repoRoot, "bun.lock"),
 	join(repoRoot, "tsconfig.base.json"),
@@ -106,7 +141,8 @@ async function updateHashWithPath(hash, path) {
 
 	const pathStat = await stat(path);
 	if (pathStat.isFile()) {
-		hash.update(await readFile(path));
+		const normalizer = versionAgnosticInputs.get(path);
+		hash.update(normalizer ? normalizer(await readFile(path, "utf8")) : await readFile(path));
 		return;
 	}
 
@@ -165,7 +201,7 @@ const activeChildren = new Set();
 function runTask(task) {
 	return new Promise((resolve, reject) => {
 		console.log(`[build-dev-processes] 构建 ${task.name} …`);
-		const child = spawn("bun", task.command, {
+		const child = spawnBun(task.command, {
 			cwd: desktopRoot,
 			env: task.env,
 			stdio: "inherit",
@@ -217,7 +253,8 @@ async function main() {
 		pending.push({ ...task, inputHash });
 	}
 
-	await Promise.all(pending.map(runTask));
+	await runWithConcurrency(pending, buildConcurrency, runTask);
+	console.log(`[build-dev-processes] 并发上限 ${buildConcurrency}`);
 	for (const task of pending) {
 		const outputHash = await hashOutput(task.outputDir);
 		if (outputHash === null) throw new Error(`${task.name} 构建成功但没有生成产物：${task.outputDir}`);
