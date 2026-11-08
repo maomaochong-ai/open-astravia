@@ -3,6 +3,7 @@ import { type FsEntry, fileTreeCacheAtom } from "@shared/store/atoms";
 import { getDefaultStore } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { emitPluginFileExplorerSelectionChanged } from "../../plugins/runtime/plugin-file-explorer-host";
+import { findCachedEntries } from "../services/file-tree-cache-lookup";
 import {
 	applyFileExplorerSelection,
 	applyMarqueeSelection,
@@ -11,15 +12,10 @@ import {
 	type FileExplorerSelectionState,
 	moveFileExplorerFocus,
 	pruneSelectionToExisting,
-	selectAllVisible,
 } from "../services/selection";
 
 function collectEntriesByPaths(cache: ReadonlyMap<string, readonly FsEntry[]>, paths: readonly string[]): FsEntry[] {
-	const byPath = new Map<string, FsEntry>();
-	for (const entries of cache.values()) {
-		for (const entry of entries) byPath.set(entry.path, entry);
-	}
-	return paths.map((path) => byPath.get(path)).filter((entry): entry is FsEntry => entry != null);
+	return findCachedEntries(cache, paths);
 }
 
 /**
