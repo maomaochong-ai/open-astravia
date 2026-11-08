@@ -23,9 +23,7 @@ describe("file tree cache lookup", () => {
 	});
 
 	it("保持传入顺序，跳过重复与未命中的路径", () => {
-		const cache = new Map<string, readonly FsEntry[]>([
-			["/repo", [entry("/repo/b.ts"), entry("/repo/a.ts")]],
-		]);
+		const cache = new Map<string, readonly FsEntry[]>([["/repo", [entry("/repo/b.ts"), entry("/repo/a.ts")]]]);
 
 		expect(findCachedEntries(cache, ["/repo/a.ts", "/repo/b.ts"]).map((item) => item.path)).toEqual([
 			"/repo/a.ts",

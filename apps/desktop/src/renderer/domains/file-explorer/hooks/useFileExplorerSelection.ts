@@ -12,6 +12,7 @@ import {
 	type FileExplorerSelectionState,
 	moveFileExplorerFocus,
 	pruneSelectionToExisting,
+	selectAllVisible,
 } from "../services/selection";
 
 function collectEntriesByPaths(cache: ReadonlyMap<string, readonly FsEntry[]>, paths: readonly string[]): FsEntry[] {
