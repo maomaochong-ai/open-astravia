@@ -166,7 +166,7 @@ function ActiveTabIndicator({
 					<path
 						d={geometry.outlinePath}
 						fill="none"
-						strokeLinecap="square"
+						strokeLinecap="butt"
 						strokeLinejoin="round"
 						strokeWidth="1"
 						vectorEffect="non-scaling-stroke"
@@ -662,7 +662,7 @@ export function TabBar<T extends string>({
 							{showSeparator && (
 								<span
 									aria-hidden
-									className="pointer-events-none absolute right-0 top-1/2 z-10 h-3.5 w-px -translate-y-1/2 bg-border/60"
+									className="pointer-events-none absolute right-0 top-2 bottom-0 z-10 w-px bg-border/60"
 								/>
 							)}
 							{canRemove && (
