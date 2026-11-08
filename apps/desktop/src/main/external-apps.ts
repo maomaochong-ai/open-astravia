@@ -117,7 +117,7 @@ export function inferApplicationKind(name: string): ExternalApplicationKind {
 		return "file-manager";
 	}
 	if (
-		/(visual studio code|vs ?code|vscodium|cursor|trae|qoder|codebuddy|sublime|zed|windsurf|nova|xcode|webstorm|intellij|pycharm|goland|phpstorm|rider|datagrip|rubymine|android studio|fleet|emacs|neovim|vim|textmate|bbedit|gedit|kate)/.test(
+		/(visual studio code|vs ?code|vscodium|cursor|trae|qoder|kiro|codebuddy|sublime|zed|windsurf|nova|xcode|jetbrains|intellij|pycharm|webstorm|goland|phpstorm|rider|datagrip|rubymine|clion|dataspell|aqua|rustrover|appcode|android studio|fleet|emacs|neovim|vim|textmate|bbedit|gedit|kate)/.test(
 			lower,
 		)
 	) {
@@ -178,6 +178,12 @@ async function listKnownApplications(): Promise<ExternalApplication[]> {
 	// JetBrains Toolbox 把 IDE 藏在 `…\Toolbox\apps\<IDE>\ch-0\<ver>\bin`。只列固定路径就会
 	// 「检测不到本机编程软件」，所以再扫一遍这两棵目录，用已知 exe 名认应用。
 	for (const app of await listWindowsUserPrograms()) {
+		if (!known.some((candidate) => sameApplication(candidate, app))) known.push(app);
+	}
+	// 第三种位置：便携版与解包到任意盘位的编辑器既不在默认目录也不在 App Paths，
+	// 只在 `HKCR\Applications` 留一条打开命令。这里按固定 exe 名单去问，
+	// 不扫子树，所以可以每次菜单都跑；整棵 `/s` 扫描仍留给后面的最后一级。
+	for (const app of await listWindowsRegisteredEditors()) {
 		if (!known.some((candidate) => sameApplication(candidate, app))) known.push(app);
 	}
 	return known;
@@ -332,7 +338,7 @@ async function openWithMacOS(targetPath: string | null, appPath: string, kind: E
 
 // ─── Windows 实现 ───────────────────────────────────────────────────
 
-function windowsCandidates(): KnownApplication[] {
+export function windowsCandidates(): KnownApplication[] {
 	const localAppData = process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local");
 	const programFiles = process.env.ProgramFiles ?? "C:\\Program Files";
 	const programFilesX86 = process.env["ProgramFiles(x86)"] ?? "C:\\Program Files (x86)";
@@ -372,9 +378,37 @@ function windowsCandidates(): KnownApplication[] {
 			],
 		},
 		{
+			// 国际版与国内版是两个独立安装目录、两个 exe，并列写成一条会让国内版用户
+			// 在菜单里看到一个叫「Trae」的条目，误以为是另一个产品。
 			name: "Trae",
 			kind: "editor",
-			paths: [join(programs("Trae"), "Trae.exe"), join(programs("Trae CN"), "Trae CN.exe")],
+			paths: [join(programs("Trae"), "Trae.exe")],
+		},
+		{
+			name: "Trae CN",
+			kind: "editor",
+			paths: [join(programs("Trae CN"), "Trae CN.exe")],
+		},
+		{
+			// Qoder 默认按用户装到 %LOCALAPPDATA%\Programs，企业安装器会落到 Program Files。
+			name: "Qoder",
+			kind: "editor",
+			paths: [
+				join(programs("Qoder"), "Qoder.exe"),
+				join(programFiles, "Qoder", "Qoder.exe"),
+				join(programFilesX86, "Qoder", "Qoder.exe"),
+			],
+		},
+		{
+			// Kiro（AWS）同样按用户装到 %LOCALAPPDATA%\Programs\Kiro。
+			name: "Kiro",
+			kind: "editor",
+			paths: [join(programs("Kiro"), "Kiro.exe"), join(programFiles, "Kiro", "Kiro.exe")],
+		},
+		{
+			name: "CodeBuddy",
+			kind: "editor",
+			paths: [join(programs("CodeBuddy"), "CodeBuddy.exe"), join(programs("CodeBuddy CN"), "CodeBuddy CN.exe")],
 		},
 		{
 			name: "Windsurf",
@@ -550,10 +584,56 @@ async function listApplicationsWindows(_targetPath: string): Promise<ExternalApp
 }
 
 /**
- * 一条应用都认不出来时的最后一级：请 Windows 自己报名单。
+ * `HKCR\Applications` 的子键名清单（不带 `/s`）。
  *
- * 只有在前面的内置路径与 App Paths 都没找到编辑器时才跑——`/s` 扫整棵
- * `HKCR\Applications` 是好几秒的活，菜单不能为它付常规代价。
+ * 不带 `/s` 只列一级子键，一次 reg 调用就能拿到几百个名字；名字就是 exe 文件名，
+ * 所以可以先用 `WINDOWS_EXE_NAMES` 白名单筛一遍，再只对认得出的名字取
+ * `\shell\open\command`。这样既不用扫整棵子树（好几秒），也不会被卸载残留淹。
+ */
+export function parseWindowsApplicationsKeyNames(stdout: string): string[] {
+	const names: string[] = [];
+	for (const line of stdout.split(/\r?\n/)) {
+		const match = line.match(/\\Applications\\([^\\]+)$/i);
+		if (match) names.push(match[1]);
+	}
+	return names;
+}
+
+/**
+ * 按名单查「应用自己登记的打开命令」，只问认得出的 exe。
+ *
+ * `App Paths` 只收得住「按规范装」的应用；便携版、解包到任意盘位、用绿色包启动的
+ * 编辑器只会在 `HKCR\Applications` 里留一条打开命令，而 `%LOCALAPPDATA%\Programs`
+ * 目录扫描又碰不到别的盘位。这里补的正是那一段：名单固定、次数固定、不扫子树。
+ */
+async function listWindowsRegisteredEditors(): Promise<ExternalApplication[]> {
+	const knownExeNames = new Set(Object.keys(WINDOWS_EXE_NAMES));
+	const apps: ExternalApplication[] = [];
+	for (const view of WINDOWS_REGISTRY_VIEWS) {
+		const listing = await queryWindowsRegistry(["query", "HKCR\\Applications", view]);
+		if (listing === null) continue;
+		for (const exeName of parseWindowsApplicationsKeyNames(listing)) {
+			if (!knownExeNames.has(exeName.toLowerCase())) continue;
+			const command = await queryWindowsRegistry([
+				"query",
+				`HKCR\\Applications\\${exeName}\\shell\\open\\command`,
+				view,
+			]);
+			if (command === null) continue;
+			for (const app of parseWindowsApplicationEntries(command)) {
+				if (apps.some((existing) => sameApplication(existing, app))) continue;
+				if (!(await pathExists(app.applicationPath))) continue;
+				apps.push(app);
+			}
+		}
+	}
+	return apps;
+}
+
+/**
+ * 上面那个人名单都没认出编辑器时的最后一级：`/s` 扫整棵 `HKCR\Applications`。
+ *
+ * 它是好几秒的活，菜单不能为它付常规代价，所以只在「一个编辑器都没有」时跑。
  */
 async function listWindowsRegisteredApplications(): Promise<ExternalApplication[]> {
 	const apps: ExternalApplication[] = [];
@@ -625,6 +705,10 @@ const WINDOWS_EXE_NAMES: Record<string, string> = {
 	"sublime_text.exe": "Sublime Text",
 	"qoder.exe": "Qoder IDE",
 	"codebuddy.exe": "CodeBuddy",
+	"codebuddy cn.exe": "CodeBuddy CN",
+	// Kiro 是 AWS 的编辑器，安装目录与 exe 名都是 Kiro。少了这一行，目录扫描能
+	// 找到文件也会因为「叫不出名字」而被白名单滤掉。
+	"kiro.exe": "Kiro",
 	// JetBrains 安装器同时保留 32/64 位 exe，Toolbox 装的则是 idea.exe 这种短名。
 	"idea64.exe": "IntelliJ IDEA",
 	"idea.exe": "IntelliJ IDEA",
@@ -639,6 +723,14 @@ const WINDOWS_EXE_NAMES: Record<string, string> = {
 	"rubymine64.exe": "RubyMine",
 	"phpstorm64.exe": "PhpStorm",
 	"studio64.exe": "Android Studio",
+	// JetBrains 全家桶里剩下的几个：没列到的 exe 名会被白名单过滤，用户装了也看不到。
+	"clion64.exe": "CLion",
+	"clion.exe": "CLion",
+	"dataspell64.exe": "DataSpell",
+	"aqua64.exe": "Aqua",
+	"rustrover64.exe": "RustRover",
+	"appcode64.exe": "AppCode",
+	"fleet.exe": "Fleet",
 	"wt.exe": "Windows Terminal",
 	"powershell.exe": "PowerShell",
 	"pwsh.exe": "PowerShell",
@@ -682,21 +774,34 @@ export function windowsProgramsFromExecutables(executables: readonly string[]): 
 /**
  * Windows 上「自己装的应用」不在默认安装位置、也不一定进 App Paths：
  * Cursor / VSCodium 这类按用户装的编辑器在 `%LOCALAPPDATA%\Programs`，
- * JetBrains Toolbox 把 IDE 放在 `…\Toolbox\apps\<IDE>\ch-0\<ver>\bin`。
+ * JetBrains Toolbox 把 IDE 放在 `…\Toolbox\apps\<IDE>\ch-0\<ver>\bin`，
+ * 而 JetBrains 自己的安装器建的是 `C:\Program Files\JetBrains\<IDE> <ver>\bin`。
  * 只靠固定路径列表就会「检测不到本机编程软件」，所以再按目录扫一遍。
+ *
+ * `depth` 是「从 root 往下最多走几层目录」，exe 所在目录必须落在预算内：
+ * `collectWindowsExecutables` 只在 `level + 1 < depth` 时把子目录入队，
+ * 所以 exe 在第四层目录里就要给 depth = 5。Toolbox 曾经写成 4，
+ * 结果 `…\<ver>\bin` 永远没被打开，Toolbox 装的 IDE 一个都扫不到。
  */
-const WINDOWS_PROGRAM_SCAN_ROOTS = (): Array<{ root: string; depth: number }> => {
+export const windowsProgramScanRoots = (): Array<{ root: string; depth: number }> => {
 	const localAppData = process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local");
+	const programFiles = process.env.ProgramFiles ?? "C:\\Program Files";
+	const programFilesX86 = process.env["ProgramFiles(x86)"] ?? "C:\\Program Files (x86)";
 	return [
+		// `…\Programs\<产品>\<产品>.exe`：exe 在第二层目录。
 		{ root: join(localAppData, "Programs"), depth: 2 },
-		{ root: join(localAppData, "JetBrains", "Toolbox", "apps"), depth: 4 },
+		// `…\Toolbox\apps\<IDE>\ch-0\<ver>\bin\*.exe`：exe 在第四层。
+		{ root: join(localAppData, "JetBrains", "Toolbox", "apps"), depth: 5 },
+		// `C:\Program Files\JetBrains\<IDE> <ver>\bin\*.exe`：exe 在第二层。
+		{ root: join(programFiles, "JetBrains"), depth: 3 },
+		{ root: join(programFilesX86, "JetBrains"), depth: 3 },
 	];
 };
 
 /** 单次扫描的目录预算：Programs 下偶尔会有构建缓存这类深目录，菜单不能为它卡住。 */
 const WINDOWS_PROGRAM_SCAN_BUDGET = 400;
 
-async function collectWindowsExecutables(root: string, depth: number): Promise<string[]> {
+export async function collectWindowsExecutables(root: string, depth: number): Promise<string[]> {
 	const found: string[] = [];
 	const queue: Array<{ dir: string; level: number }> = [{ dir: root, level: 0 }];
 	let budget = WINDOWS_PROGRAM_SCAN_BUDGET;
@@ -724,7 +829,7 @@ async function collectWindowsExecutables(root: string, depth: number): Promise<s
 
 async function listWindowsUserPrograms(): Promise<ExternalApplication[]> {
 	const executables: string[] = [];
-	for (const { root, depth } of WINDOWS_PROGRAM_SCAN_ROOTS()) {
+	for (const { root, depth } of windowsProgramScanRoots()) {
 		executables.push(...(await collectWindowsExecutables(root, depth)));
 	}
 	const apps: ExternalApplication[] = [];
