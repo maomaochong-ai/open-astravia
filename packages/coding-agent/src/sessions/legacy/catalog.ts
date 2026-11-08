@@ -6,6 +6,8 @@ import type { LegacySessionFileHost } from "./host-contracts.js";
 
 interface CachedLegacySessionInfo {
 	readonly fileModifiedAt: number;
+	/** 兜底 cwd 参与结果：同一条会话按不同项目目录列出时不能复用彼此的 cwd。 */
+	readonly fallbackCwd: string | undefined;
 	readonly info: SessionHistoryInfo;
 }
 
@@ -17,12 +19,17 @@ const LEGACY_SESSION_INFO_CACHE_LIMIT = 512;
  */
 const legacySessionInfoCache = new Map<string, CachedLegacySessionInfo>();
 
-function rememberLegacySessionInfo(sessionPath: string, fileModifiedAt: number, info: SessionHistoryInfo): void {
+function rememberLegacySessionInfo(
+	sessionPath: string,
+	fileModifiedAt: number,
+	fallbackCwd: string | undefined,
+	info: SessionHistoryInfo,
+): void {
 	if (!legacySessionInfoCache.has(sessionPath) && legacySessionInfoCache.size >= LEGACY_SESSION_INFO_CACHE_LIMIT) {
 		const oldest = legacySessionInfoCache.keys().next();
 		if (!oldest.done) legacySessionInfoCache.delete(oldest.value);
 	}
-	legacySessionInfoCache.set(sessionPath, { fileModifiedAt, info });
+	legacySessionInfoCache.set(sessionPath, { fileModifiedAt, fallbackCwd, info });
 }
 
 /** 旧 Coding Agent JSONL 的发现、命名与删除适配；不创建 AgentSession。 */
@@ -50,7 +57,7 @@ export class LegacyRuntimeSessionCatalog implements RuntimeSessionCatalog {
 	}
 
 	async listSessions(cwd: string, sessionDir?: string): Promise<SessionHistoryInfo[]> {
-		return this.listLegacySessionsFromDirectory(sessionDir ?? this.resolveLegacySessionDirectory(cwd));
+		return this.listLegacySessionsFromDirectory(sessionDir ?? this.resolveLegacySessionDirectory(cwd), cwd);
 	}
 
 	async renameSession(sessionPath: string, name: string): Promise<void> {
@@ -108,14 +115,17 @@ export class LegacyRuntimeSessionCatalog implements RuntimeSessionCatalog {
 		}
 	}
 
-	private async listLegacySessionsFromDirectory(directory: string): Promise<SessionHistoryInfo[]> {
+	private async listLegacySessionsFromDirectory(
+		directory: string,
+		fallbackCwd?: string,
+	): Promise<SessionHistoryInfo[]> {
 		if (!this.host.exists(directory)) return [];
 		try {
 			const entries = await this.host.readDirectory(directory);
 			const sessions = await Promise.all(
 				entries
 					.filter((entry) => entry.kind === "file" && entry.name.endsWith(".jsonl"))
-					.map((entry) => this.buildLegacySessionHistoryInfo(this.host.join(directory, entry.name))),
+					.map((entry) => this.buildLegacySessionHistoryInfo(this.host.join(directory, entry.name), fallbackCwd)),
 			);
 			return sessions
 				.filter((session): session is SessionHistoryInfo => session !== undefined)
@@ -125,12 +135,17 @@ export class LegacyRuntimeSessionCatalog implements RuntimeSessionCatalog {
 		}
 	}
 
-	private async buildLegacySessionHistoryInfo(sessionPath: string): Promise<SessionHistoryInfo | undefined> {
+	private async buildLegacySessionHistoryInfo(
+		sessionPath: string,
+		fallbackCwd: string | undefined,
+	): Promise<SessionHistoryInfo | undefined> {
 		try {
 			const fileModifiedAt = await this.host.statModifiedAt(sessionPath);
 			const cached = legacySessionInfoCache.get(sessionPath);
-			// 文件没变就不重建摘要：旧格式会话往往很大，而项目列表/侧栏每次刷新都会走到这里。
-			if (cached && cached.fileModifiedAt === fileModifiedAt) return cached.info;
+			// 文件没变且兜底 cwd 相同就不重建摘要：旧格式会话往往很大，而项目列表/侧栏每次刷新都会走到这里。
+			if (cached && cached.fileModifiedAt === fileModifiedAt && cached.fallbackCwd === fallbackCwd) {
+				return cached.info;
+			}
 			if (!(await this.ownsSession(sessionPath))) return undefined;
 			const document = parseCodingAgentLegacySessionDocument(this.host.readText(sessionPath));
 			const messages = document.entries.flatMap((entry) => readConversationMessage(entry));
@@ -140,7 +155,8 @@ export class LegacyRuntimeSessionCatalog implements RuntimeSessionCatalog {
 			const info: SessionHistoryInfo = {
 				id: document.header.id,
 				path: sessionPath,
-				cwd: document.header.cwd,
+				// 头部没写 cwd（早期版本）时用所在项目目录补上，否则这条会话会挂到一个空 cwd 下看不见。
+				cwd: document.header.cwd || fallbackCwd || this.host.defaultCwd,
 				name: readSessionName(document.entries),
 				firstMessage,
 				modifiedAt: readLastActivityTime(messages) ?? readTimestamp(document.header.timestamp) ?? fileModifiedAt,
@@ -148,7 +164,7 @@ export class LegacyRuntimeSessionCatalog implements RuntimeSessionCatalog {
 				parentSessionPath: document.header.parentSession,
 				parentEntryId: document.header.parentEntryId,
 			};
-			rememberLegacySessionInfo(sessionPath, fileModifiedAt, info);
+			rememberLegacySessionInfo(sessionPath, fileModifiedAt, fallbackCwd, info);
 			return info;
 		} catch {
 			return undefined;
