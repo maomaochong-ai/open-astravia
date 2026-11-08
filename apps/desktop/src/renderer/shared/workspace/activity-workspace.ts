@@ -23,3 +23,20 @@ export function createActivityWorkspace(
 	if (id.length === 0) throw new Error("Activity workspace id must not be empty");
 	return { id, cwd, runtimeIds };
 }
+
+/**
+ * 会话的活动工作区。
+ *
+ * `cwd` / `sessionId` 为空字符串时表示「还没有」，它和 null 一样不能充当 id：
+ * 空 id 会被 `createActivityWorkspace` 拒绝，把整个会话页退化成错误页。
+ */
+export function createConversationActivityWorkspace(
+	cwd: string | null,
+	sessionId: string | null,
+	runtimeIds: readonly string[] = [],
+	fallbackId = "conversation:unbound",
+): ActivityWorkspace {
+	const root = cwd && cwd.length > 0 ? cwd : null;
+	const session = sessionId && sessionId.length > 0 ? sessionId : null;
+	return createActivityWorkspace(root ?? session ?? fallbackId, root, runtimeIds);
+}

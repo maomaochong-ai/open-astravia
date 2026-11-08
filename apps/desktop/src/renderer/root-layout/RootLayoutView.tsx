@@ -1,6 +1,7 @@
 import { Outlet } from "@tanstack/react-router";
 import { cn } from "@shared/lib/utils";
 import { PerfSendProfiler } from "@shared/lib/perf-send";
+import { activityPanelFocusAtom } from "@shared/store/activity-atoms";
 import { ThemeSurface } from "@astravia-org/theme-ui/appearance/ThemeSurface";
 import { RouteContentLoadingView } from "@astravia-org/theme-ui/app/RouteContentLoadingView";
 import { AppFrame } from "@astravia-org/theme-ui/layout/AppFrame";
@@ -8,6 +9,7 @@ import { MainContentFrame } from "@astravia-org/theme-ui/layout/MainContentFrame
 import { SidebarDock } from "@astravia-org/theme-ui/layout/SidebarDock";
 import { SidebarOverlay } from "@astravia-org/theme-ui/layout/SidebarOverlay";
 import { useThemeComponent, useThemeSurface } from "@astravia-org/theme-sdk";
+import { useAtomValue } from "jotai";
 import { memo, useCallback } from "react";
 import { CommandMenu } from "../domains/command-menu/components/CommandMenu";
 import { useActiveWorkspaceViewHeader } from "../domains/plugins/components/WorkspaceViewHeaderSlot";
@@ -57,6 +59,9 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 	// 插件工作区视图可声明沉浸式页头：页头浮在内容之上（拖拽区/触发器照常在最上层），
 	// 内容占满全高，视图自己的门面从窗口第一像素开始，不再被 44px 页头推出一条空带。
 	const workspaceViewHeader = useActiveWorkspaceViewHeader();
+	// 活动面板铺满时，宿主外壳（侧边栏 + 全局顶栏）整体让位：面板的按钮和
+	// 根布局的让位都读同一个 atom，避免出现「面板铺满但侧栏还在」的半吊子形态。
+	const activityFocus = useAtomValue(activityPanelFocusAtom);
 	const {
 		actions,
 		narrow,
@@ -66,13 +71,13 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 		sidebarCollapsed,
 		sidebarWidth,
 	} = model;
-	const showSidebar = pageLayout !== "app";
+	const showSidebar = pageLayout !== "app" && !activityFocus;
 	const ensureSidebarVisible = useCallback(() => {
 		if (narrow) actions.openOverlay();
 	}, [actions.openOverlay, narrow]);
 
 	const pageHeader =
-		pageLayout === "content" ? (
+		pageLayout === "content" && !activityFocus ? (
 			<PerfSendProfiler id="PageHeader">
 				<PageHeader
 				// 顶栏左簇（展开侧边栏 / 新会话 / 标题）用统一的 4px 间距：
@@ -98,6 +103,9 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 				data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
 				data-sidebar-narrow={narrow ? "true" : "false"}
 				data-sidebar-visible={!narrow && !sidebarCollapsed ? "true" : "false"}
+				// 铺满态：面板占满内容行，同时取消 AppFrame 的 8px 外边，四边真正贴到窗口。
+				data-activity-focus={activityFocus ? "true" : "false"}
+				contentClassName={activityFocus ? "p-0" : undefined}
 				decoration={<ThemedAppBackground />}
 				overlay={<ThemeSurface className="z-20" slot="app.frameOverlay" />}
 			>

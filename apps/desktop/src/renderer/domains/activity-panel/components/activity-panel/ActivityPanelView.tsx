@@ -1,4 +1,5 @@
 import { TabBar } from "@shared/components/ui/tab-bar";
+import { isMac } from "@shared/lib/platform";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import { ActivityPanel as ActivityPanelPrimitive } from "@astravia-org/theme-ui/activity/ActivityPanel";
 import { type ComponentType, useEffect, useRef, useState } from "react";
@@ -76,6 +77,12 @@ export function ActivityPanelView({
 	// 不跟随「没有溢出标签」等条件隐藏，否则用户进入全屏后找不到退出口。
 	const fullScreen = useActivityTabMaximize(desktopRef);
 	const { isMaximized, exit: exitFullScreen } = fullScreen;
+	// 铺满只在内容行内部：面板是这一行最右的兄弟节点，宽度涨到行宽时从右往左
+	// 收上去（宽度过渡 0.2s），消息列被压到 0。宿主窗口不动——整窗全屏是窗口
+	// 自己的最大化控件的事，两者不该绑定。由 isMaximized 单一状态驱动。
+	// 铺满时页头与侧边栏都已让位，面板顶栏从窗口第一像素开始，会盖住 macOS 红绿灯。
+	// 这里让出红绿灯那一截空白，并把它做成拖拽区：铺满后没有顶栏可拖了。
+	const macTrafficLightGutter = isMaximized && isMac;
 	const fullScreenToggle = renderDockedPanel ? (
 		<FullScreenToggleButton isFullScreen={isMaximized} onToggle={fullScreen.toggle} />
 	) : null;
@@ -91,7 +98,12 @@ export function ActivityPanelView({
 	const panelBody = renderDockedPanel ? (
 		<>
 			{tabBar || tabPicker || fullScreenToggle ? (
-				<ActivityPanelPrimitive.Header>
+				<ActivityPanelPrimitive.Header
+					className={macTrafficLightGutter ? "pl-[78px]" : undefined}
+				>
+					{macTrafficLightGutter ? (
+						<div aria-hidden className="drag-region absolute inset-y-0 left-0 w-[78px]" />
+					) : null}
 					{tabBar}
 					{fullScreenToggle}
 					{tabPicker}

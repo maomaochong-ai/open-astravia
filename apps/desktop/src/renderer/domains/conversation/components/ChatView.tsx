@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { pageHeaderLeftSlotAtom, pageHeaderRightSlotAtom } from "@shared/store/atoms";
 import { usePageHeaderUtilitySlot } from "@shared/app-shell/page-header/usePageHeaderUtilitySlot";
 import { useActiveSessionRuntimeIds } from "@shared/workspace/active-session-runtime";
-import { createActivityWorkspace } from "@shared/workspace/activity-workspace";
+import { createConversationActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
 import { useBoundAgentParticipants } from "../hooks/useBoundAgentParticipants";
 import { useChatViewModel } from "../hooks/useChatViewModel";
@@ -55,12 +55,7 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 	const setHeaderRightSlot = useSetAtom(pageHeaderRightSlotAtom);
 	const setHeaderLeftSlot = useSetAtom(pageHeaderLeftSlotAtom);
 	const workspace = useMemo(
-		() =>
-			createActivityWorkspace(
-				model.cwd ?? model.sessionId ?? "conversation:unbound",
-				model.cwd,
-				runtimeIds,
-			),
+		() => createConversationActivityWorkspace(model.cwd, model.sessionId, runtimeIds),
 		[model.cwd, model.sessionId, runtimeIds],
 	);
 	const headerActions = useMemo(

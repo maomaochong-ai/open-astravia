@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
-import { act } from "react";
+import { getDefaultStore } from "jotai";
+import { act, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { useRef } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { activityPanelFocusAtom } from "@shared/store/activity-atoms";
 import { useActivityTabMaximize } from "./useActivityTabMaximize";
 
 function setRowWidth(element: HTMLElement, width: number): void {
@@ -90,6 +91,56 @@ describe("useActivityTabMaximize", () => {
 		expect(panel.dataset.width).toBe("960");
 	});
 
+	// 面板是行里的最后一个子列，前面还有一道 flex 间隙。只把行宽写给面板时，这段间隙
+	// 会留在面板左侧，铺满后左边一条缝、右边贴边。铺满期间把行内间隙收掉，宽度就
+	// 等于整行宽度；退出时还原行内联样式，消息列的间距不受影响。
+	it("铺满时收掉行内 flex 间隙，面板贴满整行，退出后还原", () => {
+		const original = window.getComputedStyle.bind(window);
+		const spy = vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) => {
+			const style = original(element, pseudo);
+			return element instanceof HTMLElement && element.dataset.testid === "row"
+				? ({ ...style, columnGap: "8px" } as CSSStyleDeclaration)
+				: style;
+		});
+		try {
+			act(() => root.render(<Harness />));
+			const row = container.querySelector('[data-testid="row"]') as HTMLElement;
+			const panel = container.querySelector('[data-testid="panel"]') as HTMLElement;
+			setRowWidth(row, 1280);
+
+			act(() => {
+				(container.querySelector("button") as HTMLButtonElement).click();
+			});
+			expect(row.style.columnGap).toBe("0px");
+			expect(panel.dataset.width).toBe("1280");
+
+			act(() => {
+				(container.querySelector("button") as HTMLButtonElement).click();
+			});
+			expect(row.style.columnGap).toBe("");
+		} finally {
+			spy.mockRestore();
+		}
+	});
+
+	// 铺满会同时收起宿主侧边栏与全局顶栏，那两处由根布局渲染；只有共享同一份状态，
+	// 「面板铺满」和「外壳让位」才会同时发生，所以这里锁住跨消费方的一致性。
+	it("铺满状态是共享的，卸载即退出", () => {
+		act(() => root.render(<Harness />));
+		const row = container.querySelector('[data-testid="row"]') as HTMLElement;
+		const panel = container.querySelector('[data-testid="panel"]') as HTMLElement;
+		setRowWidth(row, 1280);
+
+		act(() => {
+			(container.querySelector("button") as HTMLButtonElement).click();
+		});
+		expect(panel.dataset.maximized).toBe("true");
+		expect(getDefaultStore().get(activityPanelFocusAtom)).toBe(true);
+
+		act(() => root.unmount());
+		expect(getDefaultStore().get(activityPanelFocusAtom)).toBe(false);
+	});
+
 	it("Esc 退出铺满", () => {
 		act(() => root.render(<Harness />));
 		const row = container.querySelector('[data-testid="row"]') as HTMLElement;
@@ -104,5 +155,33 @@ describe("useActivityTabMaximize", () => {
 			document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
 		});
 		expect(panel.dataset.maximized).toBe("false");
+	});
+
+	// 铺满是把面板这一列撑到行宽（从右往左收上去），不是把宿主窗口推进全屏。
+	// 整窗全屏归窗口自己的最大化控件；两者绑定过一次，用户点了“进入全屏”
+	// 结果整个应用进全屏、侧边栏和标题栏全没，窗口尺寸也不受自己控。
+	it("铺满不去动宿主窗口的全屏状态", () => {
+		const toggleFullScreen = vi.fn(async () => true);
+		(window as unknown as { astravia?: unknown }).astravia = {
+			window: {
+				isFullScreen: async () => false,
+				toggleFullScreen,
+				onFullScreenChanged: () => () => {},
+			},
+		};
+		try {
+			act(() => root.render(<Harness />));
+			const row = container.querySelector('[data-testid="row"]') as HTMLElement;
+			setRowWidth(row, 1280);
+			act(() => {
+				(container.querySelector("button") as HTMLButtonElement).click();
+			});
+			act(() => {
+				(container.querySelector("button") as HTMLButtonElement).click();
+			});
+			expect(toggleFullScreen).not.toHaveBeenCalled();
+		} finally {
+			delete (window as unknown as { astravia?: unknown }).astravia;
+		}
 	});
 });
