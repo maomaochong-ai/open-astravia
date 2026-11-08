@@ -15,6 +15,8 @@ export interface QueueCardViewLabels {
 	delete: string;
 	/** 把这条消息撤回输入框再编辑。 */
 	recall: string;
+	/** 把这条排队消息立即注入当前回合（steer），不打断正在跑的回答。 */
+	guide: string;
 }
 
 /** abort/error 后队列暂停时的提示条：说明原因并提供「继续发送」入口。 */
@@ -32,6 +34,8 @@ export interface QueueCardViewProps {
 	onRemove: (id: string) => void;
 	/** 撤回输入框：队列条目出队，文本回到编辑器里可继续改。 */
 	onRecall: (id: string) => void;
+	/** 引导：队列条目出队后立即作为 steer 注入当前回合。 */
+	onGuide: (id: string) => void;
 	paused?: QueueCardPausedBanner;
 }
 
@@ -42,6 +46,7 @@ export function QueueCardView({
 	onSendNow,
 	onRemove,
 	onRecall,
+	onGuide,
 	paused,
 }: QueueCardViewProps): JSX.Element {
 	// Reorder.Group needs a mutable array of the same value identities.
@@ -84,9 +89,11 @@ export function QueueCardView({
 						sendNowTitle={labels.sendNow}
 						deleteTitle={labels.delete}
 						recallTitle={labels.recall}
+						guideTitle={labels.guide}
 						onSendNow={onSendNow}
 						onRemove={onRemove}
 						onRecall={onRecall}
+						onGuide={onGuide}
 					/>
 				))}
 			</Reorder.Group>
@@ -99,17 +106,21 @@ function QueueItemRow({
 	sendNowTitle,
 	deleteTitle,
 	recallTitle,
+	guideTitle,
 	onSendNow,
 	onRemove,
 	onRecall,
+	onGuide,
 }: {
 	item: QueueCardItem;
 	sendNowTitle: string;
 	deleteTitle: string;
 	recallTitle: string;
+	guideTitle: string;
 	onSendNow: (id: string) => void;
 	onRemove: (id: string) => void;
 	onRecall: (id: string) => void;
+	onGuide: (id: string) => void;
 }): JSX.Element {
 	const dragControls = useDragControls();
 
@@ -146,6 +157,19 @@ function QueueItemRow({
 					className="min-w-0 flex-1 truncate text-left text-[12px] leading-snug text-foreground"
 				>
 					{item.displayText}
+				</button>
+			)}
+			{/* 引导与「立即发送」同一道闸：压缩屏障之后、或压缩正在执行时，把消息插进当前回合
+			    会绕过屏障建立的顺序，内核也会以 missing 回绝——所以按钮不出现，而不是点了没反应。 */}
+			{item.kind === "context_compaction" || item.canSendNow === false ? null : (
+				<button
+					type="button"
+					onClick={() => onGuide(item.id)}
+					title={guideTitle}
+					aria-label={guideTitle}
+					className="flex shrink-0 items-center text-muted-foreground/70 transition-colors hover:text-primary"
+				>
+					<span className="icon-[solar--routing-2-linear] text-sm" />
 				</button>
 			)}
 			{item.kind === "context_compaction" ? null : (

@@ -77,7 +77,6 @@ export interface InputBarLabels {
 		addImage: string;
 		attachFile: string;
 		queue: string;
-		guide: string;
 	};
 }
 

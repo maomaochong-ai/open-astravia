@@ -102,6 +102,7 @@ export class RuntimeHostSessionOperations {
 				images: request.images,
 				streamingBehavior: request.streamingBehavior,
 				promptRef: request.promptRef,
+				promptRefs: request.promptRefs,
 				attachments: request.attachments,
 				modelKey: request.modelKey,
 				reasoning: request.reasoning,
@@ -157,6 +158,7 @@ export class RuntimeHostSessionOperations {
 				images: request.images,
 				streamingBehavior: request.streamingBehavior,
 				promptRef: request.promptRef,
+				promptRefs: request.promptRefs,
 				attachments: request.attachments,
 				modelKey: request.modelKey,
 				reasoning: request.reasoning,
@@ -233,6 +235,11 @@ export class RuntimeHostSessionOperations {
 	async sendQueuedMessageNow(sessionId: string, itemId: string): Promise<"promoted" | "started" | "missing"> {
 		const controller = this.requireSession(sessionId).queueController;
 		return controller ? controller.sendQueuedNow(itemId) : "missing";
+	}
+
+	async guideQueuedMessage(sessionId: string, itemId: string): Promise<"promoted" | "started" | "missing"> {
+		const controller = this.requireSession(sessionId).queueController;
+		return controller ? controller.guideQueued(itemId) : "missing";
 	}
 
 	async resumeQueue(sessionId: string): Promise<void> {

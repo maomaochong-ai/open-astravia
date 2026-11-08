@@ -42,6 +42,27 @@ export const setQueueForSessionAtom = atom(
 	},
 );
 
+/**
+ * 按 id 从当前镜像里摘掉一条。
+ *
+ * 需要等 IPC 回执才移除时必须用这个，不能用 `setQueueForSessionAtom` 写回你渲染时
+ * 捕获的数组：往返期间新入队的条目会连同旧快照一起被覆盖掉，界面上凭空消失一条
+ * 消息（kernel 里还在，要等下一次 queue.changed 才回来）。
+ */
+export const removeQueueItemForSessionAtom = atom(
+	null,
+	(get, set, { runtimeId, id }: { runtimeId: string; id: string }) => {
+		const prev = get(messageQueueBySessionAtom);
+		const items = prev.get(runtimeId);
+		if (!items || !items.some((item) => item.id === id)) return;
+		const next = new Map(prev);
+		const remaining = items.filter((item) => item.id !== id);
+		if (remaining.length === 0) next.delete(runtimeId);
+		else next.set(runtimeId, remaining);
+		set(messageQueueBySessionAtom, next);
+	},
+);
+
 export const setQueuePausedAtom = atom(
 	null,
 	(get, set, { runtimeId, paused }: { runtimeId: string; paused: boolean }) => {

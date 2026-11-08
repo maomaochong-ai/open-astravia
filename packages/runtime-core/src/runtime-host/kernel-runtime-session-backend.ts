@@ -535,6 +535,7 @@ export class RuntimeSession {
 					type: "context.compact",
 					...(request.customInstructions === undefined ? {} : { customInstructions: request.customInstructions }),
 				}),
+			guideQueued: async (id) => this.session.guideQueued(id),
 			sendQueuedNow: async (id) => {
 				const result = await this.session.sendQueuedNow(id);
 				if (result.status === "started") {

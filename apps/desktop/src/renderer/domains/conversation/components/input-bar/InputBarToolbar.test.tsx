@@ -72,10 +72,8 @@ describe("InputBar toolbar abilities", () => {
 				isEmpty={false}
 				isStreaming
 				queueTitle="Queue"
-				guideTitle="Guide"
 				onAbort={vi.fn()}
 				onSend={onSend}
-				onGuide={vi.fn()}
 			/>,
 		);
 
@@ -88,34 +86,27 @@ describe("InputBar toolbar abilities", () => {
 				isEmpty
 				isStreaming={false}
 				queueTitle="Queue"
-				guideTitle="Guide"
 				onAbort={vi.fn()}
 				onSend={onSend}
-				onGuide={vi.fn()}
 			/>,
 		);
 		expect(screen.getByRole("button", { name: "Send" })).toBeTruthy();
 	});
 
-	it("offers guidance that injects into the running turn without queueing", () => {
-		// 引导（steer）与队列（followUp）是两种行为，按钮必须分开，否则用户没法在模型输出中途改方向。
-		const onSend = vi.fn();
-		const onGuide = vi.fn();
+	it("no longer renders a guide button of its own", () => {
+		// 引导已并入队列条目行（撤回左侧）：这里只留队列入口，避免同一个动作有两处入口。
 		render(
 			<InputBarSendAction
 				canSend
 				isEmpty={false}
 				isStreaming
 				queueTitle="Queue"
-				guideTitle="Guide"
 				onAbort={vi.fn()}
-				onSend={onSend}
-				onGuide={onGuide}
+				onSend={vi.fn()}
 			/>,
 		);
 
-		fireEvent.click(screen.getByRole("button", { name: "Guide" }));
-		expect(onGuide).toHaveBeenCalledOnce();
-		expect(onSend).not.toHaveBeenCalled();
+		expect(screen.getByRole("button", { name: "Queue" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Guide" })).toBeNull();
 	});
 });

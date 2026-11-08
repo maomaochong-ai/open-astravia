@@ -587,6 +587,7 @@
 		"drawer": {
 			"permissionDesc": "Awaiting confirmation",
 			"permissionLabel": "Permission request",
+			"queueGuide": "Guide this message (injects now without interrupting the current answer)",
 			"queueDelete": "Remove",
 			"contextCompaction": "Compact context",
 			"queueDesc": "{{count}} queued",
@@ -624,8 +625,7 @@
 		"toolbar": {
 			"addImage": "Add image",
 			"attachFile": "Attach file reference",
-			"skills": "Skills",
-			"guide": "Guide the session (sends now without interrupting the current answer)"
+			"skills": "Skills"
 		},
 		"speech": {
 			"actions": {
@@ -1129,7 +1129,8 @@
 		"removeSkill": "Click to remove",
 		"removeSkillMissing": "Skill not installed, click to remove",
 		"skillButtonLabel": "Skills",
-		"skillButtonTitle": "Skills"
+		"skillButtonTitle": "Skills",
+		"skillButtonLimitTitle": "Skill limit reached"
 	},
 	"slashPanel": {
 		"compaction": {

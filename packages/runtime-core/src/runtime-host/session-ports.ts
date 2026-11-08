@@ -34,6 +34,7 @@ export interface RuntimeTurnPrompt {
 	readonly messageId?: PromptRequest["messageId"];
 	readonly context?: PromptRequest["context"];
 	readonly promptRef?: PromptRequest["promptRef"];
+	readonly promptRefs?: PromptRequest["promptRefs"];
 	readonly attachments?: PromptRequest["attachments"];
 	readonly images?: PromptRequest["images"];
 	readonly streamingBehavior?: PromptRequest["streamingBehavior"];
@@ -204,6 +205,8 @@ export interface RuntimeSessionQueueController extends RuntimeSessionQueueView {
 	};
 	/** running 时打断当前 turn 并立刻以该条目开新 turn，空闲时直接开 turn；不阻塞等待 turn 结束。 */
 	sendQueuedNow(id: string): Promise<"promoted" | "started" | "missing">;
+	/** running 时把条目提升为 steering（工具间隙注入、不打断 turn），空闲时直接开 turn。 */
+	guideQueued(id: string): Promise<"promoted" | "started" | "missing">;
 	/** 解除 pause-on-terminal 并继续消费；不阻塞等待 turn 结束。 */
 	resumeQueue(): Promise<void>;
 }

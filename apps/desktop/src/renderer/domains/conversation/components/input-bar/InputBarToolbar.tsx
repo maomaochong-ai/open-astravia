@@ -151,11 +151,9 @@ export interface InputBarSendActionProps {
 	readonly isEmpty: boolean;
 	readonly isStreaming: boolean;
 	readonly queueTitle: string;
-	readonly guideTitle: string;
 	readonly pending?: { readonly label: string };
 	readonly onAbort: () => void | Promise<void>;
 	readonly onSend: () => void;
-	readonly onGuide: () => void;
 }
 
 export function InputBarSendAction({
@@ -164,14 +162,12 @@ export function InputBarSendAction({
 	isEmpty,
 	isStreaming,
 	queueTitle,
-	guideTitle,
 	pending,
 	onAbort,
 	onSend,
-	onGuide,
 }: InputBarSendActionProps): JSX.Element {
-	const showQueueAndGuide = canQueue && isStreaming && !isEmpty && !pending;
-	if (!showQueueAndGuide) {
+	const showQueueButton = canQueue && isStreaming && !isEmpty && !pending;
+	if (!showQueueButton) {
 		return (
 			<div className="shrink-0">
 				<SendButton canSend={canSend} isStreaming={isStreaming} pending={pending} onSend={onSend} onAbort={onAbort} />
@@ -180,16 +176,6 @@ export function InputBarSendAction({
 	}
 	return (
 		<div className="flex shrink-0 items-center gap-1">
-			{/* steer：消息立即注入当前回合，模型不被打断；队列用 followUp，等本轮结束后发。 */}
-			<button
-				type="button"
-				onClick={onGuide}
-				title={guideTitle}
-				aria-label={guideTitle}
-				className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground ${QUEUE_BUTTON_INTERACTION}`}
-			>
-				<span className="icon-[solar--routing-2-linear] h-[18px] w-[18px]" />
-			</button>
 			<button
 				type="button"
 				onClick={onSend}
