@@ -156,12 +156,7 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 				sessionStart.stopReason ?? sessionStart.blockReason ?? "Session start blocked by ecosystem hook",
 			);
 		}
-		const promptSubmit = await this.hookRuntime.runUserPromptSubmit(
-			prompt,
-			signal,
-			contributions,
-			turnId,
-		);
+		const promptSubmit = await this.hookRuntime.runUserPromptSubmit(prompt, signal, contributions, turnId);
 		if (promptSubmit.shouldStop || promptSubmit.shouldBlock) {
 			throw new Error(promptSubmit.stopReason ?? promptSubmit.blockReason ?? "Prompt blocked by ecosystem hook");
 		}

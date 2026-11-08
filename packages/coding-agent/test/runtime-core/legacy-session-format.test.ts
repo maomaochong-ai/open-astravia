@@ -107,7 +107,6 @@ function createTemporaryDirectory(collection: string[]): string {
 	return directory;
 }
 
-
 function legacySessionRecords(): readonly object[] {
 	return [
 		{

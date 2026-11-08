@@ -6,8 +6,8 @@ import { useNewSessionTexture } from "@shared/hooks/useNewSessionTexture";
 import { useSidebarStyle } from "@shared/hooks/useSidebarStyle";
 import { useTheme } from "@shared/hooks/useTheme";
 import { useFontRoles } from "@shared/hooks/useUiFont";
-import { COLOR_THEME_LABEL_KEYS } from "@shared/theme/color-theme-label-keys";
 import type { ThemeMode } from "@shared/store/atoms";
+import { COLOR_THEME_LABEL_KEYS } from "@shared/theme/color-theme-label-keys";
 import { type CursorStyle, STOAT_CURSOR_PREVIEW_URL } from "@shared/theme/cursor";
 import { NEW_SESSION_TEXTURE_CATALOG, type NewSessionTextureId } from "@shared/theme/new-session-texture";
 import { ORNAMENT_CATALOG, type OrnamentId } from "@shared/theme/ornament";
@@ -253,12 +253,10 @@ const FONT_FAMILY_OPTIONS = [
 	{ id: "mono" as const, labelKey: "uiFontMonoTitle", hintKey: "uiFontMonoHint" },
 ] as const;
 
-
 /** 原始表只有 id 与 i18n 键；这一层把当前选中态与译文并进渲染用的选项。 */
 function toFontOption<T extends string>(id: T, active: boolean, label: string, hint: string): AppearanceFontOption<T> {
 	return { id, active, label, hint };
 }
-
 
 export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	const { mode, themeName, setMode, setThemeName } = useTheme();
