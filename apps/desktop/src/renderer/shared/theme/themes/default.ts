@@ -3,10 +3,6 @@ import type { ThemeDef } from "../tokens";
 // 与 styles.css 中原 [data-theme="dark"] / [data-theme="light"] 字节级一致。
 // 这是存量用户升级后的默认外观。
 
-const FONT_SANS = '-apple-system, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif';
-const FONT_SERIF = "Georgia, serif";
-const FONT_MONO = '"SF Mono", "Fira Code", monospace';
-
 const SHADOW_2XS = "0px 1px 2px 0px hsl(0 0% 0% / 0.09)";
 const SHADOW_XS = "0px 1px 2px 0px hsl(0 0% 0% / 0.09)";
 const SHADOW_SM = "0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18)";
@@ -47,9 +43,6 @@ export const defaultTheme: ThemeDef = {
 		chart3: "rgb(116, 116, 116)",
 		chart4: "rgb(82, 82, 82)",
 		chart5: "rgb(228, 228, 228)",
-		fontSans: FONT_SANS,
-		fontSerif: FONT_SERIF,
-		fontMono: FONT_MONO,
 		radius: "0.5rem",
 		shadow2xs: SHADOW_2XS,
 		shadowXs: SHADOW_XS,
@@ -88,9 +81,6 @@ export const defaultTheme: ThemeDef = {
 		chart3: "rgb(164, 164, 164)",
 		chart4: "rgb(228, 228, 228)",
 		chart5: "rgb(116, 116, 116)",
-		fontSans: FONT_SANS,
-		fontSerif: FONT_SERIF,
-		fontMono: FONT_MONO,
 		radius: "0.5rem",
 		shadow2xs: SHADOW_2XS,
 		shadowXs: SHADOW_XS,

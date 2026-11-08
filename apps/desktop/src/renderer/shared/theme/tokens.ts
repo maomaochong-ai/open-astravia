@@ -2,13 +2,10 @@ import type { ThemeColorTokens } from "@astravia-org/theme-sdk/appearance";
 
 // 主题 token 定义。键名对应 styles.css 中 [data-mode] 块下的 CSS 变量名。
 // 任意新增主题必须实现 TokenSet 完整字段，TS 会强制校验。
+// 字体不是主题 token：默认栈只写在 styles.css，用户选择由 shared/theme/ui-font.ts
+// 写到同一个元素的内联样式上。若这里也写 --font-sans，主题应用就会盖掉用户选的字体。
 
 export interface TokenSet extends ThemeColorTokens {
-	// 字体
-	fontSans: string;
-	fontSerif: string;
-	fontMono: string;
-
 	// 圆角
 	radius: string;
 
@@ -58,9 +55,6 @@ export const TOKEN_CSS_VAR: Record<keyof TokenSet, string> = {
 	chart3: "--chart-3",
 	chart4: "--chart-4",
 	chart5: "--chart-5",
-	fontSans: "--font-sans",
-	fontSerif: "--font-serif",
-	fontMono: "--font-mono",
 	radius: "--radius",
 	shadow2xs: "--shadow-2xs",
 	shadowXs: "--shadow-xs",

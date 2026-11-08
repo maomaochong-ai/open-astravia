@@ -15,7 +15,7 @@ import themeLock from "../assets/theme-lock.webp";
 import { SETTINGS_SECTION } from "../registry";
 import { MotionSelect, SettingHeading } from "@astravia-org/theme-ui/settings";
 import type { SidebarStyle } from "@shared/theme/sidebar-style";
-import { uiFontStack } from "@shared/theme/ui-font";
+import { type UiFontFamily, uiFontStack } from "@shared/theme/ui-font";
 import type {
 	AppearanceCursorOption,
 	AppearanceOrnamentOption,
@@ -274,41 +274,42 @@ function SidebarStylePreview({ style }: { style: SidebarStyle }): JSX.Element {
 	);
 }
 
-/**
- * 字体卡：预览用该字体自己的字体栈写一行示例，选中前就能看出字形差。
- * 示例文字不翻译——它展示的是字形而不是内容。
- */
-const FontCard = memo(function FontCard({
-	active,
-	hint,
-	id,
+function FontSelectRow({
+	role,
 	label,
-	onSelect,
-}: AppearanceFontOption & {
-	onSelect: (family: AppearanceFontOption["id"]) => void;
+	hint,
+	value,
+	options,
+	onValueChange,
+}: {
+	role: "ui" | "code";
+	label: string;
+	hint: string;
+	value: UiFontFamily;
+	options: AppearanceFontOption[];
+	onValueChange: (family: UiFontFamily) => void;
 }): JSX.Element {
 	return (
-		<button
-			type="button"
-			onClick={() => onSelect(id)}
-			className={cn(
-				"group relative flex min-h-[72px] flex-col justify-center gap-1 rounded-xl border bg-card px-3.5 py-3 text-left transition-all",
-				active ? SELECTION_ACTIVE : SELECTION_IDLE,
-			)}
-		>
-			<span
-				aria-hidden="true"
-				className="text-[17px] leading-tight text-foreground"
-				style={{ fontFamily: uiFontStack(id) ?? undefined }}
-			>
-				Astravia 字体 Aa
-			</span>
-			<div className="text-[13px] font-medium text-foreground">{label}</div>
-			<div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">{hint}</div>
-			{active && <SelectionCheckBadge />}
-		</button>
+		<div className="flex items-start justify-between gap-4" data-font-role={role}>
+			<div className="min-w-0">
+				<div className="text-[13px] font-medium text-foreground">{label}</div>
+				<p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hint}</p>
+			</div>
+			<MotionSelect
+				aria-label={label}
+				value={value}
+				onValueChange={(next) => onValueChange(next as UiFontFamily)}
+				// 每个选项用自己的字体栈渲染，展开就能看出字形差，不必再多一排卡片。
+				options={options.map((option) => ({
+					value: option.id,
+					title: option.hint,
+					label: <span style={{ fontFamily: uiFontStack(option.id) ?? undefined }}>{option.label}</span>,
+				}))}
+				triggerClassName="min-w-[132px] shrink-0"
+			/>
+		</div>
 	);
-});
+}
 
 const SidebarStyleCard = memo(function SidebarStyleCard({
 	active,
@@ -568,12 +569,24 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 			</div>
 
 			<div className="mb-6">
-				<SettingHeading title={model.labels.sections.font} section={SETTINGS_SECTION["appearance-font"]} className="mb-1" />
-				<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.uiFontHint}</p>
-				<div className="grid grid-cols-2 gap-3">
-					{model.uiFontOptions.map((option) => (
-						<FontCard key={option.id} {...option} onSelect={model.actions.setUiFont} />
-					))}
+				<SettingHeading title={model.labels.sections.font} section={SETTINGS_SECTION["appearance-font"]} className="mb-3" />
+				<div className="flex flex-col gap-4">
+					<FontSelectRow
+						role="ui"
+						label={model.labels.fontRoles.ui}
+						hint={model.labels.uiFontHint}
+						value={model.uiFont}
+						options={model.uiFontOptions}
+						onValueChange={model.actions.setUiFont}
+					/>
+					<FontSelectRow
+						role="code"
+						label={model.labels.fontRoles.code}
+						hint={model.labels.codeFontHint}
+						value={model.codeFont}
+						options={model.codeFontOptions}
+						onValueChange={model.actions.setCodeFont}
+					/>
 				</div>
 			</div>
 

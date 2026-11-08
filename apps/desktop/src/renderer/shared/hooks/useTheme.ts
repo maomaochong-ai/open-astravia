@@ -12,18 +12,9 @@ import {
 	type ThemeTransitionOptions,
 	withThemeTransition,
 } from "../theme/apply";
+import { colorThemeLabelKey } from "../theme/color-theme-label-keys";
 import { getStoredCursorStyle, setStoredCursorStyle } from "../theme/cursor";
 import { DEFAULT_THEME_ID, resolveThemeId, THEMES } from "../theme/themes";
-
-const COLOR_THEME_LABEL_KEYS = {
-	mono: "colorThemes.mono",
-	default: "colorThemes.default",
-	sand: "colorThemes.sand",
-	forest: "colorThemes.forest",
-	bee: "colorThemes.bee",
-	mint: "colorThemes.mint",
-	parchment: "colorThemes.parchment",
-} as const;
 
 function getThemeSnapshot(): DesktopThemeSnapshot {
 	const storedMode = localStorage.getItem(MODE_STORAGE_KEY);
@@ -194,7 +185,7 @@ export function useThemeController(): void {
 		return window.astravia.theme.onHelpRequested(() => ({
 			state: getThemeSnapshot(),
 			themes: THEMES.map(({ id, label }) => {
-				const labelKey = COLOR_THEME_LABEL_KEYS[id as keyof typeof COLOR_THEME_LABEL_KEYS];
+				const labelKey = colorThemeLabelKey(id);
 				return {
 					id,
 					label: labelKey ? i18n.t(`settings:${labelKey}`) : label,

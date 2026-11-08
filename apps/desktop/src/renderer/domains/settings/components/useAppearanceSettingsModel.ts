@@ -5,7 +5,8 @@ import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
 import { useNewSessionTexture } from "@shared/hooks/useNewSessionTexture";
 import { useSidebarStyle } from "@shared/hooks/useSidebarStyle";
 import { useTheme } from "@shared/hooks/useTheme";
-import { useUiFont } from "@shared/hooks/useUiFont";
+import { useFontRoles } from "@shared/hooks/useUiFont";
+import { COLOR_THEME_LABEL_KEYS } from "@shared/theme/color-theme-label-keys";
 import type { ThemeMode } from "@shared/store/atoms";
 import { type CursorStyle, STOAT_CURSOR_PREVIEW_URL } from "@shared/theme/cursor";
 import { NEW_SESSION_TEXTURE_CATALOG, type NewSessionTextureId } from "@shared/theme/new-session-texture";
@@ -85,10 +86,10 @@ export interface AppearanceSidebarStyleOption {
 	label: string;
 }
 
-export interface AppearanceFontOption {
+export interface AppearanceFontOption<T extends string = UiFontFamily> {
 	active: boolean;
 	hint: string;
-	id: UiFontFamily;
+	id: T;
 	label: string;
 }
 export interface AppearanceSettingsModel {
@@ -102,6 +103,7 @@ export interface AppearanceSettingsModel {
 		setSidebarStyle: (style: SidebarStyle) => void;
 		setTexture: (id: NewSessionTextureId) => void;
 		setUiFont: (family: UiFontFamily) => void;
+		setCodeFont: (family: UiFontFamily) => void;
 	};
 	activeUiThemeId: string;
 	cursorOptions: AppearanceCursorOption[];
@@ -126,6 +128,12 @@ export interface AppearanceSettingsModel {
 		textureHint: string;
 		title: string;
 		uiFontHint: string;
+		codeFontHint: string;
+		/** 两个字体位置的小标题：全局 / 代码。 */
+		fontRoles: {
+			ui: string;
+			code: string;
+		};
 	};
 	/** 用户语言偏好（含 system），用于选择器高亮。 */
 	language: LanguagePreference;
@@ -137,6 +145,8 @@ export interface AppearanceSettingsModel {
 	ornamentOptions: AppearanceOrnamentOption[];
 	uiFontOptions: AppearanceFontOption[];
 	uiFont: UiFontFamily;
+	codeFontOptions: AppearanceFontOption[];
+	codeFont: UiFontFamily;
 	/** 是否展示「界面主题」区段（`ASTRAVIA_SHOW_UI_THEME=true`） */
 	showUiTheme: boolean;
 	sidebarStyle: SidebarStyle;
@@ -229,38 +239,26 @@ const SIDEBAR_STYLE_OPTIONS = [
 	},
 ] as const;
 
-const UI_FONT_OPTIONS = [
-	{
-		id: "system" as const,
-		labelKey: "uiFontSystemTitle",
-		hintKey: "uiFontSystemHint",
-	},
-	{
-		id: "rounded" as const,
-		labelKey: "uiFontRoundedTitle",
-		hintKey: "uiFontRoundedHint",
-	},
-	{
-		id: "serif" as const,
-		labelKey: "uiFontSerifTitle",
-		hintKey: "uiFontSerifHint",
-	},
-	{
-		id: "mono" as const,
-		labelKey: "uiFontMonoTitle",
-		hintKey: "uiFontMonoHint",
-	},
+/**
+ * 两个字体位置共用同一张字族表：全局字形（界面与消息正文）、代码/终端。
+ * 界面字体一档就管全应用；样式表把 `--font-content` 指向 `--font-sans`，消息正文不再单独选。
+ */
+const FONT_FAMILY_OPTIONS = [
+	{ id: "system" as const, labelKey: "uiFontSystemTitle", hintKey: "uiFontSystemHint" },
+	{ id: "rounded" as const, labelKey: "uiFontRoundedTitle", hintKey: "uiFontRoundedHint" },
+	{ id: "sans" as const, labelKey: "uiFontSansTitle", hintKey: "uiFontSansHint" },
+	{ id: "serif" as const, labelKey: "uiFontSerifTitle", hintKey: "uiFontSerifHint" },
+	{ id: "song" as const, labelKey: "uiFontSongTitle", hintKey: "uiFontSongHint" },
+	{ id: "kai" as const, labelKey: "uiFontKaiTitle", hintKey: "uiFontKaiHint" },
+	{ id: "mono" as const, labelKey: "uiFontMonoTitle", hintKey: "uiFontMonoHint" },
 ] as const;
 
-const COLOR_THEME_LABEL_KEYS = {
-	mono: "colorThemes.mono",
-	default: "colorThemes.default",
-	sand: "colorThemes.sand",
-	forest: "colorThemes.forest",
-	bee: "colorThemes.bee",
-	mint: "colorThemes.mint",
-	parchment: "colorThemes.parchment",
-} as const;
+
+/** 原始表只有 id 与 i18n 键；这一层把当前选中态与译文并进渲染用的选项。 */
+function toFontOption<T extends string>(id: T, active: boolean, label: string, hint: string): AppearanceFontOption<T> {
+	return { id, active, label, hint };
+}
+
 
 export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	const { mode, themeName, setMode, setThemeName } = useTheme();
@@ -268,12 +266,12 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	const { languagePreference, setLanguage } = useLanguage();
 	const { style: cursorStyle, setStyle: setCursorStyle } = useCursorStyle();
 	const { style: sidebarStyle, setStyle: setSidebarStyle } = useSidebarStyle();
-	const { family: uiFont, setFamily: setUiFont } = useUiFont();
 	const { ornamentId, setOrnament } = useHeroOrnament();
 	const { textureId, setTexture } = useNewSessionTexture();
 	const { t } = useTranslation("settings");
 	const narrow = useNarrowScreen();
 
+	const { ui: uiFont, setUi: setUiFont, code: codeFont, setCode: setCodeFont } = useFontRoles();
 	const languages = useMemo<AppearanceLanguageOption[]>(
 		() => [
 			{
@@ -365,14 +363,13 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	);
 
 	const uiFontOptions = useMemo<AppearanceFontOption[]>(
-		() =>
-			UI_FONT_OPTIONS.map((option) => ({
-				id: option.id,
-				active: uiFont === option.id,
-				label: t(option.labelKey),
-				hint: t(option.hintKey),
-			})),
+		() => FONT_FAMILY_OPTIONS.map((o) => toFontOption(o.id, uiFont === o.id, t(o.labelKey), t(o.hintKey))),
 		[t, uiFont],
+	);
+
+	const codeFontOptions = useMemo<AppearanceFontOption[]>(
+		() => FONT_FAMILY_OPTIONS.map((o) => toFontOption(o.id, codeFont === o.id, t(o.labelKey), t(o.hintKey))),
+		[t, codeFont],
 	);
 
 	const themes = useMemo(
@@ -407,6 +404,11 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 			textureHint: t("textureHint"),
 			title: t("appearanceTitle"),
 			uiFontHint: t("uiFontHint"),
+			codeFontHint: t("codeFontHint"),
+			fontRoles: {
+				ui: t("fontRoleUi"),
+				code: t("fontRoleCode"),
+			},
 		}),
 		[t],
 	);
@@ -458,6 +460,10 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 				setUiFont(family);
 				recordSettingsUsage({ tab: "appearance", action: "changed", target: "ui-font", value: family });
 			},
+			setCodeFont: (family) => {
+				setCodeFont(family);
+				recordSettingsUsage({ tab: "appearance", action: "changed", target: "code-font", value: family });
+			},
 		}),
 		[
 			selectTheme,
@@ -469,6 +475,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 			setTexture,
 			setThemeName,
 			setUiFont,
+			setCodeFont,
 		],
 	);
 
@@ -495,5 +502,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		uiFont,
 		uiFontOptions,
 		uiThemes,
+		codeFont,
+		codeFontOptions,
 	};
 }
