@@ -99,6 +99,32 @@ describe("Legacy session format boundary", () => {
 		await catalog.listSessions("C:\\workspace", directory);
 		expect(reads).toBe(2);
 	});
+
+	it("keeps a session whose header has no cwd, using the listed project as fallback", async () => {
+		const directory = createTemporaryDirectory(temporaryDirectories);
+		const sessionPath = join(directory, "no-cwd.jsonl");
+		const [header, ...rest] = legacySessionRecords();
+		const { cwd: _omitted, ...headerWithoutCwd } = header as Record<string, unknown>;
+		writeFileSync(sessionPath, `${[headerWithoutCwd, ...rest].map((record) => JSON.stringify(record)).join("\n")}\n`);
+
+		const host = createNodeLegacySessionHost({ defaultCwd: "C:\\default", sessionsDirectory: directory });
+		const catalog = new LegacyRuntimeSessionCatalog(host);
+		const sessions = await catalog.listSessions("C:\\workspace", directory);
+		// 头部缺 cwd 不能被当成别人的文件：否则旧版本写的会话在列表里整条消失。
+		expect(sessions).toHaveLength(1);
+		expect(sessions[0]).toMatchObject({ id: "legacy-session", cwd: "C:\\workspace" });
+	});
+
+	it("accepts a session header that starts with a byte order mark", async () => {
+		const directory = createTemporaryDirectory(temporaryDirectories);
+		const sessionPath = join(directory, "bom.jsonl");
+		const [header, ...rest] = legacySessionRecords();
+		writeFileSync(sessionPath, `\uFEFF${[header, ...rest].map((record) => JSON.stringify(record)).join("\n")}\n`);
+
+		const host = createNodeLegacySessionHost({ defaultCwd: directory, sessionsDirectory: directory });
+		const sessions = await new LegacyRuntimeSessionCatalog(host).listSessions("C:\\workspace", directory);
+		expect(sessions).toHaveLength(1);
+	});
 });
 
 function createTemporaryDirectory(collection: string[]): string {

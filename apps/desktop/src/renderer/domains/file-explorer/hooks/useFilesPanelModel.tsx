@@ -57,6 +57,7 @@ import { OpenWorkspaceWithAppButton } from "../components/OpenWorkspaceWithAppBu
 import { type FileExplorerClipboard, resolvePasteDirectory } from "../services/clipboard";
 import { resolveCreateParentDirectory } from "../services/create-entry";
 import { isProjectInternalDrop } from "../services/file-drop";
+import { findCachedEntry } from "../services/file-tree-cache-lookup";
 import { sortFileExplorerActions } from "../services/plugin-contributions";
 import { cacheAppFileDragIcons } from "../services/rasterize-app-file-icon";
 import { getRenameNameProblem } from "../services/rename-name";
@@ -314,8 +315,8 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		async (path: string, options?: { select?: boolean; focus?: boolean }) => {
 			if (!rootDir) throw new Error("File explorer has no active workspace");
 			await revealPath(path);
-			const entries = [...getDefaultStore().get(fileTreeCacheAtom).values()].flat();
-			const entry = entries.find((candidate) => candidate.path === path);
+			// 只查父目录：以前把整个缓存摊平再线性找，目录一多每次 reveal 都要扫全部条目。
+			const entry = findCachedEntry(getDefaultStore().get(fileTreeCacheAtom), path);
 			if (!entry) throw new Error(`Path is not visible in the active workspace: ${path}`);
 			if (options?.select !== false) {
 				selection.replaceWith(entry);
