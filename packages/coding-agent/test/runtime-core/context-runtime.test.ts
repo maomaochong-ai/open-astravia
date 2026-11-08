@@ -80,6 +80,50 @@ describe("DefaultCodingAgentContextRuntime", () => {
 		expect(entries.map(({ type }) => type)).toEqual(["compaction", "message", "message", "message"]);
 	});
 
+	// `refreshContextState` 会在每个非 assistant 事件后询问一次压缩资格，回答它是 O(历史) 的。
+	// 缓存只能按文档内容（与压缩设置）失效：非条目事件不得让它变咸。
+	it("answers compaction eligibility from the document content, never from the asking event", () => {
+		const settings = compactingSettings();
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			resolveSettings: () => settings,
+		});
+		let document = documentFromMessages([userMessage("one", 1), assistantMessage("reply", 2, 2)]);
+
+		const first = runtime.readCompactionEligibility(document);
+		expect(first).toEqual({ status: "eligible" });
+		// 同一快照重复询问结果稳定（缓存命中路径）
+		expect(runtime.readCompactionEligibility(document)).toEqual(first);
+
+		// 非条目事件只推进 journalVersion，分支内容未变 → 结论必须不变
+		document = { ...document, journalVersion: document.journalVersion + 1 };
+		expect(runtime.readCompactionEligibility(document)).toEqual(first);
+
+		// 分支新增一条 compaction 条目 → 结论必须立即变（不能继续用旧快照）
+		const compacted = applyStoredEventToConversationDocument(
+			document,
+			{
+				type: "context.compacted",
+				sessionId: "session-1",
+				turnId: "turn-1",
+				record: {
+					summary: "summary",
+					summaryMessage: userMessage("summary", 3),
+					firstKeptEntryId: "event-2",
+					tokensBefore: 2,
+					reason: "threshold",
+				},
+				timestamp: 3,
+			},
+			document.journalVersion + 1,
+		);
+		expect(runtime.readCompactionEligibility(compacted)).toEqual({
+			status: "ineligible",
+			reason: "already_compacted",
+		});
+	});
+
 	it("summarizes only supplied records with the admitted model settings and no compaction hooks", async () => {
 		let settings = compactingSettings();
 		const hooks = createHookRuntime();

@@ -40,7 +40,12 @@ export class CodingAgentManualCompactionStrategy {
 			throw providerAuthenticationError(model, `No credentials configured for ${model.provider}/${model.id}`);
 		}
 
+		// 投影与 prepareCompaction 都是同步 O(历史)：长会话里连着跑会把主进程占满，
+		// 渲染层连「已排队」的回执都拿不到就卡住。两段之间各让出一轮，
+		// 让排队的 IPC 先落地，单次阻塞也只剩一半。
+		await new Promise<void>((resolve) => setImmediate(resolve));
 		const entries = toCompactionSessionEntries(projectPinnedConversationDocument(input.document, pinnedContext));
+		await new Promise<void>((resolve) => setImmediate(resolve));
 		const preparation = prepareCompaction(entries, settings);
 		if (!preparation) {
 			const lastEntry = entries[entries.length - 1];
