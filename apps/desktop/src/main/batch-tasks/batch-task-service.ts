@@ -5,6 +5,7 @@ import { recordBatchProjectCreated } from "../app-monitor/app-monitor-service.js
 import type { ExecutionModeOverride } from "../execution-mode.js";
 import { readDesktopConfig } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
+import { isBatchSkill, isBatchSkillList, resolveProjectSkills } from "./batch-project-skills.js";
 import {
 	abortTask as abortTaskExecutor,
 	emitBatchTaskEvent,
@@ -40,7 +41,10 @@ export interface CreateBatchProjectInput {
 	artifactPatterns?: string[];
 	notifyEnabled?: boolean;
 	timeoutMinutes?: number;
+	/** @deprecated 旧单技能入参，服务层会并成一项 `skills`。 */
 	skill?: BatchSkillRef;
+	/** 多技能：由 `resolveProjectSkills` 归一后存入存储层。 */
+	skills?: BatchSkillRef[];
 }
 
 export type UpdateBatchProjectInput = Partial<{
@@ -53,7 +57,9 @@ export type UpdateBatchProjectInput = Partial<{
 	notifyEnabled: boolean;
 	timeoutMinutes: number;
 	newFolders: string[];
+	/** @deprecated 旧单技能入参：服务层会并成一项 `skills`，`null` 表示清空。 */
 	skill: BatchSkillRef | null;
+	skills: BatchSkillRef[] | null;
 }>;
 
 export interface BatchTaskCommandResult {
@@ -85,6 +91,7 @@ const CREATE_PROJECT_KEYS = new Set([
 	"notifyEnabled",
 	"timeoutMinutes",
 	"skill",
+	"skills",
 ]);
 const UPDATE_PROJECT_KEYS = new Set([
 	"name",
@@ -97,6 +104,7 @@ const UPDATE_PROJECT_KEYS = new Set([
 	"timeoutMinutes",
 	"newFolders",
 	"skill",
+	"skills",
 ]);
 
 function isNonBlankString(value: unknown): value is string {
@@ -109,17 +117,6 @@ function isNonBlankStringArray(value: unknown, allowEmpty: boolean): value is st
 
 function isExecutionMode(value: unknown): value is ExecutionModeOverride {
 	return value === "inherit" || value === "sandbox" || value === "full-access";
-}
-
-function isBatchSkill(value: unknown): value is BatchSkillRef {
-	if (value == null || typeof value !== "object" || Array.isArray(value)) return false;
-	const skill = value as Record<string, unknown>;
-	return (
-		isNonBlankString(skill.name) &&
-		(skill.alias === undefined || isNonBlankString(skill.alias)) &&
-		skill.type === "skill" &&
-		Object.keys(skill).every((key) => key === "name" || key === "alias" || key === "type")
-	);
 }
 
 function assertCreateProjectInput(value: unknown): asserts value is CreateBatchProjectInput {
@@ -143,7 +140,8 @@ function assertCreateProjectInput(value: unknown): asserts value is CreateBatchP
 			(Number.isInteger(input.timeoutMinutes) &&
 				Number(input.timeoutMinutes) >= 1 &&
 				Number(input.timeoutMinutes) <= 10_080)) &&
-		(input.skill === undefined || isBatchSkill(input.skill));
+		(input.skill === undefined || isBatchSkill(input.skill)) &&
+		(input.skills === undefined || isBatchSkillList(input.skills));
 	if (!valid) {
 		throw new BatchTaskServiceError("BATCH_PROJECT_INVALID_INPUT", "Invalid batch project create input.");
 	}
@@ -170,7 +168,8 @@ function assertUpdateProjectInput(value: unknown): asserts value is UpdateBatchP
 				Number(input.timeoutMinutes) >= 1 &&
 				Number(input.timeoutMinutes) <= 10_080)) &&
 		(input.newFolders === undefined || isNonBlankStringArray(input.newFolders, true)) &&
-		(input.skill === undefined || input.skill === null || isBatchSkill(input.skill));
+		(input.skill === undefined || input.skill === null || isBatchSkill(input.skill)) &&
+		(input.skills === undefined || input.skills === null || isBatchSkillList(input.skills));
 	if (!valid) {
 		throw new BatchTaskServiceError("BATCH_PROJECT_INVALID_INPUT", "Invalid batch project update input.");
 	}
@@ -229,7 +228,7 @@ export class BatchTaskService {
 			data.artifactPatterns,
 			data.notifyEnabled,
 			data.timeoutMinutes,
-			data.skill,
+			resolveProjectSkills(data),
 		);
 		recordBatchProjectCreated();
 		return project;
@@ -241,7 +240,9 @@ export class BatchTaskService {
 		if (data.newFolders) {
 			await this.assertDirectories(data.newFolders);
 		}
-		await updateProjectStorage(projectId, data);
+		// 旧入参只有 `skill`：先并成 `skills` 再落存储；两者都没提到时保持原值不动。
+		const resolvedSkills = resolveProjectSkills(data);
+		await updateProjectStorage(projectId, resolvedSkills === undefined ? data : { ...data, skills: resolvedSkills });
 		return await this.requireProject(projectId);
 	}
 

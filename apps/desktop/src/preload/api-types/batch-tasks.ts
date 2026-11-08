@@ -27,7 +27,10 @@ export interface BatchProject {
 	artifactPatterns?: string[];
 	notifyEnabled?: boolean;
 	timeoutMinutes?: number;
+	/** @deprecated 用 skills；旧项目文件读取时仍会迁移过来。 */
 	skill?: SelectedSkillRef;
+	/** 每个任务都会挂上的技能，按选择顺序展开。 */
+	skills?: SelectedSkillRef[];
 	tasks: BatchTask[];
 	createdAt: number;
 	updatedAt: number;
@@ -69,6 +72,7 @@ export interface DesktopBatchTasksApi {
 		notifyEnabled?: boolean;
 		timeoutMinutes?: number;
 		skill?: SelectedSkillRef;
+		skills?: SelectedSkillRef[];
 	}): Promise<BatchProject>;
 	updateProject(
 		projectId: string,
@@ -83,6 +87,7 @@ export interface DesktopBatchTasksApi {
 			timeoutMinutes: number;
 			newFolders: string[];
 			skill: SelectedSkillRef | null;
+			skills: SelectedSkillRef[] | null;
 		}>,
 	): Promise<void>;
 	deleteProject(projectId: string): Promise<void>;

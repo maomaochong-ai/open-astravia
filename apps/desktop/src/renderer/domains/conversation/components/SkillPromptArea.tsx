@@ -7,8 +7,11 @@ import { SkillPickerPanel } from "./command-panel/SkillPickerPanel";
 interface SkillPromptAreaProps {
 	prompt: string;
 	onPromptChange: (value: string) => void;
-	skill: SelectedSkill | null | undefined;
-	onSkillChange: (skill: SelectedSkill | null) => void;
+	/** 已选技能，按选择顺序。 */
+	skills: readonly SelectedSkill[];
+	onSkillsChange: (skills: SelectedSkill[]) => void;
+	/** 最多可选几个；单技能场景（如定时任务）传 1 即回到旧行为。 */
+	maxSkills?: number;
 	placeholder?: string;
 	minHeight?: number;
 	className?: string;
@@ -19,6 +22,7 @@ interface SkillPromptAreaProps {
 
 /**
  * 批量任务 / 自动化 dialog 共用的"带技能/场景"prompt 输入区。
+ * 支持多选：每选中一个技能产生一个胶囊，最多 `maxSkills` 个。
  */
 export function SkillPromptArea(props: SkillPromptAreaProps): JSX.Element {
 	const model = useSkillPromptAreaModel(props);
@@ -56,9 +60,8 @@ export function SkillPromptArea(props: SkillPromptAreaProps): JSX.Element {
 			className={model.className}
 			autoFocus={model.autoFocus}
 			slashOpen={model.slashOpen}
-			skillMissing={model.skillMissing}
-			skillDisplayName={model.skillDisplayName}
-			hasSkill={Boolean(model.skill)}
+			selectedSkills={model.selectedSkills}
+			canAddSkill={model.canAddSkill}
 			anchorRect={model.anchorRect}
 			textareaRef={model.textareaRef}
 			cardRef={model.cardRef}

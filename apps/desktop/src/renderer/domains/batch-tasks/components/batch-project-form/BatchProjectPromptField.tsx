@@ -5,15 +5,15 @@ import { useBatchProjectPromptFieldModel } from "../../hooks/useBatchProjectProm
 export function BatchProjectPromptField({
 	prompt,
 	promptMinHeight,
-	skill,
+	skills,
 	onPromptChange,
-	onSkillChange,
+	onSkillsChange,
 }: {
 	prompt: string;
 	promptMinHeight: number;
-	skill: SelectedSkill | null;
+	skills: readonly SelectedSkill[];
 	onPromptChange: (prompt: string) => void;
-	onSkillChange: (skill: SelectedSkill | null) => void;
+	onSkillsChange: (skills: SelectedSkill[]) => void;
 }): JSX.Element {
 	const model = useBatchProjectPromptFieldModel();
 
@@ -21,8 +21,8 @@ export function BatchProjectPromptField({
 		<SkillPromptArea
 			prompt={prompt}
 			onPromptChange={onPromptChange}
-			skill={skill}
-			onSkillChange={onSkillChange}
+			skills={skills}
+			onSkillsChange={onSkillsChange}
 			placeholder={model.placeholder}
 			minHeight={promptMinHeight}
 		/>

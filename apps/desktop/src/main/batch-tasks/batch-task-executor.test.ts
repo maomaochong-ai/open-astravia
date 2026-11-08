@@ -176,6 +176,39 @@ describe("batch RuntimeHost consumer", () => {
 		});
 	});
 
+	it("passes every selected skill through promptRefs so one task can combine several", async () => {
+		const projectDir = await temporaryDirectory("desktop-batch-multi-project-");
+		const taskDir = await temporaryDirectory("desktop-batch-multi-task-");
+		const project = batchProject(projectDir);
+		project.skills = [
+			{ type: "skill", name: "review" },
+			{ type: "skill", name: "audit" },
+		];
+		const task = batchTask(taskDir);
+		project.tasks.push(task);
+		const prompt = vi.fn(async () => {});
+		const runtime = {
+			createSession: vi.fn(async () => ({ sessionId: "batch-multi-session" })),
+			getSessionPath: () => join(projectDir, ".astravia", "sessions", "multi.jsonl"),
+			getMessages: () => [assistantMessage("multi completed")],
+			prompt,
+			renameSessionById: vi.fn(),
+		} as unknown as RuntimeHost;
+		const completed = waitForBatchEvent((event) => event.type === "task.completed" && event.taskId === task.id);
+
+		enqueueRunTask(project, task, runtime);
+		await completed;
+
+		expect(prompt).toHaveBeenCalledWith("batch-multi-session", {
+			text: project.prompt,
+			modelKey: "test/provider-model",
+			promptRefs: [
+				{ kind: "skill", name: "review" },
+				{ kind: "skill", name: "audit" },
+			],
+		});
+	});
+
 	it("aborts active work and does not drain queued work during shutdown", async () => {
 		const projectDir = await temporaryDirectory("desktop-batch-shutdown-project-");
 		const firstTaskDir = await temporaryDirectory("desktop-batch-shutdown-first-");
@@ -255,7 +288,7 @@ function batchProject(projectDir: string): BatchProject {
 		modelKey: "test/provider-model",
 		concurrency: 1,
 		executionMode: "full-access",
-		skill: { type: "skill", name: "batch-skill" },
+		skills: [{ type: "skill", name: "batch-skill" }],
 		tasks: [],
 		createdAt: 1,
 		updatedAt: 1,

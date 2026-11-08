@@ -13,6 +13,8 @@ export interface PromptResourceExpansion {
 	text: string;
 	skillInjection?: string;
 	promptResourceHookContribution?: EcosystemHookContributionSource;
+	/** 多技能展开时按请求顺序收集的 hook 贡献。 */
+	promptResourceHookContributions?: readonly EcosystemHookContributionSource[];
 	/** @deprecated Use promptResourceHookContribution. */
 	skillHookContribution?: EcosystemHookContributionSource;
 	promptRef?: PromptResourceRef;

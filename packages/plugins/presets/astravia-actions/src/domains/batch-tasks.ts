@@ -59,6 +59,8 @@ const skillSchema = {
 	required: ["name", "type"],
 	additionalProperties: false,
 } as const;
+/** 多技能：与单个 `skill` 并存，服务层会把单个 `skill` 并成一项。 */
+const skillsSchema = { type: "array", items: skillSchema, minItems: 1, maxItems: 8 } as const;
 const createProjectDataSchema = {
 	type: "object",
 	properties: {
@@ -72,6 +74,7 @@ const createProjectDataSchema = {
 		notifyEnabled: { type: "boolean" },
 		timeoutMinutes: { type: "integer", minimum: 1, maximum: 10_080 },
 		skill: skillSchema,
+		skills: skillsSchema,
 	},
 	required: ["name", "prompt", "folders", "concurrency"],
 	additionalProperties: false,
@@ -89,6 +92,7 @@ const updateProjectDataSchema = {
 		timeoutMinutes: { type: "integer", minimum: 1, maximum: 10_080 },
 		newFolders: { type: "array", items: nonBlankStringSchema },
 		skill: { anyOf: [skillSchema, { type: "null" }] },
+		skills: { anyOf: [skillsSchema, { type: "null" }] },
 	},
 	minProperties: 1,
 	additionalProperties: false,

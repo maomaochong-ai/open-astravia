@@ -16,7 +16,7 @@ export function toBatchProjectApprovalJsonData(data: BatchProjectEditableData): 
 	if (data.timeoutMinutes !== undefined) result.timeoutMinutes = normalizeTimeout(data.timeoutMinutes);
 	if (data.folders !== undefined) result.folders = compactLines(data.folders);
 	if (data.newFolders !== undefined) result.newFolders = compactLines(data.newFolders);
-	if (data.skill !== undefined) result.skill = data.skill;
+	if (data.skills !== undefined) result.skills = data.skills;
 	return result;
 }
 

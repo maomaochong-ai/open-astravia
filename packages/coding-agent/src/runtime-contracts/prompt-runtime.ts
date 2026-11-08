@@ -15,6 +15,11 @@ export interface CodingAgentPromptResourceExpansion {
 	readonly promptRef?: PromptResourceRef;
 	readonly skillInjection?: string;
 	readonly promptResourceHookContribution?: EcosystemHookContributionSource;
+	/**
+	 * 一次 prompt 挂多个技能时的 hook 贡献（按请求顺序）。与
+	 * `promptResourceHookContribution` 取并集，单技能路径不会两者同时出现。
+	 */
+	readonly promptResourceHookContributions?: readonly EcosystemHookContributionSource[];
 	/** @deprecated Use promptResourceHookContribution. */
 	readonly skillHookContribution?: EcosystemHookContributionSource;
 }

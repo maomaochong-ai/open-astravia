@@ -29,7 +29,7 @@ function getProjectData(project: BatchProject | undefined): BatchProjectEditable
 		folders: project?.tasks.map((task) => task.sourcePath) ?? [],
 		artifactPatterns: project?.artifactPatterns ?? [],
 		notifyEnabled: project?.notifyEnabled ?? false,
-		skill: project?.skill ?? null,
+		skills: project?.skills ?? [],
 	};
 }
 
@@ -105,7 +105,7 @@ export function useBatchProjectDialogModel({
 				notifyEnabled: normalized.notifyEnabled ?? false,
 				timeoutMinutes: safeTimeoutMinutes,
 				newFolders,
-				skill: normalized.skill ?? null,
+				skills: normalized.skills ?? [],
 			});
 		} else {
 			await createProject({
@@ -118,7 +118,7 @@ export function useBatchProjectDialogModel({
 				artifactPatterns,
 				notifyEnabled: normalized.notifyEnabled ?? false,
 				timeoutMinutes: safeTimeoutMinutes,
-				skill: normalized.skill ?? undefined,
+				skills: normalized.skills ?? [],
 			});
 		}
 		onClose();
