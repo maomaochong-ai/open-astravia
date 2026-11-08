@@ -120,4 +120,166 @@ describe("useQueueCardModel compaction barrier", () => {
 
 		expect(store.get(inputValueAtom)).toBe("我正在写\n排队那句");
 	});
+
+	it("引导直接交给内核通道，条目原样搬运、不在渲染端重发文本", async () => {
+		const guideQueuedMessage = vi.fn(async () => "promoted" as const);
+		vi.stubGlobal("astravia", { session: { guideQueuedMessage } });
+		try {
+			const store = getDefaultStore();
+			store.set(
+				messageQueueBySessionAtom,
+				new Map([
+					[
+						"session-1",
+						[
+							{ id: "keep", behavior: "followUp", kind: "message", displayText: "留下" },
+							{ id: "m3", behavior: "followUp", kind: "message", displayText: "换个方向" },
+						],
+					],
+				]),
+			);
+			const { result } = renderHook(() => useQueueCardModel("session-1"));
+
+			await act(async () => result.current.onGuide("m3"));
+
+			expect(guideQueuedMessage).toHaveBeenCalledWith("session-1", "m3");
+			expect(getQueueForSession(store.get(messageQueueBySessionAtom), "session-1").map((item) => item.id)).toEqual([
+				"keep",
+			]);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	// 回执是异步的：渲染时捕获的 fullItems 是一份快照，回执后写回它会把往返期间新入队
+	// 的条目一并抹掉（kernel 里还在，界面上却没了）。所以按 id 从当前镜像里摘。
+	it("等回执期间新入队的条目不会被引导的回写抹掉", async () => {
+		let resolveGuide: ((status: "promoted") => void) | undefined;
+		const guideQueuedMessage = vi.fn(
+			() =>
+				new Promise<"promoted">((resolve) => {
+					resolveGuide = resolve;
+				}),
+		);
+		vi.stubGlobal("astravia", { session: { guideQueuedMessage } });
+		try {
+			const store = getDefaultStore();
+			const queued = [
+				{ id: "keep", behavior: "followUp" as const, kind: "message" as const, displayText: "留下" },
+				{ id: "m6", behavior: "followUp" as const, kind: "message" as const, displayText: "顺手引导" },
+			];
+			store.set(messageQueueBySessionAtom, new Map([["session-1", queued]]));
+			const { result } = renderHook(() => useQueueCardModel("session-1"));
+
+			act(() => result.current.onGuide("m6"));
+			act(() => {
+				store.set(setQueueForSessionAtom, {
+					runtimeId: "session-1",
+					items: [...queued, { id: "late", behavior: "followUp", kind: "message", displayText: "刚排进来" }],
+				});
+			});
+			await act(async () => {
+				resolveGuide?.("promoted");
+				await Promise.resolve();
+			});
+
+			expect(getQueueForSession(store.get(messageQueueBySessionAtom), "session-1").map((item) => item.id)).toEqual([
+				"keep",
+				"late",
+			]);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it("引导报错时不动队列，条目留在原地等用户重试", async () => {
+		const guideQueuedMessage = vi.fn(async () => {
+			throw new Error("host gone");
+		});
+		vi.stubGlobal("astravia", { session: { guideQueuedMessage } });
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			const store = getDefaultStore();
+			store.set(
+				messageQueueBySessionAtom,
+				new Map([
+					[
+						"session-1",
+						[
+							{ id: "keep", behavior: "followUp", kind: "message", displayText: "留下" },
+							{ id: "m4", behavior: "followUp", kind: "message", displayText: "不要重复发" },
+						],
+					],
+				]),
+			);
+			const { result } = renderHook(() => useQueueCardModel("session-1"));
+
+			await act(async () => result.current.onGuide("m4"));
+
+			expect(getQueueForSession(store.get(messageQueueBySessionAtom), "session-1").map((item) => item.id)).toEqual([
+				"keep",
+				"m4",
+			]);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it("条目已被当前回合消费时内核返回 missing，不做乐观移除", async () => {
+		const guideQueuedMessage = vi.fn(async () => "missing" as const);
+		vi.stubGlobal("astravia", { session: { guideQueuedMessage } });
+		try {
+			const store = getDefaultStore();
+			store.set(
+				messageQueueBySessionAtom,
+				new Map([
+					[
+						"session-1",
+						[{ id: "m5", behavior: "followUp", kind: "message", displayText: "已发出去" }],
+					],
+				]),
+			);
+			const { result } = renderHook(() => useQueueCardModel("session-1"));
+
+			await act(async () => result.current.onGuide("m5"));
+
+			// 内核说没有这条：镜像不动，交给 queue.changed 回流校正。
+			expect(getQueueForSession(store.get(messageQueueBySessionAtom), "session-1").map((item) => item.id)).toEqual([
+				"m5",
+			]);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it("压缩屏障没有可引导的文本，引导对它不做事", async () => {
+		const guideQueuedMessage = vi.fn(async () => "promoted" as const);
+		vi.stubGlobal("astravia", { session: { guideQueuedMessage } });
+		try {
+			const store = getDefaultStore();
+			store.set(
+				messageQueueBySessionAtom,
+				new Map([
+					[
+						"session-1",
+						[
+							{
+								id: "compact",
+								behavior: "followUp",
+								kind: "context_compaction",
+								displayText: "context.compact",
+							},
+						],
+					],
+				]),
+			);
+			const { result } = renderHook(() => useQueueCardModel("session-1"));
+
+			await act(async () => result.current.onGuide("compact"));
+
+			expect(guideQueuedMessage).not.toHaveBeenCalled();
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
 });

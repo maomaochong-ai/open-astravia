@@ -368,6 +368,34 @@ describe("AgentSession 队列生命周期（ADR-0060）", () => {
 		await active;
 	});
 
+	it("引导把排队消息提升为 steering，不打断正在跑的回合", async () => {
+		const fixture = createFixture({ blockRun: true });
+		const session = await createAgentSession({ id: "s", pipeline: fixture.pipeline });
+		const active = session.send({ message: userMessage("first") });
+		await vi.waitFor(() => expect(fixture.runTurn).toHaveBeenCalledOnce());
+
+		const queued = await session.send({ message: userMessage("guide me") }, { streamingBehavior: "followUp" });
+		const itemId = queued.status === "queued" ? (queued.id ?? "") : "";
+		expect(itemId).not.toBe("");
+
+		expect(await session.guideQueued(itemId)).toBe("promoted");
+		// 引导的语义就是“插进当前回合”，所以回合不能断、条目只换座位。
+		expect(session.state).toBe("running");
+		expect(fixture.runTurn).toHaveBeenCalledOnce();
+		expect(session.listQueue().entries.map((entry) => [entry.id, entry.behavior])).toEqual([[itemId, "steer"]]);
+
+		fixture.completeRun();
+		await active;
+	});
+
+	it("引导不存在的条目返回 missing，不额外开新回合", async () => {
+		const fixture = createFixture();
+		const session = await createAgentSession({ id: "s", pipeline: fixture.pipeline });
+
+		expect(await session.guideQueued("missing-id")).toBe("missing");
+		expect(fixture.runTurn).not.toHaveBeenCalled();
+	});
+
 	it("queueRequestIfRunning 原子区分忙碌入队与空闲状态", async () => {
 		const fixture = createFixture({ blockRun: true });
 		const session = await createAgentSession({ id: "s", pipeline: fixture.pipeline });

@@ -109,6 +109,86 @@ describe("Coding Agent prompt resource resolver", () => {
 			},
 		});
 	});
+
+	it("expands several prompt refs into one skill injection, in selection order", async () => {
+		const reviewDir = join(root, "review");
+		const auditDir = join(root, "audit");
+		mkdirSync(reviewDir);
+		mkdirSync(auditDir);
+		const reviewPath = join(reviewDir, "SKILL.md");
+		const auditPath = join(auditDir, "SKILL.md");
+		writeFileSync(reviewPath, skillDocument("review", "review body"));
+		writeFileSync(auditPath, skillDocument("audit", "audit body"));
+		const adapter = new CodingAgentPromptRequestAdapter({
+			now: () => 42,
+			resolvePromptResource: createCodingAgentPromptResourceResolver({
+				resourceLoader: {
+					refreshSkillsIfChanged: async () => false,
+					getSkills: () => ({
+						skills: [createSkill("review", reviewDir, reviewPath), createSkill("audit", auditDir, auditPath)],
+						diagnostics: [],
+					}),
+				},
+			}),
+		});
+
+		const prepared = await preparePrompt(
+			adapter,
+			{
+				text: "do both",
+				promptRefs: [
+					{ kind: "skill", name: "review" },
+					{ kind: "skill", name: "audit" },
+				],
+			},
+			{ sessionId: "session-1", queueing: false },
+		);
+
+		const expansion = prepared.input.context?.find((record) => record.type === "skill_expansion");
+		const content = String(expansion?.content ?? "");
+		expect(content).toContain("review body");
+		expect(content).toContain("audit body");
+		expect(content.indexOf("review body")).toBeLessThan(content.indexOf("audit body"));
+		// 历史投影与 metadata 仍按单资源读写：只记首选那个。
+		expect(expansion?.metadata).toEqual({ promptRef: { kind: "skill", name: "review" } });
+	});
+
+	it("lets promptRef win when a caller sends both promptRef and promptRefs", async () => {
+		const reviewDir = join(root, "review");
+		const auditDir = join(root, "audit");
+		mkdirSync(reviewDir);
+		mkdirSync(auditDir);
+		const reviewPath = join(reviewDir, "SKILL.md");
+		const auditPath = join(auditDir, "SKILL.md");
+		writeFileSync(reviewPath, skillDocument("review", "review body"));
+		writeFileSync(auditPath, skillDocument("audit", "audit body"));
+		const adapter = new CodingAgentPromptRequestAdapter({
+			now: () => 42,
+			resolvePromptResource: createCodingAgentPromptResourceResolver({
+				resourceLoader: {
+					refreshSkillsIfChanged: async () => false,
+					getSkills: () => ({
+						skills: [createSkill("review", reviewDir, reviewPath), createSkill("audit", auditDir, auditPath)],
+						diagnostics: [],
+					}),
+				},
+			}),
+		});
+
+		const prepared = await preparePrompt(
+			adapter,
+			{
+				text: "do one",
+				promptRef: { kind: "skill", name: "review" },
+				promptRefs: [{ kind: "skill", name: "audit" }],
+			},
+			{ sessionId: "session-1", queueing: false },
+		);
+
+		const content = prepared.input.context?.find((record) => record.type === "skill_expansion")?.content ?? "";
+		expect(content).toContain("review body");
+		expect(content).not.toContain("audit body");
+	});
 });
 
 function createSkill(name: string, baseDir: string, filePath: string): Skill {

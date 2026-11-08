@@ -168,6 +168,7 @@ const CHANNELS = {
 	QUEUE_REMOVE: "astravia:session:queue-remove",
 	QUEUE_REORDER: "astravia:session:queue-reorder",
 	QUEUE_SEND_NOW: "astravia:session:queue-send-now",
+	QUEUE_GUIDE: "astravia:session:queue-guide",
 	QUEUE_RESUME: "astravia:session:queue-resume",
 	QUEUE_CLEAR: "astravia:session:queue-clear",
 	CLEAR_TODOS: "astravia:session:clear-todos",
@@ -1043,6 +1044,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		assertNonEmptyString(sessionId, "sessionId");
 		assertNonEmptyString(itemId, "itemId");
 		return runtime.sendQueuedMessageNow(sessionId, itemId);
+	});
+	ipcMain.handle(CHANNELS.QUEUE_GUIDE, async (_event, sessionId: unknown, itemId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		assertNonEmptyString(itemId, "itemId");
+		return runtime.guideQueuedMessage(sessionId, itemId);
 	});
 	ipcMain.handle(CHANNELS.QUEUE_RESUME, async (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");

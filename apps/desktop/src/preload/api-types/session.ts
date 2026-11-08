@@ -169,6 +169,11 @@ export interface DesktopSessionApi {
 	reorderQueuedMessages(sessionId: string, itemIds: string[]): Promise<void>;
 	/** streaming 中打断当前回合并立刻以该条目开新回合；空闲时直接开新回合。不等待回合结束。 */
 	sendQueuedMessageNow(sessionId: string, itemId: string): Promise<"promoted" | "started" | "missing">;
+	/**
+	 * 引导：running 时把该条目提升为 steering，在下一个工具间隙注入当前回合而不打断它；
+	 * 空闲时没有回合可注入，直接以该条目开新回合。条目原样搬运，附图不丢。
+	 */
+	guideQueuedMessage(sessionId: string, itemId: string): Promise<"promoted" | "started" | "missing">;
 	/** 解除 abort/error 后的队列暂停并继续逐条发送。 */
 	resumeQueue(sessionId: string): Promise<void>;
 	clearQueue(sessionId: string): Promise<void>;

@@ -328,9 +328,22 @@ export class AgentSession {
 		this.inputQueue.reorderFollowUps(ids);
 	}
 
-	/** 「立即发送」的 streaming 形态：followUp 条目提升为 steering，工具间隙注入当前 turn。 */
-	promoteQueuedToSteering(id: string): boolean {
-		return this.inputQueue.promoteToSteering(id);
+	/**
+	 * 「引导」某条排队消息：running 时把该条目提升为 steering，在下一个工具间隙注入当前
+	 * turn 而**不打断**它；空闲时没有 turn 可注入，与「立即发送」同路径直接开新 turn。
+	 * 条目原样搬运（payload 不动），所以附图与上下文不会在引导时丢失。
+	 */
+	async guideQueued(id: string): Promise<"promoted" | "started" | "missing"> {
+		if (this.currentState === "closed" || this.currentState === "closing") throw sessionClosedError();
+		if (this.currentState === "recovery_required") throw turnPersistenceError();
+		if (this.activeQueueOperation) return "missing";
+		if (this.currentState === "idle") {
+			const result = await this.sendQueuedNow(id);
+			return result.status === "started" ? "started" : "missing";
+		}
+		// cancelling 等中间态没有稳定的注入点：不搬运，条目留在队列里等用户重试。
+		if (this.currentState !== "running") return "missing";
+		return this.inputQueue.promoteToSteering(id) ? "promoted" : "missing";
 	}
 
 	restoreQueue(snapshot: SessionInputQueueSnapshot): void {

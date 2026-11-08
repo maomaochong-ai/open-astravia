@@ -1,6 +1,6 @@
 import type { ImageContent, UserMessage } from "@astravia/ai";
-import type { EcosystemHookRuntime } from "@astravia/ecosystem-adapter/hooks";
-import type { PromptAttachmentRef, PromptRequest } from "@astravia/runtime-core";
+import type { EcosystemHookContributionSource, EcosystemHookRuntime } from "@astravia/ecosystem-adapter/hooks";
+import type { PromptAttachmentRef, PromptRequest, PromptResourceRef } from "@astravia/runtime-core";
 import type {
 	RuntimeInputRequestPreparationContext,
 	RuntimeInputRequestPreparationResult,
@@ -113,7 +113,7 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 		const expansion = await this.expandPrompt(request, context);
 		const hookContexts = await this.runPromptHooks(
 			expansion.text,
-			expansion.promptResourceHookContribution ?? expansion.skillHookContribution,
+			promptResourceHookContributions(expansion),
 			context.turnId,
 			context.signal,
 		);
@@ -145,7 +145,7 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 
 	private async runPromptHooks(
 		prompt: string,
-		promptResourceHookContribution: CodingAgentPromptResourceExpansion["promptResourceHookContribution"],
+		contributions: readonly EcosystemHookContributionSource[],
 		turnId: string,
 		signal: AbortSignal,
 	): Promise<readonly string[]> {
@@ -156,12 +156,7 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 				sessionStart.stopReason ?? sessionStart.blockReason ?? "Session start blocked by ecosystem hook",
 			);
 		}
-		const promptSubmit = await this.hookRuntime.runUserPromptSubmit(
-			prompt,
-			signal,
-			promptResourceHookContribution ? [promptResourceHookContribution] : [],
-			turnId,
-		);
+		const promptSubmit = await this.hookRuntime.runUserPromptSubmit(prompt, signal, contributions, turnId);
 		if (promptSubmit.shouldStop || promptSubmit.shouldBlock) {
 			throw new Error(promptSubmit.stopReason ?? promptSubmit.blockReason ?? "Prompt blocked by ecosystem hook");
 		}
@@ -172,16 +167,26 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 		request: PromptRequest,
 		context: RuntimeInputRequestPreparationContext,
 	): Promise<CodingAgentPromptResourceExpansion> {
-		if (!request.promptRef) return { text: request.text };
+		const refs = resolvePromptResourceRefs(request);
+		if (refs.length === 0) return { text: request.text };
 		if (/^\/skill:/.test(request.text)) {
 			throw new Error("Prompt must not contain a Skill command when promptRef is provided");
 		}
-		const name = request.promptRef.name.trim();
-		if (!name) throw new Error("Prompt resource name must not be empty");
-		const promptRef = { ...request.promptRef, name };
-		return this.resolvePromptResource
-			? this.resolvePromptResource(request.text, promptRef, context)
-			: { text: request.text, promptRef };
+		if (refs.length === 1) {
+			const promptRef = refs[0] as PromptResourceRef;
+			return this.resolvePromptResource
+				? this.resolvePromptResource(request.text, promptRef, context)
+				: { text: request.text, promptRef };
+		}
+		const expansions: CodingAgentPromptResourceExpansion[] = [];
+		for (const promptRef of refs) {
+			expansions.push(
+				this.resolvePromptResource
+					? await this.resolvePromptResource(request.text, promptRef, context)
+					: { text: request.text, promptRef },
+			);
+		}
+		return mergePromptResourceExpansions(request.text, expansions);
 	}
 
 	private buildContext(
@@ -289,3 +294,49 @@ const KNOWLEDGE_MODE_INSTRUCTION =
 	"换用别的标签重试、改走 indexes/ 地图、grep 全文、浏览 wiki/ 树并顺 [[page-id]] 链接深挖，" +
 	"多条线索交叉印证后再下结论。" +
 	"基于知识库内容作答并说明依据；只有在这些途径都查空后，才如实告知知识库无相关内容并退回常规回答。";
+
+/**
+ * 一次请求里要展开的资源：`promptRef` 优先（旧语义），否则按 `promptRefs` 顺序。
+ * 名字统一 trim，空名字直接报错——它一定是调用方拼错了，静默跳过只会静默丢技能。
+ */
+function resolvePromptResourceRefs(request: PromptRequest): readonly PromptResourceRef[] {
+	const raw = request.promptRef ? [request.promptRef] : (request.promptRefs ?? []);
+	const refs: PromptResourceRef[] = [];
+	for (const ref of raw) {
+		const name = ref.name.trim();
+		if (!name) throw new Error("Prompt resource name must not be empty");
+		refs.push({ ...ref, name });
+	}
+	return refs;
+}
+
+/** 把展开结果里的 hook 贡献归一成一个数组，供 runUserPromptSubmit 一并投递。 */
+function promptResourceHookContributions(
+	expansion: CodingAgentPromptResourceExpansion,
+): readonly EcosystemHookContributionSource[] {
+	if (expansion.promptResourceHookContributions?.length) return expansion.promptResourceHookContributions;
+	const single = expansion.promptResourceHookContribution ?? expansion.skillHookContribution;
+	return single ? [single] : [];
+}
+
+/**
+ * 多资源展开合并：文本取第一个（多个展开对同一段文本改写有歧义），
+ * 技能正文按请求顺序拼接，hook 贡献聚合成数组，`promptRef` 取首个有值的
+ * （history 投影与 metadata 仍按单资源读写，不扩大契约）。
+ */
+function mergePromptResourceExpansions(
+	text: string,
+	expansions: readonly CodingAgentPromptResourceExpansion[],
+): CodingAgentPromptResourceExpansion {
+	const injections = expansions
+		.map((expansion) => expansion.skillInjection)
+		.filter((injection): injection is string => typeof injection === "string" && injection.length > 0);
+	const contributions = expansions.flatMap((expansion) => [...promptResourceHookContributions(expansion)]);
+	const promptRef = expansions.find((expansion) => expansion.promptRef)?.promptRef;
+	return {
+		text: expansions[0]?.text ?? text,
+		...(promptRef ? { promptRef } : {}),
+		...(injections.length > 0 ? { skillInjection: injections.join("\n\n") } : {}),
+		...(contributions.length > 0 ? { promptResourceHookContributions: contributions } : {}),
+	};
+}

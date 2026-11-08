@@ -2,6 +2,7 @@ import { useLanguage } from "@shared/hooks/useLanguage";
 import { useTheme } from "@shared/hooks/useTheme";
 import { cn } from "@shared/lib/utils";
 import type { ThemeMode } from "@shared/store/atoms";
+import { colorThemeLabelKey } from "@shared/theme/color-theme-label-keys";
 import { THEMES } from "@shared/theme/themes";
 import type { ThemeDef } from "@shared/theme/tokens";
 import type { LanguagePreference } from "@/shared/i18n/config";
@@ -38,16 +39,6 @@ const MODE_OPTIONS = [
 		hintKey: "appearanceAutoHint",
 	},
 ] as const;
-
-const COLOR_THEME_LABEL_KEYS = {
-	mono: "colorThemes.mono",
-	default: "colorThemes.default",
-	sand: "colorThemes.sand",
-	forest: "colorThemes.forest",
-	bee: "colorThemes.bee",
-	mint: "colorThemes.mint",
-	parchment: "colorThemes.parchment",
-} as const;
 
 function CompactThemeCard({
 	theme,
@@ -156,7 +147,7 @@ export function LanguageAppearanceStep(): JSX.Element {
 	const themes = useMemo(
 		() =>
 			THEMES.map((theme) => {
-				const labelKey = COLOR_THEME_LABEL_KEYS[theme.id as keyof typeof COLOR_THEME_LABEL_KEYS];
+				const labelKey = colorThemeLabelKey(theme.id);
 				return {
 					...theme,
 					label: labelKey ? t(`settings:${labelKey}`) : theme.label,

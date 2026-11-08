@@ -37,8 +37,8 @@ export function BatchProjectFormFieldsView({
 				prompt={value.prompt ?? ""}
 				onPromptChange={(prompt) => model.setField("prompt", prompt)}
 				promptMinHeight={promptMinHeight}
-				skill={value.skill ?? null}
-				onSkillChange={(skill) => model.setField("skill", skill)}
+				skills={value.skills ?? []}
+				onSkillsChange={(skills) => model.setField("skills", skills)}
 			/>
 
 			<BatchProjectRuntimeFields

@@ -3,7 +3,7 @@
  * 外观设置页的「新会话页装饰」这块区域：装饰件与纹理收在同一块里，
  * 用户点纹理卡片能把选择交回模型，选中态跟着走。
  */
-import { render } from "@testing-library/react";
+import { render, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { AppearanceSettingsModel } from "./useAppearanceSettingsModel";
@@ -20,6 +20,33 @@ vi.mock("@shared/components/mario/PixelMarioBlocks", () => ({
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key, i18n: { exists: () => true } }),
 }));
+
+// 字体改了用下拉收纳：把 MotionSelect 换成原生 select，就能用真实的选择路径去驱动它。
+vi.mock("@astravia-org/theme-ui/settings", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@astravia-org/theme-ui/settings")>();
+	return {
+		...actual,
+		MotionSelect: ({
+			value,
+			onValueChange,
+			options,
+			"aria-label": ariaLabel,
+		}: {
+			value: string;
+			onValueChange: (next: string) => void;
+			options: readonly { value: string; label: React.ReactNode }[];
+			"aria-label"?: string;
+		}) => (
+			<select aria-label={ariaLabel} value={value} onChange={(event) => onValueChange(event.currentTarget.value)}>
+				{options.map((option) => (
+					<option key={option.value} value={option.value}>
+						{typeof option.label === "string" ? option.label : option.value}
+					</option>
+				))}
+			</select>
+		),
+	};
+});
 
 const { AppearanceSettingsView } = await import("./AppearanceSettingsView.js");
 
@@ -40,6 +67,7 @@ function model(
 				setSidebarStyle: vi.fn(),
 				setTexture: vi.fn(),
 				setUiFont: vi.fn(),
+				setCodeFont: vi.fn(),
 			},
 			overrides.actions,
 		),
@@ -65,6 +93,8 @@ function model(
 			textureHint: "textureHint",
 			title: "外观",
 			uiFontHint: "uiFontHint",
+			codeFontHint: "codeFontHint",
+			fontRoles: { ui: "全局字体", code: "代码字体" },
 		},
 		language: "system",
 		languages: [],
@@ -87,7 +117,12 @@ function model(
 		uiFont: "system",
 		uiFontOptions: [
 			{ active: true, hint: "uiFontSystemHint", id: "system", label: "系统默认" },
-			{ active: false, hint: "uiFontSerifHint", id: "serif", label: "衬线" },
+			{ active: false, hint: "uiFontSerifHint", id: "serif", label: "衷线" },
+		],
+		codeFont: "mono",
+		codeFontOptions: [
+			{ active: false, hint: "uiFontSystemHint", id: "system", label: "系统默认" },
+			{ active: true, hint: "uiFontMonoHint", id: "mono", label: "等宽" },
 		],
 		...overrides,
 	};
@@ -143,13 +178,26 @@ describe("AppearanceSettingsView 的新会话页装饰区域", () => {
 });
 
 describe("AppearanceSettingsView 的字体区域", () => {
-	it("点「衬线」把字体选择交回模型，命中的那张带选中态", async () => {
+	it("全局字体与代码字体各是一个下拉，改哪行就把选择交回哪一项", async () => {
 		const setUiFont = vi.fn();
-		const view = render(<AppearanceSettingsView model={model({ actions: { setUiFont } })} />);
+		const setCodeFont = vi.fn();
+		const view = render(<AppearanceSettingsView model={model({ actions: { setUiFont, setCodeFont } })} />);
 
-		await userEvent.click(view.getByText("衬线"));
+		const ui = view.container.querySelector('[data-font-role="ui"]') as HTMLElement;
+		const code = view.container.querySelector('[data-font-role="code"]') as HTMLElement;
 
+		// 字体区只剩两行：全局（含消息正文）与代码；消息正文不再单独占一行。
+		expect(view.container.querySelector('[data-font-role="content"]')).toBeNull();
+
+		// 下拉的回显值跟着模型，不跟着点击变化。
+		expect((within(ui).getByRole("combobox") as HTMLSelectElement).value).toBe("system");
+		await userEvent.selectOptions(within(ui).getByRole("combobox"), "serif");
 		expect(setUiFont).toHaveBeenCalledWith("serif");
-		expect(view.getByText("系统默认").closest("button")?.querySelector('[class*="mdi--check"]')).not.toBeNull();
+		expect(setCodeFont).not.toHaveBeenCalled();
+
+		expect((within(code).getByRole("combobox") as HTMLSelectElement).value).toBe("mono");
+		await userEvent.selectOptions(within(code).getByRole("combobox"), "system");
+		expect(setCodeFont).toHaveBeenCalledWith("system");
+		expect(setUiFont).toHaveBeenCalledTimes(1);
 	});
 });

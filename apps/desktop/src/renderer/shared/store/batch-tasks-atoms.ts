@@ -30,8 +30,8 @@ export interface BatchProject {
 	notifyEnabled?: boolean;
 	/** Per-task hard timeout in minutes. Defaults to 60 when undefined. */
 	timeoutMinutes?: number;
-	/** 项目级技能/场景。运行时通过 PromptRequest.promptRef 结构化传递。 */
-	skill?: SelectedSkill;
+	/** 项目级技能/场景。运行时通过 PromptRequest.promptRef / promptRefs 结构化传递。 */
+	skills?: SelectedSkill[];
 	tasks: BatchTask[];
 	createdAt: number;
 	updatedAt: number;

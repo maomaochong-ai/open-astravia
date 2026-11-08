@@ -587,6 +587,7 @@
 		"drawer": {
 			"permissionDesc": "等待确认",
 			"permissionLabel": "权限请求",
+			"queueGuide": "引导这条消息（立即注入，不中断当前回答）",
 			"queueDelete": "删除",
 			"contextCompaction": "压缩上下文",
 			"queueDesc": "{{count}} 条待发",
@@ -624,8 +625,7 @@
 		"toolbar": {
 			"addImage": "添加图片",
 			"attachFile": "附加文件引用",
-			"skills": "技能",
-			"guide": "引导会话（立即注入，不中断当前回答）"
+			"skills": "技能"
 		},
 		"speech": {
 			"actions": {
@@ -1129,7 +1129,8 @@
 		"removeSkill": "点击移除",
 		"removeSkillMissing": "技能未安装，点击移除",
 		"skillButtonLabel": "技能",
-		"skillButtonTitle": "技能"
+		"skillButtonTitle": "技能",
+		"skillButtonLimitTitle": "已达技能数量上限"
 	},
 	"slashPanel": {
 		"compaction": {

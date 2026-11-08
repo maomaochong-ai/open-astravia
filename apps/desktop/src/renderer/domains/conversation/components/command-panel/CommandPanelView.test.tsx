@@ -68,11 +68,12 @@ describe("CommandPanelView built-in operation", () => {
 		render(
 			<QueueCardView
 				items={[{ id: "compact-1", kind: "context_compaction", displayText: "压缩上下文" }]}
-				labels={{ empty: "空", sendNow: "立即发送", delete: "删除", recall: "撤回到输入框" }}
+				labels={{ empty: "空", sendNow: "立即发送", delete: "删除", recall: "撤回到输入框", guide: "引导" }}
 				onReorder={vi.fn()}
 				onSendNow={onSendNow}
 				onRemove={onRemove}
 				onRecall={vi.fn()}
+				onGuide={vi.fn()}
 			/>,
 		);
 
@@ -91,11 +92,12 @@ describe("CommandPanelView built-in operation", () => {
 					{ id: "compact", kind: "context_compaction", displayText: "压缩上下文", canSendNow: false },
 					{ id: "after", kind: "message", displayText: "屏障后", canSendNow: false },
 				]}
-				labels={{ empty: "空", sendNow: "立即发送", delete: "删除", recall: "撤回到输入框" }}
+				labels={{ empty: "空", sendNow: "立即发送", delete: "删除", recall: "撤回到输入框", guide: "引导" }}
 				onReorder={vi.fn()}
 				onSendNow={onSendNow}
 				onRemove={vi.fn()}
 				onRecall={vi.fn()}
+				onGuide={vi.fn()}
 			/>,
 		);
 
@@ -112,11 +114,12 @@ describe("CommandPanelView built-in operation", () => {
 					{ id: "m1", kind: "message", displayText: "改一下这段", canSendNow: false },
 					{ id: "compact", kind: "context_compaction", displayText: "压缩上下文", canSendNow: false },
 				]}
-				labels={{ empty: "空", sendNow: "立即发送", delete: "删除", recall: "撤回到输入框" }}
+				labels={{ empty: "空", sendNow: "立即发送", delete: "删除", recall: "撤回到输入框", guide: "引导" }}
 				onReorder={vi.fn()}
 				onSendNow={vi.fn()}
 				onRemove={vi.fn()}
 				onRecall={onRecall}
+				onGuide={vi.fn()}
 			/>,
 		);
 

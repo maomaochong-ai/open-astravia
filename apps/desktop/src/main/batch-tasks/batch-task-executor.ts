@@ -33,6 +33,24 @@ function resolveTaskTimeoutMs(project: BatchProject): number {
 	return DEFAULT_TASK_TIMEOUT_MS;
 }
 
+/**
+ * 把项目选的技能转成 prompt 输入：单个走旧字段 `promptRef`（历史与投影语义不变），
+ * 多个走 `promptRefs`。均为空时不加任何字段。
+ */
+function skillPromptInput(skills: readonly { name: string }[] | undefined): {
+	promptRef?: { kind: "skill"; name: string };
+	promptRefs?: Array<{ kind: "skill"; name: string }>;
+} {
+	const refs = (skills ?? [])
+		.map((skill) => skill.name.trim())
+		.filter((name) => name.length > 0)
+		.map((name) => ({ kind: "skill" as const, name }));
+	if (refs.length === 0) return {};
+	const [first] = refs;
+	if (refs.length === 1 && first) return { promptRef: first };
+	return { promptRefs: refs };
+}
+
 export type BatchTaskEvent =
 	| {
 			type: "task.started";
@@ -569,14 +587,7 @@ async function runTaskInner(
 		);
 		await runtime.prompt(sessionId, {
 			text: promptText,
-			...(!isResume && project.skill
-				? {
-						promptRef: {
-							kind: "skill" as const,
-							name: project.skill.name,
-						},
-					}
-				: {}),
+			...(isResume ? {} : skillPromptInput(project.skills)),
 			...(project.modelKey ? { modelKey: project.modelKey } : {}),
 		});
 		log.info(`prompt returned, finalizing task ${task.id}`);

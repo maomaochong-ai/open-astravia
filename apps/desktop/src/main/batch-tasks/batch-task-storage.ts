@@ -34,7 +34,9 @@ interface BatchProjectMeta {
 	notifyEnabled?: boolean;
 	/** Per-task hard timeout in minutes. Used by executor's scheduleTimeout. Defaults to 60. */
 	timeoutMinutes?: number;
+	/** @deprecated 旧项目文件里的单技能字段，读时迁移到 skills。 */
 	skill?: BatchSkillRef;
+	skills?: BatchSkillRef[];
 	items: BatchItemMeta[];
 	createdAt: number;
 	updatedAt: number;
@@ -66,7 +68,9 @@ export interface BatchProject {
 	artifactPatterns?: string[];
 	notifyEnabled?: boolean;
 	timeoutMinutes?: number;
+	/** @deprecated 用 skills；保留仅为了兼容旧类型的调用方。 */
 	skill?: BatchSkillRef;
+	skills?: BatchSkillRef[];
 	tasks: BatchTask[];
 	createdAt: number;
 	updatedAt: number;
@@ -92,6 +96,10 @@ async function readProjectMeta(projectDir: string): Promise<BatchProjectMeta | n
 		if ("pausedAt" in parsed) {
 			delete parsed.pausedAt;
 		}
+		// 旧 meta 只存单个 skill：读时就地并成 skills，写回时只落 skills，
+		// 避免同一个字段在两处存放真相。
+		if (parsed.skill && !parsed.skills?.length) parsed.skills = [parsed.skill];
+		if ("skill" in parsed) delete parsed.skill;
 		return parsed;
 	} catch {
 		return null;
@@ -153,7 +161,7 @@ function assembleProject(
 		artifactPatterns: meta.artifactPatterns,
 		notifyEnabled: meta.notifyEnabled ?? false,
 		timeoutMinutes: meta.timeoutMinutes ?? DEFAULT_BATCH_TIMEOUT_MINUTES,
-		skill: meta.skill,
+		skills: meta.skills,
 		tasks,
 		createdAt: meta.createdAt,
 		updatedAt: meta.updatedAt,
@@ -260,7 +268,7 @@ export async function createProject(
 	artifactPatterns?: string[],
 	notifyEnabled?: boolean,
 	timeoutMinutes?: number,
-	skill?: BatchSkillRef,
+	skills?: BatchSkillRef[],
 ): Promise<BatchProject> {
 	const config = await readDesktopConfig();
 	const projectDir = join(config.workspacePath, name);
@@ -294,7 +302,7 @@ export async function createProject(
 			timeoutMinutes && timeoutMinutes > 0 && timeoutMinutes !== DEFAULT_BATCH_TIMEOUT_MINUTES
 				? timeoutMinutes
 				: undefined,
-		skill,
+		skills,
 		items,
 		createdAt: now,
 		updatedAt: now,
@@ -333,6 +341,7 @@ export async function updateProject(
 		timeoutMinutes: number;
 		newFolders: string[];
 		skill: BatchSkillRef | null;
+		skills: BatchSkillRef[] | null;
 	}>,
 ): Promise<void> {
 	const meta = await readProjectMeta(projectDir);
@@ -354,8 +363,8 @@ export async function updateProject(
 				? data.timeoutMinutes
 				: undefined;
 	}
-	if (data.skill !== undefined) {
-		meta.skill = data.skill ?? undefined;
+	if (data.skills !== undefined) {
+		meta.skills = data.skills && data.skills.length > 0 ? data.skills : undefined;
 	}
 
 	if (data.newFolders) {

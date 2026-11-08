@@ -422,6 +422,11 @@ export interface PromptRequest {
 	context?: readonly SessionContextRecord[];
 	/** Structured extension resource selection. Kept separate from prompt text. */
 	promptRef?: PromptResourceRef;
+	/**
+	 * 多个结构化扩展资源。用于一次 prompt 挂多个技能（如批量任务的多技能选择）。
+	 * 与 `promptRef` 并存时以 `promptRef` 为准；只有一项时与 `promptRef` 完全等价。
+	 */
+	promptRefs?: readonly PromptResourceRef[];
 	/** Absolute filesystem references attached to this turn. Read by the agent on demand. */
 	attachments?: PromptAttachmentRef[];
 	images?: Array<{ type: "image"; data: string; mimeType: string }>;

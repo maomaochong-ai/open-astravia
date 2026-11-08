@@ -16,8 +16,11 @@ import { useTranslation } from "react-i18next";
 export interface SkillPromptAreaModelInput {
 	prompt: string;
 	onPromptChange: (value: string) => void;
-	skill: SelectedSkill | null | undefined;
-	onSkillChange: (skill: SelectedSkill | null) => void;
+	/** 已选技能，按选择顺序。空数组等价于「未选」。 */
+	skills: readonly SelectedSkill[];
+	onSkillsChange: (skills: SelectedSkill[]) => void;
+	/** 最多可选几个技能；不传表示不限。单技能的调用方传 1 即可保持旧行为。 */
+	maxSkills?: number;
 	placeholder?: string;
 	minHeight?: number;
 	className?: string;
@@ -29,7 +32,7 @@ export interface SkillPromptAreaModel extends Omit<SkillPromptAreaViewProps, "sl
 	slashOpen: boolean;
 	slashFilter: string;
 	cwd?: string;
-	skill: SelectedSkill | null | undefined;
+	skills: readonly SelectedSkill[];
 	handleSlashClose: () => void;
 	handleSlashSelect: (picked: SkillInfo) => void;
 }
@@ -37,8 +40,9 @@ export interface SkillPromptAreaModel extends Omit<SkillPromptAreaViewProps, "sl
 export function useSkillPromptAreaModel({
 	prompt,
 	onPromptChange,
-	skill,
-	onSkillChange,
+	skills,
+	onSkillsChange,
+	maxSkills,
 	placeholder,
 	minHeight = 120,
 	className,
@@ -73,10 +77,19 @@ export function useSkillPromptAreaModel({
 		void window.astravia.skills.list(cwd).then(setInstalledSkills);
 	}, [cwd]);
 
-	const skillMissing = useMemo(() => {
-		if (!skill || installedSkills === null) return false;
-		return !installedSkills.some((s) => s.name === skill.name && s.type === skill.type);
-	}, [skill, installedSkills]);
+	const canAddSkill = maxSkills === undefined || skills.length < maxSkills;
+
+	const selectedSkills = useMemo(
+		() =>
+			skills.map((skill) => ({
+				id: skill.name,
+				displayName: skill.alias || skill.name,
+				missing:
+					installedSkills !== null &&
+					!installedSkills.some((installed) => installed.name === skill.name && installed.type === skill.type),
+			})),
+		[skills, installedSkills],
+	);
 
 	const handleChange = (e: ChangeEvent<HTMLTextAreaElement>): void => {
 		const val = e.target.value;
@@ -104,9 +117,10 @@ export function useSkillPromptAreaModel({
 			e.preventDefault();
 			return;
 		}
-		if (e.key === "Backspace" && prompt === "" && skill) {
+		// 提示词为空时退格先摘掉最后一个技能：胶囊在输入框上方，退格是最顺手的撤销手势。
+		if (e.key === "Backspace" && prompt === "" && skills.length > 0) {
 			e.preventDefault();
-			onSkillChange(null);
+			onSkillsChange(skills.slice(0, -1));
 		}
 	};
 
@@ -123,24 +137,37 @@ export function useSkillPromptAreaModel({
 
 	const handleSlashSelect = useCallback(
 		(picked: SkillInfo) => {
-			onSkillChange({ name: picked.name, alias: picked.alias, type: picked.type });
 			setSlashOpen(false);
 			if (prompt.startsWith("/")) {
 				onPromptChange("");
 			}
+			// 重复选中同一技能不加第二个胶囊，否则同一段技能正文会被注入两次。
+			if (skills.some((skill) => skill.name === picked.name)) {
+				textareaRef.current?.focus();
+				return;
+			}
+			if (!canAddSkill) {
+				textareaRef.current?.focus();
+				return;
+			}
+			onSkillsChange([...skills, { name: picked.name, alias: picked.alias, type: picked.type }]);
 			textareaRef.current?.focus();
 		},
-		[onSkillChange, onPromptChange, prompt],
+		[canAddSkill, onPromptChange, onSkillsChange, prompt, skills],
 	);
 
 	const handlePlusClick = (): void => {
+		if (!canAddSkill) return;
 		setSlashOpen((prev) => !prev);
 	};
 
-	const handleRemoveSkill = (): void => {
-		onSkillChange(null);
-		textareaRef.current?.focus();
-	};
+	const handleRemoveSkill = useCallback(
+		(id: string) => {
+			onSkillsChange(skills.filter((skill) => skill.name !== id));
+			textareaRef.current?.focus();
+		},
+		[onSkillsChange, skills],
+	);
 
 	return {
 		prompt,
@@ -151,10 +178,9 @@ export function useSkillPromptAreaModel({
 		slashOpen,
 		slashFilter,
 		cwd,
-		skill,
-		skillMissing,
-		skillDisplayName: skill ? skill.alias || skill.name : "",
-		hasSkill: Boolean(skill),
+		skills,
+		selectedSkills,
+		canAddSkill,
 		anchorRect,
 		textareaRef: textareaRef as RefObject<HTMLTextAreaElement | null>,
 		cardRef: cardRef as RefObject<HTMLDivElement | null>,
@@ -164,6 +190,7 @@ export function useSkillPromptAreaModel({
 			missingBadge: t("skillPromptArea.missingBadge"),
 			skillButtonTitle: t("skillPromptArea.skillButtonTitle"),
 			skillButtonLabel: t("skillPromptArea.skillButtonLabel"),
+			skillButtonLimitTitle: t("skillPromptArea.skillButtonLimitTitle"),
 		},
 		onChange: handleChange,
 		onKeyDown: handleKeyDown,

@@ -64,7 +64,10 @@ export function createWindow(): BrowserWindow {
 		transparent: false,
 		frame: isMac,
 		titleBarStyle: isMac ? "hiddenInset" : undefined,
-		trafficLightPosition: isMac ? { x: 16, y: 20 } : undefined,
+		// 圆点的可视圆心在 y + 7.75（实测：y=20 时圆点落在 22–33.5pt）。应用内顶栏与
+		// 活动面板标签行的内容中心都在 y=20，所以这里取 12 让两组中心重合，避免红绿灯
+		// 比标签页和顶栏按钮低半个圆点。
+		trafficLightPosition: isMac ? { x: 16, y: 12 } : undefined,
 		vibrancy: isMac ? "sidebar" : undefined,
 		visualEffectState: isMac ? "active" : undefined,
 		backgroundColor: isMac ? "#00000000" : nativeTheme.shouldUseDarkColors ? "#161616" : "#f5f5f7",

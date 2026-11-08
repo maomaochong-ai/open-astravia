@@ -5,6 +5,7 @@ import {
 	isQueuePausedForSession,
 	messageQueueBySessionAtom,
 	messageQueuePausedBySessionAtom,
+	removeQueueItemForSessionAtom,
 	setQueueForSessionAtom,
 } from "@shared/store/message-queue-atoms";
 import { appendToSessionInputDraft } from "@shared/store/session-input-draft";
@@ -20,6 +21,8 @@ export interface QueueCardModel {
 	onRemove: (id: string) => void;
 	/** 撤回输入框：条目出队 + 文本回到草稿，可再次编辑后重发。 */
 	onRecall: (id: string) => void;
+	/** 引导：条目出队后立即作为 steer 注入当前回合，不打断正在跑的回答。 */
+	onGuide: (id: string) => void;
 	paused: QueueCardPausedBanner | undefined;
 }
 
@@ -31,6 +34,7 @@ export function useQueueCardModel(runtimeId: string): QueueCardModel {
 	const { t } = useTranslation("chat");
 	const queueMap = useAtomValue(messageQueueBySessionAtom);
 	const setQueue = useSetAtom(setQueueForSessionAtom);
+	const removeQueueItem = useSetAtom(removeQueueItemForSessionAtom);
 	const fullItems = getQueueForSession(queueMap, runtimeId);
 	const isCompacting = useAtomValue(isCompactingAtom);
 
@@ -89,12 +93,34 @@ export function useQueueCardModel(runtimeId: string): QueueCardModel {
 		[fullItems, runtimeId, setQueue],
 	);
 
+	const onGuide = useCallback(
+		(id: string) => {
+			// 压缩屏障不是用户写的话，没有可引导的内容（按钮也不渲染，这是模型层的防御）。
+			const target = fullItems.find((item) => item.id === id);
+			if (!target || target.kind === "context_compaction") return;
+			void window.astravia.session.guideQueuedMessage(runtimeId, id).then(
+				(status) => {
+					// 条目原样进 steering（空闲时直接开回合），没有出队再重发，附图与上下文不会丢。
+					// missing 表示条目已被本回合消费或正在取消：不做乐观移除，等 queue.changed 回流校正。
+					if (status === "missing") return;
+					// 按 id 从镜像里摘：等回执期间新入队的条目不能被这份渲染快照覆盖掉。
+					removeQueueItem({ runtimeId, id });
+				},
+				(error: unknown) => {
+					console.warn("[useQueueCardModel] guide failed", error);
+				},
+			);
+		},
+		[fullItems, removeQueueItem, runtimeId],
+	);
+
 	const labels = useMemo<QueueCardViewLabels>(
 		() => ({
 			empty: t("inputBar.drawer.queueEmpty"),
 			sendNow: t("inputBar.drawer.queueSendNow"),
 			delete: t("inputBar.drawer.queueDelete"),
 			recall: t("inputBar.drawer.queueRecall"),
+			guide: t("inputBar.drawer.queueGuide"),
 		}),
 		[t],
 	);
@@ -117,5 +143,5 @@ export function useQueueCardModel(runtimeId: string): QueueCardModel {
 		[isPaused, runtimeId, t],
 	);
 
-	return { items, labels, onRecall, onReorder, onRemove, paused };
+	return { items, labels, onGuide, onRecall, onReorder, onRemove, paused };
 }

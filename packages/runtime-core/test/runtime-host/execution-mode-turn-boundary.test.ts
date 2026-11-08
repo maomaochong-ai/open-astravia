@@ -285,6 +285,7 @@ function createQueueController(restoreQueue: (snapshot: unknown) => void): Runti
 		reorderQueuedFollowUps: () => {},
 		enqueueContextCompaction: () => ({ status: "queued", pendingCount: 1 }),
 		sendQueuedNow: async () => "missing",
+		guideQueued: async () => "missing",
 		resumeQueue: async () => {},
 	};
 }

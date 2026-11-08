@@ -24,7 +24,8 @@ export interface BatchProjectEditableData {
 	timeoutMinutes?: number;
 	folders?: string[];
 	newFolders?: string[];
-	skill?: SelectedSkill | null;
+	/** 项目级多技能：选中顺序即注入顺序。 */
+	skills?: SelectedSkill[] | null;
 }
 
 interface BatchProjectFormFieldsProps {
@@ -49,7 +50,7 @@ export interface BatchProjectApprovalJsonData {
 	timeoutMinutes?: number;
 	folders?: string[];
 	newFolders?: string[];
-	skill?: SelectedSkill | null;
+	skills?: SelectedSkill[] | null;
 }
 
 export function BatchProjectFormFields({

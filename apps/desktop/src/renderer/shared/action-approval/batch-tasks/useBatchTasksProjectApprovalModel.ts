@@ -34,7 +34,7 @@ function mergeCurrentProjectData(input: ProjectInput | null, project: BatchProje
 			artifactPatterns: project.artifactPatterns ?? [],
 			notifyEnabled: project.notifyEnabled ?? false,
 			timeoutMinutes: project.timeoutMinutes ?? 60,
-			skill: project.skill ?? null,
+			skills: project.skills ?? [],
 			...input.data,
 			folders,
 		},
@@ -89,7 +89,7 @@ function toEditableData(data: ProjectData | undefined): BatchProjectEditableData
 		timeoutMinutes: data?.timeoutMinutes ?? 60,
 		folders: data?.folders ?? [],
 		newFolders: data?.newFolders ?? [],
-		skill: data?.skill ?? null,
+		skills: data?.skills ?? [],
 	};
 }
 
@@ -104,10 +104,10 @@ function buildApprovedInput(
 ): DesktopActionJsonValue {
 	const normalized = toBatchProjectApprovalJsonData(data);
 	if (input.operation === "create") {
-		const { newFolders: _newFolders, skill, ...createData } = normalized;
+		const { newFolders: _newFolders, skills, ...createData } = normalized;
 		return {
 			operation: "create",
-			data: skill ? { ...createData, skill } : createData,
+			data: skills && skills.length > 0 ? { ...createData, skills } : createData,
 			approvalUi: input.approvalUi ?? "batch-tasks.project",
 		} as DesktopActionJsonValue;
 	}

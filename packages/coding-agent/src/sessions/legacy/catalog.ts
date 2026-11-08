@@ -4,6 +4,27 @@ import { parseCodingAgentLegacySessionDocument } from "./document.js";
 import { isLegacySessionHeader } from "./header-reader.js";
 import type { LegacySessionFileHost } from "./host-contracts.js";
 
+interface CachedLegacySessionInfo {
+	readonly fileModifiedAt: number;
+	readonly info: SessionHistoryInfo;
+}
+
+const LEGACY_SESSION_INFO_CACHE_LIMIT = 512;
+/**
+ * `SessionHistoryInfo` 需把整份 JSONL 读入再全量投影；而旧格式会话往往累积到几 MB，
+ * 项目列表与侧栏却在每次刷新时把目录里所有文件再算一遍。按 mtime 记住结果，
+ * 文件没变时一次 stat 就结束，写一次只让那一个会话失效。
+ */
+const legacySessionInfoCache = new Map<string, CachedLegacySessionInfo>();
+
+function rememberLegacySessionInfo(sessionPath: string, fileModifiedAt: number, info: SessionHistoryInfo): void {
+	if (!legacySessionInfoCache.has(sessionPath) && legacySessionInfoCache.size >= LEGACY_SESSION_INFO_CACHE_LIMIT) {
+		const oldest = legacySessionInfoCache.keys().next();
+		if (!oldest.done) legacySessionInfoCache.delete(oldest.value);
+	}
+	legacySessionInfoCache.set(sessionPath, { fileModifiedAt, info });
+}
+
 /** 旧 Coding Agent JSONL 的发现、命名与删除适配；不创建 AgentSession。 */
 export class LegacyRuntimeSessionCatalog implements RuntimeSessionCatalog {
 	constructor(private readonly host: LegacySessionFileHost) {}
@@ -61,6 +82,8 @@ export class LegacyRuntimeSessionCatalog implements RuntimeSessionCatalog {
 	async deleteSessionArtifacts(sessionPath: string): Promise<void> {
 		await this.host.remove(sessionPath);
 		await this.host.remove(`${sessionPath}.lock`);
+		// 文件已删：缓存也得跟着掉，否则下次列表还会把这条会话捧回来。
+		legacySessionInfoCache.delete(sessionPath);
 	}
 
 	private resolveLegacySessionDirectory(cwd: string): string {
@@ -104,24 +127,29 @@ export class LegacyRuntimeSessionCatalog implements RuntimeSessionCatalog {
 
 	private async buildLegacySessionHistoryInfo(sessionPath: string): Promise<SessionHistoryInfo | undefined> {
 		try {
+			const fileModifiedAt = await this.host.statModifiedAt(sessionPath);
+			const cached = legacySessionInfoCache.get(sessionPath);
+			// 文件没变就不重建摘要：旧格式会话往往很大，而项目列表/侧栏每次刷新都会走到这里。
+			if (cached && cached.fileModifiedAt === fileModifiedAt) return cached.info;
 			if (!(await this.ownsSession(sessionPath))) return undefined;
 			const document = parseCodingAgentLegacySessionDocument(this.host.readText(sessionPath));
-			const modifiedAt = await this.host.statModifiedAt(sessionPath);
 			const messages = document.entries.flatMap((entry) => readConversationMessage(entry));
 			const textMessages = messages.filter(({ text }) => text.length > 0);
 			const firstMessage = textMessages.find(({ role }) => role === "user")?.text ?? "(no messages)";
 			const lastMessage = textMessages.at(-1);
-			return {
+			const info: SessionHistoryInfo = {
 				id: document.header.id,
 				path: sessionPath,
 				cwd: document.header.cwd,
 				name: readSessionName(document.entries),
 				firstMessage,
-				modifiedAt: readLastActivityTime(messages) ?? readTimestamp(document.header.timestamp) ?? modifiedAt,
+				modifiedAt: readLastActivityTime(messages) ?? readTimestamp(document.header.timestamp) ?? fileModifiedAt,
 				lastMessagePreview: lastMessage?.text.trim().slice(0, 120) ?? "",
 				parentSessionPath: document.header.parentSession,
 				parentEntryId: document.header.parentEntryId,
 			};
+			rememberLegacySessionInfo(sessionPath, fileModifiedAt, info);
+			return info;
 		} catch {
 			return undefined;
 		}

@@ -347,6 +347,10 @@ export class RuntimeHost implements SessionFacade {
 		return this.sessionOperations.sendQueuedMessageNow(sessionId, itemId);
 	}
 
+	async guideQueuedMessage(sessionId: string, itemId: string): Promise<"promoted" | "started" | "missing"> {
+		return this.sessionOperations.guideQueuedMessage(sessionId, itemId);
+	}
+
 	async resumeQueue(sessionId: string): Promise<void> {
 		await this.sessionOperations.resumeQueue(sessionId);
 	}

@@ -2,18 +2,9 @@ import { STOAT_CURSOR_PREVIEW_URL, type CursorStyle } from "@shared/theme/cursor
 import { THEMES } from "@shared/theme/themes";
 import { AppearanceActionPickerView } from "@astravia-org/theme-ui/action-approval/AppearanceActionPickerView";
 import type { AppearanceCursorOption, AppearanceModeOption, AppearanceThemeMode, AppearanceThemePreview } from "@astravia-org/theme-ui/action-approval";
+import { colorThemeLabelKey } from "@shared/theme/color-theme-label-keys";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-
-const COLOR_THEME_LABEL_KEYS = {
-	mono: "colorThemes.mono",
-	default: "colorThemes.default",
-	sand: "colorThemes.sand",
-	forest: "colorThemes.forest",
-	bee: "colorThemes.bee",
-	mint: "colorThemes.mint",
-	parchment: "colorThemes.parchment",
-} as const;
 
 export function AppearanceActionPicker({
 	mode,
@@ -62,7 +53,7 @@ export function AppearanceActionPicker({
 	const themes = useMemo<AppearanceThemePreview[]>(
 		() =>
 			THEMES.map((theme) => {
-				const labelKey = COLOR_THEME_LABEL_KEYS[theme.id as keyof typeof COLOR_THEME_LABEL_KEYS];
+				const labelKey = colorThemeLabelKey(theme.id);
 				return {
 					id: theme.id,
 					label: labelKey ? t(labelKey) : theme.label,

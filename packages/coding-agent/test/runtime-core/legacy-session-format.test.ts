@@ -68,6 +68,37 @@ describe("Legacy session format boundary", () => {
 		expect(third.kind).toBe("acquired");
 		if (third.kind === "acquired") third.lease.release();
 	});
+
+	it("reuses the cached session summary until the file changes", async () => {
+		const directory = createTemporaryDirectory(temporaryDirectories);
+		const sessionPath = join(directory, "cached.jsonl");
+		const write = (records: readonly object[]): void => {
+			writeFileSync(sessionPath, `${records.map((record) => JSON.stringify(record)).join("\n")}\n`);
+		};
+		write(legacySessionRecords());
+
+		const inner = createNodeLegacySessionHost({ defaultCwd: directory, sessionsDirectory: directory });
+		let reads = 0;
+		const catalog = new LegacyRuntimeSessionCatalog({
+			...inner,
+			readText: (path) => {
+				reads += 1;
+				return inner.readText(path);
+			},
+		});
+
+		await catalog.listSessions("C:\\workspace", directory);
+		expect(reads).toBe(1);
+		// 文件没变：第二次列表只花一次 stat，不再重新解析整份 JSONL。
+		await catalog.listSessions("C:\\workspace", directory);
+		expect(reads).toBe(1);
+
+		// mtime 可能和上一次落在同一毫秒，等一格再追写，让「文件变了」这件事可观测。
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		write([...legacySessionRecords(), { ...legacySessionRecords()[2], id: "assistant-2", parentId: "assistant" }]);
+		await catalog.listSessions("C:\\workspace", directory);
+		expect(reads).toBe(2);
+	});
 });
 
 function createTemporaryDirectory(collection: string[]): string {

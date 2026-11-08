@@ -1,15 +1,19 @@
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+	collectWindowsExecutables,
 	inferApplicationKind,
 	launchDetached,
 	macosLaunchPlan,
 	parseWindowsApplicationEntries,
+	parseWindowsApplicationsKeyNames,
 	parseWindowsShellVerbs,
 	windowsApplicationName,
+	windowsCandidates,
 	windowsLaunchPlan,
+	windowsProgramScanRoots,
 	windowsProgramsFromExecutables,
 } from "./external-apps.js";
 
@@ -24,7 +28,9 @@ describe("inferApplicationKind", () => {
 			"Visual Studio Code - Insiders",
 			"Cursor",
 			"Trae",
+			"Trae CN",
 			"Qoder IDE",
+			"Kiro",
 			"CodeBuddy CN",
 			"Sublime Text",
 			"Zed",
@@ -32,6 +38,11 @@ describe("inferApplicationKind", () => {
 			"Xcode",
 			"IntelliJ IDEA",
 			"WebStorm",
+			"PyCharm",
+			"CLion",
+			"DataSpell",
+			"RustRover",
+			"JetBrains Fleet",
 			"Android Studio",
 		]) {
 			expect(inferApplicationKind(name), name).toBe("editor");
@@ -328,5 +339,99 @@ describe("launchDetached", () => {
 
 	it("启动失败会报错", async () => {
 		await expect(launchDetached({ command: "/definitely/not/installed/editor", args: [] })).rejects.toThrow();
+	});
+});
+
+/**
+ * 目录扫描的 `depth` 是「从 root 往下最多走几层」，exe 所在目录本身也要被打开。
+ * JetBrains Toolbox 的布局是 `apps\<IDE>\ch-0\<ver>\bin\*.exe`，bin 在第四层：
+ * depth 写成 4 时 `level + 1 < depth` 恰好把 bin 挡在外面，Toolbox 装的 IDE 一个都扫不到，
+ * 表现就是「装了 PyCharm 但菜单里没有」。
+ */
+describe("windowsProgramScanRoots", () => {
+	it("Toolbox 的扫描深度能走到 bin 那一层", () => {
+		const toolbox = windowsProgramScanRoots().find((entry) => entry.root.includes("Toolbox"));
+		expect(toolbox).toBeDefined();
+		// exe 在第四层目录（IDE / ch-0 / <ver> / bin），所以深度至少要 5。
+		expect(toolbox?.depth).toBeGreaterThanOrEqual(5);
+	});
+
+	it("JetBrains 安装器目录也在扫描范围内", () => {
+		const roots = windowsProgramScanRoots().map((entry) => entry.root.toLowerCase());
+		expect(roots.some((root) => root.includes("jetbrains") && !root.includes("toolbox"))).toBe(true);
+	});
+});
+
+describe("collectWindowsExecutables", () => {
+	it("Toolbox 布局下能扫到 bin 里的 exe", async () => {
+		const root = join(tmpdir(), `astravia-toolbox-${process.pid}-${Date.now()}`);
+		const binDir = join(root, "IntelliJ IDEA Ultimate", "ch-0", "243.1", "bin");
+		try {
+			mkdirSync(binDir, { recursive: true });
+			const exe = join(binDir, "idea64.exe");
+			writeFileSync(exe, "");
+
+			const found = await collectWindowsExecutables(root, 5);
+			expect(found).toContain(exe);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it("深度不够时扫不到更深的 exe，说明 depth 是硬边界", async () => {
+		const root = join(tmpdir(), `astravia-toolbox-shallow-${process.pid}-${Date.now()}`);
+		const binDir = join(root, "PyCharm", "ch-0", "243.1", "bin");
+		try {
+			mkdirSync(binDir, { recursive: true });
+			writeFileSync(join(binDir, "pycharm64.exe"), "");
+
+			expect(await collectWindowsExecutables(root, 4)).toEqual([]);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+});
+
+/**
+ * 便携版与解包到任意盘位的编辑器只在 `HKCR\Applications` 留一条打开命令。
+ * 这条路径必须能按固定名单读到，且不能把不认识的 exe 也带进来。
+ */
+describe("parseWindowsApplicationsKeyNames", () => {
+	it("只取 Applications 下的一级子键名", () => {
+		const stdout = [
+			"HKEY_CLASSES_ROOT\\Applications\\Code.exe",
+			"HKEY_CLASSES_ROOT\\Applications\\Code.exe\\shell",
+			"HKEY_CLASSES_ROOT\\Applications\\kiro.exe",
+			"",
+		].join("\r\n");
+
+		expect(parseWindowsApplicationsKeyNames(stdout)).toEqual(["Code.exe", "kiro.exe"]);
+	});
+
+	it("空输出不产生条目", () => {
+		expect(parseWindowsApplicationsKeyNames("")).toEqual([]);
+	});
+});
+
+/**
+ * 固定候选表是「装了才出现」的前提：路径写错就等于这个应用永远探测不到。
+ * 只断言关键产品在表里，以及每条路径都在绝对目录下，不去绑定具体盘符。
+ */
+describe("windowsCandidates", () => {
+	it("列出用户点名的那几家 IDE", () => {
+		const names = windowsCandidates().map((candidate) => candidate.name);
+		for (const name of ["Visual Studio Code", "Sublime Text", "Trae", "Trae CN", "Qoder", "Kiro", "CodeBuddy"]) {
+			expect(names, name).toContain(name);
+		}
+	});
+
+	it("编辑器条目的路径都是绝对路径", () => {
+		// 测试在任何平台都跑：盘符开头或斜杠开头都算绝对，不去绑定具体分隔符。
+		for (const candidate of windowsCandidates()) {
+			if (candidate.kind !== "editor") continue;
+			for (const path of candidate.paths) {
+				expect(path, `${candidate.name} -> ${path}`).toMatch(/^(?:[A-Za-z]:[\\/]|\/)/);
+			}
+		}
 	});
 });

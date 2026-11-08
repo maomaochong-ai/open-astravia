@@ -4,6 +4,14 @@ import { atom, type Getter, type Setter } from "jotai";
 export const activityPanelOpenAtom = atom<boolean>(false);
 export const activityPanelResizingAtom = atom<boolean>(false);
 
+/**
+ * 活动面板「铺满」：面板这一列占满内容行，同时宿主侧边栏与全局顶栏让位。
+ *
+ * 按钮在面板里、让位发生在根布局，两边必须读同一份状态，否则会出现
+ * 「面板铺满了但侧边栏还在」这种半吊子形态。
+ */
+export const activityPanelFocusAtom = atom<boolean>(false);
+
 export interface FloatingActivityTabPlacement {
 	height: number;
 	key: ActivityTabKey;

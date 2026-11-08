@@ -6,6 +6,7 @@ import {
 } from "@astravia/runtime-core";
 import {
 	type ConversationDocument,
+	type ConversationDocumentEntry,
 	selectConversationDocumentModelMessages,
 } from "@astravia/runtime-core/conversation";
 import {
@@ -79,6 +80,21 @@ export class DefaultCodingAgentContextRuntime
 	private readonly commitLifecycle: CodingAgentCompactionCommitLifecycle;
 	private pressureFloor = 0;
 	private autoCompactionEnabledOverride: boolean | undefined;
+	/**
+	 * 压缩资格只由「分支条目 + activeLeafId + 压缩设置」决定，与触发刷新的事件无关。
+	 * `refreshContextState` 在每个非 assistant 事件后都会问一次，而回答它需要把整条
+	 * 分支投影成 session entries 并跑一次 `prepareCompaction`（O(历史)）。长会话下这个
+	 * 重复计算会占满主进程，故按内容版本缓存；非条目事件不会使缓存失效。
+	 */
+	private eligibilityCache:
+		| {
+				readonly entries: readonly ConversationDocumentEntry[];
+				readonly revision: number;
+				readonly activeLeafId: string | null;
+				readonly settings: string;
+				readonly value: ContextCompactionEligibility;
+		  }
+		| undefined;
 
 	constructor(private readonly options: CodingAgentContextRuntimeOptions) {
 		this.resolveSettings = options.resolveSettings ?? (() => DEFAULT_COMPACTION_SETTINGS);
@@ -285,16 +301,27 @@ export class DefaultCodingAgentContextRuntime
 	}
 
 	readCompactionEligibility(document: ConversationDocument): ContextCompactionEligibility {
-		const entries = toCompactionSessionEntries(document);
-		if (!entries.some((entry) => entry.type === "message" || entry.type === "custom_message")) {
-			return { status: "ineligible", reason: "no_history" };
+		const settings = this.readSettings();
+		const settingsKey = `${settings.enabled}:${settings.reserveTokens}:${settings.minFreePercent}:${settings.keepRecentTokens}`;
+		const cached = this.eligibilityCache;
+		if (
+			cached &&
+			cached.entries === document.entries &&
+			cached.revision === document.revision &&
+			cached.activeLeafId === document.activeLeafId &&
+			cached.settings === settingsKey
+		) {
+			return { ...cached.value };
 		}
-		if (entries.at(-1)?.type === "compaction") {
-			return { status: "ineligible", reason: "already_compacted" };
-		}
-		return prepareCompaction(entries, this.readSettings())
-			? { status: "eligible" }
-			: { status: "ineligible", reason: "insufficient_history" };
+		const value = computeCompactionEligibility(document, settings);
+		this.eligibilityCache = {
+			entries: document.entries,
+			revision: document.revision,
+			activeLeafId: document.activeLeafId,
+			settings: settingsKey,
+			value,
+		};
+		return { ...value };
 	}
 
 	setAutoCompactionEnabled(enabled: boolean): void {
@@ -364,4 +391,23 @@ export function createDefaultCodingAgentContextRuntime(
 	options: CodingAgentContextRuntimeOptions,
 ): CodingAgentContextRuntimeContract {
 	return new DefaultCodingAgentContextRuntime(options);
+}
+
+/**
+ * 纯计算：把分支投影成 session entries 并判断能否压缩。调用方负责按文档版本缓存。
+ */
+function computeCompactionEligibility(
+	document: ConversationDocument,
+	settings: CompactionSettings,
+): ContextCompactionEligibility {
+	const entries = toCompactionSessionEntries(document);
+	if (!entries.some((entry) => entry.type === "message" || entry.type === "custom_message")) {
+		return { status: "ineligible", reason: "no_history" };
+	}
+	if (entries.at(-1)?.type === "compaction") {
+		return { status: "ineligible", reason: "already_compacted" };
+	}
+	return prepareCompaction(entries, settings)
+		? { status: "eligible" }
+		: { status: "ineligible", reason: "insufficient_history" };
 }

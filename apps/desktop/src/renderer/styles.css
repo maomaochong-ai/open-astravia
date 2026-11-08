@@ -73,6 +73,8 @@
 
 	--font-sans: -apple-system, "SF Pro Text", "SF Pro Display", "Helvetica Neue",
 		sans-serif;
+	/* 会话内容字体默认跟随界面字体；用户单独选过才写内联覆盖。 */
+	--font-content: var(--font-sans);
 	--font-serif: Georgia, serif;
 	--font-mono: "SF Mono", "Fira Code", monospace;
 	--radius: 0.5rem;
@@ -339,6 +341,15 @@ body {
 
 #root {
 	min-height: 100vh;
+}
+
+/* 会话内容字体：只管消息正文，代码块与终端仍走 --font-mono。 */
+[data-message-root] {
+	font-family: var(--font-content);
+}
+
+[data-message-root] :is(pre, code, kbd, samp) {
+	font-family: var(--font-mono);
 }
 
 html,
@@ -1135,8 +1146,8 @@ a {
 }
 
 /* macOS 经典侧栏靠原生 vibrancy（深色 60%、浅色 35% tint）让画布色半透明，桌面
-   壁纸直接参与配色：同一条色在壁纸前可能显得比画布亮，也可能更脏，四套主题
-   的身份就没了。四套主题因此在 mac 上也钺不透明色，深浅两态都与 win/linux 一致；
+   壁纸直接参与配色：同一条色在壁纸前可能显得比画布亮，也可能更脏，这些主题
+   的身份就没了。它们因此在 mac 上也铺不透明色，深浅两态都与 win/linux 一致；
    未改造的 default / mono / sand 继续用 vibrancy。 */
 :root[data-platform="mac"][data-sidebar-style="classic"]:is(
 		[data-theme="forest"],

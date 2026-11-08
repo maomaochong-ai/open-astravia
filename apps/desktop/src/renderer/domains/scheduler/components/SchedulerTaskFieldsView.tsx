@@ -65,8 +65,9 @@ export function SchedulerTaskFieldsView({
 			<SkillPromptArea
 				prompt={promptBody}
 				onPromptChange={(body) => onPromptChange(body, promptSkill)}
-				skill={promptSkill}
-				onSkillChange={(skill) => onPromptChange(promptBody, skill)}
+				skills={promptSkill ? [promptSkill] : []}
+				onSkillsChange={(skills) => onPromptChange(promptBody, skills[0] ?? null)}
+				maxSkills={1}
 				placeholder={t("form.promptPlaceholder")}
 				minHeight={promptMinHeight}
 				cwd={draft.projectCwd}

@@ -6,7 +6,8 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { type IDisposable, Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { pathBasename } from "@shared/lib/utils";
-import { useAtom } from "jotai";
+import { codeFontAtom } from "@shared/store/ui-atoms";
+import { useAtom, useAtomValue } from "jotai";
 import { type JSX, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TerminalEventEnvelope } from "../../../../shared/terminal-ipc";
@@ -59,6 +60,7 @@ export function TerminalSurface(): JSX.Element {
 	const refitRef = useRef<(() => void) | null>(null);
 	const terminalRef = useRef<Terminal | null>(null);
 	const [focusRequest, setFocusRequest] = useAtom(bottomPanelFocusRequestAtom);
+	const codeFont = useAtomValue(codeFontAtom);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -259,6 +261,16 @@ export function TerminalSurface(): JSX.Element {
 		const frame = requestAnimationFrame(() => refitRef.current?.());
 		return () => cancelAnimationFrame(frame);
 	}, [active]);
+
+	// 用户改代码字体后终端要立即跟上：xterm 只在建实例时读一次字体族，不重算就成局部失效。
+	useEffect(() => {
+		const terminal = terminalRef.current;
+		if (!terminal) return;
+		terminal.options.fontFamily = getComputedStyle(document.documentElement).getPropertyValue("--font-mono").trim() || "monospace";
+		// 字形变了字符宽也变了，行列得重算，否则光标位置会偏。
+		const frame = requestAnimationFrame(() => refitRef.current?.());
+		return () => cancelAnimationFrame(frame);
+	}, [codeFont]);
 
 	// 头部终端入口点过来的：等自己真正可见（面板展开、是所在格子的活动 tab）再接焦点。
 	// effect 在提交之后跑，此时 `hidden` 已经摘掉，可以同步 focus；不等 PTY——xterm 实例一建好就能接焦点。

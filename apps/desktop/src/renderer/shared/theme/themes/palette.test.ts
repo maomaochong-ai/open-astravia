@@ -8,7 +8,7 @@ import { mintTheme } from "./mint.js";
 import { parchmentTheme } from "./parchment.js";
 
 /**
- * 四套彩色主题的色板守卫。
+ * 彩色主题的色板守卫（四套内置配色）。
  *
  * 这里钉的不是「颜色好不好看」，而是三条会让主题彻底失效的硬约束：
  * 1. 表面必须分层——画布、卡面、muted、secondary 一旦都取纯白，切主题时除按钮之外
@@ -109,8 +109,8 @@ describe.each(THEMES)("$id 主题色板", (theme) => {
 	];
 
 	it.each(readable)("%s 在 %s 上的对比度不低于 %s", (text, surface, minimum) => {
-		expect(contrast(theme.light[text], theme.light[surface])).toBeGreaterThanOrEqual(minimum);
-		expect(contrast(theme.dark[text], theme.dark[surface])).toBeGreaterThanOrEqual(minimum);
+		expect(contrast(theme.light[text], theme.light[surface]), "浅色：可读性不足").toBeGreaterThanOrEqual(minimum);
+		expect(contrast(theme.dark[text], theme.dark[surface]), "深色：可读性不足").toBeGreaterThanOrEqual(minimum);
 	});
 
 	it("图表色是主题自己的颜色，且两两可分辨", () => {
@@ -149,7 +149,7 @@ describe.each(THEMES)("$id 主题色板", (theme) => {
  * 蜜蜂↔羊皮纸 4.6），浅色下蜜蜂↔羊皮纸只剩 3.7。那种情况下切主题只看到按钮变色，
  * 画布和侧栏读不出一丝差别——用户的原话是「四套主题颜色几乎无差异」。
  */
-describe("四套主题彼此可分辨", () => {
+describe("各主题彼此可分辨", () => {
 	function assertApart(pick: (theme: ThemeDef) => string, minimum: number, label: string): void {
 		for (let index = 0; index < THEMES.length; index += 1) {
 			for (let other = index + 1; other < THEMES.length; other += 1) {

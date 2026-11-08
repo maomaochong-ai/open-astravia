@@ -6,6 +6,14 @@ export interface SkillPromptAreaViewLabels {
 	missingBadge: string;
 	skillButtonTitle: string;
 	skillButtonLabel: string;
+	skillButtonLimitTitle: string;
+}
+
+/** 已选中的一个技能/场景胶囊。`id` 用技能名——同名技能只会被选一次。 */
+export interface SkillPromptAreaSelectedSkill {
+	id: string;
+	displayName: string;
+	missing: boolean;
 }
 
 export interface SkillPromptAreaViewProps {
@@ -15,9 +23,9 @@ export interface SkillPromptAreaViewProps {
 	className?: string;
 	autoFocus?: boolean;
 	slashOpen: boolean;
-	skillMissing: boolean;
-	skillDisplayName: string;
-	hasSkill: boolean;
+	selectedSkills: readonly SkillPromptAreaSelectedSkill[];
+	/** 已达可选上限时置灰「添加技能」，避免点了没反应。 */
+	canAddSkill: boolean;
 	anchorRect: DOMRect | null;
 	textareaRef: RefObject<HTMLTextAreaElement | null>;
 	cardRef: RefObject<HTMLDivElement | null>;
@@ -27,11 +35,11 @@ export interface SkillPromptAreaViewProps {
 	onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
 	onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
 	onPlusClick: () => void;
-	onRemoveSkill: () => void;
+	onRemoveSkill: (id: string) => void;
 }
 
 /**
- * Batch-task / automation prompt field with skill capsule + slash panel slot.
+ * Batch-task / automation prompt field with skill capsules + slash panel slot.
  */
 export function SkillPromptAreaView({
 	prompt,
@@ -40,9 +48,8 @@ export function SkillPromptAreaView({
 	className,
 	autoFocus,
 	slashOpen,
-	skillMissing,
-	skillDisplayName,
-	hasSkill,
+	selectedSkills,
+	canAddSkill,
 	textareaRef,
 	cardRef,
 	labels,
@@ -57,29 +64,30 @@ export function SkillPromptAreaView({
 			{slashPanel}
 
 			<div ref={cardRef} className="rounded-lg border border-border/60 bg-background/30">
-				{hasSkill && (
-					<div>
-							<div className="flex flex-wrap items-center gap-1.5 px-3 pt-2.5">
-								<button
-									type="button"
-									onClick={onRemoveSkill}
-									title={skillMissing ? labels.removeSkillMissing : labels.removeSkill}
-									className={`group flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
-										skillMissing
-											? "border-amber-500/40 bg-amber-500/10 text-amber-500"
-											: "border-primary/20 bg-primary/10 text-primary"
-									}`}
-								>
-									<span className="icon-[mdi--puzzle-outline] h-3 w-3 shrink-0" />
-									<span className="max-w-[160px] truncate">{skillDisplayName}</span>
-									{skillMissing && (
-										<span className="shrink-0 rounded-sm bg-amber-500/20 px-1 py-px text-[9px] font-medium">
-											{labels.missingBadge}
-										</span>
-									)}
-									<span className="icon-[mdi--close] h-3 w-3 opacity-50 transition-opacity group-hover:opacity-100" />
-								</button>
-							</div>
+				{selectedSkills.length > 0 && (
+					<div className="flex flex-wrap items-center gap-1.5 px-3 pt-2.5">
+						{selectedSkills.map((skill) => (
+							<button
+								key={skill.id}
+								type="button"
+								onClick={() => onRemoveSkill(skill.id)}
+								title={skill.missing ? labels.removeSkillMissing : labels.removeSkill}
+								className={`group flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
+									skill.missing
+										? "border-amber-500/40 bg-amber-500/10 text-amber-500"
+										: "border-primary/20 bg-primary/10 text-primary"
+								}`}
+							>
+								<span className="icon-[mdi--puzzle-outline] h-3 w-3 shrink-0" />
+								<span className="max-w-[160px] truncate">{skill.displayName}</span>
+								{skill.missing && (
+									<span className="shrink-0 rounded-sm bg-amber-500/20 px-1 py-px text-[9px] font-medium">
+										{labels.missingBadge}
+									</span>
+								)}
+								<span className="icon-[mdi--close] h-3 w-3 opacity-50 transition-opacity group-hover:opacity-100" />
+							</button>
+						))}
 					</div>
 				)}
 
@@ -98,8 +106,9 @@ export function SkillPromptAreaView({
 					<button
 						type="button"
 						onClick={onPlusClick}
-						title={labels.skillButtonTitle}
-						className={`flex h-7 items-center gap-1 rounded-md px-2 text-[12px] transition-colors ${
+						disabled={!canAddSkill}
+						title={canAddSkill ? labels.skillButtonTitle : labels.skillButtonLimitTitle}
+						className={`flex h-7 items-center gap-1 rounded-md px-2 text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
 							slashOpen
 								? "bg-primary/10 text-primary"
 								: "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
