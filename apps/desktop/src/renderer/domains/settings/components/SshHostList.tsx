@@ -98,7 +98,15 @@ function Badge({ className, children }: { className: string; children: React.Rea
 function RowMessage({ message, detailsLabel }: { message: SshHostRowMessage; detailsLabel: string }): JSX.Element {
 	return (
 		<div className="mt-1.5">
-			<p className={`text-[12px] ${message.tone === "success" ? "text-emerald-400" : "text-destructive"}`}>
+			<p
+				className={`text-[12px] ${
+					message.tone === "success"
+						? "text-emerald-400"
+						: message.tone === "warning"
+							? "text-amber-400"
+							: "text-destructive"
+				}`}
+			>
 				{message.text}
 			</p>
 			{/* 原始 stderr 折叠起来：定位问题时有用，但不该当作首行文案。 */}

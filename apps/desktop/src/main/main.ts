@@ -28,6 +28,7 @@ import { parseHelpCliCommand, runHelpCliCommand } from "./cli/help-command.js";
 import { parseOcrCliCommand, runOcrCliCommand } from "./cli/ocr-command.js";
 import { parsePdfCliCommand, runPdfCliCommand } from "./cli/pdf-command.js";
 import type { CloudMainHandle } from "./cloud/index.js";
+import { prewarmConversationOwnership } from "./conversations/desktop-conversation-service.js";
 import { ensureAstraviaCommandShim, ensureDevAstraviaCliShim, ensureDevCliShim } from "./dev-cli-shim.js";
 import {
 	getDiagnosticsLogPath,
@@ -90,6 +91,7 @@ import { createDesktopSchedulerDependencies } from "./scheduler/desktop-schedule
 import { initScheduler, shutdownScheduler } from "./scheduler/scheduler.js";
 import { initializeDesktopSchedulerService } from "./scheduler/scheduler-service.js";
 import { acquireSingleInstanceLockWithRetry } from "./single-instance-lock.js";
+import { createStartupTrace } from "./startup-trace.js";
 import { initializeMainTelemetry, shutdownMainTelemetry } from "./telemetry/index.js";
 import { registerThemeProtocol, THEME_PROTOCOL_PRIVILEGE } from "./themes/theme-protocol.js";
 import {
@@ -203,6 +205,13 @@ if (agentRpcArgs) {
 	installMainDiagnostics();
 }
 const mainLog = getAppLogger("main");
+/**
+ * 启动阶段打点：每个阶段一行 `[startup] <label> at=…ms delta=…ms`。
+ * Windows「启动后无响应 / 闪退」只有用户日志能定性，所以这里覆盖到首屏与真实内容可见为止，
+ * 并把进程启动前的 Electron 引导、单实例锁等待一起算进 at。
+ */
+const startupTrace = createStartupTrace({ log: mainLog });
+startupTrace.mark("main-module-loaded");
 /** 项目自建的 Cloudflare 中继；用户可在配置里改成自己的部署。 */
 const DEFAULT_REMOTE_RELAY_BASE_URL = "wss://relay.flowerwine.dpdns.org";
 const rendererCdp = configureRendererCdp({
@@ -363,11 +372,13 @@ app.on("open-url", (event, url) => {
 // spawn relaunch 目标，Windows 看门狗还会自行拉起一次）。此时直接放弃会走 exit(0)
 // 静默消失，用户看到的是「点了重启，桌面没有应用」——所以只在更新重启时有限重试。
 const relaunchingAfterUpdate = !isCliMode && hasPendingUpdateRelaunch(getAstraviaHomePath());
+startupTrace.mark("single-instance-lock-check-start");
 const gotSingleLock = isCliMode
 	? true
 	: acquireSingleInstanceLockWithRetry(() => app.requestSingleInstanceLock(), {
 			retry: relaunchingAfterUpdate,
 		});
+startupTrace.mark("single-instance-lock-check-end");
 const pluginPackageOpenService = isCliMode ? undefined : createDesktopPluginPackageOpenService();
 pluginPackageOpenService?.enqueueFromArgv(process.argv);
 
@@ -379,6 +390,14 @@ app.on("open-file", (event, filePath) => {
 });
 
 if (!gotSingleLock) {
+	// 锁被另一个活着的实例持有：Electron 已经把这次启动转交给它（second-instance），
+	// 本进程必须退出。旧代码只 exit(0)，用户在任务管理器里看到「启动一下又没了」，
+	// 日志里却什么都没有。这里留下可检索的痕迹，用来区分「被转交」和「真的崩了」。
+	mainLog.warn("[startup] single instance lock not acquired; exiting", {
+		relaunchingAfterUpdate,
+		cliMode: isCliMode,
+	});
+	startupTrace.mark("single-instance-lock-missing-exit");
 	app.exit(0);
 } else {
 	app.on("second-instance", (_event, argv) => {
@@ -390,6 +409,7 @@ if (!gotSingleLock) {
 		showMainWindow();
 	});
 	app.whenReady().then(async () => {
+		startupTrace.mark("app-ready");
 		if (pdfCliCommand) {
 			const exitCode = await runPdfCliCommand(pdfCliCommand);
 			// `app.quit()` does not honour `process.exitCode` reliably on macOS —
@@ -475,6 +495,7 @@ if (!gotSingleLock) {
 		// Chromium 可能跨重启复用旧 chunk；但 clearCache() 会中断已经开始的网络请求，
 		// 因此必须在创建窗口、加载 Vite renderer 之前完成。打包版使用版本化资源，不清缓存。
 		// 协议响应的 no-store 继续作为插件开发资源的第二层保证。
+		startupTrace.mark("renderer-start");
 		const rendererBootStartedAt = Date.now();
 		const mainWindow = await startRendererAfterSessionPreparation({
 			resetDevelopmentCache: app.isPackaged ? undefined : () => session.defaultSession.clearCache(),
@@ -487,6 +508,7 @@ if (!gotSingleLock) {
 				return win;
 			},
 		});
+		startupTrace.mark("renderer-window-created");
 		const remoteDesktopTarget = process.env.ASTRAVIA_REMOTE_DESKTOP_SIGNALING_URL;
 		const remoteDesktopToken = process.env.ASTRAVIA_REMOTE_DESKTOP_PAIRING_TOKEN;
 		if (remoteDesktopTarget && remoteDesktopToken) {
@@ -504,6 +526,8 @@ if (!gotSingleLock) {
 		const rendererBootPaintPromise = appLifecycle.waitForRendererBootPaint();
 		const rendererContentPaintPromise = appLifecycle.waitForRendererContentPaint();
 		void rendererBootPaintPromise.then((result) => {
+			// 打点必须落在 Promise 兑现处：写在注册之后只会量到「等待开始」，不是首帧可见。
+			startupTrace.mark("boot-frame-visible");
 			if (mainWindow.isDestroyed()) return;
 			// 被安装器重启时应用不是活动应用（ShipIt 以守护进程身份拉起），
 			// 窗口 show() 出不来，用户以为没重启。仅这一种情况主动抢焦点。
@@ -900,10 +924,18 @@ if (!gotSingleLock) {
 					durationMs: Date.now() - rendererBootStartedAt,
 					result: contentPaintResult,
 				});
+				startupTrace.mark("content-frame-visible");
 
 				// App Monitor 是纯旁路能力：迁移和历史统计读取不得阻塞 renderer 或业务 IPC。
 				void ensureAppMonitorInitialized().catch((error: unknown) => {
 					mainLog.warn("app monitor background initialization failed", error);
+				});
+
+				// 会话归属回填是侧栏任何一次列表的前置条件，而它把整个团队会话目录扫一遍。
+				// 拖到用户点开项目才算，这 57–71 秒（真实日志实测）就全落在第一个列表里；
+				// 放到首帧之后立即开跑，与用户读首屏的时间重叠。失败时记忆化会被清掉，下次列表重试。
+				void prewarmConversationOwnership().catch((error: unknown) => {
+					mainLog.warn("conversation ownership prewarm failed", error);
 				});
 
 				const deferredStartupTimer = setTimeout(() => {

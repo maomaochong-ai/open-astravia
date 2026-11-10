@@ -13,6 +13,12 @@ export interface SshHostFormState {
 
 /** 某一行的探测结果。成功与失败都留在行内，不打断用户去看别处。 */
 export interface SshHostRowMessage {
+	tone: "success" | "warning" | "error";
+	text: string;
+	/** 原始 stderr。默认折叠——它对定位问题有用，但不该当作首行文案。 */
+	details?: string;
+}
+export interface SshHostRowMessage {
 	tone: "success" | "error";
 	text: string;
 	/** 原始 stderr。默认折叠——它对定位问题有用，但不该当作首行文案。 */
@@ -172,13 +178,18 @@ export function useSshHostsSettingsModel(): SshHostsSettingsModel {
 			});
 			try {
 				const outcome = classifyProbe(await window.astravia.ssh.testHost(host.id));
-				// 连上了就只说连上了。远端缺 rg / fd 不在这里提——测连接的时刻对此无从下手，
-				// 而真正用到搜索工具时，远端执行层会点名是哪台主机缺了哪个命令
-				// （packages/runtime-ssh/src/ssh-tool-process.ts）。
+				// 连上了就报告连上了，但缺 git / rg 要单独说一句：那时候项目能建、文件能读写，
+				// 只是版本控制和搜索不可用。报成失败会让用户去查一台其实好好的机器，
+				// 而完全不提会让他在工具报错时以为是本地出了问题。
 				const message: SshHostRowMessage =
 					outcome.kind === "failed"
 						? { tone: "error", text: t("sshTestFailed"), details: outcome.details }
-						: { tone: "success", text: t("sshTestOk", { platform: outcome.platform }) };
+						: outcome.kind === "ok-missing-tools"
+							? {
+									tone: "warning",
+									text: t("sshTestOkMissingTools", { platform: outcome.platform, tools: outcome.tools }),
+								}
+							: { tone: "success", text: t("sshTestOk", { platform: outcome.platform }) };
 				setRowMessage((previous) => ({ ...previous, [host.id]: message }));
 			} catch (error) {
 				setRowMessage((previous) => ({
@@ -304,7 +315,8 @@ export function classifyProbe(probe: SshHostProbe): SshProbeOutcome {
 	const platform = [probe.os, probe.arch].filter(Boolean).join(" ");
 	const missing = [probe.hasGit ? "" : "git", probe.hasRipgrep ? "" : "rg"].filter((tool) => tool.length > 0);
 	if (missing.length === 0) return { kind: "ok", platform };
-	return { kind: "ok-missing-tools", platform, tools: missing.join("、") };
+	// 用半角逗号分隔：这个列表会直接拼进中英文两种文案，顿号在英文句子里不成立。
+	return { kind: "ok-missing-tools", platform, tools: missing.join(", ") };
 }
 
 function toMessage(error: unknown): string {

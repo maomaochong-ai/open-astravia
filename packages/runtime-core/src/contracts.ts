@@ -578,6 +578,12 @@ export interface SessionFacade {
 	 */
 	readSessionHistoryFromFile(path: string): { history: HistoryEntry[] };
 	/**
+	 * Same projection as readSessionHistoryFromFile, but the file read no longer
+	 * blocks the process. Optional so existing host implementations keep working;
+	 * callers fall back to the synchronous method when it is missing.
+	 */
+	readSessionHistoryFromFileAsync?(path: string): Promise<{ history: HistoryEntry[] }>;
+	/**
 	 * Prepare re-edit of a user message: set leaf to its parent and return text.
 	 * Caller should then prompt with (possibly edited) text to grow a new branch.
 	 */

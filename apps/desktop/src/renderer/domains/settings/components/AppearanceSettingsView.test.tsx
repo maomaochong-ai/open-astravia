@@ -66,8 +66,7 @@ function model(
 				setOrnament: vi.fn(),
 				setSidebarStyle: vi.fn(),
 				setTexture: vi.fn(),
-				setUiFont: vi.fn(),
-				setCodeFont: vi.fn(),
+				setFont: vi.fn(),
 			},
 			overrides.actions,
 		),
@@ -92,9 +91,7 @@ function model(
 			},
 			textureHint: "textureHint",
 			title: "外观",
-			uiFontHint: "uiFontHint",
-			codeFontHint: "codeFontHint",
-			fontRoles: { ui: "全局字体", code: "代码字体" },
+			fontHint: "fontHint",
 		},
 		language: "system",
 		languages: [],
@@ -114,15 +111,10 @@ function model(
 		themeName: "default",
 		themes: [],
 		uiThemes: [],
-		uiFont: "system",
-		uiFontOptions: [
+		font: "system",
+		fontOptions: [
 			{ active: true, hint: "uiFontSystemHint", id: "system", label: "系统默认" },
 			{ active: false, hint: "uiFontSerifHint", id: "serif", label: "衷线" },
-		],
-		codeFont: "mono",
-		codeFontOptions: [
-			{ active: false, hint: "uiFontSystemHint", id: "system", label: "系统默认" },
-			{ active: true, hint: "uiFontMonoHint", id: "mono", label: "等宽" },
 		],
 		...overrides,
 	};
@@ -178,26 +170,19 @@ describe("AppearanceSettingsView 的新会话页装饰区域", () => {
 });
 
 describe("AppearanceSettingsView 的字体区域", () => {
-	it("全局字体与代码字体各是一个下拉，改哪行就把选择交回哪一项", async () => {
-		const setUiFont = vi.fn();
-		const setCodeFont = vi.fn();
-		const view = render(<AppearanceSettingsView model={model({ actions: { setUiFont, setCodeFont } })} />);
+	it("字体只占一行，选定后界面与代码一起换", async () => {
+		const setFont = vi.fn();
+		const view = render(<AppearanceSettingsView model={model({ actions: { setFont } })} />);
 
-		const ui = view.container.querySelector('[data-font-role="ui"]') as HTMLElement;
-		const code = view.container.querySelector('[data-font-role="code"]') as HTMLElement;
+		const global = view.container.querySelector('[data-font-role="global"]') as HTMLElement;
+		expect(global).not.toBeNull();
+		// 旧的「界面 / 代码 / 消息正文」三行都不该再出现。
+		for (const role of ["ui", "code", "content"]) {
+			expect(view.container.querySelector(`[data-font-role="${role}"]`)).toBeNull();
+		}
 
-		// 字体区只剩两行：全局（含消息正文）与代码；消息正文不再单独占一行。
-		expect(view.container.querySelector('[data-font-role="content"]')).toBeNull();
-
-		// 下拉的回显值跟着模型，不跟着点击变化。
-		expect((within(ui).getByRole("combobox") as HTMLSelectElement).value).toBe("system");
-		await userEvent.selectOptions(within(ui).getByRole("combobox"), "serif");
-		expect(setUiFont).toHaveBeenCalledWith("serif");
-		expect(setCodeFont).not.toHaveBeenCalled();
-
-		expect((within(code).getByRole("combobox") as HTMLSelectElement).value).toBe("mono");
-		await userEvent.selectOptions(within(code).getByRole("combobox"), "system");
-		expect(setCodeFont).toHaveBeenCalledWith("system");
-		expect(setUiFont).toHaveBeenCalledTimes(1);
+		expect((within(global).getByRole("combobox") as HTMLSelectElement).value).toBe("system");
+		await userEvent.selectOptions(within(global).getByRole("combobox"), "serif");
+		expect(setFont).toHaveBeenCalledWith("serif");
 	});
 });

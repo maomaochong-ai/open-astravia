@@ -108,6 +108,32 @@ describe("SSH 主机设置", () => {
 		expect(result.current.rowMessage.h1?.tone).toBe("success");
 	});
 
+	it("连上了但缺工具时给警告，而不是报成功或失败", async () => {
+		// 两种错报都有代价：报失败会把用户赶去查一台好机器，报成功会让他在工具真报错时
+		// 以为问题在本地。
+		ssh.listHosts.mockResolvedValue([host]);
+		ssh.testHost.mockResolvedValueOnce({
+			ok: true,
+			os: "Linux",
+			arch: "x86_64",
+			shell: "/bin/bash",
+			homeDirectory: "/root",
+			hasGit: false,
+			hasRipgrep: true,
+			error: "",
+		});
+		const { result } = renderModel();
+		await waitFor(() => expect(result.current.hosts).toHaveLength(1));
+
+		await act(async () => {
+			await result.current.actions.test(host);
+		});
+
+		expect(result.current.rowMessage.h1?.tone).toBe("warning");
+		// 测试里 t 被换成了 key，参数不会进文案，能验证的就是“走了哪条路”。
+		expect(result.current.rowMessage.h1?.text).toBe("sshTestOkMissingTools");
+	});
+
 	it("删除主机先弹确认，用户确认后才真的删", async () => {
 		ssh.listHosts.mockResolvedValue([host]);
 		const { result, store } = renderModel();

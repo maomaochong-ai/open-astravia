@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@astravia-org/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@astravia-org/ui/dialog";
 import { useTranslation } from "react-i18next";
@@ -18,6 +19,12 @@ export function RemoteProjectPickerDialog({
 }): JSX.Element {
 	const { t } = useTranslation("project");
 	const model = useRemoteProjectPickerModel();
+	const navigate = useNavigate();
+	// 主机列表为空时对话框原本只能取消；把「去登记」放在这里，用户不用先猜设置里在哪一页。
+	const openSettings = (): void => {
+		onCancel();
+		void navigate({ to: "/settings/$tab", params: { tab: "sshHosts" }, search: {} });
+	};
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && onCancel()}>
@@ -30,7 +37,7 @@ export function RemoteProjectPickerDialog({
 				</DialogHeader>
 
 				{model.selectedHostId === null ? (
-					<HostStep model={model} t={t} />
+					<HostStep model={model} t={t} onOpenSettings={openSettings} />
 				) : (
 					<DirectoryStep model={model} t={t} />
 				)}
@@ -62,16 +69,30 @@ export function RemoteProjectPickerDialog({
 type Model = ReturnType<typeof useRemoteProjectPickerModel>;
 type Translate = ReturnType<typeof useTranslation<"project">>["t"];
 
-function HostStep({ model, t }: { model: Model; t: Translate }): JSX.Element {
+function HostStep({
+	model,
+	t,
+	onOpenSettings,
+}: {
+	model: Model;
+	t: Translate;
+	onOpenSettings: () => void;
+}): JSX.Element {
 	if (model.hostsLoading) {
 		return <p className="px-1 py-6 text-center text-[13px] text-muted-foreground">{t("remotePicker.loading")}</p>;
 	}
 	if (model.hosts.length === 0) {
 		return (
-			<div className="flex flex-col items-center gap-2 px-1 py-6 text-center">
+			<div className="flex flex-col items-center gap-3 px-1 py-6 text-center">
 				<span className="icon-[solar--server-linear] h-8 w-8 text-muted-foreground" />
-				<p className="text-[13px] text-foreground">{t("remotePicker.noHosts")}</p>
-				<p className="max-w-[360px] text-[12px] text-muted-foreground">{t("remotePicker.noHostsHint")}</p>
+				<div className="flex flex-col gap-1">
+					<p className="text-[13px] text-foreground">{t("remotePicker.noHosts")}</p>
+					<p className="max-w-[360px] text-[12px] text-muted-foreground">{t("remotePicker.noHostsHint")}</p>
+				</div>
+				<Button variant="outline" size="sm" onClick={onOpenSettings}>
+					<span className="icon-[solar--server-2-linear] h-3.5 w-3.5" />
+					{t("remotePicker.openSettings")}
+				</Button>
 			</div>
 		);
 	}

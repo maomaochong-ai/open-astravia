@@ -87,6 +87,7 @@ import {
 import { getSharedRuntime } from "../runtime.js";
 import { assertSandboxAvailableForMode } from "../sandbox/capability.js";
 import { notifyAutomationSessionsDeleted } from "../scheduler/session-deletion.js";
+import { settleWithin } from "../utils/deadline.js";
 import {
 	DEFAULT_CONVERSATION_CWD,
 	DEFAULT_CONVERSATION_SESSION_DIR,
@@ -154,6 +155,9 @@ async function rmExceptPreserved(dir: string, preserve: Set<string>): Promise<bo
 
 const sessionLog = getAppLogger("session");
 const pluginLog = getAppLogger("plugin");
+
+/** 中止请求必须在这个时间内给渲染进程一个回复，否则停止按钮会一直禁用。 */
+const ABORT_REPLY_DEADLINE_MS = 6_000;
 
 const CHANNELS = {
 	CREATE: "astravia:session:create",
@@ -1011,12 +1015,19 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		await runtime.continue(sessionId);
 	});
 
+	// 停不下来比停得慢严重得多：这两个调用都可能跨进程/跨网络（SSH 会话上的扩展调用
+	// 在链路断掉时会永远不回话），而渲染进程要等这个 handler 返回才把按钮解开。
+	// 所以到点就回复，迟到的取消继续在后台完成。
 	ipcMain.handle(CHANNELS.ABORT, async (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
 		// Stopping is unconditional: the turn comes down together with the work it
 		// spawned. Subagents and background commands outlive the turn by design, so
 		// cancelling the turn alone would leave workflows running behind the button.
-		await Promise.allSettled([runtime.abort(sessionId), stopSessionBackgroundWork(runtime, sessionId)]);
+		const settled = await settleWithin(
+			Promise.allSettled([runtime.abort(sessionId), stopSessionBackgroundWork(runtime, sessionId)]),
+			ABORT_REPLY_DEADLINE_MS,
+		);
+		if (!settled) sessionLog.warn(`abort for ${sessionId} still running after ${ABORT_REPLY_DEADLINE_MS}ms`);
 	});
 
 	// 输入队列管理（ADR-0060）：薄桥接，能力全部在 RuntimeHost。
@@ -1780,7 +1791,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.VIEWER_OPEN, async (_event, path: unknown) => {
 		assertNonEmptyString(path, "path");
-		return runtime.readSessionHistoryFromFile(resolve(path));
+		const abs = resolve(path);
+		// 打开已有会话时这份历史决定首屏，读盘不能占着主线程：几 MB 的 jsonl 同步读
+		// 会把所有窗口的 IPC 一起卡住。宿主没给异步入口时退回同步实现。
+		const readAsync = runtime.readSessionHistoryFromFileAsync;
+		return readAsync ? await readAsync.call(runtime, abs) : runtime.readSessionHistoryFromFile(abs);
 	});
 
 	ipcMain.handle(CHANNELS.VIEWER_SUBSCRIBE, async (_event, path: unknown) => {

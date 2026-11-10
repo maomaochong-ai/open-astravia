@@ -31,7 +31,8 @@
 			"collapseSessions": "折叠会话",
 			"expandMore": "展开更多（{{count}}）",
 			"scrollToTop": "滚动到顶部",
-			"scrollToBottom": "滚动到底部"
+			"scrollToBottom": "滚动到底部",
+			"remoteHint": "远程主机项目（SSH）"
 		},
 		"defaultConversation": {
 			"noConversations": "暂无对话",
@@ -275,6 +276,7 @@
 		"loading": "读取中…",
 		"noHosts": "还没有登记任何远程主机",
 		"noHostsHint": "先在「设置 → SSH 主机」里添加一台，或从 ~/.ssh/config 导入已有的别名。",
+		"openSettings": "去登记主机",
 		"parent": "上一级",
 		"emptyDir": "这个目录下没有子目录。可以直接把当前目录添加为项目。",
 		"browseFailed": "读不到这个目录。可能是连接断开，或当前账号没有权限。",

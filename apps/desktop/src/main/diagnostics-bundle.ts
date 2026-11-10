@@ -5,6 +5,7 @@ import AdmZip from "adm-zip";
 import { app } from "electron";
 import { logRingBuffer } from "./logger/log-ring-buffer.js";
 import { APP_LOG_TYPE_LIST, getAppLogBaseDir } from "./logger.js";
+import { startupTraceSnapshot } from "./startup-trace.js";
 
 // 单个诊断包内日志文件的总字节预算：足够带出最近上下文，又不至于产出超大 zip。
 const MAX_LOG_BYTES = 20 * 1024 * 1024;
@@ -24,10 +25,17 @@ export async function buildDiagnosticsBundle(): Promise<DiagnosticsBundleResult>
 	addRecentLogs(zip);
 	addRingBuffer(zip);
 	addSystemInfo(zip);
+	addStartupTrace(zip);
 
 	const zipPath = join(app.getPath("temp"), `astravia-diagnostics-${nowStamp()}.zip`);
 	await zip.writeZipPromise(zipPath);
 	return { zipPath, sizeBytes: (await stat(zipPath)).size };
+}
+// 启动阶段时间线：用户导出诊断包后，不用再靠复述「点了图标很久没反应」来定位。
+// 没有记录时写空数组，而不是省略文件——省略会让「为什么没有」变成下一个问题。
+function addStartupTrace(zip: AdmZip): void {
+	const marks = startupTraceSnapshot();
+	zip.addFile("startup.json", Buffer.from(JSON.stringify({ marks }, null, 2), "utf-8"));
 }
 
 function addRecentLogs(zip: AdmZip): void {

@@ -42,12 +42,19 @@ export function useSessionConversationFeed({
 	const scrollEntry = useAtomValue(pendingScrollToEntryAtom);
 	const setScrollEntry = useSetAtom(pendingScrollToEntryAtom);
 	const onScrollTargetReached = useCallback(() => setScrollEntry(null), [setScrollEntry]);
+	// 断网把回合停在半路时，重连后要能就地续写；只对当前展示的会话给这个动作，
+	// 避免在旧快照上误续一个别的会话。
+	const resumeInterruptedTurn = useCallback(() => {
+		if (!runtimeId) return;
+		void window.astravia.session.continue(runtimeId).catch(() => undefined);
+	}, [runtimeId]);
 	const predicting = useMemo(
 		() => selectAtom(promptPredictingAtom, (map) => (runtimeId ? Boolean(map[runtimeId]) : false)),
 		[runtimeId],
 	);
 	// Subagent cards belong to the Runtime only once the shown session is that Runtime's.
 	const subagentRuntimeId = key && key === sessionPath ? (runtimeId ?? undefined) : undefined;
+	const canResume = key !== null && key === sessionPath && runtimeId !== null;
 	return useMemo(
 		() =>
 			createConversationFeed({
@@ -62,6 +69,7 @@ export function useSessionConversationFeed({
 				capabilities: {
 					userMessageCommands: sessionUserMessageCommands,
 					...(abort ? { abort } : {}),
+					...(canResume ? { resumeInterruptedTurn } : {}),
 					...(subagentRuntimeId ? { subagentRuntimeId } : {}),
 				},
 			}),
@@ -75,6 +83,8 @@ export function useSessionConversationFeed({
 			onScrollTargetReached,
 			abort,
 			subagentRuntimeId,
+			canResume,
+			resumeInterruptedTurn,
 		],
 	);
 }

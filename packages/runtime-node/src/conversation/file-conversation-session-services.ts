@@ -186,7 +186,7 @@ export class FileConversationRuntimeSessionCatalog implements RuntimeSessionCata
 	}
 }
 
-/** Native conversation 文件到 Runtime 历史合同的同步只读投影。 */
+/** Native conversation 文件到 Runtime 历史合同的只读投影。 */
 export class FileConversationRuntimeSessionFileHistoryReader implements RuntimeSessionFileHistoryReader {
 	canRead(sessionPath: string): boolean {
 		try {
@@ -198,14 +198,24 @@ export class FileConversationRuntimeSessionFileHistoryReader implements RuntimeS
 	}
 
 	read(sessionPath: string): { history: HistoryEntry[] } {
-		const text = readFileSync(sessionPath, "utf8");
-		const header = parseConversationHeader(text);
-		if (!header || !isCanonicalConversationPath(sessionPath, header.sessionId)) {
-			throw new Error(`Unsupported native conversation file: ${sessionPath}`);
-		}
-		const file = parseConversationFile(text, header.sessionId);
-		return { history: projectConversationDocumentHistory(documentFromFile(header.sessionId, file)) };
+		return projectFile(sessionPath, readFileSync(sessionPath, "utf8"));
 	}
+
+	async readAsync(sessionPath: string): Promise<{ history: HistoryEntry[] }> {
+		// 解析与投影是纯计算，留在调用线程；这里只把「整份文件同步读」从事件循环里拿出去。
+		// 壳层打开会话时先用这份历史出首屏，几 MB 的同步读会把所有窗口的 IPC 一起卡住。
+		return projectFile(sessionPath, await readFile(sessionPath, "utf8"));
+	}
+}
+
+/** 同步与异步两条入口共用同一套标题、格式与分支投影，避免两条路各写一遍。 */
+function projectFile(sessionPath: string, text: string): { history: HistoryEntry[] } {
+	const header = parseConversationHeader(text);
+	if (!header || !isCanonicalConversationPath(sessionPath, header.sessionId)) {
+		throw new Error(`Unsupported native conversation file: ${sessionPath}`);
+	}
+	const file = parseConversationFile(text, header.sessionId);
+	return { history: projectConversationDocumentHistory(documentFromFile(header.sessionId, file)) };
 }
 
 function sessionInfoCacheKey(sessionPath: string, fallbackCwd: string): string {
@@ -273,12 +283,10 @@ async function readSessionHistoryInfo(sessionPath: string, fallbackCwd: string):
 		}
 		return [entry.message];
 	});
-	const messageTexts = conversationMessages.flatMap((message) => {
-		const text = extractMessageText(message.content);
-		return text ? [{ role: message.role, text }] : [];
-	});
-	const firstMessage = messageTexts.find(({ role }) => role === "user")?.text ?? NO_MESSAGES_PLACEHOLDER;
-	const lastMessagePreview = messageTexts.at(-1)?.text.slice(0, LAST_MESSAGE_PREVIEW_LENGTH);
+	// 列表只需要首条用户消息与最后一条消息。旧实现在这里把**每条**消息都抽一遍文本，
+	// 上千轮的会话就是上千次 normalize；展开项目、启动首屏都在这个路径上。
+	const firstMessage = findFirstUserMessageText(conversationMessages) ?? NO_MESSAGES_PLACEHOLDER;
+	const lastMessagePreview = findLastMessageText(conversationMessages)?.slice(0, LAST_MESSAGE_PREVIEW_LENGTH);
 	// File mtime is a storage implementation detail: importing/resuming an existing
 	// conversation may rewrite or recover the JSONL without any new user activity.
 	// Use the already validated history projection so previews, branches and activity
@@ -396,6 +404,32 @@ function extractMessageText(content: unknown): string | undefined {
 function normalizeMessageText(text: string): string | undefined {
 	const normalized = text.replace(/\s+/g, " ").trim();
 	return normalized || undefined;
+}
+
+/** 列表预览只需要 role / content / timestamp 三件事，不关心消息的其余字段。 */
+interface PreviewMessageShape {
+	readonly role: string;
+	readonly content: unknown;
+	readonly timestamp: number;
+}
+
+/** 首条有文本的用户消息；遍历到即停，不做全量文本抽取。 */
+function findFirstUserMessageText(messages: readonly PreviewMessageShape[]): string | undefined {
+	for (const message of messages) {
+		if (message.role !== "user") continue;
+		const text = extractMessageText(message.content);
+		if (text) return text;
+	}
+	return undefined;
+}
+
+/** 最后一条有文本的消息（不区分角色，与原实现的 `messageTexts.at(-1)` 一致）。 */
+function findLastMessageText(messages: readonly PreviewMessageShape[]): string | undefined {
+	for (let index = messages.length - 1; index >= 0; index -= 1) {
+		const text = extractMessageText(messages[index]?.content);
+		if (text) return text;
+	}
+	return undefined;
 }
 
 /**

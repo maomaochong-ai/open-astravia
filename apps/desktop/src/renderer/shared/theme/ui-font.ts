@@ -1,61 +1,77 @@
 /**
- * 字体偏好分两个位置，全局生效：
- * - ui：界面字体，落 `--font-sans`，是全局字形；消息正文通过 `--font-content: var(--font-sans)`
- *   跟着一起变，不需要第二份选择。
- * - code：代码字体，落 `--font-mono`，管代码块、diff、终端、编辑器。
+ * 字体偏好只有一个位置，选定后全局生效：界面控件、会话正文、代码块、diff、终端与代码编辑器
+ * 都跟随同一个字族。`--font-sans` 与 `--font-mono` 同时写同一份字体栈，不再分「界面字体」
+ * 与「代码字体」两个角色；`--font-content` 在样式表里指向 `--font-sans`，也不需要第二份选择。
  *
- * 两个位置可选的字体族是同一份表；只换字体栈，不改字号、不改间距，
- * 所以不会牵动任何布局。主题（色彩）不设置这些令牌，主题切换不会顶掉用户选择。
+ * 只换字体栈，不改字号、行高与间距，所以切换字体不会牵动任何布局。主题（色彩）不设置这些
+ * 令牌，主题切换不会顶掉用户选择。
+ *
  */
-export type UiFontFamily = "system" | "rounded" | "sans" | "serif" | "song" | "kai" | "mono";
+export type UiFontFamily =
+	| "system"
+	| "sans"
+	| "humanist"
+	| "geometric"
+	| "rounded"
+	| "serif"
+	| "reading"
+	| "song"
+	| "kai"
+	| "hei"
+	| "mono"
+	| "mono-code";
 
-export type FontRole = "ui" | "code";
+export const FONT_STORAGE_KEY = "astravia-font";
+/** 上一版允许手填自定义字体栈，这个键只剩清理用途。 */
+const LEGACY_CUSTOM_FONT_STORAGE_KEY = "astravia-custom-font";
 
-export const UI_FONT_STORAGE_KEY = "astravia-ui-font";
-export const CODE_FONT_STORAGE_KEY = "astravia-code-font";
-
-/** 历史版本的「消息字体」档位键，只为清理旧数据保留，不再读写。 */
+/** 上一版把字体拆成「界面 / 代码」两档，只为迁移旧数据保留，不再读写。 */
+const LEGACY_UI_FONT_STORAGE_KEY = "astravia-ui-font";
+const LEGACY_CODE_FONT_STORAGE_KEY = "astravia-code-font";
+/** 更早还有独立的「消息正文」档位。 */
 const LEGACY_CONTENT_FONT_STORAGE_KEY = "astravia-content-font";
 const LEGACY_CONTENT_FONT_TOKEN = "--font-content";
 
-export const DEFAULT_UI_FONT: UiFontFamily = "system";
-export const DEFAULT_CODE_FONT: UiFontFamily = "mono";
+export const DEFAULT_FONT: UiFontFamily = "system";
+
+/** 一个设置写两个令牌，这是「全局生效」的机械保证。 */
+const FONT_TOKENS = ["--font-sans", "--font-mono"] as const;
 
 /**
  * 每一档的字体栈。system 用 null 表示「不写内联变量」，把令牌交还给 styles.css 的默认值，
- * 这样系统 UI 字体的优先级仍由样式表那一处决定。
+ * 这样系统 UI 字体的优先级仍由样式表那一处决定。每档都带中文回退，避免中文落到异形字形。
  */
-const FONT_STACKS: Record<UiFontFamily, string | null> = {
-	system: null,
+const FONT_STACKS: Record<Exclude<UiFontFamily, "system">, string> = {
+	sans: '"Helvetica Neue", Helvetica, Arial, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+	humanist:
+		'Seravek, Optima, Candara, "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+	geometric:
+		'"Avenir Next", Avenir, "Century Gothic", Futura, "Trebuchet MS", "PingFang SC", "Microsoft YaHei", sans-serif',
 	rounded:
 		'"SF Pro Rounded", ui-rounded, "Segoe UI Variable Display", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
-	sans: '"Helvetica Neue", Helvetica, Arial, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
 	serif: 'Georgia, "Times New Roman", "Songti SC", "Noto Serif SC", "SimSun", serif',
+	reading:
+		'Charter, "Iowan Old Style", Palatino, "Book Antiqua", Georgia, "Songti SC", "Noto Serif SC", "SimSun", serif',
 	song: '"Songti SC", "Noto Serif SC", "Source Han Serif SC", "SimSun", "Microsoft YaHei", serif',
-	kai: '"Kaiti SC", "STKaiti", "KaiTi", "Noto Serif SC", serif',
-	mono: '"SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "PingFang SC", monospace',
+	kai: '"Kaiti SC", "STKaiti", "KaiTi", "Songti SC", "Noto Serif SC", serif',
+	hei: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", sans-serif',
+	mono: '"SF Mono", "JetBrains Mono", Menlo, Consolas, "Cascadia Mono", "PingFang SC", monospace',
+	"mono-code": '"JetBrains Mono", "Cascadia Code", "Fira Code", "SF Mono", Menlo, Consolas, monospace',
 };
 
+const FONT_FAMILIES = Object.keys(FONT_STACKS) as Array<Exclude<UiFontFamily, "system">>;
+
 export function isUiFontFamily(value: string | null | undefined): value is UiFontFamily {
-	return (
-		value === "system" ||
-		value === "rounded" ||
-		value === "sans" ||
-		value === "serif" ||
-		value === "song" ||
-		value === "kai" ||
-		value === "mono"
-	);
+	if (value === "system") return true;
+	return FONT_FAMILIES.includes(value as Exclude<UiFontFamily, "system">);
 }
 
-export function getStoredUiFont(): UiFontFamily {
-	const stored = localStorage.getItem(UI_FONT_STORAGE_KEY);
-	return isUiFontFamily(stored) ? stored : DEFAULT_UI_FONT;
-}
-
-export function getStoredCodeFont(): UiFontFamily {
-	const stored = localStorage.getItem(CODE_FONT_STORAGE_KEY);
-	return isUiFontFamily(stored) ? stored : DEFAULT_CODE_FONT;
+export function getStoredFont(): UiFontFamily {
+	const stored = localStorage.getItem(FONT_STORAGE_KEY);
+	if (isUiFontFamily(stored)) return stored;
+	// 迁移：上一版只存了界面字体，就用它作为唯一字体；没有则用默认。
+	const legacy = localStorage.getItem(LEGACY_UI_FONT_STORAGE_KEY);
+	return isUiFontFamily(legacy) ? legacy : DEFAULT_FONT;
 }
 
 function writeStack(root: HTMLElement, token: string, stack: string | null): void {
@@ -66,46 +82,63 @@ function writeStack(root: HTMLElement, token: string, stack: string | null): voi
 	root.style.setProperty(token, stack);
 }
 
-export function applyUiFont(family: UiFontFamily): void {
+/** 档位对应的字体栈；system 返回 null，把令牌交还样式表里的默认值。 */
+export function fontStack(family: UiFontFamily): string | null {
+	if (family === "system") return null;
+	return FONT_STACKS[family];
+}
+
+export function applyFont(family: UiFontFamily): void {
 	const root = document.documentElement;
-	root.dataset.uiFont = family;
-	writeStack(root, "--font-sans", FONT_STACKS[family]);
+	root.dataset.font = family;
+	const stack = fontStack(family);
+	for (const token of FONT_TOKENS) writeStack(root, token, stack);
 }
 
-export function applyCodeFont(family: UiFontFamily): void {
-	const root = document.documentElement;
-	root.dataset.codeFont = family;
-	writeStack(root, "--font-mono", FONT_STACKS[family]);
+/** 只应用已存的值；启动时调一次。旧键在这里就地迁移到新键，之后不再参与读取。 */
+export function applyStoredFont(): void {
+	dropLegacyFontState();
+	const family = getStoredFont();
+	localStorage.setItem(FONT_STORAGE_KEY, family);
+	clearLegacyFontKeys();
+	applyFont(family);
 }
 
-export function setStoredUiFont(family: UiFontFamily): void {
-	localStorage.setItem(UI_FONT_STORAGE_KEY, family);
-	applyUiFont(family);
-}
-
-export function setStoredCodeFont(family: UiFontFamily): void {
-	localStorage.setItem(CODE_FONT_STORAGE_KEY, family);
-	applyCodeFont(family);
+export function setStoredFont(family: UiFontFamily): void {
+	localStorage.setItem(FONT_STORAGE_KEY, family);
+	clearLegacyFontKeys();
+	applyFont(family);
 }
 
 /**
- * 早先的版本允许单独给消息正文选字体，会把 `--font-content` 写成内联值。
- * 现在消息字体恒跟随界面字体，内联值会盖掉这条跟随关系，因此启动时清掉它和旧键。
+ * 其他窗口（快捷面板、吉祥物、引导向导）跟随主窗口的字体：这些入口没有自己的设置页，
+ * 主窗口改字体只写了自己的根节点，同源 `storage` 事件是唯一的跨窗口通道。
+ * 返回取消监听的函数。
  */
-function dropLegacyContentFont(): void {
+export function watchStoredFont(): () => void {
+	const handler = (event: StorageEvent): void => {
+		if (event.key !== FONT_STORAGE_KEY) return;
+		applyFont(getStoredFont());
+	};
+	window.addEventListener("storage", handler);
+	return () => window.removeEventListener("storage", handler);
+}
+
+/**
+ * 旧版本会把「消息字体」写成内联 `--font-content`，也会把「代码字体」单独写成 `--font-mono`。
+ * 前者会盖住「跟随界面字体」，后者会盖住新写入的字体栈，启动时一并清掉。
+ */
+function dropLegacyFontState(): void {
 	const root = document.documentElement;
 	root.style.removeProperty(LEGACY_CONTENT_FONT_TOKEN);
 	delete root.dataset.contentFont;
+	delete root.dataset.uiFont;
+	delete root.dataset.codeFont;
 	localStorage.removeItem(LEGACY_CONTENT_FONT_STORAGE_KEY);
+	localStorage.removeItem(LEGACY_CUSTOM_FONT_STORAGE_KEY);
 }
 
-export function applyStoredUiFont(): void {
-	dropLegacyContentFont();
-	applyUiFont(getStoredUiFont());
-	applyCodeFont(getStoredCodeFont());
-}
-
-/** 字体栈取值供测试与选项预览使用；system 返回 null。 */
-export function uiFontStack(family: UiFontFamily): string | null {
-	return FONT_STACKS[family];
+function clearLegacyFontKeys(): void {
+	localStorage.removeItem(LEGACY_UI_FONT_STORAGE_KEY);
+	localStorage.removeItem(LEGACY_CODE_FONT_STORAGE_KEY);
 }
