@@ -1,7 +1,8 @@
+import { motion } from "motion/react";
 import {
 	useCallback,
 	useEffect,
-	useLayoutEffect,
+	useId,
 	useRef,
 	useState,
 	type JSX,
@@ -10,6 +11,7 @@ import {
 	type ReactNode,
 	type RefObject,
 } from "react";
+import { createConnectedTabOutlineGeometry } from "./connected-tab-outline";
 import { hasReachedTabDragDistance, moveTabKey } from "./tab-drag";
 
 function cn(...parts: Array<string | false | null | undefined>): string {
@@ -48,6 +50,8 @@ export interface TabBarProps<T extends string> {
 	value: T;
 	onChange: (value: T) => void;
 	className?: string;
+	/** 容器尺寸正在变化时设为 true，禁用激活指示器的滑动动画，避免抖动 */
+	suppressLayoutAnimation?: boolean;
 	/** 点击页签关闭按钮时触发；未传则不渲染关闭按钮。 */
 	onRemove?: (key: T) => void;
 	/** 关闭按钮的本地化名称；传入 onRemove 时必须同时传入。 */
@@ -74,23 +78,17 @@ export interface TabBarProps<T extends string> {
 	onTabContextMenu?: (key: T, point: { x: number; y: number }) => void;
 }
 
-/**
- * 页签之间的水平间隔。页签自带描边，间距太小两条竖线会挤在一起，取 8px。
- */
-const TAB_GAP = 8;
 /** 行的左右内边距。左侧还要避开内容卡片的 12px 圆角。 */
 const ROW_PADDING_LEFT = 20;
 const ROW_PADDING_RIGHT = 12;
 /**
  * 页签盒子样式，真实页签与隐藏测量层共用一份：两处类名一旦漂移，溢出计算就会量错宽度。
- * 宽度不放进共享类串：`w-full` 会让测量层里每个页签都拉成最宽那个，量出来的自然是错的。
- * 字重恒为 500（不在选中时变粗），所以切换不需要预留加粗后的宽度。
- * 描边、底色与圆角都不在这里：只有选中的页签才画轮廓，未选中是纯文字。
- * 按钮自己不带边框：选中态的轮廓由绝对定位的子元素绘制，不参与布局，
- * 所以切换时整排页签不会横向抖动，隐藏测量层量到的宽度也是干净的。
+ * `w-full` 不在这里：它会让测量层里每个页签都拉成最宽那个，量出来的自然是错的。
+ * 边框宽度留在共享类里、颜色交给两处各自决定：透明占位让切换时不产生 2px 横向抖动，
+ * 测量层量到的宽度也与真实页签一致。
  */
 const TAB_ITEM_CLASS =
-	"flex h-8 min-w-0 select-none items-center gap-1.5 whitespace-nowrap pl-3 text-[14px] font-medium leading-none";
+	"flex h-8 min-w-[72px] max-w-[160px] select-none items-center gap-1.5 whitespace-nowrap rounded-t-lg border border-b-0 pl-3 text-[14px] font-medium leading-none";
 const FILE_DRAG_HOVER_DELAY_MS = 300;
 
 function isFileDrag(event: ReactDragEvent<HTMLElement>): boolean {
@@ -134,64 +132,90 @@ function sameKeys<T>(a: T[], b: T[]): boolean {
 }
 
 /**
- * 选中页签的轮廓：上、左、右三边描边 + 底部两段反向圆弧，与下方内容面板连通。
+ * 激活页签的轮廓：与内容卡片连成一体的一整块同色区域 + 只显三边的描边。
  *
- * 之所以是一条 SVG 路径而不是几个带 `border` 的盒子拼出来：CSS 的 `border` 只能整段
- * 画完，左右竖线会一直落到页签底边，与圆弧并排存在；而把竖线截短再各接一段圆弧，
- * 接点处两条线的端点各带半像素抗锯齿，缩放后就会淡出断口、或叠成一小块凸起。
- * 一条路径画完就没有接点，弧与直线在数学上连续，缩放多少都不会裂开。
+ * 描边与填充来自同一条几何（见 `createConnectedTabOutlineGeometry`），所以两侧的
+ * 凹形连接角不可能与竖线错开——这也是之前用几个带 `border` 的盒子拼接时反复出
+ * 现断口、凸块与台阶的根本原因。描边再叠 `vectorEffect="non-scaling-stroke"`，
+ * 页面缩放或窗口 DPI 变化时线宽恒为 1px，不会被拉细到断续。
  */
-function TabOutline(): JSX.Element {
-	const ref = useRef<HTMLSpanElement>(null);
-	const [width, setWidth] = useState(0);
+function ActiveTabIndicator({
+	layoutId,
+	suppressLayoutAnimation,
+}: {
+	layoutId: string;
+	suppressLayoutAnimation: boolean;
+}): JSX.Element {
+	const indicatorRef = useRef<HTMLSpanElement>(null);
+	const [tabWidth, setTabWidth] = useState(0);
 
-	// 页签宽度由内容决定，只能实测；只有选中的那一个页签会挂这个观察者。
-	useLayoutEffect(() => {
-		const host = ref.current?.parentElement;
-		if (!host) return;
-		const measure = (): void => setWidth(host.getBoundingClientRect().width);
-		measure();
-		if (typeof ResizeObserver === "undefined") return;
-		const observer = new ResizeObserver(measure);
-		observer.observe(host);
+	useEffect(() => {
+		const indicator = indicatorRef.current;
+		if (!indicator) return;
+		const updateWidth: ResizeObserverCallback = (entries): void => {
+			const nextWidth = entries[0]?.contentRect.width ?? 0;
+			setTabWidth((currentWidth) => (currentWidth === nextWidth ? currentWidth : nextWidth));
+		};
+		const observer = new ResizeObserver(updateWidth);
+		observer.observe(indicator);
 		return () => observer.disconnect();
 	}, []);
 
-	const corner = 8;
-	const path =
-		width > 0
-			? [
-					// 从左下角外侧入弧，弯到左壁竖直段的下端。
-					// sweep=0：圆心落在页签外侧，弧才向外凸；用 1 会绕到内侧变成凹角。
-					`M ${-corner} 32`,
-					`A ${corner} ${corner} 0 0 0 0 ${32 - corner}`,
-					// 左壁上到顶部圆角。
-					`L 0 ${corner}`,
-					`A ${corner} ${corner} 0 0 1 ${corner} 0`,
-					// 上边。
-					`L ${width - corner} 0`,
-					`A ${corner} ${corner} 0 0 1 ${width} ${corner}`,
-					// 右壁下到底部圆角。
-					`L ${width} ${32 - corner}`,
-					`A ${corner} ${corner} 0 0 0 ${width + corner} 32`,
-				].join(" ")
-			: null;
+	const geometry = tabWidth > 0 ? createConnectedTabOutlineGeometry(tabWidth) : null;
 
-	return (
-		<span ref={ref} aria-hidden className="pointer-events-none absolute inset-0" data-tab-outline>
-			{path === null ? null : (
+	const content = (
+		<>
+			{geometry && (
 				<svg
-					className="absolute -left-2 top-0 overflow-visible text-border"
-					width={width + corner * 2}
-					height={32}
-					viewBox={`${-corner} 0 ${width + corner * 2} 32`}
-					fill="none"
+					viewBox={`0 0 ${geometry.width} ${geometry.height}`}
 					aria-hidden
+					className="absolute top-0 overflow-visible fill-muted stroke-border"
+					data-connected-tab-outline
+					shapeRendering="geometricPrecision"
+					style={{
+						height: geometry.height,
+						left: -geometry.offsetX,
+						width: geometry.width,
+					}}
 				>
-					<path d={path} stroke="currentColor" strokeWidth={1} />
+					<path d={geometry.fillPath} stroke="none" />
+					<path
+						d={geometry.outlinePath}
+						fill="none"
+						strokeLinecap="square"
+						strokeLinejoin="round"
+						strokeWidth="1"
+						vectorEffect="non-scaling-stroke"
+					/>
 				</svg>
 			)}
-		</span>
+		</>
+	);
+	// 页签按钮带 1px 透明边框，绝对定位默认贴的是 padding box；用负偏移拉回边框盒，
+	// 否则轮廓整体下移 1px，下探量会多出一像素压到内容卡片上。
+	const indicatorProps = {
+		"aria-hidden": true,
+		className: "pointer-events-none absolute -inset-x-px -top-px -bottom-px rounded-t-lg bg-muted",
+		"data-active-tab-indicator": true,
+	};
+
+	if (suppressLayoutAnimation) {
+		return (
+			<span ref={indicatorRef} {...indicatorProps}>
+				{content}
+			</span>
+		);
+	}
+
+	return (
+		<motion.span
+			ref={indicatorRef}
+			layoutId={`tabbar-active-${layoutId}`}
+			transition={{ type: "spring", stiffness: 480, damping: 36, mass: 0.8 }}
+			{...indicatorProps}
+		>
+			{content}
+		</motion.span>
 	);
 }
 
@@ -233,9 +257,12 @@ function TabInner({
 }
 
 /**
- * 页签条：文字等宽排布，页签之间没有分隔线。选中的页签用一条 SVG 路径画出
- * 上、左、右三边描边与底部两段外凸圆弧，与下方内容面板同色连通（见 TabOutline）。
- * 字重恒为 500，选中只换字色与描边，所以切页签时文字与盒子都不会抽动。
+ * 浏览器式选项卡：所有页签等高、互不覆盖。激活页签与内容卡片同色并向下延伸 1px
+ * 盖住卡片描边，轮廓由一个 SVG 同时给出填充与描边（见 ActiveTabIndicator）；
+ * 非激活页签只在 hover 时显示浅背景，避免切换时产生尺寸跳动。
+ *
+ * 须与带 1px `border-border` 边框的内容卡片紧贴配套使用（见 ActivityPanel），
+ * 激活页签的顶部、侧边和两侧凹形连接角共同延续卡片边框，内部保持同色。
  *
  * 传入 onOverflowChange 时开启响应式收纳：按可用宽度容纳尽量多的页签，放不下的
  * 通过回调交给父级收进"下拉"菜单；宽度变化（拉伸/收窄）自动增减可见数量。
@@ -245,6 +272,7 @@ export function TabBar<T extends string>({
 	value,
 	onChange,
 	className,
+	suppressLayoutAnimation = false,
 	onRemove,
 	removeLabel,
 	onReorder,
@@ -256,6 +284,8 @@ export function TabBar<T extends string>({
 	activateOnFileDragHover = false,
 	onTabContextMenu,
 }: TabBarProps<T>): JSX.Element {
+	// 激活指示器在页签之间共享同一个 DOM 元素，靠 layoutId 让它从旧位置滑到新位置。
+	const layoutId = useId();
 	// 拖拽中：dragKey 为被拖动的页签，order 为拖拽过程中的临时顺序（提交前不触碰 props）
 	const [dragKey, setDragKey] = useState<T | null>(null);
 	const [order, setOrder] = useState<T[] | null>(null);
@@ -535,14 +565,14 @@ export function TabBar<T extends string>({
 		const row = rowRef.current;
 		const mz = measureRef.current;
 		if (!row || !mz) return;
-		// 页签之间还有 `gap-2`：把它摊进每个页签的宽度里，两边同时补一份就恰好只计 n-1 个间隔。
-		const avail = row.clientWidth - ROW_PADDING_LEFT - ROW_PADDING_RIGHT + TAB_GAP;
+		// 行内没有 gap，页签之间的间距来自各自左右内边距，所以可用宽度不需要额外补偿。
+		const avail = row.clientWidth - ROW_PADDING_LEFT - ROW_PADDING_RIGHT;
 		const widths = new Map<string, number>();
 		for (const c of Array.from(mz.children) as HTMLElement[]) {
 			const k = c.dataset.tabkey;
 			if (k != null) widths.set(k, c.offsetWidth);
 		}
-		const widthOf = (key: T) => (widths.get(key) ?? 0) + TAB_GAP;
+		const widthOf = (key: T) => widths.get(key) ?? 0;
 		const next = computeOverflow(renderItems, value, avail, widthOf);
 		setOverflowKeys((prev) => (sameKeys(prev, next) ? prev : next));
 	}, [renderItems, value]);
@@ -585,7 +615,7 @@ export function TabBar<T extends string>({
 	const visibleItems = overflowSet ? renderItems.filter((it) => !overflowSet.has(it.key)) : renderItems;
 	return (
 		<div className={cn("group/tabbar relative z-10 min-w-0", className)}>
-			<div ref={setRowRef} role="tablist" className="flex items-end gap-2 overflow-visible pl-5 pr-3">
+			<div ref={setRowRef} role="tablist" className="flex h-8 items-end overflow-visible pl-5 pr-3">
 				{visibleItems.map(({ key, label, icon, badge, removable }) => {
 					const active = value === key;
 					const isDragged = dragKey === key;
@@ -610,7 +640,7 @@ export function TabBar<T extends string>({
 							onDragOver={onFileDragOver}
 							onDrop={(event) => onFileDrop(event, key)}
 							className={cn(
-								"group/tab relative min-w-0 max-w-[160px] shrink-0 touch-none",
+								"group/tab relative min-w-[72px] max-w-[160px] shrink-0 touch-none",
 								isDragged && "opacity-60",
 							)}
 						>
@@ -628,20 +658,17 @@ export function TabBar<T extends string>({
 								}}
 								className={cn(
 									TAB_ITEM_CLASS,
-									"w-full",
-									canRemove ? "pr-6" : "pr-3",
+									"w-full border-transparent",
+									canRemove ? "pr-7" : "pr-3",
 									isDragged ? "cursor-grabbing" : "cursor-pointer",
 									// 只过渡字色：背景色一起过渡时，切换瞬间会同时看到旧页签淡出、
 									// 新页签淡入两块底色，看上去就是一块矩形残影。
 									"transition-[color] duration-100",
-									// 选中的页签与下方内容面板连成一体：上、左、右三边描边，底边不画；
-									// 底色取面板自己的 `bg-muted`，再用 `-mb-px` 盖住面板那条 1px 顶边，
-									// 于是轮廓在页签底下敞开，视觉上页签是从面板里长出来的。
-									active ? "-mb-px rounded-t-lg bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
+									active ? "text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
 									fileDragHovered && !active && "text-foreground bg-primary/10",
 								)}
 							>
-								{active && <TabOutline />}
+								{active && <ActiveTabIndicator layoutId={layoutId} suppressLayoutAnimation={suppressLayoutAnimation} />}
 								<TabInner icon={icon} label={label} badge={badge} active={active} />
 							</button>
 							{canRemove && (

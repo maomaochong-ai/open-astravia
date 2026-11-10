@@ -92,17 +92,34 @@ describe("TabBar pointer drag", () => {
 	});
 
 	/*
-	 * 选中的页签与下方内容面板连成一体：上、左、右三边描边 + 底部两段外凸圆弧，底边不画。
+	 * 选中的页签与下方内容面板连成一体：顶部圆角 + 两侧三边描边 + 底部凹形连接角。
 	 *
-	 * 轮廓是一条 SVG 路径，不是几个带 `border` 的盒子：`border` 只能整段画完，
-	 * 竖线会一直落到页签底边；而截短后再接圆弧，接点处两条线的端点各带半像素抗锯齿，
-	 * 缩放后会淡出断口或叠成凸块。一条路径没有接点，缩放多少都不会裂开。
+	 * 填充与描边来自同一条几何（connected-tab-outline），所以连接角不可能与竖线错开；
+	 * 描边叠 `vector-effect="non-scaling-stroke"`，页面缩放时线宽恒为 1px 而不会被拉细。
 	 */
-	it("draws the selected tab as one continuous three-sided outline", () => {
-		const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+	it("draws the selected tab outline as one fill plus one stroke path", () => {
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
 			...bounds(0, 0, 120, 32),
 			toJSON: () => ({}),
 		} as DOMRect);
+		vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(120);
+		// 几何宽度由 ResizeObserver 报上来；默认 stub 不回调用例里永远拿不到 path。
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				private readonly callback: ResizeObserverCallback;
+				constructor(callback: ResizeObserverCallback) {
+					this.callback = callback;
+				}
+				observe(): void {
+					this.callback(
+						[{ contentRect: { width: 120 } } as ResizeObserverEntry],
+						this as unknown as ResizeObserver,
+					);
+				}
+				disconnect(): void {}
+			},
+		);
 		const render = (removable: boolean): void => {
 			act(() => {
 				root.render(
@@ -114,6 +131,7 @@ describe("TabBar pointer drag", () => {
 						value: "a",
 						onChange: vi.fn(),
 						...(removable ? { onRemove: vi.fn(), removeLabel: "close" } : {}),
+						suppressLayoutAnimation: true,
 					}),
 				);
 			});
@@ -121,36 +139,35 @@ describe("TabBar pointer drag", () => {
 
 		try {
 			render(false);
-			const active = container.querySelector('[role="tab"][aria-selected="true"]');
-			// 按钮只提供底色与负下边距；描边不在这里，否则会与圆弧并存。
-			expect(active?.className).toContain("bg-muted");
-			expect(active?.className).toContain("-mb-px");
-			expect(active?.className).not.toContain("border");
-			// 回归：不能退回「底部横线」或「四角悬浮块」。
-			expect(active?.className).not.toContain("h-0.5");
-			expect(active?.className).not.toContain("rounded-xl");
+			const indicator = container.querySelector("[data-active-tab-indicator]");
+			expect(indicator).not.toBeNull();
+			// 指示器盖住按钮的 1px 透明边框，否则轮廓整体下移一像素压到卡片内容上。
+			expect(indicator?.className).toContain("-inset-x-px");
+			expect(indicator?.className).toContain("-top-px");
 
-			const path = active?.querySelector("[data-tab-outline] svg path");
-			expect(path).not.toBeNull();
-			const d = path?.getAttribute("d") ?? "";
-			// 一条路径画完：入弧 → 左壁 → 左上圆角 → 上边 → 右上圆角 → 右壁 → 出弧。
-			expect(d.match(/A 8 8 0 0 \d/g) ?? []).toHaveLength(4);
-			// 底部两段弧必须向外凸（sweep=0）；用 1 会绕到内侧变成凹角。
-			// 页签宽 120（上面的 rect 桩），所以弧的出入点是 -8 与 128。
-			expect(d.startsWith("M -8 32 A 8 8 0 0 0 0 24")).toBe(true);
-			expect(d.endsWith("A 8 8 0 0 0 128 32")).toBe(true);
-			// 弧与直线在数学上连续，靠缩放抗锯齿不该出现接点。
-			expect(path?.getAttribute("stroke-width")).toBe("1");
+			const svg = indicator?.querySelector("svg[data-connected-tab-outline]");
+			expect(svg).not.toBeNull();
+			const paths = [...(svg?.querySelectorAll("path") ?? [])];
+			// 一条填充 + 一条描边，共用同一份几何。
+			expect(paths).toHaveLength(2);
+			expect(paths[0]?.getAttribute("stroke")).toBe("none");
+			expect(paths[0]?.getAttribute("d")).toContain("Z");
+			const stroke = paths[1];
+			expect(stroke?.getAttribute("fill")).toBe("none");
+			expect(stroke?.getAttribute("stroke-width")).toBe("1");
+			expect(stroke?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+			const d = stroke?.getAttribute("d") ?? "";
+			// 两端都是凹形连接角（sweep=0），收尾落在卡片描边中心。
+			expect(d.startsWith("M 0 34 A 8 8 0 0 0 8 26")).toBe(true);
 
 			// 未选中的页签不画轮廓。
-			const idle = container.querySelector('[role="tab"][aria-selected="false"]');
-			expect(idle?.querySelector("[data-tab-outline]")).toBeNull();
+			expect(container.querySelectorAll("[data-active-tab-indicator]")).toHaveLength(1);
 
 			// 可关闭的页签同样成立（关闭按钮不参与轮廓）。
 			render(true);
-			expect(container.querySelector("[data-tab-outline] svg path")).not.toBeNull();
+			expect(container.querySelector("[data-connected-tab-outline]")).not.toBeNull();
 		} finally {
-			rect.mockRestore();
+			vi.restoreAllMocks();
 		}
 	});
 
