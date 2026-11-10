@@ -40,6 +40,11 @@ export interface RuntimeSessionCatalog {
 export interface RuntimeSessionFileHistoryReader {
 	canRead(sessionPath: string): boolean;
 	read(sessionPath: string): { history: HistoryEntry[] };
+	/**
+	 * 同样的结果，但把文件 I/O 交还给事件循环。壳层打开会话时优先走这条，
+	 * 避免几 MB 的会话文件在同步读期间把整个主进程（所有窗口的 IPC）卡住。
+	 */
+	readAsync?(sessionPath: string): Promise<{ history: HistoryEntry[] }>;
 }
 
 /** 宿主针对一个既有会话实际暴露的能力；不包含存储格式或 Backend 名称。 */
@@ -148,8 +153,17 @@ export class CompositeRuntimeSessionFileHistoryReader implements RuntimeSessionF
 	}
 
 	read(sessionPath: string): { history: HistoryEntry[] } {
+		return this.resolve(sessionPath).read(sessionPath);
+	}
+
+	async readAsync(sessionPath: string): Promise<{ history: HistoryEntry[] }> {
+		const reader = this.resolve(sessionPath);
+		return reader.readAsync ? await reader.readAsync(sessionPath) : reader.read(sessionPath);
+	}
+
+	private resolve(sessionPath: string): RuntimeSessionFileHistoryReader {
 		const reader = this.readers.find((candidate) => candidate.canRead(sessionPath));
 		if (!reader) throw new Error(`No runtime session history reader supports ${sessionPath}`);
-		return reader.read(sessionPath);
+		return reader;
 	}
 }

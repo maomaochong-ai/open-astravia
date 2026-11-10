@@ -91,50 +91,45 @@ describe("TabBar pointer drag", () => {
 		document.querySelector<HTMLElement>("[data-tab-drag-overlay]")?.remove();
 	});
 
-	it("uses a static active indicator while layout animation is suppressed", () => {
-		act(() => {
-			root.render(
-				createElement(TabBar, {
-					items: [{ key: "a", label: "A" }],
-					value: "a",
-					onChange: vi.fn(),
-					suppressLayoutAnimation: true,
-				}),
-			);
-		});
-		expect(container.querySelector("[data-active-tab-indicator]")).not.toBeNull();
-
-		act(() => {
-			root.render(
-				createElement(TabBar, {
-					items: [{ key: "a", label: "A" }],
-					value: "a",
-					onChange: vi.fn(),
-					suppressLayoutAnimation: false,
-				}),
-			);
-		});
-		expect(container.querySelector("[data-active-tab-indicator]")).toBeNull();
-	});
-
-	it("does not synchronously read the active indicator width", () => {
-		const offsetWidth = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(80);
-
-		try {
+	/*
+	 * 选中的页签与下方内容面板连成一体：上、左、右三边描边，底边不画。
+	 * 底色取面板自己的 surface 色，再用 `-mb-px` 盖住面板那条 1px 顶边，
+	 * 轮廓才会在页签底下敞开、页签像是从面板里长出来的。
+	 */
+	it("draws the selected tab as a three-sided outline connected to the panel", () => {
+		const activeTab = (removable: boolean): Element | null => {
 			act(() => {
 				root.render(
 					createElement(TabBar, {
-						items: [{ key: "a", label: "A" }],
+						items: [
+							{ key: "a", label: "A", removable },
+							{ key: "b", label: "B" },
+						],
 						value: "a",
 						onChange: vi.fn(),
-						suppressLayoutAnimation: true,
+						...(removable ? { onRemove: vi.fn(), removeLabel: "close" } : {}),
 					}),
 				);
 			});
-			expect(offsetWidth).not.toHaveBeenCalled();
-		} finally {
-			offsetWidth.mockRestore();
-		}
+			return container.querySelector('[role="tab"][aria-selected="true"]');
+		};
+
+		const className = activeTab(false)?.className ?? "";
+		expect(className).toContain("border");
+		expect(className).toContain("border-b-0");
+		expect(className).toContain("bg-muted");
+		expect(className).toContain("-mb-px");
+		expect(className).toContain("rounded-t-lg");
+		// 回归：不能退回「底部横线」或「四角悬浮块」。
+		expect(className).not.toContain("h-0.5");
+		expect(className).not.toContain("rounded-xl");
+		// 未选中的页签只占位、不画轮廓：透明边框保证切换时整排不会横向抖 2px。
+		const idle = container.querySelector('[role="tab"][aria-selected="false"]');
+		expect(idle?.className).toContain("border-transparent");
+		expect(idle?.className).not.toContain("border-border");
+		expect(idle?.className).not.toContain("bg-muted");
+		// 可关闭的页签同样成立（关闭按钮不参与轮廓）。
+		expect(activeTab(true)?.className).toContain("border-b-0");
 	});
 
 	it("keeps a click below the drag threshold", () => {

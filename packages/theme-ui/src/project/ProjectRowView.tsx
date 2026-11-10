@@ -18,8 +18,10 @@ export interface ProjectRowViewProps {
 	onOpenContextMenu: (event: React.MouseEvent) => void;
 	projectCwd: string;
 	projectType: ProjectTypeIconKey;
-	/** 远程（SSH）项目：折叠态用服务器图标替代项目类型图标。 */
+	/** 远程（SSH）项目：折叠态用服务器图标替代项目类型图标，展开态靠行尾标识点区分。 */
 	remote?: boolean;
+	/** 标识点的可读文案（供 aria-label 与悬停提示），由宿主传入已本地化的文本。 */
+	remoteTitle?: string;
 	rowRef?: Ref<HTMLDivElement>;
 }
 
@@ -39,6 +41,7 @@ export function ProjectRowView({
 	projectCwd,
 	projectType,
 	remote = false,
+	remoteTitle,
 	rowRef,
 }: ProjectRowViewProps): JSX.Element {
 	return (
@@ -93,6 +96,16 @@ export function ProjectRowView({
 				{displayName}
 			</button>
 			<div className="relative flex shrink-0 items-center">
+				{remote && (
+					// 展开态图标位被箭头占用，远程标识靠这个点保留：不能选、不能点，只做区分。
+					<span
+						role="img"
+						aria-label={remoteTitle}
+						title={remoteTitle}
+						className="mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/70"
+						data-remote-project-marker
+					/>
+				)}
 				{badge && (
 					<span className="rounded-sm bg-accent px-1 py-px text-[10px] text-muted-foreground group-hover:hidden">
 						{badge}

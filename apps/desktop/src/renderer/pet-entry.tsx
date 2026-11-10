@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { PetApp } from "./domains/pet/components/PetApp";
 import { applyInitialTheme, applyStoredTheme, MODE_STORAGE_KEY, THEME_STORAGE_KEY } from "./shared/theme/apply";
 import { applyStoredCursorStyle, CURSOR_STORAGE_KEY, LEGACY_CURSOR_STORAGE_KEY } from "./shared/theme/cursor";
+import { applyStoredFont, watchStoredFont } from "./shared/theme/ui-font";
 import { initializeRendererErrorMonitoring } from "./telemetry/error-monitoring";
 import "./styles.css";
 import "./pet-shell.css";
@@ -11,6 +12,9 @@ initializeRendererErrorMonitoring("pet");
 
 applyInitialTheme();
 applyStoredCursorStyle();
+// 主窗口的字体选择要跨窗口生效，否则同一个产品里会同时出现两种字体。
+applyStoredFont();
+watchStoredFont();
 
 window.addEventListener("storage", (event) => {
 	if (event.key === CURSOR_STORAGE_KEY || event.key === LEGACY_CURSOR_STORAGE_KEY) {

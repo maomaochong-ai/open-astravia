@@ -654,6 +654,16 @@ export class DesktopConversationService {
 
 let sharedService: DesktopConversationService | undefined;
 
+/**
+ * 会话归属目录（团队会话回填）是发布任何会话列表的前置条件，且整目录只扫一次、进程内记忆化。
+ *
+ * 它的耗时如果留到用户点开项目 / 会话时才算，会整块落在第一个列表的 `precheck` 里：本机真实
+ * 日志里这一段出现过 57s 与 71s。启动首帧之后立即开跑，耗时就与用户读首屏的时间重叠。
+ */
+export function prewarmConversationOwnership(): Promise<void> {
+	return ensureLegacyAgentTeamOwnershipCatalog();
+}
+
 export function getDesktopConversationService(): DesktopConversationService {
 	if (!sharedService) {
 		sharedService = new DesktopConversationService(getSharedRuntime(), conversationOwnershipCatalog, () =>

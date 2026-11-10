@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 import { applyInitialTheme, applyStoredTheme, MODE_STORAGE_KEY, THEME_STORAGE_KEY } from "../shared/theme/apply";
+import { applyStoredFont, watchStoredFont } from "../shared/theme/ui-font";
 import { initializeRendererErrorMonitoring } from "../telemetry/error-monitoring";
 import "../styles.css";
 import { i18n, initOnboardingI18n } from "./i18n";
@@ -12,6 +13,9 @@ initializeRendererErrorMonitoring("onboarding");
 // 挂载前同步注入主题变量与 i18n，避免冷启动闪烁（对齐 quickpanel/entry.tsx）。
 applyInitialTheme();
 initOnboardingI18n();
+// 主窗口的字体选择要跨窗口生效，否则同一个产品里会同时出现两种字体。
+applyStoredFont();
+watchStoredFont();
 
 // 主窗口改主题会写 localStorage，本引导窗监听 storage 同步跟随。
 window.addEventListener("storage", (event) => {

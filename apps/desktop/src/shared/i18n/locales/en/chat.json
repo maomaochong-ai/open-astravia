@@ -860,7 +860,8 @@
 				},
 				"network": {
 					"title": "No network connection",
-					"hint": "Check your network or proxy, then send again."
+					"hint": "The reply stopped partway. Once the network is back, continue from here.",
+					"action": "Continue"
 				},
 				"auth": {
 					"title": "Model key is invalid or expired",

@@ -31,7 +31,8 @@
 			"collapseSessions": "Collapse sessions",
 			"expandMore": "Show more ({{count}})",
 			"scrollToTop": "Scroll to top",
-			"scrollToBottom": "Scroll to bottom"
+			"scrollToBottom": "Scroll to bottom",
+			"remoteHint": "Project on a remote host (SSH)"
 		},
 		"defaultConversation": {
 			"noConversations": "No conversations",
@@ -244,6 +245,7 @@
 		"loading": "Loading…",
 		"noHosts": "No remote hosts registered yet",
 		"noHostsHint": "Add one under Settings → SSH hosts, or import the aliases you already have in ~/.ssh/config.",
+		"openSettings": "Add a host",
 		"parent": "Parent folder",
 		"emptyDir": "No sub-folders here. You can add this folder as the project.",
 		"browseFailed": "Could not read this folder. The connection may be down, or this account may lack permission.",

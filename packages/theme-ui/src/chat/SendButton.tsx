@@ -25,6 +25,15 @@ export interface SendButtonProps {
 
 type IconState = "send" | "to-stop" | "stop" | "to-send";
 
+/**
+ * 停止请求最多显示这么久。
+ *
+ * 取消要跨进程、跨网络（SSH 会话上还要跨远端主机），链断时主进程也会晚回话。
+ * 一旦回复永远不来，按钮就会一直停在「停止中」：既不能再按，也没法发下一条。
+ * 到点把控制权交回用户；轮次若真的还在跑，按钮会自己回到「停止」。
+ */
+const ABORT_WATCHDOG_MS = 10_000;
+
 export const SendButton = memo(function SendButton({
 	canSend,
 	isStreaming,
@@ -59,10 +68,14 @@ export const SendButton = memo(function SendButton({
 	function handleAbort(): void {
 		const request = ++abortRequestRef.current;
 		setAbortPending(true);
+		const watchdog = window.setTimeout(() => {
+			if (abortRequestRef.current === request) setAbortPending(false);
+		}, ABORT_WATCHDOG_MS);
 		void Promise.resolve()
 			.then(onAbort)
 			.catch(() => undefined)
 			.finally(() => {
+				window.clearTimeout(watchdog);
 				if (abortRequestRef.current === request) setAbortPending(false);
 			});
 	}

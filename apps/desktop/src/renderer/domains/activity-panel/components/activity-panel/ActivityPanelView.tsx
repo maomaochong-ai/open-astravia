@@ -50,7 +50,6 @@ export function ActivityPanelView({
 					onTabDragStart={model.narrowSheet ? undefined : actions.onTabDragStart}
 					onTabDragMove={model.narrowSheet ? undefined : actions.onTabDragMove}
 					onTabDragEnd={model.narrowSheet ? undefined : actions.onTabDragEnd}
-					suppressLayoutAnimation={model.isResizing}
 					onRemove={model.knowledgeHistory ? undefined : actions.onRemoveTab}
 					removeLabel={removeLabel}
 					onReorder={model.knowledgeHistory ? undefined : actions.onReorderTabs}

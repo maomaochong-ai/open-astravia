@@ -1,7 +1,7 @@
 import type { ConversationParticipantViewModel, ConversationUserMessageViewModel } from "@shared/conversation";
 import type { ChatConversationItem } from "@shared/store/chat-atoms";
 import type { ActivityWorkspace } from "@shared/workspace/activity-workspace";
-import { type Atom, atom } from "jotai";
+import { type Atom, atom, useAtomValue } from "jotai";
 import { createContext, useContext } from "react";
 
 /**
@@ -42,6 +42,11 @@ export interface ConversationCapabilities {
 	readonly abort?: () => void;
 	/** Open the conversation of a Team member. */
 	readonly openTeamMember?: (memberId: string) => void;
+	/**
+	 * Start a new Turn from the existing history without a user message, e.g. after the
+	 * network dropped mid-reply. Absent when the feed cannot write (read-only snapshots).
+	 */
+	readonly resumeInterruptedTurn?: () => void;
 	/** Runtime whose subagent observations belong to this conversation. */
 	readonly subagentRuntimeId?: string;
 }
@@ -113,4 +118,19 @@ export function useConversationCapability<Name extends keyof ConversationCapabil
 	name: Name,
 ): ConversationCapabilities[Name] {
 	return useConversationFeed().capabilities[name];
+}
+
+/**
+ * Same as useConversationCapability, for parts that are also rendered outside a feed
+ * (shared message rendering is composed by several feeds and by plain lists).
+ */
+export function useOptionalConversationCapability<Name extends keyof ConversationCapabilities>(
+	name: Name,
+): ConversationCapabilities[Name] | undefined {
+	return useContext(ConversationFeedContext)?.capabilities[name];
+}
+
+/** Whether the feed around this part is streaming; quiet when there is no feed. */
+export function useOptionalConversationStreaming(): boolean {
+	return useAtomValue(useContext(ConversationFeedContext)?.streaming ?? NEVER);
 }

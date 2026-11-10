@@ -81,6 +81,61 @@ export function shouldCompact(contextTokens: number, contextWindow: number, sett
 }
 
 /**
+ * 压缩后必须空出来的可增长空间（占上下文窗口比例）。
+ *
+ * 少了这块余量，压缩完的上下文仍贴着阈值：再聊一两条消息就又越线，于是每轮
+ * 都压一次、每次都停在阈值附近——用户看到的就是「压缩比例一直在阈值左右徘徊」。
+ */
+export const COMPACTION_HEADROOM_PERCENT = 15;
+
+/**
+ * 保留段上限（占上下文窗口比例）。
+ *
+ * `keepRecentTokens` 是绝对值，对 32k / 64k 这类小窗口来说 20k 已经吃掉阈值的一半以上，
+ * 压缩后必然贴着阈值。保留段随窗口缩放，长窗口维持配置值不变。
+ */
+export const KEEP_RECENT_WINDOW_CAP_PERCENT = 20;
+
+/** 保留段下限：再往下削就只剩系统提示与摘要，压缩换不回任何上下文空间。 */
+export const COMPACTION_KEEP_TOKENS_FLOOR = 2_000;
+
+export interface CompactionKeepPlanInput {
+	readonly contextWindow: number;
+	readonly settings: CompactionSettings;
+	/** 上一次压缩使用的保留预算；无历史时留空。 */
+	readonly previousKeepTokens?: number;
+	/** 上一次压缩后估算出的上下文大小（消息口径）；无历史时留空。 */
+	readonly previousTokensAfterCompaction?: number;
+}
+
+/**
+ * 决定这次压缩保留多少尾部 token。
+ *
+ * 两步：先按窗口算出「压缩后应落在哪」的目标线，再把上一次的实测结果反馈进来——
+ * 上次压完仍高于目标线时，按超出量等额收回保留预算。等额而不是按比例收缩，是为了
+ * 一步收敛：比例控制会在目标线附近来回振荡，正是要消掉的行为。
+ */
+export function planCompactionKeepTokens(input: CompactionKeepPlanInput): number {
+	const { contextWindow, settings } = input;
+	if (!Number.isFinite(contextWindow) || contextWindow <= 0)
+		return Math.max(COMPACTION_KEEP_TOKENS_FLOOR, settings.keepRecentTokens);
+
+	const threshold = getCompactThreshold(contextWindow, settings);
+	const target = threshold - (contextWindow * COMPACTION_HEADROOM_PERCENT) / 100;
+	const windowCap = (contextWindow * KEEP_RECENT_WINDOW_CAP_PERCENT) / 100;
+	const base = Math.min(settings.keepRecentTokens, windowCap, Math.max(threshold, 0));
+
+	const previousKeep = input.previousKeepTokens;
+	const previousAfter = input.previousTokensAfterCompaction;
+	const budget =
+		previousKeep === undefined || previousAfter === undefined || previousAfter <= target
+			? base
+			: previousKeep - (previousAfter - target);
+
+	return Math.max(COMPACTION_KEEP_TOKENS_FLOOR, Math.floor(Math.min(base, budget)));
+}
+
+/**
  * Conservatively estimate text tokens by script: ASCII follows chars/4, CJK and other
  * wide scripts (U+2E80 and up) count one token per code unit, and remaining non-ASCII
  * text counts half a token. Plain chars/4 undercounts Chinese by 3-4x, which lets a

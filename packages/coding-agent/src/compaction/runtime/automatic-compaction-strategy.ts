@@ -15,6 +15,7 @@ import {
 	type CompactionSettings,
 	estimateContextTokens,
 	getCompactThreshold,
+	planCompactionKeepTokens,
 	prepareCompaction,
 	shouldCompact,
 	shouldPrefire,
@@ -62,6 +63,15 @@ export class CodingAgentAutomaticCompactionStrategy {
 	private lastEstimateTokens: number | undefined;
 	/** 本轮最近一次自动压缩的轮次与压缩后的估算，用于抑制同轮无进展的重复压缩。 */
 	private lastAutoCompaction: { readonly turnId: string; readonly estimateAfter: number } | undefined;
+	/**
+	 * 上一次自动压缩的保留预算与压缩后实际大小。
+	 *
+	 * 压缩完仍贴着阈值时，下一次据实测超出量等额收紧保留段——不靠猜，也不在
+	 * 目标线附近反复振荡。
+	 */
+	private lastKeepPlan: { readonly keepTokens: number; readonly tokensAfter: number } | undefined;
+	/** 上一轮预热用的保留预算：预热缓存按它切好了尾巴，预算变了就不该复用。 */
+	private prefireKeepTokens: number | undefined;
 	constructor(private readonly options: CodingAgentAutomaticCompactionStrategyOptions) {}
 
 	async prepare(
@@ -77,6 +87,15 @@ export class CodingAgentAutomaticCompactionStrategy {
 		const contextWindow = model?.contextWindow ?? input.tokenBudget;
 		const settings =
 			this.options.memoryRollover?.adjustCompactionSettings(baseSettings, contextWindow) ?? baseSettings;
+		// 保留段按窗口缩放，并把上一次压缩的实测结果反馈进来：压完仍贴着阈值时收紧。
+		const keepTokens = planCompactionKeepTokens({
+			contextWindow,
+			settings,
+			previousKeepTokens: this.lastKeepPlan?.keepTokens,
+			previousTokensAfterCompaction: this.lastKeepPlan?.tokensAfter,
+		});
+		const compactionSettings: CompactionSettings =
+			keepTokens === settings.keepRecentTokens ? settings : { ...settings, keepRecentTokens: keepTokens };
 		if (reason === "assistant_error" && input.triggeringAssistantMessage) {
 			const recovery = await this.options.failureRecovery.recover(
 				{
@@ -143,7 +162,8 @@ export class CodingAgentAutomaticCompactionStrategy {
 					// 换绑后主模型 credential 不跨 provider；prefire 内部按需 resolveApiKey 兜底。
 					const credential = resolved.swapped ? undefined : input.modelBinding?.credential;
 					try {
-						this.options.prefire.start(entries(), settings, resolved.model, credential);
+						this.options.prefire.start(entries(), compactionSettings, resolved.model, credential);
+						this.prefireKeepTokens = compactionSettings.keepRecentTokens;
 					} catch {
 						// 预热只是提前干活，失败不影响本轮结果；不接住会变成 unhandledRejection。
 					}
@@ -211,7 +231,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 				});
 				return unchanged(callMessages, assembledTokens);
 			}
-			const preparation = prepareCompaction(entries(), settings);
+			const preparation = prepareCompaction(entries(), compactionSettings);
 			if (
 				!preparation ||
 				(preparation.messagesToSummarize.length === 0 && preparation.turnPrefixMessages.length === 0)
@@ -253,7 +273,12 @@ export class CodingAgentAutomaticCompactionStrategy {
 				});
 				return unchanged(callMessages, assembledTokens);
 			}
-			const prefired = extensionResult?.compaction ? undefined : this.options.prefire.take(entries());
+			// 预热缓存按当时的保留预算切好了尾巴；本次预算与预热时不同就不能复用，否则
+			// 保留段又会被拉回别的尺寸，反馈失效。
+			const prefired =
+				extensionResult?.compaction || this.prefireKeepTokens !== keepTokens
+					? undefined
+					: this.options.prefire.take(entries());
 			// 摘要生成期间的流式增量：prefire 命中或扩展接管时无增量（后台预热不重发）。
 			const result =
 				extensionResult?.compaction ??
@@ -288,6 +313,7 @@ export class CodingAgentAutomaticCompactionStrategy {
 			const compactedEstimate = estimateContextTokens(messages).tokens;
 			this.options.recordEstimatedTokens(compactedEstimate);
 			this.lastAutoCompaction = { turnId: input.turnId, estimateAfter: compactedEstimate };
+			this.lastKeepPlan = { keepTokens: compactionSettings.keepRecentTokens, tokensAfter: compactedEstimate };
 			return { messages, estimatedTokens: compactedEstimate, compaction: record };
 		} catch (error) {
 			this.options.circuitBreaker.recordFailure();

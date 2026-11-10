@@ -2,7 +2,7 @@ import {
 	type MessageFeedScrollModel,
 	useMessageFeedScrollModel,
 } from "@shared/components/message-feed/useMessageFeedScrollModel";
-import { activityPanelResizingAtom, type ChatConversationItem } from "@shared/store/atoms";
+import { activityPanelFocusAtom, activityPanelResizingAtom, type ChatConversationItem } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 
@@ -30,6 +30,9 @@ export function useMessageListScrollModel({
 	onInitialTargetHandled,
 }: MessageListScrollModelInput): MessageListScrollModel {
 	const activityPanelResizing = useAtomValue(activityPanelResizingAtom);
+	// 活动面板铺满时消息列被压到 0 宽，按消息列居中的「滚动到底部」会落到面板上。
+	// 铺满状态在这里合进 model，组合件（conversation-view/parts）不直读全局状态（ADR-0147）。
+	const activityPanelFocused = useAtomValue(activityPanelFocusAtom);
 	const feed = useMessageFeedScrollModel({
 		active: isStreaming,
 		items: messages,
@@ -50,7 +53,7 @@ export function useMessageListScrollModel({
 			scrollerRef: feed.scrollerRef,
 			scrollToBottom: feed.scrollToBottom,
 			scrollToMessage: feed.scrollToItem,
-			showScrollToBottom: feed.showScrollToBottom,
+			showScrollToBottom: feed.showScrollToBottom && !activityPanelFocused,
 			virtuosoRef: feed.virtuosoRef,
 			restoreStateFrom: feed.restoreStateFrom,
 		}),
@@ -65,6 +68,7 @@ export function useMessageListScrollModel({
 			feed.scrollToBottom,
 			feed.scrollToItem,
 			feed.showScrollToBottom,
+			activityPanelFocused,
 			feed.virtuosoRef,
 		],
 	);

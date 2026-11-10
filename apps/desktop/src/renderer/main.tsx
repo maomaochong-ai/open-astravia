@@ -7,7 +7,7 @@ import { applyPlatformAttribute } from "./shared/lib/platform";
 import { applyInitialTheme } from "./shared/theme/apply";
 import { applyStoredCursorStyle } from "./shared/theme/cursor";
 import { applyStoredSidebarStyle } from "./shared/theme/sidebar-style";
-import { applyStoredUiFont } from "./shared/theme/ui-font";
+import { applyStoredFont } from "./shared/theme/ui-font";
 import { captureReactError, initializeRendererErrorMonitoring } from "./telemetry/error-monitoring";
 import { initializeViteHmrDiagnostics } from "./telemetry/vite-hmr-diagnostics";
 import "./styles.css";
@@ -20,7 +20,7 @@ applyPlatformAttribute();
 applyInitialTheme();
 applyStoredCursorStyle();
 applyStoredSidebarStyle();
-applyStoredUiFont();
+applyStoredFont();
 // 窗口不在前台时停掉无限循环的动画：毛玻璃窗口每出一帧都很贵，没人看的时候不该为它付费。
 installInactiveWindowAnimationPause();
 // 「进行中」指示器的呼吸/波纹由这里统一挂 steps(16) 合成器动画并锁同一相位：整页每秒最多多出 10 帧。

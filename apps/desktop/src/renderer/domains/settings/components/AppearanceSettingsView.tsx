@@ -15,7 +15,7 @@ import themeLock from "../assets/theme-lock.webp";
 import { SETTINGS_SECTION } from "../registry";
 import { MotionSelect, SettingHeading } from "@astravia-org/theme-ui/settings";
 import type { SidebarStyle } from "@shared/theme/sidebar-style";
-import { type UiFontFamily, uiFontStack } from "@shared/theme/ui-font";
+import { type UiFontFamily, fontStack } from "@shared/theme/ui-font";
 import type {
 	AppearanceCursorOption,
 	AppearanceOrnamentOption,
@@ -282,7 +282,7 @@ function FontSelectRow({
 	options,
 	onValueChange,
 }: {
-	role: "ui" | "code";
+	role: "global";
 	label: string;
 	hint: string;
 	value: UiFontFamily;
@@ -303,9 +303,9 @@ function FontSelectRow({
 				options={options.map((option) => ({
 					value: option.id,
 					title: option.hint,
-					label: <span style={{ fontFamily: uiFontStack(option.id) ?? undefined }}>{option.label}</span>,
+					label: <span style={{ fontFamily: fontStack(option.id) ?? undefined }}>{option.label}</span>,
 				}))}
-				triggerClassName="min-w-[132px] shrink-0"
+				triggerClassName="min-w-[140px] shrink-0"
 			/>
 		</div>
 	);
@@ -570,24 +570,14 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 
 			<div className="mb-6">
 				<SettingHeading title={model.labels.sections.font} section={SETTINGS_SECTION["appearance-font"]} className="mb-3" />
-				<div className="flex flex-col gap-4">
-					<FontSelectRow
-						role="ui"
-						label={model.labels.fontRoles.ui}
-						hint={model.labels.uiFontHint}
-						value={model.uiFont}
-						options={model.uiFontOptions}
-						onValueChange={model.actions.setUiFont}
-					/>
-					<FontSelectRow
-						role="code"
-						label={model.labels.fontRoles.code}
-						hint={model.labels.codeFontHint}
-						value={model.codeFont}
-						options={model.codeFontOptions}
-						onValueChange={model.actions.setCodeFont}
-					/>
-				</div>
+				<FontSelectRow
+					role="global"
+					label={model.labels.sections.font}
+					hint={model.labels.fontHint}
+					value={model.font}
+					options={model.fontOptions}
+					onValueChange={model.actions.setFont}
+				/>
 			</div>
 
 			{model.showUiTheme && (

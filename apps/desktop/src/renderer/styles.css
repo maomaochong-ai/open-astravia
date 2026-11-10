@@ -73,7 +73,8 @@
 
 	--font-sans: -apple-system, "SF Pro Text", "SF Pro Display", "Helvetica Neue",
 		sans-serif;
-	/* 会话内容字体默认跟随界面字体；用户单独选过才写内联覆盖。 */
+	/* 会话内容字体始终跟随界面字体：字体统一为单一设置后不再有独立的内容字体入口，
+	   这一层别名只留给历史主题与 [data-message-root] 引用。 */
 	--font-content: var(--font-sans);
 	--font-serif: Georgia, serif;
 	--font-mono: "SF Mono", "Fira Code", monospace;

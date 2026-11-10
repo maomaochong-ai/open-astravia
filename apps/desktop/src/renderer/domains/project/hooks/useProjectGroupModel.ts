@@ -269,6 +269,7 @@ export function useProjectGroupModel({
 		projectBadge,
 		projectType,
 		remote: isRemoteProject,
+		remoteTitle: isRemoteProject ? t("sidebar.projects.remoteHint") : undefined,
 		sessionViews,
 		showAllSessions,
 		showMoreLabels: {

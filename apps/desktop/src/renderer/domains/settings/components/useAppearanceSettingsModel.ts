@@ -5,7 +5,7 @@ import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
 import { useNewSessionTexture } from "@shared/hooks/useNewSessionTexture";
 import { useSidebarStyle } from "@shared/hooks/useSidebarStyle";
 import { useTheme } from "@shared/hooks/useTheme";
-import { useFontRoles } from "@shared/hooks/useUiFont";
+import { useUiFont } from "@shared/hooks/useUiFont";
 import type { ThemeMode } from "@shared/store/atoms";
 import { COLOR_THEME_LABEL_KEYS } from "@shared/theme/color-theme-label-keys";
 import { type CursorStyle, STOAT_CURSOR_PREVIEW_URL } from "@shared/theme/cursor";
@@ -102,8 +102,8 @@ export interface AppearanceSettingsModel {
 		setOrnament: (id: OrnamentId) => void;
 		setSidebarStyle: (style: SidebarStyle) => void;
 		setTexture: (id: NewSessionTextureId) => void;
-		setUiFont: (family: UiFontFamily) => void;
-		setCodeFont: (family: UiFontFamily) => void;
+		/** 全局字体：界面、消息正文、代码与终端一起换。 */
+		setFont: (family: UiFontFamily) => void;
 	};
 	activeUiThemeId: string;
 	cursorOptions: AppearanceCursorOption[];
@@ -127,13 +127,7 @@ export interface AppearanceSettingsModel {
 		};
 		textureHint: string;
 		title: string;
-		uiFontHint: string;
-		codeFontHint: string;
-		/** 两个字体位置的小标题：全局 / 代码。 */
-		fontRoles: {
-			ui: string;
-			code: string;
-		};
+		fontHint: string;
 	};
 	/** 用户语言偏好（含 system），用于选择器高亮。 */
 	language: LanguagePreference;
@@ -143,10 +137,8 @@ export interface AppearanceSettingsModel {
 	narrow: boolean;
 	ornamentId: OrnamentId;
 	ornamentOptions: AppearanceOrnamentOption[];
-	uiFontOptions: AppearanceFontOption[];
-	uiFont: UiFontFamily;
-	codeFontOptions: AppearanceFontOption[];
-	codeFont: UiFontFamily;
+	fontOptions: AppearanceFontOption[];
+	font: UiFontFamily;
 	/** 是否展示「界面主题」区段（`ASTRAVIA_SHOW_UI_THEME=true`） */
 	showUiTheme: boolean;
 	sidebarStyle: SidebarStyle;
@@ -240,17 +232,22 @@ const SIDEBAR_STYLE_OPTIONS = [
 ] as const;
 
 /**
- * 两个字体位置共用同一张字族表：全局字形（界面与消息正文）、代码/终端。
- * 界面字体一档就管全应用；样式表把 `--font-content` 指向 `--font-sans`，消息正文不再单独选。
+ * 内置字族表。只有一档，选定后全局生效（界面、消息正文、代码块、diff、终端）。
+ * 顺序按「读长文」到「写代码」排，每档都能在 macOS 与 Windows 落到近似字形。
  */
 const FONT_FAMILY_OPTIONS = [
 	{ id: "system" as const, labelKey: "uiFontSystemTitle", hintKey: "uiFontSystemHint" },
-	{ id: "rounded" as const, labelKey: "uiFontRoundedTitle", hintKey: "uiFontRoundedHint" },
 	{ id: "sans" as const, labelKey: "uiFontSansTitle", hintKey: "uiFontSansHint" },
+	{ id: "humanist" as const, labelKey: "uiFontHumanistTitle", hintKey: "uiFontHumanistHint" },
+	{ id: "geometric" as const, labelKey: "uiFontGeometricTitle", hintKey: "uiFontGeometricHint" },
+	{ id: "rounded" as const, labelKey: "uiFontRoundedTitle", hintKey: "uiFontRoundedHint" },
 	{ id: "serif" as const, labelKey: "uiFontSerifTitle", hintKey: "uiFontSerifHint" },
+	{ id: "reading" as const, labelKey: "uiFontReadingTitle", hintKey: "uiFontReadingHint" },
 	{ id: "song" as const, labelKey: "uiFontSongTitle", hintKey: "uiFontSongHint" },
 	{ id: "kai" as const, labelKey: "uiFontKaiTitle", hintKey: "uiFontKaiHint" },
+	{ id: "hei" as const, labelKey: "uiFontHeiTitle", hintKey: "uiFontHeiHint" },
 	{ id: "mono" as const, labelKey: "uiFontMonoTitle", hintKey: "uiFontMonoHint" },
+	{ id: "mono-code" as const, labelKey: "uiFontMonoCodeTitle", hintKey: "uiFontMonoCodeHint" },
 ] as const;
 
 /** 原始表只有 id 与 i18n 键；这一层把当前选中态与译文并进渲染用的选项。 */
@@ -269,7 +266,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	const { t } = useTranslation("settings");
 	const narrow = useNarrowScreen();
 
-	const { ui: uiFont, setUi: setUiFont, code: codeFont, setCode: setCodeFont } = useFontRoles();
+	const { family: font, setFamily: setFont } = useUiFont();
 	const languages = useMemo<AppearanceLanguageOption[]>(
 		() => [
 			{
@@ -360,14 +357,9 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		[sidebarStyle, t],
 	);
 
-	const uiFontOptions = useMemo<AppearanceFontOption[]>(
-		() => FONT_FAMILY_OPTIONS.map((o) => toFontOption(o.id, uiFont === o.id, t(o.labelKey), t(o.hintKey))),
-		[t, uiFont],
-	);
-
-	const codeFontOptions = useMemo<AppearanceFontOption[]>(
-		() => FONT_FAMILY_OPTIONS.map((o) => toFontOption(o.id, codeFont === o.id, t(o.labelKey), t(o.hintKey))),
-		[t, codeFont],
+	const fontOptions = useMemo<AppearanceFontOption[]>(
+		() => FONT_FAMILY_OPTIONS.map((o) => toFontOption(o.id, font === o.id, t(o.labelKey), t(o.hintKey))),
+		[t, font],
 	);
 
 	const themes = useMemo(
@@ -401,12 +393,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 			},
 			textureHint: t("textureHint"),
 			title: t("appearanceTitle"),
-			uiFontHint: t("uiFontHint"),
-			codeFontHint: t("codeFontHint"),
-			fontRoles: {
-				ui: t("fontRoleUi"),
-				code: t("fontRoleCode"),
-			},
+			fontHint: t("fontHint"),
 		}),
 		[t],
 	);
@@ -454,13 +441,9 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 					value: style,
 				});
 			},
-			setUiFont: (family) => {
-				setUiFont(family);
-				recordSettingsUsage({ tab: "appearance", action: "changed", target: "ui-font", value: family });
-			},
-			setCodeFont: (family) => {
-				setCodeFont(family);
-				recordSettingsUsage({ tab: "appearance", action: "changed", target: "code-font", value: family });
+			setFont: (family) => {
+				setFont(family);
+				recordSettingsUsage({ tab: "appearance", action: "changed", target: "font", value: family });
 			},
 		}),
 		[
@@ -472,8 +455,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 			setSidebarStyle,
 			setTexture,
 			setThemeName,
-			setUiFont,
-			setCodeFont,
+			setFont,
 		],
 	);
 
@@ -497,10 +479,8 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		textureOptions,
 		themeName,
 		themes,
-		uiFont,
-		uiFontOptions,
+		font,
+		fontOptions,
 		uiThemes,
-		codeFont,
-		codeFontOptions,
 	};
 }

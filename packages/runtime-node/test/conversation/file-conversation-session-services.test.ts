@@ -117,7 +117,8 @@ describe("Greenfield runtime session services", () => {
 		]);
 		expect(await catalog.ownsSession(sessionPath)).toBe(true);
 		expect(reader.canRead(sessionPath)).toBe(true);
-		expect(reader.read(sessionPath).history).toEqual(
+		const syncHistory = reader.read(sessionPath);
+		expect(syncHistory.history).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
 					type: "message",
@@ -125,6 +126,9 @@ describe("Greenfield runtime session services", () => {
 				}),
 			]),
 		);
+		// 打开会话的预览走异步入口，两条路必须给出同一份历史；否则首屏会和
+		// 之后接上的会话不一致。
+		expect(await reader.readAsync(sessionPath)).toEqual(syncHistory);
 
 		await catalog.renameSession(sessionPath, "renamed");
 		expect((await catalog.listSessions(cwd, rootDir))[0]?.name).toBe("renamed");
@@ -176,6 +180,37 @@ describe("Greenfield runtime session services", () => {
 
 		expect(sessions).toHaveLength(1);
 		expect(sessions[0]).toEqual(expect.objectContaining({ id: "streaming", firstMessage: "半写完的一轮" }));
+	});
+
+	it("keeps first user message and last non-empty preview across a long conversation", async () => {
+		const rootDir = await createTemporaryRoot();
+		const cwd = join(rootDir, "workspace");
+		const repository = new FileConversationRepository({ rootDir });
+		await repository.create({ sessionId: "long", createdAt: 100, cwd });
+		// 中间夹一轮没有文本的消息：首尾预览必须跳过它，和旧的「先抽全部文本再取首尾」一致。
+		const turns = [
+			started("long", 100),
+			userMessage("long", "第一条问题", 110),
+			assistantMessage("long", "第一条回答", 120),
+		];
+		for (let index = 2; index <= 40; index += 1) {
+			turns.push(userMessage("long", `第 ${index} 条问题`, 100 + index * 10));
+			turns.push(assistantMessage("long", `第 ${index} 条回答`, 100 + index * 10 + 1));
+		}
+		turns.push(userMessage("long", "   ", 900), assistantMessage("long", "最后一条有内容的回答", 901));
+		await repository.append("long", 0, turns);
+		await repository.close();
+
+		const [session] = await new FileConversationRuntimeSessionCatalog().listSessions(cwd, rootDir);
+
+		expect(session).toEqual(
+			expect.objectContaining({
+				id: "long",
+				firstMessage: "第一条问题",
+				lastMessagePreview: "最后一条有内容的回答",
+				modifiedAt: 901,
+			}),
+		);
 	});
 
 	it("falls back to the file header instead of dropping a session whose body cannot be parsed", async () => {

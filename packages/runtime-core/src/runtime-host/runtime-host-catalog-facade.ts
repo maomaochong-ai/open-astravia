@@ -30,6 +30,11 @@ export class RuntimeHostCatalogFacade {
 		return this.requireFileHistoryReader().read(path);
 	}
 
+	async readSessionHistoryFromFileAsync(path: string): Promise<{ history: HistoryEntry[] }> {
+		const reader = this.requireFileHistoryReader();
+		return reader.readAsync ? await reader.readAsync(path) : reader.read(path);
+	}
+
 	resolveSessionAccess(sessionPath: string): Promise<RuntimeSessionAccess | undefined> {
 		return this.options.accessResolver?.resolve(this.normalizePath(sessionPath)) ?? Promise.resolve(undefined);
 	}

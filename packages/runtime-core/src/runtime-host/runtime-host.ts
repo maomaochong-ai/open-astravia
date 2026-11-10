@@ -601,6 +601,14 @@ export class RuntimeHost implements SessionFacade {
 		return this.catalogFacade.readSessionHistoryFromFile(path);
 	}
 
+	/**
+	 * Same projection, without holding the event loop for the whole file. The
+	 * viewer path uses this so one long conversation cannot stall every window.
+	 */
+	async readSessionHistoryFromFileAsync(path: string): Promise<{ history: HistoryEntry[] }> {
+		return this.catalogFacade.readSessionHistoryFromFileAsync(path);
+	}
+
 	/** Resolve host capabilities for an existing session without opening or locking it. */
 	resolveSessionAccess(sessionPath: string): Promise<RuntimeSessionAccess | undefined> {
 		return this.catalogFacade.resolveSessionAccess(sessionPath);
