@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, describe, it } from "node:test";
@@ -135,6 +135,10 @@ describe("startup-report 读盘", () => {
 		await writeFile(join(dir, "2026-11-09.log"), "[old]\n");
 		await writeFile(join(dir, "2026-11-10.log"), "[new]\n");
 		await writeFile(join(dir, "notes.txt"), "ignore me\n");
+		// 排序键是 mtime，而 CI 的文件系统精度可能只到秒：两次紧挨的写入拿到同一个
+		// 时间戳时，顺序退化成 readdir 顺序，断言就会随机失败。这里把时间戳拉开。
+		await utimes(join(dir, "2026-11-09.log"), new Date("2026-11-09T00:00:00Z"), new Date("2026-11-09T00:00:00Z"));
+		await utimes(join(dir, "2026-11-10.log"), new Date("2026-11-10T00:00:00Z"), new Date("2026-11-10T00:00:00Z"));
 
 		const files = listLogFiles(dir, 2);
 		assert.deepEqual(
