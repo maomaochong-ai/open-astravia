@@ -13,10 +13,10 @@ class ResizeObserverStub {
 }
 
 /**
- * 行宽取 290 而不是整数：这个宽度能区分「页签间距是否被算进可用宽度」——
- * 算上间距时第三个页签放不下（89×3 = 267 > 290-32+4），不算时刚好放得下（85×3 = 255 ≤ 290-32）。
+ * 行宽扣掉左右内边距（32）后只够放两个 85px 的页签：三个需要 255px，
+ * 而可用宽度是 250 - 32 = 218，第三个必须收进下拉。
  */
-const ROW_WIDTH = 290;
+const ROW_WIDTH = 250;
 /** 每个页签量出来的自然宽度。 */
 const TAB_WIDTH = 85;
 
@@ -66,7 +66,7 @@ describe("TabBar 排版", () => {
 		expect(container.querySelector('[class*="w-px"]')).toBeNull();
 	});
 
-	it("把页签之间的间距算进可用宽度，收不下的收进下拉", () => {
+	it("按可用宽度容纳页签，收不下的收进下拉", () => {
 		const onOverflowChange = vi.fn();
 		render(
 			[
