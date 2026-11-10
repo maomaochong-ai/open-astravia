@@ -92,12 +92,18 @@ describe("TabBar pointer drag", () => {
 	});
 
 	/*
-	 * 选中的页签与下方内容面板连成一体：上、左、右三边描边，底边不画。
-	 * 底色取面板自己的 surface 色，再用 `-mb-px` 盖住面板那条 1px 顶边，
-	 * 轮廓才会在页签底下敞开、页签像是从面板里长出来的。
+	 * 选中的页签与下方内容面板连成一体：上、左、右三边描边 + 底部两段外凸圆弧，底边不画。
+	 *
+	 * 轮廓是一条 SVG 路径，不是几个带 `border` 的盒子：`border` 只能整段画完，
+	 * 竖线会一直落到页签底边；而截短后再接圆弧，接点处两条线的端点各带半像素抗锯齿，
+	 * 缩放后会淡出断口或叠成凸块。一条路径没有接点，缩放多少都不会裂开。
 	 */
-	it("draws the selected tab as a three-sided outline connected to the panel", () => {
-		const activeTab = (removable: boolean): Element | null => {
+	it("draws the selected tab as one continuous three-sided outline", () => {
+		const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+			...bounds(0, 0, 120, 32),
+			toJSON: () => ({}),
+		} as DOMRect);
+		const render = (removable: boolean): void => {
 			act(() => {
 				root.render(
 					createElement(TabBar, {
@@ -111,25 +117,41 @@ describe("TabBar pointer drag", () => {
 					}),
 				);
 			});
-			return container.querySelector('[role="tab"][aria-selected="true"]');
 		};
 
-		const className = activeTab(false)?.className ?? "";
-		expect(className).toContain("border");
-		expect(className).toContain("border-b-0");
-		expect(className).toContain("bg-muted");
-		expect(className).toContain("-mb-px");
-		expect(className).toContain("rounded-t-lg");
-		// 回归：不能退回「底部横线」或「四角悬浮块」。
-		expect(className).not.toContain("h-0.5");
-		expect(className).not.toContain("rounded-xl");
-		// 未选中的页签只占位、不画轮廓：透明边框保证切换时整排不会横向抖 2px。
-		const idle = container.querySelector('[role="tab"][aria-selected="false"]');
-		expect(idle?.className).toContain("border-transparent");
-		expect(idle?.className).not.toContain("border-border");
-		expect(idle?.className).not.toContain("bg-muted");
-		// 可关闭的页签同样成立（关闭按钮不参与轮廓）。
-		expect(activeTab(true)?.className).toContain("border-b-0");
+		try {
+			render(false);
+			const active = container.querySelector('[role="tab"][aria-selected="true"]');
+			// 按钮只提供底色与负下边距；描边不在这里，否则会与圆弧并存。
+			expect(active?.className).toContain("bg-muted");
+			expect(active?.className).toContain("-mb-px");
+			expect(active?.className).not.toContain("border");
+			// 回归：不能退回「底部横线」或「四角悬浮块」。
+			expect(active?.className).not.toContain("h-0.5");
+			expect(active?.className).not.toContain("rounded-xl");
+
+			const path = active?.querySelector("[data-tab-outline] svg path");
+			expect(path).not.toBeNull();
+			const d = path?.getAttribute("d") ?? "";
+			// 一条路径画完：入弧 → 左壁 → 左上圆角 → 上边 → 右上圆角 → 右壁 → 出弧。
+			expect(d.match(/A 8 8 0 0 \d/g) ?? []).toHaveLength(4);
+			// 底部两段弧必须向外凸（sweep=0）；用 1 会绕到内侧变成凹角。
+			// 页签宽 120（上面的 rect 桩），所以弧的出入点是 -8 与 128。
+			expect(d.startsWith("M -8 32 A 8 8 0 0 0 0 24")).toBe(true);
+			expect(d.endsWith("A 8 8 0 0 0 128 32")).toBe(true);
+			// 弧与直线在数学上连续，靠缩放抗锯齿不该出现接点。
+			expect(path?.getAttribute("stroke-width")).toBe("1");
+
+			// 未选中的页签不画轮廓。
+			const idle = container.querySelector('[role="tab"][aria-selected="false"]');
+			expect(idle?.querySelector("[data-tab-outline]")).toBeNull();
+
+			// 可关闭的页签同样成立（关闭按钮不参与轮廓）。
+			render(true);
+			expect(container.querySelector("[data-tab-outline] svg path")).not.toBeNull();
+		} finally {
+			rect.mockRestore();
+		}
 	});
 
 	it("keeps a click below the drag threshold", () => {

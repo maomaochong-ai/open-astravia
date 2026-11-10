@@ -1,6 +1,7 @@
 import {
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useRef,
 	useState,
 	type JSX,
@@ -85,11 +86,11 @@ const ROW_PADDING_RIGHT = 12;
  * 宽度不放进共享类串：`w-full` 会让测量层里每个页签都拉成最宽那个，量出来的自然是错的。
  * 字重恒为 500（不在选中时变粗），所以切换不需要预留加粗后的宽度。
  * 描边、底色与圆角都不在这里：只有选中的页签才画轮廓，未选中是纯文字。
- * 透明占位边框是必需的：选中态要加 1px 描边，若不占位，切换时整排页签会横向抖 2px，
- * 隐藏测量层也会量少这 2px。
+ * 按钮自己不带边框：选中态的轮廓由绝对定位的子元素绘制，不参与布局，
+ * 所以切换时整排页签不会横向抖动，隐藏测量层量到的宽度也是干净的。
  */
 const TAB_ITEM_CLASS =
-	"flex h-8 min-w-0 select-none items-center gap-1.5 whitespace-nowrap border pl-3 text-[14px] font-medium leading-none";
+	"flex h-8 min-w-0 select-none items-center gap-1.5 whitespace-nowrap pl-3 text-[14px] font-medium leading-none";
 const FILE_DRAG_HOVER_DELAY_MS = 300;
 
 function isFileDrag(event: ReactDragEvent<HTMLElement>): boolean {
@@ -132,6 +133,68 @@ function sameKeys<T>(a: T[], b: T[]): boolean {
 	return a.length === b.length && a.every((k, i) => k === b[i]);
 }
 
+/**
+ * 选中页签的轮廓：上、左、右三边描边 + 底部两段反向圆弧，与下方内容面板连通。
+ *
+ * 之所以是一条 SVG 路径而不是几个带 `border` 的盒子拼出来：CSS 的 `border` 只能整段
+ * 画完，左右竖线会一直落到页签底边，与圆弧并排存在；而把竖线截短再各接一段圆弧，
+ * 接点处两条线的端点各带半像素抗锯齿，缩放后就会淡出断口、或叠成一小块凸起。
+ * 一条路径画完就没有接点，弧与直线在数学上连续，缩放多少都不会裂开。
+ */
+function TabOutline(): JSX.Element {
+	const ref = useRef<HTMLSpanElement>(null);
+	const [width, setWidth] = useState(0);
+
+	// 页签宽度由内容决定，只能实测；只有选中的那一个页签会挂这个观察者。
+	useLayoutEffect(() => {
+		const host = ref.current?.parentElement;
+		if (!host) return;
+		const measure = (): void => setWidth(host.getBoundingClientRect().width);
+		measure();
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(measure);
+		observer.observe(host);
+		return () => observer.disconnect();
+	}, []);
+
+	const corner = 8;
+	const path =
+		width > 0
+			? [
+					// 从左下角外侧入弧，弯到左壁竖直段的下端。
+					// sweep=0：圆心落在页签外侧，弧才向外凸；用 1 会绕到内侧变成凹角。
+					`M ${-corner} 32`,
+					`A ${corner} ${corner} 0 0 0 0 ${32 - corner}`,
+					// 左壁上到顶部圆角。
+					`L 0 ${corner}`,
+					`A ${corner} ${corner} 0 0 1 ${corner} 0`,
+					// 上边。
+					`L ${width - corner} 0`,
+					`A ${corner} ${corner} 0 0 1 ${width} ${corner}`,
+					// 右壁下到底部圆角。
+					`L ${width} ${32 - corner}`,
+					`A ${corner} ${corner} 0 0 0 ${width + corner} 32`,
+				].join(" ")
+			: null;
+
+	return (
+		<span ref={ref} aria-hidden className="pointer-events-none absolute inset-0" data-tab-outline>
+			{path === null ? null : (
+				<svg
+					className="absolute -left-2 top-0 overflow-visible text-border"
+					width={width + corner * 2}
+					height={32}
+					viewBox={`${-corner} 0 ${width + corner * 2} 32`}
+					fill="none"
+					aria-hidden
+				>
+					<path d={path} stroke="currentColor" strokeWidth={1} />
+				</svg>
+			)}
+		</span>
+	);
+}
+
 /** 页签内容（图标 + 文字 + 小红点），真实页签与隐藏测量层共用，保证宽度一致。 */
 function TabInner({
 	icon,
@@ -170,9 +233,9 @@ function TabInner({
 }
 
 /**
- * 页签条：文字等宽排布，页签之间没有分隔线；选中的页签画上、左、右三边描边并与下方
- * 内容面板同色连通（见下方渲染处的说明）。字重恒为 500，选中只换字色与描边，
- * 所以切页签时文字与盒子都不会抽动。
+ * 页签条：文字等宽排布，页签之间没有分隔线。选中的页签用一条 SVG 路径画出
+ * 上、左、右三边描边与底部两段外凸圆弧，与下方内容面板同色连通（见 TabOutline）。
+ * 字重恒为 500，选中只换字色与描边，所以切页签时文字与盒子都不会抽动。
  *
  * 传入 onOverflowChange 时开启响应式收纳：按可用宽度容纳尽量多的页签，放不下的
  * 通过回调交给父级收进"下拉"菜单；宽度变化（拉伸/收窄）自动增减可见数量。
@@ -574,19 +637,11 @@ export function TabBar<T extends string>({
 									// 选中的页签与下方内容面板连成一体：上、左、右三边描边，底边不画；
 									// 底色取面板自己的 `bg-muted`，再用 `-mb-px` 盖住面板那条 1px 顶边，
 									// 于是轮廓在页签底下敞开，视觉上页签是从面板里长出来的。
-									active
-										? cn(
-												"-mb-px rounded-t-lg border-border border-b-0 bg-muted text-foreground",
-												// 左右下角各接一段反向圆弧：页签的竖线弯出去、落到面板顶边上，
-												// 不再是一条直角落下去。弧线只画外凸的那一侧（右弧画「右+下」，
-												// 左弧画「左+下」），内侧露出的就是页签自己的底色。
-												"before:absolute before:-left-2 before:bottom-0 before:size-2 before:rounded-br-lg before:border-r before:border-b before:border-border before:content-['']",
-												"after:absolute after:-right-2 after:bottom-0 after:size-2 after:rounded-bl-lg after:border-l after:border-b after:border-border after:content-['']",
-											)
-										: "border-transparent text-muted-foreground hover:text-foreground",
+									active ? "-mb-px rounded-t-lg bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
 									fileDragHovered && !active && "text-foreground bg-primary/10",
 								)}
 							>
+								{active && <TabOutline />}
 								<TabInner icon={icon} label={label} badge={badge} active={active} />
 							</button>
 							{canRemove && (

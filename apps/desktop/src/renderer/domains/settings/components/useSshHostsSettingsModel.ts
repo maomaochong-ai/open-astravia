@@ -11,15 +11,12 @@ export interface SshHostFormState {
 	identityFile: string;
 }
 
-/** 某一行的探测结果。成功与失败都留在行内，不打断用户去看别处。 */
+/**
+ * 某一行的探测结果。成功、警告与失败都留在行内，不打断用户去看别处。
+ * 警告档专门表示「连上了但远端缺工具」：它不是失败，但用户接下来一定会踩到。
+ */
 export interface SshHostRowMessage {
 	tone: "success" | "warning" | "error";
-	text: string;
-	/** 原始 stderr。默认折叠——它对定位问题有用，但不该当作首行文案。 */
-	details?: string;
-}
-export interface SshHostRowMessage {
-	tone: "success" | "error";
 	text: string;
 	/** 原始 stderr。默认折叠——它对定位问题有用，但不该当作首行文案。 */
 	details?: string;
