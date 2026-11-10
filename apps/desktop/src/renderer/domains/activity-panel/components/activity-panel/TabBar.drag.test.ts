@@ -171,6 +171,48 @@ describe("TabBar pointer drag", () => {
 		}
 	});
 
+	/*
+	 * 激活指示器是一块绝对定位的不透明底色。内容层若不带 `relative z-10`，
+	 * 会被它整块盖住——文字还在 DOM 里，但屏幕上只剩关闭按钮。
+	 * 页签之间没有 gap，选中项的凹形连接角会伸到左右邻居身上，所以选中页签要抬一层。
+	 */
+	it("keeps the tab label above the active indicator fill", () => {
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+			...bounds(0, 0, 120, 32),
+			toJSON: () => ({}),
+		} as DOMRect);
+		try {
+			act(() => {
+				root.render(
+					createElement(TabBar, {
+						items: [
+							{ key: "a", label: "Alpha" },
+							{ key: "b", label: "Beta" },
+						],
+						value: "a",
+						onChange: vi.fn(),
+						suppressLayoutAnimation: true,
+					}),
+				);
+			});
+
+			const active = container.querySelector('[role="tab"][aria-selected="true"]');
+			// 指示器在前，内容层在后且带 z-10：绘制顺序与层叠都要盖过那块底色。
+			const content = active?.firstElementChild?.nextElementSibling;
+			expect(content?.className).toContain("relative");
+			expect(content?.className).toContain("z-10");
+			expect(content?.textContent).toContain("Alpha");
+
+			// 选中页签抬到同层之上，否则连接角会被相邻页签切掉。
+			const wrapper = active?.parentElement;
+			expect(wrapper?.className).toContain("z-10");
+			const idleWrapper = container.querySelector('[role="tab"][aria-selected="false"]')?.parentElement;
+			expect(idleWrapper?.className).toContain("z-0");
+		} finally {
+			vi.restoreAllMocks();
+		}
+	});
+
 	it("keeps a click below the drag threshold", () => {
 		const onChange = vi.fn();
 		const onDragStart = vi.fn();

@@ -232,7 +232,7 @@ function TabInner({
 	active: boolean;
 }): JSX.Element {
 	return (
-		<span className="flex min-w-0 flex-1 items-center gap-1.5">
+		<span className="relative z-10 flex min-w-0 flex-1 items-center gap-1.5">
 			{icon != null &&
 				(typeof icon === "string" ? (
 					<span className={cn(icon, "h-3.5 w-3.5 shrink-0", active ? "opacity-100" : "opacity-60")} />
@@ -641,6 +641,8 @@ export function TabBar<T extends string>({
 							onDrop={(event) => onFileDrop(event, key)}
 							className={cn(
 								"group/tab relative min-w-[72px] max-w-[160px] shrink-0 touch-none",
+								// 行内没有 gap，选中页签的凹形连接角会伸到左右邻居身上；抬一层它才完整。
+								active ? "z-10" : "z-0",
 								isDragged && "opacity-60",
 							)}
 						>
