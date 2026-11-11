@@ -1,6 +1,6 @@
 import { resolveDownloadOs, resolveDownloadTarget, type DownloadTarget } from "./download-target";
 
-export const DOWNLOAD_VERSION = "0.5.89";
+export const DOWNLOAD_VERSION = "0.5.93";
 
 type UserAgentData = {
 	getHighEntropyValues?: (hints: readonly string[]) => Promise<{ architecture?: string }>;
@@ -27,15 +27,19 @@ export function initDownloadPlatformHighlight() {
 	document.querySelectorAll(".dl-platform-icon").forEach((el) => {
 		const htmlEl = el as HTMLElement;
 		if (htmlEl.dataset.p === iconMap[platform]) {
-			htmlEl.style.opacity = "0.6";
-			htmlEl.style.borderColor = "var(--accent)";
+			htmlEl.style.borderColor = "color-mix(in srgb, var(--accent) 55%, var(--line-card))";
+			htmlEl.style.boxShadow = "0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent) inset";
 		}
 	});
 }
 
-/* 下载链接：按系统与芯片选择产物，3 处同步更新（hero CTA、下载区 primary、版本标签） */
+/**
+ * 下载链接：按系统与芯片选择产物，两处同步更新（下载区主按钮、版本标签）。
+ *
+ * 首页首屏不再挂直接下载按钮：它是「开始使用」锚点，落到下载区由这里决定最终产物。
+ * 只有一处 href 需要写，也就没有「首屏与下载区指向不同安装包」的可能。
+ */
 export function initDownloadLinks() {
-	const heroDownload = document.querySelector<HTMLAnchorElement>(".hero .btn--primary.btn--lg");
 	const dlPrimary = document.getElementById("dlPrimary") as HTMLAnchorElement | null;
 	const dlPrimaryText = document.getElementById("dlPrimaryText");
 	const dlPrimaryVersion = document.getElementById("dlPrimaryVersion");
@@ -47,7 +51,6 @@ export function initDownloadLinks() {
 		if (dlPrimary) dlPrimary.href = target.href;
 		if (dlPrimaryText) dlPrimaryText.textContent = target.label;
 		if (dlPrimaryVersion) dlPrimaryVersion.textContent = target.versionLabel;
-		if (heroDownload) heroDownload.href = target.href;
 	}
 
 	apply(resolveDownloadTarget({ userAgent }, { version: DOWNLOAD_VERSION, intelHint: !canReadArchitecture }));
