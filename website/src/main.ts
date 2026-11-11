@@ -9,8 +9,6 @@ import { initDownloadLinks, initDownloadPlatformHighlight } from "./download-lin
 import { initExternalLinks } from "./external-links";
 import { initMobileInstall } from "./mobile-install";
 
-import { initStory } from "./story";
-
 const NAV = document.querySelector<HTMLElement>(".nav");
 const NAV_TOGGLE = document.querySelector<HTMLButtonElement>("#navToggle");
 const NAV_LINKS = document.querySelector<HTMLElement>("#navLinks");
@@ -41,6 +39,15 @@ function applyThemeToggleState(theme: Theme) {
 
 const QR_LINKS = [...document.querySelectorAll<HTMLAnchorElement>("a.qr-card[data-poster-dark][data-poster-light]")];
 
+/* 产品截图有深浅两张：图里自带界面底色，跟着主题换，否则深色页上会嵌一块白框 */
+const APP_SHOT = document.querySelector<HTMLImageElement>("img#appShot[data-shot-dark][data-shot-light]");
+
+function applyAppShot(theme: Theme) {
+	if (!APP_SHOT) return;
+	const next = theme === "dark" ? APP_SHOT.dataset.shotDark : APP_SHOT.dataset.shotLight;
+	if (next && APP_SHOT.getAttribute("src") !== next) APP_SHOT.setAttribute("src", next);
+}
+
 /* 社群海报有大片自带底色：深色主题用深底海报、浅色主题用浅底海报，
    否则海报底色会和界面底色撞出一个粗边框。二维码本体是透明底，不受影响 */
 function applyCommunityPosters(theme: Theme) {
@@ -50,9 +57,12 @@ function applyCommunityPosters(theme: Theme) {
 	}
 }
 
-/* 深浅主题：点击切换并记忆；默认浅色（Apple 纸感风），仅存过 dark 才回暗色 */
+/* 深浅主题：点击切换并记忆；默认深色，只有存过 light 才回浅色 */
 function initThemeToggle() {
+	// 静态标记写的是 dark，这里把记忆值同步回去：刷新后不会闪回默认色。
+	document.documentElement.dataset.theme = getCurrentTheme();
 	applyCommunityPosters(getCurrentTheme());
+	applyAppShot(getCurrentTheme());
 	if (!THEME_TOGGLE) return;
 	applyThemeToggleState(getCurrentTheme());
 	THEME_TOGGLE.addEventListener("click", () => {
@@ -63,12 +73,14 @@ function initThemeToggle() {
 		localStorage.setItem(THEME_KEY, next);
 		applyThemeToggleState(next);
 		applyCommunityPosters(next);
+		applyAppShot(next);
 	});
 	window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
 		// 用户未手动选择过时，图标状态跟随系统切换
 		if (!document.documentElement.dataset.theme) {
 			applyThemeToggleState(event.matches ? "dark" : "light");
 			applyCommunityPosters(event.matches ? "dark" : "light");
+			applyAppShot(event.matches ? "dark" : "light");
 		}
 	});
 }
@@ -207,63 +219,6 @@ function initFaq() {
 	});
 }
 
-/* 下载：按访问系统自动选中对应平台，支持手动切换 */
-type DlOs = "macos" | "windows" | "linux";
-
-const DL_OS_LABEL: Record<DlOs, string> = {
-	macos: "macOS",
-	windows: "Windows",
-	linux: "Linux",
-};
-
-function detectOs(): DlOs | null {
-	const ua = navigator.userAgent;
-	if (/Mac|iPhone|iPad/.test(ua)) return "macos";
-	if (/Windows/.test(ua)) return "windows";
-	if (/Linux|X11|CrOS/.test(ua)) return "linux";
-	return null;
-}
-
-function initDownload() {
-	const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>(".dl-tab"));
-	const panes = Array.from(document.querySelectorAll<HTMLElement>(".dl-pane"));
-	if (tabs.length === 0) return;
-	const detect = document.getElementById("dlDetect");
-	const detectText = document.getElementById("dlDetectText");
-
-	function show(os: DlOs, auto: boolean) {
-		for (const tab of tabs) {
-			const active = tab.dataset.os === os;
-			tab.classList.toggle("is-active", active);
-			tab.setAttribute("aria-selected", String(active));
-			tab.tabIndex = active ? 0 : -1;
-		}
-		for (const pane of panes) {
-			pane.hidden = pane.id !== `dlPane${os.charAt(0).toUpperCase()}${os.slice(1)}`;
-		}
-		if (detectText) {
-			detectText.textContent = auto ? `已自动识别你的系统：${DL_OS_LABEL[os]}` : `已选择 ${DL_OS_LABEL[os]} 版`;
-		}
-	}
-
-	for (const tab of tabs) {
-		tab.addEventListener("click", () => {
-			const os = tab.dataset.os;
-			if (os === "macos" || os === "windows" || os === "linux") {
-				detect?.removeAttribute("hidden");
-				show(os, false);
-			}
-		});
-	}
-
-	const os = detectOs();
-	if (os) {
-		detect?.removeAttribute("hidden");
-		show(os, true);
-	}
-}
-
-
 initNavScroll();
 initNavToggle();
 initReveal();
@@ -274,135 +229,70 @@ initYear();
 initThemeToggle();
 
 initFaq();
-initDownload();
 initDownloadLinks();
 
-initMobileInstall();
+/*
+ * 工作台视图切换：三个 tab 各自对应一块 stage，切换只切 hidden + 类名。
+ * 内容本身是静态标记（不引入第二个前端框架），动画交给 CSS 过渡。
+ */
+function initWorkbenchTabs() {
+	const tabs = [...document.querySelectorAll<HTMLButtonElement>(".tabs .tab[data-view]")];
+	const views = [...document.querySelectorAll<HTMLElement>("[data-stage-view]")];
+	if (tabs.length === 0 || views.length === 0) return;
 
-initStory();
-
-/* 下载底部基座装饰 */
-function initConstellation() {
-	const ICON = 48;
-	const GAP = 10;
-	const theater = document.querySelector<HTMLElement>(".download-theater");
-	const topIcons = Array.from(document.querySelectorAll<HTMLElement>("#dlPlatforms .dl-platform-icon"));
-	const svgEl = document.getElementById("dlConstellationSVG");
-	const pEl = document.getElementById("dlPrimary");
-	const toggle = document.getElementById("dlOthersToggle");
-	const others = document.getElementById("dlOthers");
-	if (!theater || topIcons.length === 0) return;
-
-	// 隐藏 SVG 连线（纯装饰不需要）
-	if (svgEl) svgEl.style.display = "none";
-
-	function calcPositions() {
-		if (!pEl || !theater) return [];
-		const tRect = theater.getBoundingClientRect();
-		const pRect = pEl.getBoundingClientRect();
-		const othersRect = others?.getBoundingClientRect();
-
-		// 基座位置：其他版本按钮下方 24px
-		const baseY = (othersRect ? othersRect.bottom : pRect.bottom) - tRect.top + 24;
-		const totalWidth = topIcons.length * ICON + (topIcons.length - 1) * GAP;
-		const startX = (tRect.width - totalWidth) / 2;
-
-		const positions: Array<{ x: number; y: number }> = [];
-		for (let i = 0; i < topIcons.length; i++) {
-			positions.push({
-				x: startX + i * (ICON + GAP) + ICON / 2,
-				y: baseY,
-			});
+	const show = (view: string) => {
+		for (const tab of tabs) {
+			const on = tab.dataset.view === view;
+			tab.classList.toggle("is-active", on);
+			tab.setAttribute("aria-selected", String(on));
+			// 只有当前 tab 可 Tab 键停留，其余靠方向键走——roving tabindex。
+			tab.tabIndex = on ? 0 : -1;
 		}
-		return positions;
-	}
-
-	function start() {
-		const positions = calcPositions();
-		if (positions.length === 0) return;
-
-		topIcons.forEach((el, i) => {
-			const tx = positions[i].x - ICON / 2;
-			const ty = positions[i].y - ICON / 2;
-
-			// 从下方升起
-			const sy = ty + 60 + Math.random() * 40;
-
-			el.style.cssText = "";
-			el.style.opacity = "0";
-			el.style.position = "absolute";
-			el.style.left = `${tx}px`;
-			el.style.top = `${sy}px`;
-			el.style.width = `${ICON}px`;
-			el.style.height = `${ICON}px`;
-			el.style.transform = `scale(0.8)`;
-
-			const delay = i * 60;
-			const riseDur = 400 + Math.round(Math.random() * 100);
-
-			requestAnimationFrame(() => {
-				setTimeout(() => {
-					el.style.opacity = "0.4";
-					el.style.transition = `top ${riseDur}ms cubic-bezier(0.16,1,0.3,1), transform ${riseDur}ms cubic-bezier(0.16,1,0.3,1), opacity 200ms ease`;
-					el.style.top = `${ty}px`;
-					el.style.transform = `scale(1)`;
-				}, delay);
-			});
-
-			// hover 效果
-			el.addEventListener("mouseenter", () => {
-				el.style.transition = "transform 0.2s var(--ease), opacity 0.2s ease, box-shadow 0.2s ease";
-				el.style.transform = `translateY(-4px) scale(1.08)`;
-				el.style.opacity = "0.7";
-				el.style.borderColor = "var(--accent)";
-			});
-			el.addEventListener("mouseleave", () => {
-				el.style.transition = "transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease";
-				el.style.transform = `scale(1)`;
-				el.style.opacity = "0.4";
-				el.style.borderColor = "";
-			});
-		});
-	}
-
-	// 平台检测高亮
-	initDownloadPlatformHighlight();
-
-	// 其他版本展开/收起 + 实时跟随定位
-	if (toggle && others) {
-		toggle.addEventListener("click", () => {
-			const o = others.classList.toggle("is-open");
-			toggle.classList.toggle("is-open", o);
-		});
-		// 监听 others 尺寸变化，实时更新图标位置
-		const resizeObserver = new ResizeObserver(() => {
-			const positions = calcPositions();
-			topIcons.forEach((el, i) => {
-				if (positions[i]) {
-					const ty = positions[i].y - ICON / 2;
-					// 无过渡，直接跟随
-					el.style.transition = "none";
-					el.style.top = `${ty}px`;
-				}
-			});
-		});
-		resizeObserver.observe(others);
-	}
-
-	// IntersectionObserver 触发
-	const observer = new IntersectionObserver(
-		(entries) => {
-			for (const entry of entries) {
-				if (entry.isIntersecting) {
-					start();
-					observer.unobserve(entry.target);
-					break;
-				}
+		for (const panel of views) {
+			const on = panel.dataset.stageView === view;
+			panel.hidden = !on;
+			panel.classList.toggle("is-active", on);
+			if (on) {
+				// 重新触发入场：先摘掉再强制回流，动画才会每次播放。
+				panel.classList.remove("is-entering");
+				void panel.offsetWidth;
+				panel.classList.add("is-entering");
 			}
-		},
-		{ threshold: 0.15 },
-	);
-	observer.observe(theater);
+		}
+	};
+
+	show(tabs.find((t) => t.classList.contains("is-active"))?.dataset.view ?? "live");
+
+	for (const tab of tabs) {
+		tab.addEventListener("click", () => show(tab.dataset.view ?? "live"));
+	}
+	// 方向键在 tab 之间移动，符合 role="tablist" 的键盘预期。
+	document.querySelector(".tabs")?.addEventListener("keydown", (event) => {
+		const key = (event as KeyboardEvent).key;
+		if (key !== "ArrowRight" && key !== "ArrowLeft") return;
+		const index = tabs.findIndex((t) => t.classList.contains("is-active"));
+		if (index < 0) return;
+		const next = (index + (key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
+		show(tabs[next].dataset.view ?? "live");
+		tabs[next].focus();
+	});
 }
 
-initConstellation();
+initWorkbenchTabs();
+initDownloadPlatformHighlight();
+
+/* 「其他版本」折叠：展开/收起只切一个类，高度由 CSS 过渡。 */
+function initDownloadOthers() {
+	const toggle = document.getElementById("dlOthersToggle");
+	const others = document.getElementById("dlOthers");
+	if (!toggle || !others) return;
+	toggle.addEventListener("click", () => {
+		const open = others.classList.toggle("is-open");
+		toggle.classList.toggle("is-open", open);
+		toggle.setAttribute("aria-expanded", String(open));
+	});
+}
+
+initDownloadOthers();
+
+initMobileInstall();

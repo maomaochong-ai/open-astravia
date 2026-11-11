@@ -5,23 +5,35 @@ import { describe, expect, it } from "vitest";
 // 测试始终从 website 包目录运行：bun run test 与 scripts/quality/* 都是这样调用。
 const indexHtml = readFileSync(resolve("index.html"), "utf8");
 
+/** 取某个 id 的 `<section>` 内部标记；区块容器可能是 `band` 或 `band band--tight`。 */
 function sectionHtml(id: string): string {
-	const variants = [`<section class="section" id="${id}"`, `<section class="section section--tint" id="${id}"`];
-	const from = variants.map((needle) => indexHtml.indexOf(needle)).find((index) => index >= 0) ?? -1;
+	const from = indexHtml.indexOf(`id="${id}"`);
 	expect(from, `缺少 #${id} 区块`).toBeGreaterThanOrEqual(0);
+	// 往回找到这个 section 的开标签，再取到它自己的收尾。
+	const start = indexHtml.lastIndexOf("<section", from);
 	const end = indexHtml.indexOf("</section>", from);
-	return indexHtml.slice(from, end);
+	return indexHtml.slice(start, end);
 }
 
 /**
- * 首页是静态标记，改版时最容易悄悄丢的东西是区块顺序、条目数量和文案来源。
- * 这里钉住 0.5.76 对齐上游时定下的约束，避免下次改版又退回旧结构。
+ * 首页是静态标记，改版时最容易悄悄丢的东西是区块顺序、条目数量和产品事实。
+ * 这里钉住的是「内容与事实」，不是某个具体类名或版式——版式可以大改，这些不能丢。
  */
 describe("首页区块结构", () => {
-	it("区块顺序为 生态 → 知识库 → 定价 → 隐私 → FAQ", () => {
-		const order = ["ecosystem", "knowledge", "pricing", "privacy", "faq"].map((id) => indexHtml.indexOf(`id="${id}"`));
+	it("区块顺序为 生态 → 知识库 → 定价 → 隐私 → FAQ → 下载", () => {
+		const order = ["ecosystem", "knowledge", "pricing", "privacy", "faq", "download"].map((id) =>
+			indexHtml.indexOf(`id="${id}"`),
+		);
 		expect(order.every((index) => index >= 0)).toBe(true);
 		expect([...order].sort((left, right) => left - right)).toEqual(order);
+	});
+
+	it("首屏给出一条可读的产品主张，而不是空标题", () => {
+		const h1 = indexHtml.match(/<h1 class="hero__title reveal">([\s\S]*?)<\/h1>/);
+		expect(h1).not.toBeNull();
+		const text = (h1?.[1] ?? "").replace(/<[^>]+>/g, "").trim();
+		expect(text.length).toBeGreaterThan(8);
+		expect(indexHtml).toContain('class="hero__sub reveal"');
 	});
 
 	it("知识库是四步流程，并说明数据留在本机", () => {
@@ -44,12 +56,13 @@ describe("首页区块结构", () => {
 		expect(html).toContain('href="#download"');
 	});
 
-	it("隐私区沿用「为掌控而设计」三张承诺卡", () => {
+	it("隐私区沿用「为掌控而设计」三张承诺卡，并列清联网时机", () => {
 		const html = sectionHtml("privacy");
 		expect(html).toContain("为掌控而设计");
 		for (const title of ["数据安全", "模型自由", "可扩展平台"]) {
 			expect(html).toContain(`<h3 class="promise__title">${title}</h3>`);
 		}
+		expect(html).toContain("没有遥测");
 	});
 
 	it("FAQ 是七个问题，且不残留上游品牌名", () => {
@@ -63,5 +76,12 @@ describe("首页区块结构", () => {
 		for (const href of ["#knowledge", "#pricing"]) {
 			expect(indexHtml).toContain(`<a href="${href}">`);
 		}
+	});
+
+	it("首屏不直接挂安装包，下载只发生在下载区", () => {
+		const hero = indexHtml.slice(indexHtml.indexOf('class="hero"'), indexHtml.indexOf('id="platform"'));
+		// 首屏 CTA 是页内锚点；把安装包散在两层会让版本号与架构判定出现两个事实源。
+		expect(hero).not.toContain("dl.astravia.dev");
+		expect(hero).toContain('href="#download"');
 	});
 });

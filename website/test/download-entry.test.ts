@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { initDownloadLinks, initDownloadPlatformHighlight } from "../src/download-links";
 
-const VERSION = "0.5.89";
+const VERSION = "0.5.93";
 const BASE = `https://dl.astravia.dev/app/v${VERSION}`;
 
 /** Apple Silicon 上的 Chrome / Safari 同样上报 "Intel Mac OS X"。 */
@@ -35,7 +35,6 @@ function downloadEntry() {
 		primary: document.getElementById("dlPrimary") as HTMLAnchorElement,
 		primaryText: document.getElementById("dlPrimaryText"),
 		primaryVersion: document.getElementById("dlPrimaryVersion"),
-		hero: document.querySelector<HTMLAnchorElement>(".hero .btn--primary.btn--lg"),
 	};
 }
 
@@ -54,7 +53,6 @@ describe("官网下载入口", () => {
 		expect(entry.primaryVersion?.textContent).toBe(`v${VERSION} · DMG`);
 		await vi.waitFor(() => expect(entry.primaryText?.textContent).toBe("MAC ARM64 (APPLE SILICON)"));
 		expect(entry.primaryVersion?.textContent).toBe(`v${VERSION} · DMG`);
-		expect(entry.hero?.href).toBe(entry.primary.href);
 	});
 
 	it("Intel Mac 在拿到架构提示后换成 Intel 安装包", async () => {
@@ -64,7 +62,6 @@ describe("官网下载入口", () => {
 
 		await vi.waitFor(() => expect(entry.primary.href).toBe(`${BASE}/Astravia-${VERSION}.dmg`));
 		expect(entry.primaryText?.textContent).toBe("MAC X64 (INTEL)");
-		expect(entry.hero?.href).toBe(entry.primary.href);
 	});
 
 	it("Safari 拿不到架构提示时默认 arm64，并提示 Intel 用户改选", () => {
@@ -86,13 +83,16 @@ describe("官网下载入口", () => {
 		expect(entry.primaryVersion?.textContent).toBe(`v${VERSION} · EXE`);
 	});
 
-	it("平台图标按当前系统高亮", () => {
+	it("平台图标按当前系统高亮描边", () => {
 		setDevice({ userAgent: MAC_UA });
 		initDownloadPlatformHighlight();
 
 		const macIcon = document.querySelector<HTMLElement>('.dl-platform-icon[data-p="ollama"]');
 		const winIcon = document.querySelector<HTMLElement>('.dl-platform-icon[data-p="kimi"]');
-		expect(macIcon?.style.opacity).toBe("0.6");
-		expect(winIcon?.style.opacity).not.toBe("0.6");
+		// 只用描边和一圈内高光标记「当前系统」，不再把整块压暗——压暗会让图标看起来像禁用。
+		expect(macIcon?.style.borderColor).toContain("var(--accent)");
+		expect(macIcon?.style.boxShadow).toContain("inset");
+		expect(winIcon?.style.borderColor).toBe("");
+		expect(winIcon?.style.boxShadow).toBe("");
 	});
 });

@@ -22,9 +22,16 @@ describe("下载入口的 DOM 契约", () => {
 		}
 	});
 
-	it("导航不再提供下载按钮，Hero 下载按钮选择器唯一命中", () => {
+	it("导航只给页内锚点，安装包链接只出现在下载区", () => {
 		expect(countClassMatches(indexHtml, ["nav__download"])).toBe(0);
-		expect(countClassMatches(indexHtml, ["btn--primary", "btn--lg"])).toBe(1);
+		// 首屏用「开始使用」锚点落到下载区，不直接挂二进制：版本与架构判定只留一个事实源。
+		expect(countClassMatches(indexHtml, ["dl__primary", "btn--lg"])).toBe(1);
+	});
+
+	it("Hero 的 CTA 指向下载区而不是某个安装包", () => {
+		const hero = indexHtml.slice(indexHtml.indexOf('class="hero"'), indexHtml.indexOf('id="platform"'));
+		expect(hero).toContain('href="#download"');
+		expect(hero).not.toContain("dl.astravia.dev");
 	});
 
 	it("保留平台图标容器", () => {
