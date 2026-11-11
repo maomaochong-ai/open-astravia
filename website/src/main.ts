@@ -124,24 +124,39 @@ function initNavToggle() {
 
 /* 滚动显现 */
 function initReveal() {
-	const items = document.querySelectorAll<HTMLElement>(".reveal");
+	const items = [...document.querySelectorAll<HTMLElement>(".reveal")];
 	if (items.length === 0) return;
 	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
 		for (const item of items) item.classList.add("is-visible");
 		return;
 	}
-	const observer = new IntersectionObserver(
-		(entries) => {
-			for (const entry of entries) {
-				if (entry.isIntersecting) {
-					entry.target.classList.add("is-visible");
-					observer.unobserve(entry.target);
-				}
-			}
-		},
-		{ threshold: 0.12, rootMargin: "0px 0px -6% 0px" },
-	);
-	for (const item of items) observer.observe(item);
+
+	/*
+	 * 按「元素顶部进入视口」判定，而不是 IntersectionObserver 的比例阈值。
+	 * 点页脚锚点跳到 #faq 时，中间那些区块从未进入视口、比例永远到不了阈值，
+	 * 它们会一直停在 opacity: 0 —— 用户看到的就是整段空白。这里改成每次
+	 * 滚动/routes 变化都补一遍，凡是已经越过视口顶部的元素一并显示。
+	 */
+	let frame = 0;
+	const pass = () => {
+		frame = 0;
+		const limit = window.innerHeight * 0.92;
+		for (const item of items) {
+			if (item.classList.contains("is-visible")) continue;
+			if (item.getBoundingClientRect().top < limit) item.classList.add("is-visible");
+		}
+	};
+	const schedule = () => {
+		if (frame) return;
+		frame = requestAnimationFrame(pass);
+	};
+
+	pass();
+	window.addEventListener("scroll", schedule, { passive: true });
+	window.addEventListener("resize", schedule);
+	window.addEventListener("hashchange", schedule);
+	// 字体/图片加载会改变布局高度，加载完再补一次。
+	window.addEventListener("load", schedule);
 }
 
 /* 当前区块高亮导航项 */
