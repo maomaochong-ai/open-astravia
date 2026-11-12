@@ -32,7 +32,7 @@
 		<a class="skip" href="#main">跳到主要内容</a>
 
 		<!-- ============ 导航 ============ -->
-		<header class="nav" id="nav">
+		<header class="nav">
 			<div class="nav__inner">
 				<a class="nav__brand" href="#top" aria-label="Astravia 首页">
 					<img class="nav__mark" src="/banner-rounded.png" width="26" height="26" alt="" />
@@ -49,7 +49,7 @@
 					<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
 						<path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3Z" />
 					</svg>
-					<span class="nav__stars-num" id="starCount">开源</span>
+					<span>开源</span>
 					<svg class="nav__stars-ico" aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
 						<path d="m12 17.3-6.2 3.3 1.2-6.9-5-4.9 6.9-1L12 1.5l3.1 6.3 6.9 1-5 4.9 1.2 6.9Z" />
 					</svg>
@@ -109,10 +109,10 @@
 
 					<div class="hero__links reveal">
 						<a class="link-arrow" href="https://github.com/maomaochong-ai/open-astravia" target="_blank" rel="noopener">
-							浏览源码与 Releases <span class="arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+							浏览源码与 Releases <span aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
 						</a>
 						<a class="link-arrow" href="https://docs.astravia.dev" target="_blank" rel="noopener">
-							阅读文档 <span class="arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+							阅读文档 <span aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
 						</a>
 					</div>
 
@@ -132,7 +132,7 @@
 						</div>
 						<figcaption class="hero__shot-cap">
 							<span>真实界面截图</span>
-							<span class="hero__shot-sep" aria-hidden="true">·</span>
+							<span aria-hidden="true">·</span>
 							<span>深浅色随主题切换</span>
 						</figcaption>
 					</figure>
@@ -163,7 +163,7 @@
 
 					<div class="trio">
 						<article class="trio__card reveal">
-							<div class="mock mock--chat" aria-hidden="true">
+							<div class="mock " aria-hidden="true">
 								<div class="mock__bar">
 									<span class="mock__dots"><i></i><i></i><i></i></span>
 									<span class="mock__path">open-astravia / src</span>
@@ -173,7 +173,7 @@
 										<span class="chat-avatar">你</span>
 										<p>把 <code>TabBar</code> 的激活态改成与内容面板连成一体。</p>
 									</div>
-									<div class="chat-row chat-row--tool">
+									<div class="chat-row ">
 										<span class="chat-avatar chat-avatar--ai">AI</span>
 										<div class="tool-call">
 											<span class="tool-call__name">read_file</span>
@@ -221,7 +221,7 @@
 						</article>
 
 						<article class="trio__card reveal">
-							<div class="mock mock--cron" aria-hidden="true">
+							<div class="mock " aria-hidden="true">
 								<div class="mock__bar">
 									<span class="mock__path">自动化</span>
 									<span class="mock__tag mock__tag--live">3 个在跑</span>
@@ -267,11 +267,11 @@
 					</header>
 
 					<div class="duo">
-						<article class="duo__item reveal">
+						<article class="reveal">
 							<div class="panel">
 								<div class="panel__bar">
 									<span class="panel__crumb">执行 · session 4f21</span>
-									<span class="panel__meta">12 步 · 1m 48s</span>
+									<span>12 步 · 1m 48s</span>
 								</div>
 								<div class="panel__body">
 									<div class="log-row"><span class="log-dot"></span><span class="log-name">grep</span><code>isPro|isVip|entitlement</code><span class="log-ok"><svg class="ico-check" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m20 6-11 11-5-5"/></svg></span></div>
@@ -287,11 +287,11 @@
 							</p>
 						</article>
 
-						<article class="duo__item reveal">
+						<article class="reveal">
 							<div class="panel">
 								<div class="panel__bar">
 									<span class="panel__crumb">交付物</span>
-									<span class="panel__meta">5 个文件</span>
+									<span>5 个文件</span>
 								</div>
 								<div class="panel__body panel__body--files">
 									<div class="file-row"><span class="file-ico file-ico--md">MD</span><span class="file-name">docs/entitlement.md</span><span class="file-meta">12.4 KB</span></div>
@@ -311,7 +311,7 @@
 			</section>
 
 			<!-- ============ 六项能力 ============ -->
-			<section class="band band--tight" id="products">
+			<section class="band band--tight">
 				<div class="wrap">
 					<header class="head head--center reveal">
 						<h2 class="head__title">把难搞的那部分交出去</h2>
@@ -586,7 +586,7 @@
 
 					<div class="center-actions reveal">
 						<a class="btn btn--solid" href="https://github.com/maomaochong-ai/astravia/issues/new" target="_blank" rel="noopener">说明你的场景</a>
-						<a class="link-arrow" href="https://docs.astravia.dev" target="_blank" rel="noopener">先看部署文档 <span class="arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span></a>
+						<a class="link-arrow" href="https://docs.astravia.dev" target="_blank" rel="noopener">先看部署文档 <span aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span></a>
 					</div>
 				</div>
 			</section>
@@ -594,7 +594,7 @@
 			<!-- ============ 生态 ============ -->
 			<section class="band" id="ecosystem">
 				<div class="wrap eco">
-					<div class="eco__copy reveal">
+					<div class="reveal">
 						<header class="head head--flush">
 							<h2 class="head__title">一切皆插件</h2>
 							<p class="head__sub">设计画布、内容创作、浏览器操作、Office 查看器——这些工作区本身就是插件写出来的。</p>
@@ -751,7 +751,7 @@
 			<!-- ============ 模型 ============ -->
 			<section class="band" id="models">
 				<div class="wrap models">
-					<div class="models__copy reveal">
+					<div class="reveal">
 						<header class="head head--flush">
 							<h2 class="head__title">用自己的模型。<br />用自己的 Key。</h2>
 							<p class="head__sub">内置多家服务商预设——只含接口地址与 API 类型，不含任何 Key。</p>
@@ -930,10 +930,10 @@
 						<p class="head__sub">免费 · 开源 · Apache-2.0 · 双击即装，无需注册账号。</p>
 					</header>
 
-					<div class="download-embed" id="downloadEmbed">
+					<div class="download-embed">
 						<div class="dl-theater">
 							<div class="dl-theater__glow" aria-hidden="true"></div>
-							<div class="dl-platforms" id="dlPlatforms" aria-hidden="true">
+							<div class="dl-platforms" aria-hidden="true">
 								<div class="dl-platform-icon" data-p="ollama"><div class="icon-glow"></div><img src="/download/ollama.webp" alt="" width="28" height="28" /></div>
 								<div class="dl-platform-icon" data-p="kimi"><div class="icon-glow"></div><img src="/download/kimi.webp" alt="" width="28" height="28" /></div>
 								<div class="dl-platform-icon" data-p="grok"><div class="icon-glow"></div><img src="/download/grok.webp" alt="" width="28" height="28" /></div>
@@ -944,8 +944,8 @@
 								<div class="dl-platform-icon" data-p="openai"><div class="icon-glow"></div><img src="/download/openai.webp" alt="" width="28" height="28" /></div>
 							</div>
 							<div class="dl-content">
-								<h3 class="dl__title" id="dlTitle">选择你的平台</h3>
-								<p class="dl__desc" id="dlDesc">自动检测你的设备，点一下直接下载。macOS / Windows / Linux 均免费，无需注册。</p>
+								<h3 class="dl__title">选择你的平台</h3>
+								<p class="dl__desc">自动检测你的设备，点一下直接下载。macOS / Windows / Linux 均免费，无需注册。</p>
 
 								<div class="dl__primary-wrap">
 									<a class="dl__primary btn btn--solid btn--lg" id="dlPrimary" href="https://dl.astravia.dev/app/v0.5.93/Astravia-0.5.93-arm64.dmg" target="_blank" rel="noopener">
@@ -977,7 +977,7 @@
 						</div>
 
 						<div class="dl-mobile reveal" id="dlMobile">
-							<div class="dl-mobile__head">
+							<div>
 								<p class="eyebrow">手机端</p>
 								<h3 class="dl-mobile__title">装到手机，扫码就能遥控这台电脑</h3>
 								<p class="dl-mobile__lead">手机 App 与桌面版走同一套配对协议：桌面端点「手机扫码连接」，手机扫码后即可在手机上接着看会话、发指令。两端都免费。</p>
@@ -990,7 +990,7 @@
 									</header>
 									<p class="mob-card__desc">下载 IPA 后用你自己的 Apple ID 签名安装，不需要开发者账号，也不需要把设备交给别人。系统要求 iOS 26 或更高。</p>
 									<div class="mob-card__cta">
-										<a class="mob-card__btn btn btn--ghost" id="mobIosHref" href="https://dl.astravia.dev/client-mobile/Astravia-ios.ipa">
+										<a class="btn btn--ghost" id="mobIosHref" href="https://dl.astravia.dev/client-mobile/Astravia-ios.ipa">
 											<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
 											<span>下载 IPA</span>
 										</a>
@@ -1010,7 +1010,7 @@
 									</header>
 									<p class="mob-card__desc">APK 由发版流程用固定密钥签名，与桌面版同一次发布，装上就能用。</p>
 									<div class="mob-card__cta">
-										<a class="mob-card__btn btn btn--ghost" id="mobAndroidHref" href="https://dl.astravia.dev/client-mobile/Astravia-arm64-v8a.apk">
+										<a class="btn btn--ghost" id="mobAndroidHref" href="https://dl.astravia.dev/client-mobile/Astravia-arm64-v8a.apk">
 											<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
 											<span>下载 APK</span>
 										</a>
@@ -1036,7 +1036,7 @@
 					<p class="closer__sub">双击即装。没有账号，没有试用期，没有额度。</p>
 					<div class="center-actions">
 						<a class="btn btn--solid btn--lg" href="#download">下载客户端</a>
-						<a class="link-arrow" href="https://github.com/maomaochong-ai/open-astravia" target="_blank" rel="noopener">看源码 <span class="arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span></a>
+						<a class="link-arrow" href="https://github.com/maomaochong-ai/open-astravia" target="_blank" rel="noopener">看源码 <span aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span></a>
 					</div>
 				</div>
 			</section>
@@ -1046,7 +1046,7 @@
 		<footer class="footer">
 			<div class="wrap">
 				<div class="footer__grid">
-					<div class="footer__brand-col">
+					<div>
 						<a class="footer__brand" href="#top">
 							<img src="/banner-rounded.png" width="24" height="24" alt="" />
 							<span>Astravia</span>
@@ -1128,7 +1128,7 @@
 
 				<div class="footer__bottom">
 					<p>© <span id="year">2026</span> Astravia · Apache-2.0</p>
-					<p class="footer__bottom-right">本地优先 · 模型自配 · 数据自持</p>
+					<p>本地优先 · 模型自配 · 数据自持</p>
 				</div>
 			</div>
 		</footer>
