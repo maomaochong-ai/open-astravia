@@ -1160,7 +1160,9 @@
 			"plugin": "Plugin",
 			"market": "Market"
 		},
-		"connectorsSection": "Connected"
+		"connectorsSection": "Connected",
+		"pluginsSection": "Plugins"
+
 	},
 	"suggestionBubbles": {
 		"sendTooltip": "Click to send this suggestion"

@@ -222,7 +222,7 @@ export function useCommandPanelModel({
 			header: t("slashPanel.header"),
 			resultCount: t("slashPanel.resultCount", { count: items.length }),
 			connectorsSection: t("slashPanel.connectorsSection"),
-			emptyNoMatch: t("slashPanel.emptyNoMatch"),
+			pluginsSection: t("slashPanel.pluginsSection"),
 			emptyNoMatchHint: t("slashPanel.emptyNoMatchHint"),
 			emptyNoSkills: t("slashPanel.emptyNoSkills"),
 			emptyNoSkillsHint: t("slashPanel.emptyNoSkillsHint"),
@@ -230,24 +230,29 @@ export function useCommandPanelModel({
 		[items.length, t],
 	);
 
+	// 底部命令条只留内置开关。市场插件的开关是列表里的一行（见 viewProps.pluginActions）。
 	const actions = useMemo(
-		() => [
-			...actionBar.builtins.map((builtin) => ({
+		() =>
+			actionBar.builtins.map((builtin) => ({
 				id: builtin.id,
 				label: builtin.label,
 				icon: <span className={`${builtin.iconClass} flex h-3.5 w-3.5 items-center justify-center`} />,
 				active: builtin.active,
 				onToggle: builtin.onToggle,
 			})),
-			...actionBar.items.map((item) => ({
+		[actionBar.builtins],
+	);
+
+	const pluginActions = useMemo(
+		() =>
+			actionBar.items.map((item) => ({
 				id: item.id,
 				label: item.label,
 				icon: item.icon,
 				active: item.active,
 				onToggle: () => actionBar.actions.toggleItem(item.id),
 			})),
-		],
-		[actionBar],
+		[actionBar.items, actionBar.actions],
 	);
 
 	return {
@@ -260,6 +265,7 @@ export function useCommandPanelModel({
 			connectors,
 			connectorColumns: columns,
 			actions,
+			pluginActions,
 			labels,
 			resolveIcon,
 			panelRef: panelRef as RefObject<HTMLDivElement | null>,
