@@ -1160,9 +1160,7 @@
 			"plugin": "插件",
 			"market": "市场"
 		},
-		"connectorsSection": "已接入",
-		"pluginsSection": "插件"
-
+		"connectorsSection": "已接入"
 	},
 	"suggestionBubbles": {
 		"sendTooltip": "点击发送此建议"

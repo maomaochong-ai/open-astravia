@@ -38,7 +38,6 @@ export function CommandPanelView({
 	connectors,
 	connectorColumns,
 	actions,
-	pluginActions,
 	labels,
 	resolveIcon,
 	panelRef,
@@ -130,39 +129,6 @@ export function CommandPanelView({
 									onSelect={onSelectConnector}
 								/>
 							)}
-							{/* 插件开关：一行一个，带开启状态。放列表里而不是底部平铺，避免插件一多
-							    就变成一整行看不出谁开着的标签。点一下即开启，插件自己负责打开它的面板。 */}
-							{!filtering && pluginActions.length > 0 ? (
-								<div className="flex flex-col gap-0.5 px-2 pb-1">
-									<div className="px-2 pb-0.5 pt-1 text-[11px] font-medium text-muted-foreground/60">
-										{labels.pluginsSection}
-									</div>
-									{pluginActions.map((action) => (
-										<button
-											key={action.id}
-											type="button"
-											onClick={action.onToggle}
-											title={action.label}
-											aria-pressed={action.active}
-											className="flex h-7 w-full items-center gap-2 rounded-lg px-2 text-left transition-colors hover:bg-foreground/5"
-										>
-											<span className="flex h-4 w-4 shrink-0 items-center justify-center">{action.icon}</span>
-											<span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-foreground">
-												{action.label}
-											</span>
-											<span
-												aria-hidden="true"
-												className={[
-													"h-4 w-4 shrink-0",
-													action.active
-														? "icon-[solar--check-circle-bold] text-primary"
-														: "icon-[solar--add-circle-linear] text-muted-foreground/40",
-												].join(" ")}
-											/>
-										</button>
-									))}
-								</div>
-							) : null}
 							{items.length > 0 || !operation ? <SkillList
 								items={items}
 								activeIndex={operation ? activeIndex - 1 : activeIndex}
@@ -176,23 +142,8 @@ export function CommandPanelView({
 							/> : null}
 						</FadingScrollArea>
 
-						{/* A mouse has no horizontal axis and the scrollbar here is hidden, so without
-						    the wheel handler below the strip is unreachable on a desktop once the
-						    plugins outgrow it. Touchpads already send deltaX; both axes are accepted. */}
 						{actions.length > 0 && (
-							<div
-								className="no-scrollbar flex shrink-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-3 pb-1 pt-1"
-								onWheel={(event) => {
-									const strip = event.currentTarget;
-									const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-									if (!delta) return;
-									const before = strip.scrollLeft;
-									strip.scrollLeft = before + delta;
-									// Only claim the gesture when it actually moved the strip; otherwise the
-									// panel behind it keeps its own scrolling.
-									if (strip.scrollLeft !== before) event.preventDefault();
-								}}
-							>
+							<div className="no-scrollbar flex shrink-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-3 pb-1 pt-1">
 								{actions.map((action) => (
 									<button
 										key={action.id}

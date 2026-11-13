@@ -39,12 +39,10 @@ describe("CommandPanelView built-in operation", () => {
 				connectors={[]}
 				connectorColumns={4}
 				actions={[]}
-				pluginActions={[]}
 				labels={{
 					header: "命令",
 					resultCount: "0 个结果",
 					connectorsSection: "已接入",
-					pluginsSection: "插件",
 					emptyNoMatch: "无结果",
 					emptyNoMatchHint: "",
 					emptyNoSkills: "无技能",

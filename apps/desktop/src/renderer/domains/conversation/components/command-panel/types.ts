@@ -34,12 +34,6 @@ export interface CommandPanelLabels extends SkillListLabels {
 	header: string;
 	resultCount: string;
 	connectorsSection: string;
-	/** 插件输入栏动作那一组的标题。 */
-	pluginsSection: string;
-}
-	header: string;
-	resultCount: string;
-	connectorsSection: string;
 }
 
 export interface CommandPanelActionItem {
@@ -69,13 +63,7 @@ export interface CommandPanelProps {
 	operation?: CommandPanelOperationItem;
 	connectors: readonly ConnectorGridItem[];
 	connectorColumns: number;
-	/** 内置开关（知识检索、计划、目标）：仍然固定在底部命令条。 */
 	actions: readonly CommandPanelActionItem[];
-	/**
-	 * 市场插件贡献的开关。不放在底部命令条：那里是平铺的一行，装十个插件就是十个
-	 * 看不清状态的标签；它们改成列表里的一行，点一下就把插件挂到这一轮上。
-	 */
-	pluginActions: readonly CommandPanelActionItem[];
 	labels: CommandPanelLabels;
 	resolveIcon: (skill: SkillInfo) => string | undefined;
 	panelRef: React.RefObject<HTMLDivElement | null>;
