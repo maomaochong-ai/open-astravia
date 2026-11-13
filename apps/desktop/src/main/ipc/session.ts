@@ -38,6 +38,7 @@ import type { SessionEvent, SessionExecutionMode, SettingsPatch } from "@astravi
 import { sessionExtensionObservation } from "@astravia/runtime-core/session-extensions";
 import { assertProjectSupportsExecutionMode } from "@astravia/runtime-desktop";
 import { isMcpJsonValue, type McpJsonObject } from "@astravia/runtime-mcp";
+import { readSessionHistoryTail, SESSION_PREVIEW_TAIL_BYTES } from "@astravia/runtime-node/conversation";
 import { BrowserWindow, ipcMain, type WebContents } from "electron";
 import type { DesktopMcpAppResourceRead, DesktopMcpAppToolCall } from "../../shared/mcp-app.js";
 import type { DesktopMcpElicitationResponse, DesktopMcpElicitationValue } from "../../shared/mcp-interaction.js";
@@ -66,6 +67,7 @@ import { isConversationSubCwd, readSessionCwdFromHeader } from "../conversations
 import { listRuntimeSessionProjects, listSessionHistory } from "../conversations/session-query-service.js";
 import { slimSessionEventForIpc } from "../conversations/slim-session-event-for-ipc.js";
 import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
+import { createEmitCoalescer } from "../conversations/viewer-emit-coalescer";
 import { type DebugRequestData, writeDebugRequest } from "../debug-writer.js";
 import { getAppLogger } from "../logger.js";
 import { getDesktopMcpAppRegistry } from "../mcp/mcp-app-runtime.js";

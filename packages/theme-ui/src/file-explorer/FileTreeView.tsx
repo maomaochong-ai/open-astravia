@@ -211,7 +211,7 @@ export function FileTreeView({
 			if (message) {
 				// 保留输入框与草稿，把错误留在行内，用户改完可直接再次提交。
 				setRenameError({ path: oldPath, message });
-				setRenameDraft({ path: oldPath, value: newName });
+				setRenameDraft({ path: oldPath, value: newName, caret: newName.length });
 				return;
 			}
 			setRenameError(null);
