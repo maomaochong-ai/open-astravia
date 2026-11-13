@@ -38,7 +38,14 @@ export interface FileTreeNodeViewProps {
 	renameValue?: string;
 	/** Inline validation message for the open rename input; non-null keeps the input open. */
 	renameError?: string | null;
+	/**
+	 * 光标在草稿里的位置。虚拟列表会把滚出窗口的行卸载再挂回来，输入框是全新 DOM，
+	 * 值又是父层给的受控值——浏览器在写入 value 时把光标丢到末尾。把位置存在草稿里，
+	 * 重新挂载后按原位置恢复，用户才不会被移到末尾继续打字。
+	 */
+	renameCaret?: number | null;
 	onRenameValueChange?: (value: string) => void;
+	onRenameCaretChange?: (caret: number) => void;
 	decoration?: FileExplorerNodeDecoration | null;
 	/** Entries included in the active multi-select when dragging this row. */
 	dragEntries?: readonly FileExplorerDragEntry[];
@@ -113,7 +120,9 @@ export function FileTreeNodeView({
 	isRenaming,
 	renameValue: draftValue,
 	renameError,
+	renameCaret,
 	onRenameValueChange,
+	onRenameCaretChange,
 	decoration,
 	dragEntries,
 	onToggleDir,
@@ -133,6 +142,8 @@ export function FileTreeNodeView({
 	const ime = useImeCompositionGuard();
 	const icon = getFileIcon(entry.name, entry.isDirectory, isExpanded);
 
+	/** 已按草稿还原过光标的 input 元素；换元素（重新挂载）才再还原一次。 */
+	const restoredInputRef = useRef<HTMLInputElement | null>(null);
 	const hasDraftRef = useRef(draftValue !== undefined);
 	hasDraftRef.current = draftValue !== undefined;
 
@@ -143,6 +154,15 @@ export function FileTreeNodeView({
 			// Remounted mid-rename (row scrolled back into the virtual window): keep the draft and
 			// only take focus back if nothing else claimed it while the row was unmounted.
 			if (shouldReclaimRenameFocus(input)) input.focus({ preventScroll: true });
+			// 重新挂载的输入框在写入受控 value 时会被浏览器把光标丢到末尾，这里按草稿里记下的
+			// 位置还原。只在「这个 input 元素第一次见到」时做一次：每次按键都写 selection
+			// 会把用户刚拉出的选区压成插入点。
+			if (restoredInputRef.current !== input) {
+				restoredInputRef.current = input;
+				const caret = renameCaret ?? renameValue.length;
+				const clamped = Math.max(0, Math.min(caret, renameValue.length));
+				input.setSelectionRange(clamped, clamped);
+			}
 			return;
 		}
 		input.focus();
@@ -150,11 +170,18 @@ export function FileTreeNodeView({
 		const end = entry.isDirectory || dotIdx <= 0 ? entry.name.length : dotIdx;
 		input.setSelectionRange(0, end);
 		setLocalRenameValue(entry.name);
+		onRenameCaretChange?.(end);
 	}, [isRenaming, entry.name, entry.isDirectory]);
 
 	function setRenameValue(value: string): void {
 		setLocalRenameValue(value);
 		onRenameValueChange?.(value);
+	}
+
+	/** 把光标位置交给父层：行被回收后重新挂载时靠它还原。 */
+	function reportCaret(input: HTMLInputElement): void {
+		if (input.selectionStart === null) return;
+		onRenameCaretChange?.(input.selectionStart);
 	}
 
 	function handleClick(e: React.MouseEvent) {
@@ -314,7 +341,11 @@ export function FileTreeNodeView({
 						ref={inputRef}
 						type="text"
 						value={renameValue}
-						onChange={(e) => setRenameValue(e.target.value)}
+						onChange={(e) => {
+							reportCaret(e.target);
+							setRenameValue(e.target.value);
+						}}
+						onSelect={(e) => reportCaret(e.currentTarget)}
 						onBlur={handleRenameBlur}
 						onKeyDown={handleRenameKeyDown}
 						onCompositionStart={ime.onCompositionStart}

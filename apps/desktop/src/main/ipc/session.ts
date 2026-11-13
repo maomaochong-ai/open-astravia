@@ -254,6 +254,8 @@ const CHANNELS = {
 	// write lock on — currently IM sessions, see ADR-0004. The viewer
 	// reads the .jsonl directly and tails fs.watch for new entries.
 	VIEWER_OPEN: "astravia:session:viewer-open",
+	/** 只读文件尾部做首屏预览；完整历史随后仍走 VIEWER_OPEN。 */
+	VIEWER_OPEN_TAIL: "astravia:session:viewer-open-tail",
 	VIEWER_SUBSCRIBE: "astravia:session:viewer-subscribe",
 	VIEWER_UNSUBSCRIBE: "astravia:session:viewer-unsubscribe",
 	VIEWER_EVENT: "astravia:session:viewer-event",
@@ -267,6 +269,13 @@ const CHANNELS = {
 	PLUGIN_SYSTEM_PROMPT_REQUEST: PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_REQUEST,
 	PLUGIN_SYSTEM_PROMPT_RESPONSE: PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_RESPONSE,
 } as const;
+
+/**
+ * 会话文件订阅的合并参数。防抖决定「多快认为这一阵写完了」，
+ * 最小间隔决定「最多多频地重投影一次」——4 MB 会话单次投影约 190 ms，别让它连着跑。
+ */
+const VIEWER_DEBOUNCE_MS = 200;
+const VIEWER_MIN_INTERVAL_MS = 400;
 
 /** 向所有存活窗口（含独立的快捷面板窗口）广播一个事件。 */
 function broadcastToAllWindows(channel: string, payload: unknown): void {
@@ -1785,6 +1794,8 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	interface ViewerSub {
 		watcher: FSWatcher;
 		path: string;
+		/** 取消挂起的合并定时器；不调用的话订阅释放后还会再读一次文件。 */
+		dispose: () => void;
 	}
 	const viewerSubs = new Map<string, ViewerSub>();
 	let viewerSeq = 0;
@@ -1798,29 +1809,45 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		return readAsync ? await readAsync.call(runtime, abs) : runtime.readSessionHistoryFromFile(abs);
 	});
 
+	/**
+	 * 首屏快速预览：只读文件尾部若干字节，逐行解析成历史条目。
+	 *
+	 * 打开一个已有会话时，首屏完全取决于「读全文 + 解析 + 投影」；实测 4.7 MB 会话要
+	 * 1140 ms，而只读尾部 256 KB 是 11 ms（同一份文件，105×）。渲染层拿到这份片段先
+	 * 出画面，随后照常走 VIEWER_OPEN 换成完整历史。
+	 */
+	ipcMain.handle(CHANNELS.VIEWER_OPEN_TAIL, async (_event, path: unknown, tailBytes: unknown) => {
+		assertNonEmptyString(path, "path");
+		const abs = resolve(path);
+		const budget = typeof tailBytes === "number" && tailBytes > 0 ? tailBytes : SESSION_PREVIEW_TAIL_BYTES;
+		return readSessionHistoryTail(abs, budget);
+	});
+
 	ipcMain.handle(CHANNELS.VIEWER_SUBSCRIBE, async (_event, path: unknown) => {
 		assertNonEmptyString(path, "path");
 		const abs = resolve(path);
 		viewerSeq += 1;
 		const subscriptionId = `viewer-${viewerSeq}`;
-		// Debounce flurries of write events (jsonl is append-only but
-		// editors/fs sometimes fire multiple change events per write).
-		let pending: NodeJS.Timeout | undefined;
-		const emit = () => {
-			pending = undefined;
-			if (webContents.isDestroyed()) return;
-			try {
-				const snapshot = runtime.readSessionHistoryFromFile(abs);
-				webContents.send(CHANNELS.VIEWER_EVENT, subscriptionId, snapshot);
-			} catch {
-				// File may have been deleted between events; ignore.
-			}
-		};
-		const watcher = watch(abs, { persistent: false }, () => {
-			if (pending) return;
-			pending = setTimeout(emit, 80);
+		// 流式输出期间每一段文本都会追写一次文件；每次都整份重读 + 重投影会把主线程
+		// 持续占住（4 MB 会话约 190 ms/次），而这条通道只是「看一眼历史」。
+		// 合并策略见 emit-coalescer：窗口内多次变更只投影一次，且最后一次一定会补发。
+		const coalescer = createEmitCoalescer({
+			debounceMs: VIEWER_DEBOUNCE_MS,
+			minIntervalMs: VIEWER_MIN_INTERVAL_MS,
+			emit: () => {
+				if (webContents.isDestroyed()) return;
+				try {
+					const snapshot = runtime.readSessionHistoryFromFile(abs);
+					webContents.send(CHANNELS.VIEWER_EVENT, subscriptionId, snapshot);
+				} catch {
+					// File may have been deleted between events; ignore.
+				}
+			},
 		});
-		viewerSubs.set(subscriptionId, { watcher, path: abs });
+		const watcher = watch(abs, { persistent: false }, () => {
+			coalescer.schedule();
+		});
+		viewerSubs.set(subscriptionId, { watcher, path: abs, dispose: () => coalescer.dispose() });
 		return { subscriptionId };
 	});
 
@@ -1828,6 +1855,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		if (typeof subscriptionId !== "string") return;
 		const sub = viewerSubs.get(subscriptionId);
 		if (sub) {
+			sub.dispose();
 			try {
 				sub.watcher.close();
 			} catch {
@@ -1841,6 +1869,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		unsubscribeConversationListChanged();
 		webContents.removeListener("did-start-navigation", onDidStartNavigation);
 		webContents.removeListener("render-process-gone", onRenderGone);
+		ipcMain.removeHandler(CHANNELS.VIEWER_OPEN_TAIL);
 		pluginToolRendererHost.dispose();
 		for (const sub of viewerSubs.values()) {
 			try {

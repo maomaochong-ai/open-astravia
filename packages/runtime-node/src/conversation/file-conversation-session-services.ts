@@ -1,6 +1,8 @@
-import { closeSync, type Dirent, openSync, readFileSync, readSync } from "node:fs";
+import { closeSync, type Dirent, openSync, readFileSync, readSync, statSync } from "node:fs";
 import { type FileHandle, open, readdir, readFile, rm, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Worker } from "node:worker_threads";
 import type {
 	HistoryEntry,
 	ProjectInfo,
@@ -19,6 +21,7 @@ import { acquireConversationFileLock } from "./conversation-file-lock.js";
 import { resolveSessionIdFromPath } from "./conversation-file-path.js";
 import { FileConversationOwnershipManager } from "./conversation-ownership-lease.js";
 import { FileConversationRepository } from "./file-conversation-repository.js";
+import type { HistoryParseRequest, HistoryParseResponse } from "./history-parse-worker.js";
 import { nodeErrorCode } from "./node-error-code.js";
 
 const CONVERSATION_FILE_SUFFIX = ".conversation.jsonl";
@@ -38,6 +41,83 @@ const SESSION_INFO_CACHE_LIMIT = 512;
  * 记住上一份结果，文件大小与 mtime 都没变时只 stat：多会话并发时不再反复解析几 MB 的会话。
  */
 const sessionInfoCache = new Map<string, CachedSessionHistoryInfo>();
+
+interface CachedSessionHistory {
+	readonly history: readonly HistoryEntry[];
+	readonly mtimeNs: bigint;
+	readonly size: bigint;
+}
+/**
+ * 完整历史投影的缓存。
+ *
+ * 一次切换会话至少读两遍同一个文件（预览走 viewer、随后 Runtime attach 再读一遍），
+ * 而单次「读入 + 解析 + 投影」在 4 MB 会话上要 300 ms 以上，且全程占着主进程事件循环——
+ * 用户看到的就是切换会话时整个界面停顿。会话文件是只追加的，大小与 mtime 不变即内容不变，
+ * 所以按这两个值命中即可跳过重复解析。
+ *
+ * 上限按条目数控制：一份几 MB 的历史投影后是几十 MB 级的对象图，留太多会自己变成内存问题。
+ */
+const HISTORY_CACHE_LIMIT = 12;
+/**
+ * 缓存同时受文件字节预算约束：条目数只是粗限，真正决定内存的是会话有多大。
+ * 一份 3–4 MB 的会话投影成对象图后约 10–20 MB，预算按「已缓存会话的文件字节」计，
+ * 这样小会话能多留几份、大会话只留一两份。
+ */
+const HISTORY_CACHE_BYTE_BUDGET = 40 * 1024 * 1024;
+let historyCacheBytes = 0;
+const historyCache = new Map<string, CachedSessionHistory>();
+
+function readCachedHistory(path: string): { history: HistoryEntry[] } | undefined {
+	const cached = historyCache.get(path);
+	if (!cached) return undefined;
+	let stats: { size: bigint; mtimeNs: bigint };
+	try {
+		stats = statSyncBigInt(path);
+	} catch {
+		return undefined;
+	}
+	if (stats.size !== cached.size || stats.mtimeNs !== cached.mtimeNs) return undefined;
+	// 命中也要交出独立的数组：调用方只读单个条目，但不该被允许原地重排缓存里的顺序。
+	return { history: [...cached.history] };
+}
+
+function writeCachedHistory(path: string, history: readonly HistoryEntry[]): void {
+	let stats: { size: bigint; mtimeNs: bigint };
+	try {
+		stats = statSyncBigInt(path);
+	} catch {
+		return;
+	}
+	if (historyCache.has(path)) {
+		historyCacheBytes -= Number(historyCache.get(path)?.size ?? 0n);
+		historyCache.delete(path);
+	}
+	const entrySize = Number(stats.size);
+	historyCache.set(path, { history, size: stats.size, mtimeNs: stats.mtimeNs });
+	historyCacheBytes += entrySize;
+	// 先按条目数上限，再按字节预算：两次裁剪都只丢最久未用的那一份。
+	while (
+		historyCache.size > HISTORY_CACHE_LIMIT ||
+		(historyCacheBytes > HISTORY_CACHE_BYTE_BUDGET && historyCache.size > 1)
+	) {
+		const oldest = historyCache.keys().next();
+		if (oldest.done) break;
+		historyCacheBytes -= Number(historyCache.get(oldest.value)?.size ?? 0n);
+		historyCache.delete(oldest.value);
+	}
+}
+
+function statSyncBigInt(path: string): { size: bigint; mtimeNs: bigint } {
+	const stats = statSync(path, { bigint: true, throwIfNoEntry: false });
+	if (!stats) throw Object.assign(new Error(`ENOENT: ${path}`), { code: "ENOENT" });
+	return { size: stats.size, mtimeNs: stats.mtimeNs };
+}
+
+/** 测试与诊断用：清空历史缓存，避免跨用例互相影响。 */
+export function clearSessionHistoryCache(): void {
+	historyCache.clear();
+	historyCacheBytes = 0;
+}
 interface CachedSessionHeader {
 	readonly size: number;
 	readonly mtimeMs: number;
@@ -198,14 +278,152 @@ export class FileConversationRuntimeSessionFileHistoryReader implements RuntimeS
 	}
 
 	read(sessionPath: string): { history: HistoryEntry[] } {
-		return projectFile(sessionPath, readFileSync(sessionPath, "utf8"));
+		const cached = readCachedHistory(sessionPath);
+		if (cached) return cached;
+		const result = projectFile(sessionPath, readFileSync(sessionPath, "utf8"));
+		writeCachedHistory(sessionPath, result.history);
+		return result;
 	}
 
 	async readAsync(sessionPath: string): Promise<{ history: HistoryEntry[] }> {
-		// 解析与投影是纯计算，留在调用线程；这里只把「整份文件同步读」从事件循环里拿出去。
-		// 壳层打开会话时先用这份历史出首屏，几 MB 的同步读会把所有窗口的 IPC 一起卡住。
-		return projectFile(sessionPath, await readFile(sessionPath, "utf8"));
+		const cached = readCachedHistory(sessionPath);
+		if (cached) return cached;
+
+		// 大会话才走 worker：解析与投影是同步纯计算，几 MB 的会话会把宿主的事件循环
+		// 一起占住（桌面端表现就是所有窗口一起卡）；但 worker 有启动与回传成本，
+		// 小会话反而更慢，所以按体积分流。
+		if (await isLargeSessionFile(sessionPath)) {
+			const offThread = await readHistoryOffThread(sessionPath);
+			if (offThread) {
+				writeCachedHistory(sessionPath, offThread.history);
+				return offThread;
+			}
+		}
+
+		// worker 不可用（被裁剪的发行版、构造失败、超时）：回退到调用线程。
+		// 宁可慢一点，也不能因为线程策略打不开会话。
+		const result = projectFile(sessionPath, await readFile(sessionPath, "utf8"));
+		writeCachedHistory(sessionPath, result.history);
+		return result;
 	}
+}
+
+/**
+ * 解析 worker 的宿主侧：懒创建、一次一个请求、超时或出错返回 undefined 让调用方回退。
+ *
+ * 用 `undefined` 而不是抛错表达「这条路不可用」——回退是正常路径，不该污染调用栈。
+ */
+const HISTORY_WORKER_TIMEOUT_MS = 15_000;
+/**
+ * 低于这个体积就在调用线程解析。
+ *
+ * worker 省下的是「主线程被占住的时长」，代价是线程启动与结果回传的搬运——回传是一次
+ * structured clone，几万条历史对象要按值复制。实测（本机）：
+ *
+ *   4.16 MB / 2400 条   调用线程 488 ms（事件循环完全被占）
+ *                       走 worker 2209 ms（事件循环最大阻塞 32 ms）
+ *   300 KB / 300 条     调用线程 21 ms  走 worker 972 ms
+ *
+ * 也就是说：worker 换来的是「不卡住整个应用」，但把「看到内容」推迟了 4 倍。
+ * 用户对首屏的期待是快，所以门槛放在 8 MB——到这一档，主线程被占住半秒以上
+ * 已经会把别的窗口一起拖慢，值得用延迟换响应。
+ */
+const HISTORY_WORKER_MIN_BYTES = 8_000_000;
+let historyWorker: Worker | undefined;
+let historyWorkerFailed = false;
+let historyRequestId = 0;
+const historyPending = new Map<number, (response: HistoryParseResponse | null) => void>();
+
+function historyWorkerPath(): string {
+	// 与编译产物同目录：dist/conversation/history-parse-worker.js 由 tsc 直接产出。
+	return join(dirname(fileURLToPath(import.meta.url)), "history-parse-worker.js");
+}
+
+function settleHistoryWorker(response: HistoryParseResponse | null): void {
+	const resolve = historyPending.get(response?.id ?? -1);
+	if (!resolve) return;
+	historyPending.delete(response?.id ?? -1);
+	resolve(response);
+}
+
+function ensureHistoryWorker(): Worker | undefined {
+	if (historyWorker) return historyWorker;
+	if (historyWorkerFailed) return undefined;
+	try {
+		const worker = new Worker(historyWorkerPath());
+		worker.on("message", (response: HistoryParseResponse) => settleHistoryWorker(response));
+		worker.on("error", () => {
+			// 出错即作废：剩下的请求全部回退，下一次调用重新尝试创建。
+			historyWorkerFailed = true;
+			historyWorker = undefined;
+			for (const resolve of [...historyPending.values()]) resolve(null);
+			historyPending.clear();
+		});
+		worker.on("exit", () => {
+			if (historyWorker !== worker) return;
+			historyWorker = undefined;
+			for (const resolve of [...historyPending.values()]) resolve(null);
+			historyPending.clear();
+		});
+		// 空闲不阻止进程退出：桌面端退出时不该被这个线程拖住。
+		worker.unref();
+		historyWorker = worker;
+		return worker;
+	} catch {
+		historyWorkerFailed = true;
+		return undefined;
+	}
+}
+
+async function isLargeSessionFile(sessionPath: string): Promise<boolean> {
+	try {
+		const info = await stat(sessionPath);
+		return info.size >= HISTORY_WORKER_MIN_BYTES;
+	} catch {
+		// 读不到大小就按小会话处理：随后那次读取会给出真正的错误。
+		return false;
+	}
+}
+
+async function readHistoryOffThread(sessionPath: string): Promise<{ history: HistoryEntry[] } | undefined> {
+	const worker = ensureHistoryWorker();
+	if (!worker) return undefined;
+	historyRequestId += 1;
+	const id = historyRequestId;
+	const response = await new Promise<HistoryParseResponse | null>((resolve) => {
+		const timer = setTimeout(() => {
+			historyPending.delete(id);
+			resolve(null);
+		}, HISTORY_WORKER_TIMEOUT_MS);
+		timer.unref?.();
+		historyPending.set(id, (value) => {
+			clearTimeout(timer);
+			resolve(value);
+		});
+		try {
+			worker.postMessage({ id, sessionPath } satisfies HistoryParseRequest);
+		} catch {
+			historyPending.delete(id);
+			clearTimeout(timer);
+			resolve(null);
+		}
+	});
+	if (!response) return undefined;
+	if (!response.ok) {
+		// worker 读到了文件但解析失败：这是真实错误，交给调用方决定怎么报。
+		throw new Error(`Failed to parse session history: ${response.error}`);
+	}
+	return { history: response.history };
+}
+
+/**
+ * 把一份会话文件文本投影成历史。
+ *
+ * 公开是因为解析 worker 要走同一条实现：两条路各写一遍必然会分叉，
+ * 而这份投影的语义（分支、压缩、错误合并）都在细节里。
+ */
+export function projectSessionFileText(sessionPath: string, text: string): { history: HistoryEntry[] } {
+	return projectFile(sessionPath, text);
 }
 
 /** 同步与异步两条入口共用同一套标题、格式与分支投影，避免两条路各写一遍。 */

@@ -127,6 +127,7 @@ beforeEach(() => {
 				autoTitle: vi.fn(),
 				getFullHistory: vi.fn(async () => []),
 				openViewer: vi.fn(async () => ({ history: [] })),
+				openViewerTail: vi.fn(async () => ({ history: [], truncated: false })),
 				getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
 				prompt: mocks.prompt,
 				replaceLastUserMessage: vi.fn(async () => ({ leafId: null })),

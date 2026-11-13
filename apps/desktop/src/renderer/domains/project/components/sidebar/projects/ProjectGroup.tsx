@@ -7,6 +7,7 @@ import {
 	useProjectGroupModel,
 } from "../../../hooks/useProjectGroupModel";
 import type { SidebarConversationInfo } from "../../../services/sidebar-conversation-projection";
+import { cancelSessionHistoryPrefetch, scheduleSessionHistoryPrefetch } from "../../../services/session-history-prefetch";
 
 /** 每行一个 memo 组件，per-row 回调在这里固定引用（理由同 DefaultSessionRow）。 */
 const ProjectSessionRow = memo(function ProjectSessionRow({
@@ -30,6 +31,13 @@ const ProjectSessionRow = memo(function ProjectSessionRow({
 		[onOpenContextMenu, session],
 	);
 	const handleRename = useCallback((name: string) => onRename(session, name), [onRename, session]);
+	// 悬停预取历史：与 DefaultSessionList 同一套纪律（停留才发、同路径只发一次）。
+	const handlePrefetch = useCallback(() => {
+		scheduleSessionHistoryPrefetch(session.path);
+	}, [session.path]);
+	const handlePrefetchCancel = useCallback(() => {
+		cancelSessionHistoryPrefetch(session.path);
+	}, [session.path]);
 	// 自动化会话组组头：点击展开/收起历次运行，不直接打开某一次。
 	const handleSelect = useCallback(
 		() => (groupTaskId ? onToggleGroup(groupTaskId) : onSelect(session)),
@@ -53,6 +61,8 @@ const ProjectSessionRow = memo(function ProjectSessionRow({
 			onOpenContextMenu={handleContextMenu}
 			onRename={handleRename}
 			onRenameDone={onRenameDone}
+			onPrefetch={handlePrefetch}
+			onPrefetchCancel={handlePrefetchCancel}
 			onSelect={handleSelect}
 		/>
 	);

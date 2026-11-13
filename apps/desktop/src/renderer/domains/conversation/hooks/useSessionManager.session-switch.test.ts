@@ -185,6 +185,7 @@ it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户�
 			sessionId === "runtime-first" ? firstSessionPath : secondSessionPath,
 		),
 		openViewer: vi.fn(async () => ({ history: [] })),
+		openViewerTail: vi.fn(async () => ({ history: [], truncated: false })),
 		getState: vi.fn(async (sessionId: string) => ({
 			activeToolNames: [],
 			contextPercent: null,
@@ -379,6 +380,7 @@ it("已有会话先提交加载态，快速切换时只有最后一次打开可�
 			sessionId === "runtime-first" ? firstCanonicalPath : secondSessionPath,
 		),
 		openViewer: vi.fn((path: string) => (path === firstSessionPath ? firstViewer.promise : secondViewer.promise)),
+		openViewerTail: vi.fn(async () => ({ history: [], truncated: false })),
 		getState: vi.fn(async () => ({
 			activeToolNames: [],
 			contextPercent: null,
@@ -517,6 +519,7 @@ it("会话恢复期间立即接受发送并在订阅就绪后派发到目标 Run
 			scenario: "project" as const,
 		})),
 		openViewer: vi.fn(async () => ({ history: userHistory("history", "history-user") })),
+		openViewerTail: vi.fn(async () => ({ history: [], truncated: false })),
 		prompt: mocks.prompt,
 		subscribe: vi.fn(async () => vi.fn()),
 		updateSettings: vi.fn(async () => undefined),
@@ -598,6 +601,7 @@ it("已有会话创建失败时退出加载态并保留可诊断错误", { timeo
 				autoTitle: vi.fn(),
 				create: vi.fn(async () => Promise.reject(failure)),
 				openViewer: vi.fn(async () => ({ history: [] })),
+				openViewerTail: vi.fn(async () => ({ history: [], truncated: false })),
 				prompt: vi.fn(),
 			},
 		},
@@ -653,6 +657,7 @@ it("只读历史预览失败时回退到 Runtime 历史水合", { timeout: 10_00
 			scenario: "project" as const,
 		})),
 		openViewer: vi.fn(async () => Promise.reject(new Error("preview unavailable"))),
+		openViewerTail: vi.fn(async () => ({ history: [], truncated: false })),
 		prompt: vi.fn(),
 		subscribe: vi.fn(async () => vi.fn()),
 		updateSettings: vi.fn(async () => undefined),
@@ -809,6 +814,7 @@ it("新会话在 create 返回前被取代时回收刚建出来的空壳", { tim
 			sessionId === "runtime-shell" ? shellPath : secondSessionPath,
 		),
 		openViewer: vi.fn(() => existingViewer.promise),
+		openViewerTail: vi.fn(async () => ({ history: [], truncated: false })),
 		getState: vi.fn(async () => ({
 			activeToolNames: [],
 			contextPercent: null,
@@ -914,6 +920,7 @@ it("已有会话的 create 在返回前被取代时不会删掉它的文件", { 
 			sessionId === "runtime-first" ? firstCanonicalPath : secondSessionPath,
 		),
 		openViewer: vi.fn((path: string) => (path === firstSessionPath ? firstViewer.promise : secondViewer.promise)),
+		openViewerTail: vi.fn(async () => ({ history: [], truncated: false })),
 		getState: vi.fn(async () => ({
 			activeToolNames: [],
 			contextPercent: null,

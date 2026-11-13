@@ -1,5 +1,5 @@
 import { createFileExplorerVisibility } from "@shared/lib/file-explorer-preferences";
-import { isSubPath, pathBasename, pathDirname, pathJoin } from "@shared/lib/utils";
+import { alignPathSeparators, isSubPath, pathBasename, pathDirname, pathJoin } from "@shared/lib/utils";
 import {
 	activeSessionAtom,
 	expandedDirsAtom,
@@ -186,6 +186,9 @@ export function useFileTree(cwdOverride?: string | null) {
 			if (!rootCwd || !isSubPath(entryPath, rootCwd)) {
 				throw new Error(`Path is outside the active workspace: ${entryPath}`);
 			}
+			// 先把分隔符对齐到根目录的写法：缓存键与 expandedDirs 都来自主进程原始返回值，
+			// 正斜杠的路径直接进去会既不展开也选不中（Windows 上必现）。
+			entryPath = alignPathSeparators(entryPath, rootCwd);
 			if (entryPath !== rootCwd && !createFileExplorerVisibility(rootCwd, preferences)(entryPath)) {
 				throw new Error("Path is hidden by the file explorer display settings");
 			}

@@ -52,6 +52,18 @@ export function pathJoin(dir: string, name: string): string {
 	return `${trimmed}${sep}${name}`;
 }
 
+/**
+ * 把 `path` 的分隔符对齐到 `root` 的写法。
+ *
+ * 文件树的缓存键与 `expandedDirs` 都来自主进程 `readDir` 的原始返回值（Windows 上是反斜杠），
+ * 而对话里的交付物链接、插件传进来的路径通常用正斜杠。不统一就会两头对不上：
+ * 目录查不到、`expandedDirs` 里塞的键永远不匹配，表现是「点了文件名，树没展开也没高亮」。
+ */
+export function alignPathSeparators(path: string, root: string): string {
+	if (!path || !root) return path;
+	return root.includes("\\") ? path.replace(/\//g, "\\") : path.replace(/\\/g, "/");
+}
+
 /** Return true when path is equal to parent or is located under parent. */
 export function isSubPath(path: string, parent: string): boolean {
 	const normalize = (v: string): string => v.replace(/\\/g, "/").replace(/\/+$/, "");

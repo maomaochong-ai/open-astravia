@@ -27,6 +27,10 @@ export interface SessionRowViewProps {
 	/** Accessible name for the hover "more" trigger. */
 	moreLabel?: string;
 	onOpenContextMenu: (event: React.MouseEvent) => void;
+	/** 指针停在行上时调用，用来提前把这份会话的历史读进缓存。不传则行为不变。 */
+	onPrefetch?: () => void;
+	/** 指针离开行时调用，取消还没到时间的预取。 */
+	onPrefetchCancel?: () => void;
 	onRename: (name: string) => void;
 	onRenameDone: () => void;
 	onSelect: () => void;
@@ -55,6 +59,8 @@ export const SessionRowView = memo(function SessionRowView({
 	forked,
 	moreLabel,
 	onOpenContextMenu,
+	onPrefetch,
+	onPrefetchCancel,
 	onRename,
 	onRenameDone,
 	onSelect,
@@ -79,6 +85,9 @@ export const SessionRowView = memo(function SessionRowView({
 					prepareSidebarSelection(event.currentTarget);
 					onSelect();
 				}}
+				onPointerEnter={onPrefetch}
+				onPointerLeave={onPrefetchCancel}
+				onFocus={onPrefetch}
 				onContextMenu={groupCount !== undefined ? (event) => event.preventDefault() : onOpenContextMenu}
 				className={cn(
 					"relative flex w-full items-center gap-2 rounded-lg py-[6px] pr-2.5 text-left",

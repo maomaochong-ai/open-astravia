@@ -79,6 +79,30 @@ export const clearFileExplorerRevealRequestAtom = atom(null, (get, set, id: numb
 	if (get(fileExplorerRevealRequestStateAtom)?.id === id) set(fileExplorerRevealRequestStateAtom, null);
 });
 
+/**
+ * 打开过的文本文件缓冲。
+ *
+ * 每条都存整份内容（`savedContent` + `draftContent`），而过去从不删除：翻几十个文件之后，
+ * 内存里就一直挂着这些字符串，越用越卡。这里做一次「按最近使用裁剪」——只裁掉
+ * **没有未保存改动**的文档，有草稿的一律留着，用户不会因为切走就丢编辑。
+ */
+const FILE_EDITOR_DOCUMENT_LIMIT = 8;
+
+export function pruneEditorDocuments(
+	documents: Map<string, FileEditorDocumentState>,
+	limit: number = FILE_EDITOR_DOCUMENT_LIMIT,
+): Map<string, FileEditorDocumentState> {
+	if (documents.size <= limit) return documents;
+	// Map 保持插入顺序：最早的在前。只裁干净文档，脏文档无论多旧都保留。
+	const next = new Map(documents);
+	for (const [path, document] of documents) {
+		if (next.size <= limit) break;
+		if (document.draftContent !== document.savedContent) continue;
+		next.delete(path);
+	}
+	return next.size === documents.size ? documents : next;
+}
+
 export const fileEditorDocumentsAtom = atom<Map<string, FileEditorDocumentState>>(new Map());
 export const fileEditorHasUnsavedChangesAtom = atom((get) => {
 	for (const document of get(fileEditorDocumentsAtom).values()) {

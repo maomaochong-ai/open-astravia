@@ -141,6 +141,72 @@ function renameRow(props: { renameError?: string | null } = {}) {
 	return { onRenameCancel, onRenameSubmit };
 }
 
+describe("FileTreeNodeView 重命名光标", () => {
+	const baseProps = {
+		entry,
+		depth: 1,
+		isExpanded: false,
+		isLoading: false,
+		isSelected: true,
+		isRenaming: true,
+		renameError: null,
+		onRenameSubmit: noop,
+		onRenameCancel: noop,
+		onToggleDir: noop,
+		onSelectEntry: noop,
+		onContextMenu: noop,
+		onFileMove: noop,
+		onExternalDrop: noop,
+		onNativeDragStart: noop,
+	};
+
+	/**
+	 * 虚拟列表会把滚出窗口的行卸载再挂回来。父层把草稿（值 + 光标）存在树里，
+	 * 重新挂载的输入框在写入受控 value 时会被浏览器把光标丢到末尾——所以必须按草稿还原。
+	 */
+	it("行被回收后重新挂载，光标回到用户原来的位置而不是末尾", () => {
+		let caret = 2;
+		const first = render(
+			<FileTreeNodeView
+				{...baseProps}
+				renameValue="ap.ts"
+				renameCaret={caret}
+				onRenameCaretChange={(next) => {
+					caret = next;
+				}}
+			/>,
+		);
+		const input = screen.getByRole("textbox") as HTMLInputElement;
+		input.focus();
+		input.setSelectionRange(2, 2);
+		fireEvent.select(input);
+		expect(caret).toBe(2);
+		first.unmount();
+
+		render(<FileTreeNodeView {...baseProps} renameValue="ap.ts" renameCaret={caret} />);
+		const remounted = screen.getByRole("textbox") as HTMLInputElement;
+		expect(remounted.selectionStart).toBe(2);
+		expect(remounted.selectionEnd).toBe(2);
+	});
+
+	it("刚进入重命名时选中主文件名，扩展名不被一起选中", () => {
+		let caret = 0;
+		render(
+			<FileTreeNodeView
+				{...baseProps}
+				onRenameCaretChange={(next) => {
+					caret = next;
+				}}
+			/>,
+		);
+		const input = screen.getByRole("textbox") as HTMLInputElement;
+		expect(input.selectionStart).toBe(0);
+		expect(input.selectionEnd).toBe("main".length);
+		// 初始选区也要上报，否则第一次回收就把「选中主名」丢成末尾。
+		expect(caret).toBe("main".length);
+	});
+});
+
 describe("FileTreeNodeView rename", () => {
 	it("失焦提交新名字", () => {
 		const { onRenameCancel, onRenameSubmit } = renameRow();

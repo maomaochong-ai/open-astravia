@@ -5,6 +5,7 @@ import type {
 	FileTreeViewProps,
 } from "@astravia-org/theme-ui/file-explorer";
 import {
+	conversationFeedAtom,
 	type FsEntry,
 	fileExplorerPreferencesAtom,
 	pluginFileExplorerDecorationProvidersAtom,
@@ -72,7 +73,10 @@ export function useFileTreeViewModel(input: {
 	const preferences = useAtomValue(fileExplorerPreferencesAtom);
 	const mode = useAtomValue(resolvedThemeAtom);
 	const highContrast = useSyncExternalStore(subscribeContrast, getContrast, () => false);
-	const gitStatus = useGitStatus(input.rootDir);
+	// Agent 改完文件后要能看到 git 颜色，而 dir-changed 只覆盖被 watch 的目录。
+	// 用对话条目数当刷新信号：每轮对话都有新增消息，代价是一次节流过的 git status。
+	const toolActivity = useAtomValue(conversationFeedAtom).items.length;
+	const gitStatus = useGitStatus(input.rootDir, toolActivity);
 	const iconTheme = themes.find((theme) => theme.id === preferences.iconTheme);
 	const decorations = useMemo(
 		() => createFileExplorerDecorations(input.rootDir, input.cache, decorationProviders),

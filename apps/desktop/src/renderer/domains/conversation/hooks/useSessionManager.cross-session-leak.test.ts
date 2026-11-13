@@ -134,6 +134,7 @@ it("会话 A 仍在流式输出时新建会话 B，A 的事件不得写进 B 的
 		})),
 		getFullHistory: vi.fn(async () => []),
 		openViewer: vi.fn(async () => ({ history: [] })),
+		openViewerTail: vi.fn(async () => ({ history: [], truncated: false })),
 		getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
 		getSessionPath: vi.fn(async (sessionId: string) =>
 			sessionId === "runtime-a" ? sessionAPath : "C:\\sessions\\b.jsonl",

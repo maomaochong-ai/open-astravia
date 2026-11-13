@@ -34,6 +34,7 @@ export {
 } from "./file-conversation-repository.js";
 export {
 	type ConversationSessionArtifactCleaner,
+	clearSessionHistoryCache,
 	FileConversationRuntimeSessionCatalog,
 	type FileConversationRuntimeSessionCatalogOptions,
 	FileConversationRuntimeSessionFileHistoryReader,
@@ -70,3 +71,9 @@ export {
 	isLocalProcessAlive,
 	readLocalProcessStartedAtMs,
 } from "./process-identity.js";
+export {
+	parseHistoryTailText,
+	readSessionHistoryTail,
+	SESSION_PREVIEW_TAIL_BYTES,
+	type SessionHistoryTail,
+} from "./session-history-tail.js";

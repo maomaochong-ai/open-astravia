@@ -3,41 +3,35 @@ import { describe, expect, it } from "vitest";
 import { findCachedEntries, findCachedEntry } from "./file-tree-cache-lookup";
 
 function entry(path: string): FsEntry {
-	return { name: path.split(/[/\\]/u).at(-1) ?? path, path, isDirectory: false, size: 0, modifiedAt: 0 };
+	return { name: path.split(/[\\/]/).pop() ?? path, path, isDirectory: false, size: 1, modifiedAt: 0 };
 }
 
-describe("file tree cache lookup", () => {
-	it("按父目录命中，不会把别的目录里的同名文件认成目标", () => {
-		const cache = new Map<string, readonly FsEntry[]>([
-			["/repo/src", [entry("/repo/src/a.ts")]],
-			["/repo/lib", [entry("/repo/lib/a.ts")]],
-		]);
+/** 主进程 readDir 返回的是 Windows 原生分隔符，缓存键因此是反斜杠。 */
+function windowsCache(): Map<string, readonly FsEntry[]> {
+	return new Map([
+		["C:\\ws", [entry("C:\\ws\\src"), entry("C:\\ws\\readme.md")]],
+		["C:\\ws\\src", [entry("C:\\ws\\src\\main.ts")]],
+	]);
+}
 
-		expect(findCachedEntry(cache, "/repo/lib/a.ts")?.path).toBe("/repo/lib/a.ts");
-		expect(findCachedEntry(cache, "/repo/test/a.ts")).toBeUndefined();
+describe("文件树缓存查找的路径分隔符", () => {
+	it("Windows 缓存键为反斜杠时，正斜杠的路径也能命中", () => {
+		const cache = windowsCache();
+		expect(findCachedEntry(cache, "C:/ws/src/main.ts")?.path).toBe("C:\\ws\\src\\main.ts");
+		expect(findCachedEntry(cache, "C:/ws/readme.md")?.path).toBe("C:\\ws\\readme.md");
 	});
 
-	it("未加载的目录直接查不到，不需要为已知路径预先展开", () => {
-		const cache = new Map<string, readonly FsEntry[]>([["/repo", [entry("/repo/readme.md")]]]);
-		expect(findCachedEntries(cache, ["/repo/readme.md", "/repo/missing.md"])).toHaveLength(1);
+	it("反斜杠路径查正斜杠缓存同样命中（反方向也要成立）", () => {
+		const cache = new Map<string, readonly FsEntry[]>([["/ws/src", [entry("/ws/src/main.ts")]]]);
+		expect(findCachedEntry(cache, "\\ws\\src\\main.ts")?.path).toBe("/ws/src/main.ts");
 	});
 
-	it("保持传入顺序，跳过重复与未命中的路径", () => {
-		const cache = new Map<string, readonly FsEntry[]>([["/repo", [entry("/repo/b.ts"), entry("/repo/a.ts")]]]);
-
-		expect(findCachedEntries(cache, ["/repo/a.ts", "/repo/b.ts"]).map((item) => item.path)).toEqual([
-			"/repo/a.ts",
-			"/repo/b.ts",
-		]);
+	it("混合分隔符的批量查找保持输入顺序，只返回命中的项", () => {
+		const found = findCachedEntries(windowsCache(), ["C:/ws/src", "C:\\ws\\src\\main.ts", "C:/ws/nope.ts"]);
+		expect(found.map((e) => e.path)).toEqual(["C:\\ws\\src", "C:\\ws\\src\\main.ts"]);
 	});
 
-	it("认得 Windows 反斜杠路径与盘符根", () => {
-		const cache = new Map<string, readonly FsEntry[]>([
-			["C:\\repo", [entry("C:\\repo\\a.ts")]],
-			["C:\\", [entry("C:\\b.ts")]],
-		]);
-
-		expect(findCachedEntry(cache, "C:\\repo\\a.ts")?.path).toBe("C:\\repo\\a.ts");
-		expect(findCachedEntry(cache, "C:\\b.ts")?.path).toBe("C:\\b.ts");
+	it("大小写差异不当作同一路径（Windows 上由主进程 resolve 负责规范化）", () => {
+		expect(findCachedEntry(windowsCache(), "c:/ws/readme.md")).toBeUndefined();
 	});
 });

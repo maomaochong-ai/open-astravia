@@ -11,6 +11,7 @@ import type {
 import { inspectFilesystemTransfer, transferFilesystemEntries } from "../filesystem/file-transfer-service.js";
 import { assertFilesystemPathWithinProject } from "../filesystem/filesystem-service.js";
 import { cacheNativeDragIconFromDataUrl, resolveNativeDragIcon } from "../filesystem/native-drag-icon.js";
+import { normalizeNativeDragPaths } from "../filesystem/native-drag-paths.js";
 import { createNativeDragFilePayload } from "../filesystem/native-file-drag.js";
 import { getAppLogger } from "../logger.js";
 
@@ -113,8 +114,9 @@ export function registerFileTransferIpc(): () => void {
 
 	const handleStartDrag = (event: IpcMainEvent, rawPaths: unknown): void => {
 		try {
-			assertStringArray(rawPaths, "paths");
-			const paths = [...new Set(rawPaths.map((path) => resolve(path)))];
+			// 拖拽用独立上限：一次选中成百上千个条目（或拖一个目录）是正常操作，
+			// 沿用文件搬运计划的 100 项会让整次拖拽被静默取消。
+			const paths = normalizeNativeDragPaths(rawPaths);
 			for (const path of paths) {
 				assertFilesystemPathWithinProject(path);
 				if (!existsSync(path)) throw new Error("Drag source does not exist");

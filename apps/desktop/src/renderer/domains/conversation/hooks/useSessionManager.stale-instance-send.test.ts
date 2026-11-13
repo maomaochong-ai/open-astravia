@@ -113,6 +113,7 @@ it("陈旧实例的 sendMessage 仍应发给当前激活会话，而不是该实
 		})),
 		getFullHistory: vi.fn(async () => []),
 		openViewer: vi.fn(async () => ({ history: [] })),
+		openViewerTail: vi.fn(async () => ({ history: [], truncated: false })),
 		getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
 		getSessionPath: vi.fn(async (sessionId: string) =>
 			sessionId === "runtime-conversation" ? conversationSessionPath : petSessionPath,

@@ -6,6 +6,7 @@ import type { MessageAppendedEvent, TurnCompletedEvent, TurnStartedEvent } from 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	ConversationOwnershipConflictError,
+	clearSessionHistoryCache,
 	FileConversationOwnershipManager,
 	FileConversationRepository,
 	FileConversationRuntimeSessionCatalog,
@@ -323,3 +324,39 @@ function completed(sessionId: string, timestamp = 4): TurnCompletedEvent {
 		timestamp,
 	};
 }
+
+describe("会话历史投影缓存", () => {
+	it("同一版本重复读取不再重新解析，但文件追加后立刻看到新消息", async () => {
+		const rootDir = await createTemporaryRoot();
+		const cwd = join(rootDir, "workspace");
+		const repository = new FileConversationRepository({ rootDir });
+		await repository.create({ sessionId: "cache-1", createdAt: 10, cwd });
+		await repository.append("cache-1", 0, [
+			started("cache-1", 100),
+			userMessage("cache-1", "第一问", 110),
+			assistantMessage("cache-1", "第一答", 120),
+			completed("cache-1", 130),
+		]);
+		const path = repository.resolveConversationPath("cache-1");
+		await repository.close();
+
+		const reader = new FileConversationRuntimeSessionFileHistoryReader();
+		clearSessionHistoryCache();
+		const first = reader.read(path);
+		const second = reader.read(path);
+
+		expect(second.history).toEqual(first.history);
+		// 命中缓存的证据：条目对象是同一批（没有重新解析），但返回的数组是新的，
+		// 调用方原地重排不会污染缓存。条目因此必须按只读对待。
+		expect(second.history[0]).toBe(first.history[0]);
+		expect(second.history).not.toBe(first.history);
+
+		// 追加一条消息后大小变化，缓存必须失效
+		const appendRepository = new FileConversationRepository({ rootDir });
+		await appendRepository.append("cache-1", 4, [userMessage("cache-1", "第二问", 200)]);
+		await appendRepository.close();
+
+		const third = reader.read(path);
+		expect(third.history.length).toBeGreaterThan(first.history.length);
+	});
+});

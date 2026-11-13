@@ -1,4 +1,4 @@
-import { type FileEditorDocumentState, fileEditorDocumentsAtom } from "@shared/store/atoms";
+import { type FileEditorDocumentState, fileEditorDocumentsAtom, pruneEditorDocuments } from "@shared/store/atoms";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -46,13 +46,14 @@ export function useTextFileEditor(path: string, refreshNonce: number): TextFileE
 				setDocuments((current) => {
 					const next = new Map(current);
 					const existing = current.get(path);
+					next.delete(path);
 					next.set(
 						path,
 						discardDraft
 							? createEditorDocument(path, snapshot, existing?.editorGeneration)
 							: mergeEditorSnapshot(existing, path, snapshot),
 					);
-					return next;
+					return pruneEditorDocuments(next);
 				});
 				setLoadError(null);
 				setSaveError(null);
@@ -94,6 +95,7 @@ export function useTextFileEditor(path: string, refreshNonce: number): TextFileE
 				const updated = updateEditorDraft(existing, content);
 				if (updated === existing) return current;
 				const next = new Map(current);
+				next.delete(path);
 				next.set(path, updated);
 				return next;
 			});
@@ -119,8 +121,9 @@ export function useTextFileEditor(path: string, refreshNonce: number): TextFileE
 					const existing = current.get(path);
 					if (!existing) return current;
 					const next = new Map(current);
+					next.delete(path);
 					next.set(path, applyEditorSaveResult(existing, contentToSave, result));
-					return next;
+					return pruneEditorDocuments(next);
 				});
 			} catch (error: unknown) {
 				setSaveError(error);

@@ -94,9 +94,12 @@ describe("Markdown website icons", () => {
 			/>,
 		);
 		expect(icon("Website").getAttribute("src")).toBe("http://preview-icon.example.test:3000/favicon.ico");
-		for (const name of ["Mail", "Section", "Local"]) {
+		for (const name of ["Mail", "Section"]) {
 			expect(screen.getByRole("link", { name }).querySelector("img")).toBeNull();
 		}
+		// 本地相对引用已经不是链接：文档预览里它交给宿主就地打开（见 c8d2c05d），
+		// 渲染成 button，因此这里按 button 断言，而不是继续期待 role="link"。
+		expect(screen.getByRole("button", { name: "Local" }).querySelector("img")).toBeNull();
 		fireEvent.error(icon("Website"));
 		await user.click(screen.getByRole("link", { name: "Website" }));
 		expect(open).toHaveBeenLastCalledWith("http://preview-icon.example.test:3000/doc");

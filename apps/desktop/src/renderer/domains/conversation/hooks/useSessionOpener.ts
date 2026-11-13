@@ -61,6 +61,7 @@ import {
 	resetConversationFeed,
 } from "../services/conversation-feed-store";
 import { applySessionHydrationStateAtom } from "../services/session-hydration-state";
+import { presentSessionPreview } from "../services/session-preview-presenter";
 import { reclaimableSupersededSessionPath } from "../services/superseded-session-reclaim";
 import { useSessionEventController } from "./useSessionEventController";
 
@@ -289,25 +290,38 @@ export function useSessionOpener(): SessionOpenerController {
 			let previewPresentation: Promise<void> | undefined;
 			if (stageExistingSessionOpen) {
 				markSessionSwitch("session-preview-history-start");
-				const previewRevision = nextConversationHistoryRevision();
-				previewPresentation = window.astravia.session
-					.openViewer(sessionPath)
-					.then(async (snapshot) => {
-						markSessionSwitch("session-preview-history-loaded");
-						if (myOpenToken !== getOpenSessionToken()) {
-							markSessionSwitch("session-preview-history-superseded");
-							return;
-						}
-						const previewMessages = fullHistoryToChat(snapshot.history);
-						markSessionSwitch("session-preview-history-mapped");
-						if (myOpenToken !== getOpenSessionToken()) {
-							markSessionSwitch("session-preview-history-superseded");
-							return;
-						}
+				/*
+				 * 首屏分两步出内容：
+				 * 1. 先只要文件尾部的片段（几百条）——4.7 MB 会话实测 11 ms，而读全量要 1140 ms；
+				 * 2. 再把完整历史换上（同一次打开里继续往下走）。
+				 *
+				 * 这与 ADR-0147 不冲突：那条约束禁止的是「在已显示的行上方再插历史」，
+				 * 而这里是把整个列表替换成同一份历史的超集，行的 id 都来自 entryId，
+				 * 所以在底部对齐的滚动位置上不会错位。
+				 */
+				const tailRevision = nextConversationHistoryRevision();
+				const fullRevision = nextConversationHistoryRevision();
+				previewPresentation = presentSessionPreview({
+					isCurrent: () => myOpenToken === getOpenSessionToken(),
+					readTail: () => window.astravia.session.openViewerTail(sessionPath),
+					readFull: () => window.astravia.session.openViewer(sessionPath),
+					onTail: async (history) => {
+						markSessionSwitch("session-preview-tail-loaded");
 						dispatchConversationFeed({
 							type: "history.loaded",
-							items: previewMessages,
-							revision: previewRevision,
+							items: fullHistoryToChat(history),
+							revision: tailRevision,
+						});
+						markSessionSwitch("session-preview-tail-committed");
+						// 让这一帧真的画出来，用户才会在完整历史到达前看到内容。
+						await waitForCommittedPaint();
+					},
+					onFull: async (history) => {
+						markSessionSwitch("session-preview-history-loaded");
+						dispatchConversationFeed({
+							type: "history.loaded",
+							items: fullHistoryToChat(history),
+							revision: fullRevision,
 						});
 						markSessionSwitch("session-preview-history-committed");
 						const paintBarrierResult = await waitForCommittedPaint();
@@ -320,12 +334,11 @@ export function useSessionOpener(): SessionOpenerController {
 										: "session-preview-history-paint-timeout",
 							);
 						}
-					})
-					.catch(() => {
-						// Preview is best-effort. The canonical Runtime history load below still
-						// owns error reporting and can complete the open normally.
-						markSessionSwitch("session-preview-history-failed");
-					});
+					},
+				}).catch(() => {
+					// 预览是尽力而为：失败时不阻塞打开，下面的 Runtime 水合会给出真正的错误与内容。
+					markSessionSwitch("session-preview-history-failed");
+				});
 			}
 			if (previewPresentation) {
 				await previewPresentation;

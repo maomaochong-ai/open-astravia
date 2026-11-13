@@ -90,6 +90,7 @@ const CHANNELS = {
 	CLEAR_DEFAULT_CONVERSATION: "astravia:session:clear-default-conversation",
 	CLEAR_DEFAULT_ARTIFACTS: "astravia:session:clear-default-artifacts",
 	VIEWER_OPEN: "astravia:session:viewer-open",
+	VIEWER_OPEN_TAIL: "astravia:session:viewer-open-tail",
 	VIEWER_SUBSCRIBE: "astravia:session:viewer-subscribe",
 	VIEWER_UNSUBSCRIBE: "astravia:session:viewer-unsubscribe",
 	VIEWER_EVENT: "astravia:session:viewer-event",
@@ -208,6 +209,7 @@ export function createSessionApi(ipc: IpcRenderer): Pick<DesktopApi, "session"> 
 			clearDefaultConversation: (scope) => ipc.invoke(CHANNELS.CLEAR_DEFAULT_CONVERSATION, scope),
 			clearDefaultArtifacts: (scope) => ipc.invoke(CHANNELS.CLEAR_DEFAULT_ARTIFACTS, scope),
 			openViewer: (path) => ipc.invoke(CHANNELS.VIEWER_OPEN, path),
+			openViewerTail: (path, tailBytes) => ipc.invoke(CHANNELS.VIEWER_OPEN_TAIL, path, tailBytes),
 			subscribeViewer: (path, handler) =>
 				subscribeById(ipc, CHANNELS.VIEWER_SUBSCRIBE, CHANNELS.VIEWER_EVENT, CHANNELS.VIEWER_UNSUBSCRIBE, handler, [
 					path,

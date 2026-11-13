@@ -267,18 +267,21 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 					});
 				}
 				try {
-					await window.astravia.session.replaceLastUserMessage(session.runtimeId, pendingEdit.entryId);
+					// 中止刚结束时 runtime 偶发还在收尾，替换会撞上一次瞬时拒绝；
+					// 这类失败对用户毫无信息量，重试即可，不必让他看到一条「连接失败」。
+					await replaceLastUserMessageWithRetry(session.runtimeId, pendingEdit.entryId);
 					const history = await window.astravia.session.getFullHistory(session.runtimeId);
 					dispatchConversationFeed({ type: "feed.replaced", items: fullHistoryToChat(history) });
 					store.set(pendingMessageEditAtom, null);
 				} catch (err) {
 					const message = err instanceof Error ? err.message : String(err);
 					console.error("[useSessionManager.sendMessage] replaceLastUserMessage failed:", err);
-					store.set(pendingMessageEditAtom, null);
+					// 不清 pendingMessageEdit：清掉的话用户刚写好的内容就没了，他得从头再编辑一遍。
+					// 保留下来，再点一次发送即可重试。
 					dispatchConversationFeed({
 						type: "error.appended",
 						runtimeId: session.runtimeId,
-						message,
+						message: `编辑未能应用：${message}。内容已保留，可直接重试发送。`,
 						timestamp: Date.now(),
 					});
 					return;
@@ -694,4 +697,30 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 	}, []);
 
 	return { sendMessage, abortMessage, sendQueuedNow };
+}
+
+/**
+ * 用「中止后替换最后一条用户消息」实现编辑重发。
+ *
+ * 中止（abort）在 runtime 侧是异步收尾的：`onRunningChanged(false)` 先到、内部状态
+ * 后落地的那一小段时间里，替换请求会被拒一次。这一次失败是纯时序问题，
+ * 重试几百毫秒就能过，不该冒泡成「连接失败」把用户吓一跳。
+ */
+export async function replaceLastUserMessageWithRetry(
+	runtimeId: string,
+	entryId: string,
+	/** 仅供测试注入：默认退避序列覆盖 abort 收尾那一段。 */
+	delays: readonly number[] = [0, 250, 600],
+): Promise<void> {
+	let lastError: unknown;
+	for (const delay of delays) {
+		if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+		try {
+			await window.astravia.session.replaceLastUserMessage(runtimeId, entryId);
+			return;
+		} catch (error) {
+			lastError = error;
+		}
+	}
+	throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }

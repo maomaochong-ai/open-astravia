@@ -7,6 +7,10 @@ import {
 	useDefaultSessionListModel,
 } from "../../../../hooks/useDefaultSessionListModel";
 import type { SidebarConversationInfo } from "../../../../services/sidebar-conversation-projection";
+import {
+	cancelSessionHistoryPrefetch,
+	scheduleSessionHistoryPrefetch,
+} from "../../../../services/session-history-prefetch";
 
 /**
  * 每行一个 memo 组件，per-row 回调在这里用 useCallback 固定住。
@@ -38,6 +42,13 @@ const DefaultSessionRow = memo(function DefaultSessionRow({
 		[onOpenContextMenu, session],
 	);
 	const handleRename = useCallback((name: string) => onRename(session, name), [onRename, session]);
+	// 悬停即预取这份会话的历史：点下去时首屏直接命中缓存，而不是开始一次解析。
+	const handlePrefetch = useCallback(() => {
+		scheduleSessionHistoryPrefetch(session.path);
+	}, [session.path]);
+	const handlePrefetchCancel = useCallback(() => {
+		cancelSessionHistoryPrefetch(session.path);
+	}, [session.path]);
 	// 自动化会话组组头：点击展开/收起历次运行，不直接打开某一次。
 	const handleSelect = useCallback(
 		() => (groupTaskId ? onToggleGroup(groupTaskId) : onSelect(session)),
@@ -64,6 +75,8 @@ const DefaultSessionRow = memo(function DefaultSessionRow({
 			onOpenContextMenu={handleContextMenu}
 			onRename={handleRename}
 			onRenameDone={onRenameDone}
+			onPrefetch={handlePrefetch}
+			onPrefetchCancel={handlePrefetchCancel}
 			onSelect={handleSelect}
 		/>
 	);

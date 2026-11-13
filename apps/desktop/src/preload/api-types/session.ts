@@ -315,6 +315,11 @@ export interface DesktopSessionApi {
 	 */
 	openViewer(path: string): Promise<{ history: HistoryEntry[] }>;
 	/**
+	 * 只读会话文件尾部，用于首屏快速预览。返回的 `truncated` 为 true 时，
+	 * 调用方应在拿到完整历史后用 `openViewer` 替换这份片段。
+	 */
+	openViewerTail(path: string, tailBytes?: number): Promise<{ history: HistoryEntry[]; truncated: boolean }>;
+	/**
 	 * Subscribe to live updates for a viewer-mode session. Handler fires
 	 * whenever the underlying .jsonl is written. Returns an unsubscribe
 	 * function — caller MUST call it on unmount to release the fs.watch.
