@@ -52,6 +52,10 @@ export function TeamMemberModelSelector({
 	const labels: ModelSelectorLabels = {
 		clearSearch: t("modelSelect.clearSearch"),
 		cloudOnly: t("modelSelect.cloudOnly"),
+				favoritesHeader: t("modelSelect.favoritesHeader"),
+				favorite: t("modelSelect.favorite"),
+				unfavorite: t("modelSelect.unfavorite"),
+				searchResultsHeader: t("modelSelect.searchResultsHeader"),
 		defaultBadge: t("modelSelect.defaultBadge"),
 		levelLabel: (level) => t(`modelSelect.reasoningLevel.${level}`, { defaultValue: level }),
 		modelHeader: t("modelSelect.modelHeader"),

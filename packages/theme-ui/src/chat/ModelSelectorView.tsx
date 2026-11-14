@@ -2,10 +2,17 @@ import { AnimatePresence, motion } from "motion/react";
 import type { ChangeEvent, JSX, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@astravia-org/ui/utils";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@astravia-org/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui/popover";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { MultiplierTag } from "../shared/MultiplierTag";
 import { ProviderIcon } from "../shared/provider-icon";
+import {
+	MODEL_FAVORITES_STORAGE_KEY,
+	parseModelFavorites,
+	serializeModelFavorites,
+	toggleModelFavorite,
+} from "./model-selector-columns";
+import { ModelSelectorMenuPanel } from "./ModelSelectorMenuPanel";
 import { ModelSelectorTrigger } from "./ModelSelectorTrigger";
 
 /**
@@ -39,6 +46,11 @@ export interface ModelSelectorLabels {
 	reasoningHeader: string;
 	modelHeader: string;
 	cloudOnly: string;
+	/** 三栏模式：收藏栏标题、星标标题、搜索命中标题。 */
+	favoritesHeader: string;
+	favorite: string;
+	unfavorite: string;
+	searchResultsHeader: string;
 	visionBadge: string;
 	defaultBadge: string;
 	levelLabel: (value: string) => string;
@@ -89,7 +101,6 @@ const MODEL_ITEM_SELECTOR = "[data-model-key]";
 
 /** 紧凑行：覆盖 @astravia-org/ui 默认的 px-3 py-2 text-[13px]，让模型多时列表不至于过长。 */
 const COMPACT_ITEM_CLASS = "gap-1.5 rounded-md px-2 py-1 text-xs";
-const COMPACT_LABEL_CLASS = "px-2 pb-0.5 pt-1 text-[10px]";
 
 function normalizeSearchValue(value: string): string {
 	return value.trim().toLocaleLowerCase();
@@ -113,8 +124,19 @@ export function ModelSelectorView({
 	onOpenChange,
 }: ModelSelectorViewProps): JSX.Element {
 	const [open, setOpen] = useState(false);
-	const [reasoningOpen, setReasoningOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
+	/**
+	 * 收藏只存本机：它是「我这台机器常用的模型」，跨设备同步反而会让别人的目录影响
+	 * 自己的菜单。存储不可用时退化为本次会话内有效。
+	 */
+	const [favorites, setFavorites] = useState<string[]>(() => {
+		if (typeof localStorage === "undefined") return [];
+		try {
+			return parseModelFavorites(localStorage.getItem(MODEL_FAVORITES_STORAGE_KEY) ?? undefined);
+		} catch {
+			return [];
+		}
+	});
 	const searchInputRef = useRef<HTMLInputElement>(null);
 	const modelListRef = useRef<HTMLDivElement>(null);
 	const triggerRef = useRef<HTMLButtonElement>(null);
@@ -123,29 +145,10 @@ export function ModelSelectorView({
 			undefined)
 		: undefined;
 
-	const filteredGroups = useMemo(() => {
-		const query = normalizeSearchValue(searchQuery);
-		if (!query) return groups;
-
-		return groups.flatMap((group) => {
-			const models = group.models.filter((model) =>
-				[
-					model.displayName,
-					model.modelId,
-					model.provider,
-					group.label,
-					...(model.tags ?? []),
-				].some((value) => normalizeSearchValue(value).includes(query)),
-			);
-			return models.length > 0 ? [{ ...group, models }] : [];
-		});
-	}, [groups, searchQuery]);
-
 	const handleOpenChange = useCallback(
 		(nextOpen: boolean) => {
 			setOpen(nextOpen);
 			if (!nextOpen) {
-				setReasoningOpen(false);
 				setSearchQuery("");
 			}
 			onOpenChange?.(nextOpen);
@@ -194,16 +197,36 @@ export function ModelSelectorView({
 		searchInputRef.current?.focus();
 	};
 
+	const handleToggleFavorite = useCallback((key: string) => {
+		setFavorites((previous) => {
+			const next = toggleModelFavorite(previous, key);
+			try {
+				localStorage.setItem(MODEL_FAVORITES_STORAGE_KEY, serializeModelFavorites(next));
+			} catch {
+				// 存储不可用（隐私模式、配额满）：本次会话内仍然生效。
+			}
+			return next;
+		});
+	}, []);
+
 	const handleModelSelect = (key: string) => {
 		onModelSelect(key);
 		setSearchQuery("");
+		// 有思考档位时保持打开：用户接下来还要在同一面板里选强度（右栏）。
+		// 没有档位就关掉——此时选中即完成，留着面板只会挡视线。
+		if (menuLevels.length === 0) setOpen(false);
 	};
 
 	return (
-		// 搜索型选择器不需要锁住页面；modal 模式会改写 body 的滚动与 pointer-events，
-		// 在长会话页面触发整棵 DOM 的同步样式重算。
-		<DropdownMenu open={open} modal={false} onOpenChange={handleOpenChange}>
-			<DropdownMenuTrigger asChild disabled={disabled}>
+		/*
+		 * 容器用 Popover 而不是 DropdownMenu：内容已经是一个三栏面板（服务商列表、
+		 * 可滚动的模型列表、思考档位列，加搜索框与星标按钮），不是一串 role="menuitem"。
+		 * 放进 role="menu" 里既不合 ARIA（菜单只能包含 menuitem），也会让 Radix 的
+		 * 方向键导航把焦点困在「菜单项」之间。Popover 的语义是「一个带交互的附属面板」，
+		 * 正好对应它，且同样支持 Esc 与点击外部关闭。
+		 */
+		<Popover open={open} onOpenChange={handleOpenChange}>
+			<PopoverTrigger asChild disabled={disabled}>
 				<ModelSelectorTrigger
 					ref={triggerRef}
 					aria-label={ariaLabel}
@@ -215,10 +238,10 @@ export function ModelSelectorView({
 					reasoningLabel={currentLevel ? labels.levelLabel(currentLevel) : undefined}
 					className={cn(className, classNames?.trigger)}
 				/>
-			</DropdownMenuTrigger>
+			</PopoverTrigger>
 			<AnimatePresence>
 				{open && (
-					<DropdownMenuContent
+					<PopoverContent
 						forceMount
 						asChild
 						portalContainer={portalContainer}
@@ -227,7 +250,7 @@ export function ModelSelectorView({
 						collisionPadding={16}
 						className={cn(
 							// 底色跟搜索框走同一个变量：搜索行去掉底色后要和面板融成一块
-							"w-[min(16rem,calc(100vw-2rem))] min-w-[180px] max-w-[16rem] overflow-visible bg-background p-0",
+							"w-[min(34rem,calc(100vw-2rem))] min-w-[20rem] max-w-[34rem] overflow-visible bg-background p-0",
 							classNames?.content,
 						)}
 						style={{ animation: "none" }}
@@ -275,146 +298,43 @@ export function ModelSelectorView({
 											)}
 										</div>
 									</div>
-									{menuLevels.length > 0 && (
-										<>
-											<DropdownMenuSub open={reasoningOpen} onOpenChange={setReasoningOpen}>
-												<DropdownMenuSubTrigger className={COMPACT_ITEM_CLASS}>
-													<span className="min-w-0 flex-1 truncate">{labels.reasoningHeader}</span>
-													{currentLevel && (
-														<span className="shrink-0 text-[11px] text-muted-foreground">
-															{labels.levelLabel(currentLevel)}
-														</span>
-													)}
-												</DropdownMenuSubTrigger>
-												<AnimatePresence>
-													{reasoningOpen && (
-														<DropdownMenuSubContent
-															forceMount
-															asChild
-															portalContainer={portalContainer}
-															className="min-w-[130px] overflow-visible bg-background p-0"
-															style={{ animation: "none" }}
-														>
-															<motion.div
-																initial={{ opacity: 0, scale: 0.96, x: -6 }}
-																animate={{ opacity: 1, scale: 1, x: 0 }}
-																exit={{ opacity: 0, scale: 0.96, x: -6 }}
-																transition={{ duration: 0.1, ease: [0.16, 1, 0.3, 1] }}
-															>
-																<div className="relative overflow-visible rounded-[inherit]">
-																	<ThemeSurface slot="chat.modelSelectorReasoningMenu" />
-																	<div className="relative z-10 overflow-hidden rounded-[inherit] p-1">
-																		<DropdownMenuLabel className={COMPACT_LABEL_CLASS}>
-																			{labels.reasoningHeader}
-																		</DropdownMenuLabel>
-																		{menuLevels.map((level) => (
-																			<DropdownMenuItem
-																				key={level}
-																				className={COMPACT_ITEM_CLASS}
-																				onSelect={() => onReasoningSelect(level)}
-																			>
-																				<span className="min-w-0 flex-1 truncate">
-																					{labels.levelLabel(level)}
-																				</span>
-																				{level === currentLevel && (
-																					<span className="icon-[solar--check-circle-linear] h-3 w-3 shrink-0" />
-																				)}
-																			</DropdownMenuItem>
-																		))}
-																	</div>
-																</div>
-															</motion.div>
-														</DropdownMenuSubContent>
-													)}
-												</AnimatePresence>
-											</DropdownMenuSub>
-											<DropdownMenuSeparator />
-										</>
-									)}
-									<div ref={modelListRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-										{emptyOption && (
-											<>
-												<DropdownMenuItem
-													aria-current={!selectedModel ? "true" : undefined}
-													className={cn(
-														COMPACT_ITEM_CLASS,
-														!selectedModel && "bg-accent text-accent-foreground",
-													)}
-													onSelect={emptyOption.onSelect}
-												>
-													<span className="min-w-0 flex-1 truncate">{emptyOption.label}</span>
-													{!selectedModel && (
-														<span className="icon-[solar--check-circle-linear] h-3 w-3 shrink-0" />
-													)}
-												</DropdownMenuItem>
-												<DropdownMenuSeparator />
-											</>
-										)}
-										<DropdownMenuLabel className={COMPACT_LABEL_CLASS}>{labels.modelHeader}</DropdownMenuLabel>
-										{filteredGroups.map((group) => (
-											<div key={group.provider}>
-												<div
-													className={cn(
-														"flex items-center gap-1 px-2 pb-0.5 pt-1 text-[10px] font-medium text-muted-foreground/50",
-														classNames?.providerHeader,
-													)}
-												>
-													<ProviderIcon symbol={group.icon} className="h-2.5 w-2.5" />
-													<span className="min-w-0 truncate">{group.label}</span>
-													{group.models[0]?.remote && (
-														<span className="shrink-0 rounded-full bg-primary/15 px-1 text-[9px] font-medium text-primary">
-															{labels.cloudOnly}
-														</span>
-													)}
-												</div>
-												{group.models.map((model) => (
-													<DropdownMenuItem
-														key={model.key}
-														data-model-key={model.key}
-														aria-current={model.key === selectedModel ? "true" : undefined}
-														className={cn(
-															COMPACT_ITEM_CLASS,
-															model.key === selectedModel && "bg-accent text-accent-foreground",
-															classNames?.item,
-														)}
-														onSelect={() => handleModelSelect(model.key)}
-													>
-														<span className="min-w-0 flex-1 truncate">{model.displayName}</span>
-														<ModelMultiplier label={labels.multiplierLabel?.(model)} />
-														{model.supportsImage && (
-															<span
-																aria-label={labels.visionBadge}
-																title={labels.visionBadge}
-																className="icon-[solar--gallery-linear] size-3 shrink-0 text-primary"
-															/>
-														)}
-														{model.key === defaultKey && (
-															<span className="shrink-0 rounded-full bg-primary/15 px-1 text-[9px] font-medium text-primary">
-																{labels.defaultBadge}
-															</span>
-														)}
-														{model.key === selectedModel && (
-															<span className="icon-[solar--check-circle-linear] h-3 w-3 shrink-0" />
-														)}
-													</DropdownMenuItem>
-												))}
-											</div>
-										))}
-										{filteredGroups.length === 0 && (
-											<div className="flex min-h-24 flex-col items-center justify-center px-4 py-6 text-center">
-												<span aria-hidden="true" className="icon-[solar--magnifer-linear] mb-1.5 size-4 text-muted-foreground" />
-												<p className="text-xs font-medium text-foreground">{labels.noResults}</p>
-												<p className="mt-0.5 text-[11px] text-muted-foreground">{labels.noResultsHint}</p>
-											</div>
-										)}
-									</div>
+									<ModelSelectorMenuPanel
+										groups={groups}
+										selectedModel={selectedModel}
+										currentLevel={currentLevel}
+										menuLevels={menuLevels}
+										defaultKey={defaultKey}
+										labels={labels}
+										favoriteKeys={favorites}
+										searchQuery={searchQuery}
+										emptyOption={
+											emptyOption
+												? {
+														label: emptyOption.label,
+														onSelect: () => {
+															emptyOption.onSelect();
+															setOpen(false);
+														},
+													}
+												: undefined
+										}
+										classNames={{
+											...(classNames?.providerHeader ? { providerHeader: classNames.providerHeader } : {}),
+											...(classNames?.item ? { item: classNames.item } : {}),
+										}}
+										onSelectModel={handleModelSelect}
+										onSelectReasoning={(level) => {
+											onReasoningSelect(level);
+										}}
+										onToggleFavorite={handleToggleFavorite}
+									/>
 								</div>
 							</div>
 						</motion.div>
-					</DropdownMenuContent>
+					</PopoverContent>
 				)}
 			</AnimatePresence>
-		</DropdownMenu>
+		</Popover>
 	);
 }
 

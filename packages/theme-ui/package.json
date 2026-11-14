@@ -446,6 +446,10 @@
 			"types": "./src/chat/MessageFeedView.tsx",
 			"import": "./src/chat/MessageFeedView.tsx"
 		},
+		"./chat/ModelSelectorMenuPanel": {
+			"types": "./src/chat/ModelSelectorMenuPanel.tsx",
+			"import": "./src/chat/ModelSelectorMenuPanel.tsx"
+		},
 		"./chat/MessageInputView": {
 			"types": "./src/chat/MessageInputView.tsx",
 			"import": "./src/chat/MessageInputView.tsx"

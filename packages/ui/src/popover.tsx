@@ -10,14 +10,23 @@ function PopoverTrigger({ ...props }: React.ComponentProps<typeof PopoverPrimiti
 	return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
 }
 
+interface PopoverContentProps extends React.ComponentProps<typeof PopoverPrimitive.Content> {
+	/**
+	 * 挂载到哪个容器。放在抽屉/对话框里时传它们的元素，气泡就不会被渲染到 body
+	 * 而脱离父级滚动边界（与 `DropdownMenuContent` 的 `portalContainer` 同一语义）。
+	 */
+	portalContainer?: React.ComponentProps<typeof PopoverPrimitive.Portal>["container"];
+}
+
 function PopoverContent({
 	className,
 	align = "center",
 	sideOffset = 4,
+	portalContainer,
 	...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+}: PopoverContentProps) {
 	return (
-		<PopoverPrimitive.Portal>
+		<PopoverPrimitive.Portal container={portalContainer}>
 			<PopoverPrimitive.Content
 				data-slot="popover-content"
 				align={align}

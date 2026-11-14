@@ -94,8 +94,13 @@ describe("ModelSelectorView", () => {
 		expect(document.body.style.pointerEvents).not.toBe("none");
 
 		await user.type(search, "beta");
-		expect(screen.queryByRole("menuitem", { name: "Alpha" })).toBeNull();
-		await user.click(screen.getByRole("menuitem", { name: "Beta" }));
+		// 三栏面板用普通按钮渲染行（不再是 role="menuitem"），按可见名定位。
+		await waitFor(() =>
+			expect(document.querySelector('[data-model-key="provider/alpha"]')).toBeNull(),
+		);
+		// 行内有两个按钮（选中 / 星标），取行容器的第一个。
+		const betaRow = document.querySelector('[data-model-key="provider/beta"]');
+		await user.click(betaRow!.querySelectorAll("button")[0]!);
 
 		expect(onModelSelect).toHaveBeenCalledWith("provider/beta");
 		await waitFor(() => expect(screen.queryByRole("searchbox", { name: "Search models" })).toBeNull());
@@ -138,7 +143,7 @@ describe("ModelSelectorView", () => {
 		);
 
 		await user.click(screen.getByRole("button", { name: "Member model" }));
-		await user.click(await screen.findByRole("menuitem", { name: "Follow conversation default" }));
+		await user.click(await screen.findByRole("button", { name: /Follow conversation default/ }));
 		expect(onEmptySelect).toHaveBeenCalledOnce();
 
 		rerender(
@@ -191,11 +196,13 @@ describe("ModelSelectorView", () => {
 			</DetailDrawer>,
 		);
 
-		fireEvent.keyDown(screen.getByRole("button", { name: "Choose model" }), { key: "Enter" });
+		// Popover 触发器用点击打开（键盘 Enter 在真实浏览器里等价于 click，jsdom 里需要显式发）。
+		fireEvent.click(screen.getByRole("button", { name: "Choose model" }));
 		const drawer = document.querySelector('[data-slot="drawer-content"]');
-		const menu = document.querySelector('[data-slot="dropdown-menu-content"]');
+		// 面板容器是 Popover（三栏内容不是菜单项），portal 目标仍是抽屉本身。
+		const panel = document.querySelector('[data-slot="popover-content"]');
 		expect(drawer).not.toBeNull();
-		expect(menu).not.toBeNull();
-		expect(drawer?.contains(menu)).toBe(true);
+		expect(panel).not.toBeNull();
+		expect(drawer?.contains(panel)).toBe(true);
 	});
 });

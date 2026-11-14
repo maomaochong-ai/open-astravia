@@ -86,7 +86,10 @@ describe("TeamMemberModelSelector", () => {
 		expect(trigger.textContent).toContain("Follow conversation default");
 		await user.click(trigger);
 
-		const visionModel = await screen.findByRole("menuitem", { name: /Image Model/ });
+		// 三栏面板用普通按钮渲染行（不再是 role="menuitem"）。
+		await waitFor(() => expect(document.querySelector('[data-model-key="provider/vision"]')).not.toBeNull());
+		const visionRow = document.querySelector('[data-model-key="provider/vision"]');
+		const visionModel = visionRow!.querySelectorAll("button")[0]!;
 		expect(within(visionModel).getByLabelText("Vision")).toBeTruthy();
 		expect(visionModel.textContent).not.toContain("Vision");
 		await user.click(visionModel);
@@ -107,7 +110,7 @@ describe("TeamMemberModelSelector", () => {
 
 		expect(screen.getByRole("button", { name: "Member model" }).textContent).toContain("Image Model");
 		await user.click(screen.getByRole("button", { name: "Member model" }));
-		await user.click(await screen.findByRole("menuitem", { name: "Follow conversation default" }));
+		await user.click(await screen.findByRole("button", { name: /Follow conversation default/ }));
 		expect(onChange).toHaveBeenLastCalledWith(null);
 	});
 
