@@ -142,7 +142,7 @@ export function ImFeishuDialogView({
 					{/* 动作按钮成组，justify-between 才是「说明 | 动作」两端分布，
 					    而不是把每个按钮都摊开。 */}
 					<div className="flex items-center gap-2">
-						<Button variant="outline" onClick={onTest} disabled={testing || !canTest}>
+						<Button variant="field" onClick={onTest} disabled={testing || !canTest}>
 							{testing ? labels.testing : labels.testConnection}
 						</Button>
 						<Button variant="primary" onClick={onSave} disabled={!canSave || saving}>

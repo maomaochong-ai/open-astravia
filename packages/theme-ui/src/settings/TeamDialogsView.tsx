@@ -76,7 +76,7 @@ export function CreateTeamDialogView({
 					{error && <p className="text-[12px] text-destructive">{error}</p>}
 				</div>
 				<DialogFooter>
-					<Button variant="outline" onClick={() => onOpenChange(false)}>
+					<Button variant="field" onClick={() => onOpenChange(false)}>
 						{labels.cancel}
 					</Button>
 					<Button onClick={() => void handleCreate()} disabled={loading || !name.trim()}>
@@ -138,7 +138,7 @@ export function JoinTeamDialogView({
 					{error && <p className="text-[12px] text-destructive">{error}</p>}
 				</div>
 				<DialogFooter>
-					<Button variant="outline" onClick={() => onOpenChange(false)}>
+					<Button variant="field" onClick={() => onOpenChange(false)}>
 						{labels.cancel}
 					</Button>
 					<Button onClick={() => void handleJoin()} disabled={loading || !code.trim()}>

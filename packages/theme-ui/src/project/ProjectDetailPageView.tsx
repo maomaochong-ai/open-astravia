@@ -247,13 +247,13 @@ export function ProjectDetailPageView({
 										)}
 									</div>
 
-									<div className="flex flex-col">
+									<div className="flex flex-col divide-y divide-border/40 overflow-hidden rounded-xl bg-accent/30">
 										{recentSessions.map((session) => (
 											<button
 												key={session.path}
 												type="button"
 												onClick={() => onOpenRecentSession(session.path)}
-												className="group relative flex w-full items-center justify-between gap-4 py-2 text-left transition-colors hover:text-foreground focus-visible:outline-1 focus-visible:outline-ring"
+												className="group relative flex w-full items-center justify-between gap-4 px-3.5 py-2.5 text-left transition-colors hover:bg-accent/50 hover:text-foreground focus-visible:outline-1 focus-visible:outline-ring"
 											>
 												<div className="flex min-w-0 flex-1 items-center gap-2.5">
 													{session.running ? (
@@ -291,7 +291,7 @@ export function ProjectDetailPageView({
 									<h2 className="text-[13px] font-medium tracking-wide text-muted-foreground/80">
 										{labels.contextTitle}
 									</h2>
-									<div role="tablist" aria-label={labels.contextTitle} className="flex gap-4">
+									<div role="tablist" aria-label={labels.contextTitle} className="flex gap-1.5">
 										{(["AGENTS.md", "CLAUDE.md"] as const).map((file) => (
 											<button
 												key={file}
@@ -302,9 +302,9 @@ export function ProjectDetailPageView({
 												aria-selected={activeDocument === file}
 												onClick={() => onDocumentChange(file)}
 												className={cn(
-													"font-mono text-[13px] transition-colors focus-visible:outline-1 focus-visible:outline-ring",
+													"rounded-full px-3 py-1 font-mono text-[12px] transition-colors focus-visible:outline-1 focus-visible:outline-ring",
 													activeDocument === file
-														? "font-semibold text-foreground underline decoration-primary/50 underline-offset-4"
+														? "bg-accent font-semibold text-foreground"
 														: "text-muted-foreground/60 hover:text-foreground"
 												)}
 											>
@@ -412,10 +412,11 @@ export function ProjectDetailPageView({
 													/>
 												</div>
 											) : (
-												<div className="flex flex-col items-start gap-3 py-10 text-muted-foreground/60">
-													<p className="text-[13px]">{labels.emptyFileTitle}</p>
-													<p className="text-[11px]">{labels.emptyFileHint}</p>
-													<Button variant="outline" size="sm" onClick={() => setMode("edit")} className="mt-1">
+												<div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/70 bg-accent/20 px-6 py-12 text-center">
+													<span className="icon-[solar--document-add-linear] h-8 w-8 text-muted-foreground/60" aria-hidden />
+													<p className="mt-1 text-[14px] font-medium text-foreground/90">{labels.emptyFileTitle}</p>
+													<p className="text-[12px] text-muted-foreground">{labels.emptyFileHint}</p>
+													<Button size="sm" onClick={() => setMode("edit")} className="mt-3">
 														{labels.startEditing}
 													</Button>
 												</div>

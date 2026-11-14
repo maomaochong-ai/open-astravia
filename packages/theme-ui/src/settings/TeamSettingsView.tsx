@@ -36,7 +36,7 @@ export function TeamSettingsView({
 					<p className="mt-1 text-[12px] text-muted-foreground">{description}</p>
 				</div>
 				<div className="flex gap-2">
-					<Button variant="outline" size="sm" onClick={onJoinOpen}>
+					<Button variant="field" size="sm" onClick={onJoinOpen}>
 						<span className="icon-[mdi--account-plus-outline] mr-1.5 h-3.5 w-3.5" />
 					</Button>
 					<Button size="sm" onClick={onCreateOpen}>

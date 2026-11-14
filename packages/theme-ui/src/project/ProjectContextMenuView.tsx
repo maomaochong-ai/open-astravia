@@ -5,6 +5,7 @@ export type ProjectContextMenuScope = "conversation" | "claw";
 
 export interface ProjectContextMenuViewLabels {
 	openInFolder: string;
+	manageSessions: string;
 	archiveProject: string;
 	removeFromList: string;
 	clearConversation: string;
@@ -29,6 +30,8 @@ export interface ProjectContextMenuViewProps {
 	onClearClaw?: () => void;
 	onClearConversation?: () => void;
 	onClose: () => void;
+	/** 打开「管理会话」面板；未提供时不显示入口。 */
+	onManageSessions?: () => void;
 	onOpenClawSettings?: () => void;
 	onOpenInFolder: () => void;
 	onRemove: () => void;
@@ -47,6 +50,7 @@ export function ProjectContextMenuView({
 	onClearClaw,
 	onClearConversation,
 	onClose,
+	onManageSessions,
 	onOpenClawSettings,
 	onOpenInFolder,
 	onRemove,
@@ -97,6 +101,16 @@ export function ProjectContextMenuView({
 				className="fixed z-[1000] w-[160px] overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-xl"
 				style={{ left: `${adjustedPos.x}px`, top: `${adjustedPos.y}px` }}
 			>
+				{onManageSessions && (
+					<button
+						type="button"
+						onClick={onManageSessions}
+						className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
+					>
+						<span className="icon-[solar--checklist-minimalistic-linear] h-3.5 w-3.5" />
+						{labels.manageSessions}
+					</button>
+				)}
 				{!isDefault && canOpenInFolder && (
 					<button
 						type="button"

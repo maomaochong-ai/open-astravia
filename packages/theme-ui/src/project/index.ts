@@ -1,3 +1,5 @@
+// 面板用来渲染一行会话的视图合同；「管理会话」在宿主侧组装这些行，所以它得能取到类型。
+export type { CommandMenuItemView } from "../overlays/command-menu-types";
 export type {
 	BatchQueueStatusViewLabels,
 	BatchQueueStatusViewProps,
@@ -26,6 +28,22 @@ export type {
 export { DefaultSessionListView } from "./DefaultSessionListView";
 export type { DefaultSessionRowViewProps } from "./DefaultSessionRowView";
 export { DefaultSessionRowView } from "./DefaultSessionRowView";
+export type {
+	ManageSessionsMenuItemView,
+	ManageSessionsSplashViewLabels,
+	ManageSessionsSplashViewProps,
+	ManageSessionsStep,
+	ManageSessionsTabView,
+} from "./ManageSessionsSplashView";
+export { ManageSessionsSplashView } from "./ManageSessionsSplashView";
+export type { ManageSessionsVirtualRange } from "./manage-sessions-range";
+export {
+	computeManageSessionsRange,
+	MANAGE_SESSIONS_LIST_HEIGHT,
+	MANAGE_SESSIONS_ROW_HEIGHT,
+	MANAGE_SESSIONS_VIRTUAL_THRESHOLD,
+	manageSessionsScrollTopFor,
+} from "./manage-sessions-range";
 export type {
 	NewProjectDialogViewLabels,
 	NewProjectDialogViewProps,

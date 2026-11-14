@@ -143,7 +143,7 @@ function BuiltinMcpCard({
 				<div className="mt-auto flex justify-end pt-1">
 					{added ? (
 						discover ? (
-							<Button variant="outline" size="sm" disabled className="opacity-80">
+							<Button variant="field" size="sm" disabled className="opacity-80">
 								<span className="icon-[mdi--check] h-3.5 w-3.5 text-emerald-400" />
 								{labels.added}
 							</Button>

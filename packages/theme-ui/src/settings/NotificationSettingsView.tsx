@@ -69,7 +69,7 @@ export function NotificationSettingsView({
 						/>
 					</SettingRow>
 					<SettingRow title={labels.preview} border={false}>
-						<Button size="sm" variant="outline" onClick={onPreview}>
+						<Button size="sm" variant="field" onClick={onPreview}>
 							{labels.previewAction ?? labels.preview}
 						</Button>
 					</SettingRow>

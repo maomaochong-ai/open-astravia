@@ -14,7 +14,7 @@ import {
 	type VirtuosoHandle,
 } from "react-virtuoso";
 import { MessageFeedProvider, useMessageFeedContext } from "./MessageFeedContext";
-import { MessageFeedLayoutList } from "./MessageFeedLayoutView";
+import { MessageFeedLayoutList, MessageFeedLayoutTopInset } from "./MessageFeedLayoutView";
 
 export interface MessageFeedRootProps {
 	readonly children: ReactNode;
@@ -135,7 +135,12 @@ function MessageFeedVirtualFooterSlot(): JSX.Element {
 	return <div ref={setFooterHost} />;
 }
 
-const VIRTUAL_COMPONENTS = { List: MessageFeedLayoutList, Footer: MessageFeedVirtualFooterSlot };
+const VIRTUAL_COMPONENTS = {
+	List: MessageFeedLayoutList,
+	// 沉浸式顶栏下由它给列表流顶部留白，见 MessageFeedLayoutTopInset。
+	Header: MessageFeedLayoutTopInset,
+	Footer: MessageFeedVirtualFooterSlot,
+};
 
 export const MessageFeed = {
 	Root: MessageFeedRoot,

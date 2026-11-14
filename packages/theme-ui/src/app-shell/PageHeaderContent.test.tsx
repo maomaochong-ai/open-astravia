@@ -20,27 +20,6 @@ function createModel(overrides: Partial<PageHeaderModel> = {}): PageHeaderModel 
 const actions = { onExpandSidebar: () => {}, onOverlayClose: () => {}, onOverlayOpen: () => {} };
 
 describe("PageHeaderContent", () => {
-	it("renders the utility slot before page actions and window chrome", () => {
-		const markup = renderToStaticMarkup(
-			<PageHeaderContent
-				actions={actions}
-				model={createModel({
-					rightSlot: <span data-testid="page-action" />,
-					utilitySlot: <span data-testid="utility-action" />,
-				})}
-				narrow={false}
-				windowControls={<span data-testid="window-controls" />}
-			/>,
-		);
-
-		const utilityIndex = markup.indexOf("utility-action");
-		const pageActionIndex = markup.indexOf("page-action");
-		const windowControlsIndex = markup.indexOf("window-controls");
-
-		expect(utilityIndex).toBeGreaterThan(-1);
-		expect(utilityIndex).toBeLessThan(pageActionIndex);
-		expect(pageActionIndex).toBeLessThan(windowControlsIndex);
-	});
 	// 页面动作用户能看到的只有一份；同一插槽渲染两次在顶栏就是一排重复图标。
 	it("renders the page action slot exactly once", () => {
 		const markup = renderToStaticMarkup(

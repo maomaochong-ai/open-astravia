@@ -20,7 +20,7 @@ export function SettingRow({
 	border?: boolean;
 }): JSX.Element {
 	return (
-		<div className={cn("flex items-center justify-between gap-6 px-5 py-4", border && "border-b border-border")}>
+		<div className={cn("flex items-center justify-between gap-6 px-4 py-2.5", border && "border-b border-border")}>
 			<div className="min-w-0 flex-1 basis-0">
 				<div className="truncate text-[13px] font-medium text-foreground" title={title}>
 					{title}

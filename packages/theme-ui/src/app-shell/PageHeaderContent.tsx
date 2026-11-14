@@ -7,6 +7,7 @@ import { cn } from "@astravia-org/ui/utils";
 import { PageHeaderSidebarTrigger } from "./PageHeaderSidebarTrigger";
 import { PageHeaderTitle } from "./PageHeaderTitle";
 import { PageHeaderWindowActions } from "./PageHeaderWindowActions";
+import { HeaderCrowdingProvider, useHeaderCrowding } from "./header-crowding";
 
 export interface PageHeaderContentProps extends SdkPageHeaderContentProps {
 	/** Host-provided window chrome (connected WindowControls). */
@@ -20,6 +21,7 @@ export function PageHeaderContent({
 	narrow,
 	windowControls,
 }: PageHeaderContentProps): JSX.Element {
+	const crowding = useHeaderCrowding();
 	const ThemeSidebarTrigger = useThemeComponent("app.pageHeaderSidebarTrigger", PageHeaderSidebarTrigger);
 	const ThemePageHeaderTitle = useThemeComponent("app.pageHeaderTitle", PageHeaderTitle);
 	const ThemePageHeaderWindowActions = useThemeComponent(
@@ -29,7 +31,7 @@ export function PageHeaderContent({
 
 	return (
 		<>
-			<div className={cn("no-drag flex min-w-0 items-center gap-2", classNames?.left)}>
+			<div ref={crowding.leftRef} className={cn("no-drag flex min-w-0 items-center gap-2", classNames?.left)}>
 				<AnimatePresence initial={false}>
 					{model.triggerVisible && model.leftActions ? (
 						/*
@@ -43,7 +45,8 @@ export function PageHeaderContent({
 							animate={{ opacity: 1, scale: 1 }}
 							exit={{ opacity: 0, scale: 0.9 }}
 							transition={{ duration: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
-							className="shrink-0"
+							// 左簇被宿主压成 gap-1，按钮组与标题之间再让出 8px。
+							className="mr-2 shrink-0"
 						>
 							<ButtonGroup>
 								<ButtonGroupItem
@@ -91,10 +94,11 @@ export function PageHeaderContent({
 					model.titleBadge
 				)}
 			</div>
-			<ThemePageHeaderWindowActions className={classNames?.actions} trailing={windowControls}>
-				{model.utilitySlot}
-				{model.rightSlot}
-			</ThemePageHeaderWindowActions>
+			<div ref={crowding.rightRef} className="flex shrink-0">
+				<ThemePageHeaderWindowActions className={classNames?.actions} trailing={windowControls}>
+					<HeaderCrowdingProvider crowded={crowding.crowded}>{model.rightSlot}</HeaderCrowdingProvider>
+				</ThemePageHeaderWindowActions>
+			</div>
 		</>
 	);
 }

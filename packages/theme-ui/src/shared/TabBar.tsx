@@ -3,6 +3,7 @@ import {
 	useCallback,
 	useEffect,
 	useId,
+	useLayoutEffect,
 	useRef,
 	useState,
 	type JSX,
@@ -149,13 +150,17 @@ function ActiveTabIndicator({
 	const indicatorRef = useRef<HTMLSpanElement>(null);
 	const [tabWidth, setTabWidth] = useState(0);
 
-	useEffect(() => {
+	// 宽度必须在绘制前量到。拖动面板时指示器会暂时关掉布局动画，若这时把节点拆掉重建，
+	// 宽度状态会回到 0，而 ResizeObserver 在尺寸不再变化时不一定再回调，三边轮廓就再也画不出来。
+	useLayoutEffect(() => {
 		const indicator = indicatorRef.current;
 		if (!indicator) return;
-		const updateWidth: ResizeObserverCallback = (entries): void => {
-			const nextWidth = entries[0]?.contentRect.width ?? 0;
+		const updateWidth = (): void => {
+			const nextWidth = indicator.offsetWidth;
 			setTabWidth((currentWidth) => (currentWidth === nextWidth ? currentWidth : nextWidth));
 		};
+		updateWidth();
+		if (typeof ResizeObserver === "undefined") return;
 		const observer = new ResizeObserver(updateWidth);
 		observer.observe(indicator);
 		return () => observer.disconnect();
@@ -199,19 +204,16 @@ function ActiveTabIndicator({
 		"data-active-tab-indicator": true,
 	};
 
-	if (suppressLayoutAnimation) {
-		return (
-			<span ref={indicatorRef} {...indicatorProps}>
-				{content}
-			</span>
-		);
-	}
-
+	// 始终用同一个节点。拖动面板宽度时只关掉 layoutId，避免换成另一种元素后轮廓宽度被清掉。
 	return (
 		<motion.span
 			ref={indicatorRef}
-			layoutId={`tabbar-active-${layoutId}`}
-			transition={{ type: "spring", stiffness: 480, damping: 36, mass: 0.8 }}
+			layoutId={suppressLayoutAnimation ? undefined : `tabbar-active-${layoutId}`}
+			transition={
+				suppressLayoutAnimation
+					? { duration: 0 }
+					: { type: "spring", stiffness: 480, damping: 36, mass: 0.8 }
+			}
 			{...indicatorProps}
 		>
 			{content}

@@ -35,7 +35,7 @@ export function ImLegacyImportBannerView({
 				<Button variant="primary" size="sm" onClick={onImport} disabled={importDisabled}>
 					{importLabel}
 				</Button>
-				<Button variant="outline" size="sm" onClick={onSkip}>
+				<Button variant="field" size="sm" onClick={onSkip}>
 					{skipLabel}
 				</Button>
 			</div>

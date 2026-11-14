@@ -16,7 +16,8 @@ export function ActivityPanelFrame({
 	return (
 		<div
 			className={cn(
-				"relative z-10 flex min-h-0 flex-1 flex-col overflow-visible rounded-xl border border-border bg-muted",
+				// 只留左上圆角，以及左边、上边的描边；右边和底边贴内容区，不再画线和圆角。
+				"relative z-10 flex min-h-0 flex-1 flex-col overflow-visible rounded-tl-xl border-l border-t border-border bg-muted",
 				className,
 			)}
 			data-theme-surface-root="activity.panel"

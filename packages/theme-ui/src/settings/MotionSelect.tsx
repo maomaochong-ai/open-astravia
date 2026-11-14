@@ -1,6 +1,6 @@
 import { useState, type JSX, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { cn, Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui";
+import { cn, Popover, PopoverContent, PopoverTrigger, SELECT_PANEL_CLASS, SELECT_TRIGGER_CLASS } from "@astravia-org/ui";
 
 /**
  * 设置页 motion 下拉（对齐原 Agent 人设）。
@@ -52,10 +52,9 @@ export function MotionSelect({
 					aria-label={ariaLabel}
 					disabled={disabled}
 					className={cn(
-						// 与 @astravia-org/ui SelectTrigger 同皮
-						"flex h-8 w-fit items-center justify-between gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[12px] font-medium whitespace-nowrap transition-colors outline-none",
-						"hover:bg-accent data-[state=open]:bg-accent",
-						"focus-visible:border-primary/50",
+						// 与 @astravia-org/ui SelectTrigger 同皮（皮肤常量见 packages/ui/src/select.tsx）
+						"flex h-8 w-fit items-center justify-between gap-1.5 rounded-lg px-2.5 text-[12px] font-medium whitespace-nowrap transition-colors outline-none",
+						SELECT_TRIGGER_CLASS,
 						"disabled:cursor-not-allowed disabled:opacity-50",
 						!selected && placeholder ? "text-muted-foreground" : "text-foreground",
 						triggerClassName,
@@ -75,8 +74,11 @@ export function MotionSelect({
 						// asChild 时 className 会合并到 motion.div：背景/边框必须写在这里，
 						// 勿用 bg-transparent（会盖掉 bg-popover，面板变「没背景」）
 						className={cn(
-							"z-50 w-[var(--radix-popover-trigger-width)] min-w-[var(--radix-popover-trigger-width)]",
-							"gap-0 overflow-hidden rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-md outline-hidden",
+							// 面板宽度按选项内容撑开，只保证不窄于触发器：触发器按当前值自适应后可能很窄，
+							// 固定成触发器宽度会把别的选项截成省略号。
+							"z-50 w-max min-w-[var(--radix-popover-trigger-width)] max-w-[min(360px,var(--radix-popover-content-available-width))]",
+							"gap-0 overflow-hidden rounded-lg border bg-popover p-1 text-popover-foreground shadow-md outline-hidden",
+							SELECT_PANEL_CLASS,
 							"data-open:animate-none data-closed:animate-none",
 						)}
 						style={{ animation: "none" }}
@@ -109,7 +111,7 @@ export function MotionSelect({
 												: "text-foreground hover:bg-accent",
 										)}
 									>
-										<span className="min-w-0 flex-1 truncate text-left">{option.label}</span>
+										<span className="min-w-0 flex-1 truncate whitespace-nowrap text-left">{option.label}</span>
 										{isSelected ? (
 											<span className="icon-[mdi--check] ml-auto h-3.5 w-3.5 shrink-0 text-primary" />
 										) : null}

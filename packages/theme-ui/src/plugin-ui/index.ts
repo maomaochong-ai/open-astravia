@@ -8,6 +8,11 @@
  * 全部是纯展示组件：数据、文案、写回逻辑都由调用方经 props 提供，插件因此可以在
  * 自己的语义下复用宿主的形态（例如看板给「某张卡片」选模型，而宿主输入栏给
  * 「当前会话」选模型，用的是同一个选择器）。
+ *
+ * 设置页那几个（`MotionSelect` / `SettingSection` / `SettingRow` / `SettingHeading`）
+ * 进来是因为它们已经被宿主三处设置页复用、形态稳定（行高 41px、无边框底色下拉）；
+ * 插件自绘只会得到第二种近似实现，同一款下拉被写两遍。**业务视图不进来**：
+ * `AppearanceSettingsView` 这类带具体数据源与写回逻辑的属于宿主功能，不是形态。
  */
 
 // 主题槽位注册表的类型增强（ThemeSurfaceRegistry）。不带上它，插件那侧的 TS program
@@ -21,6 +26,10 @@ export type {
 	ModelSelectorViewProps,
 } from "../chat/ModelSelectorView";
 export { ModelSelectorView } from "../chat/ModelSelectorView";
+export type { MotionSelectOption, MotionSelectProps } from "../settings/MotionSelect";
+export { MotionSelect } from "../settings/MotionSelect";
+export type { SettingSectionMeta } from "../settings/SettingChrome";
+export { SettingHeading, SettingRow, SettingSection } from "../settings/SettingChrome";
 export type { MultiplierTagProps } from "../shared/MultiplierTag";
 export { fmtMultiplier, MultiplierTag } from "../shared/MultiplierTag";
 export { getProviderIcon, PROVIDER_ICONS, ProviderIcon } from "../shared/provider-icon";

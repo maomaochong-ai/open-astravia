@@ -354,9 +354,9 @@
 			"types": "./src/chat/BashTerminalCard.tsx",
 			"import": "./src/chat/BashTerminalCard.tsx"
 		},
-		"./chat/HeaderActionGroupView": {
-			"types": "./src/chat/HeaderActionGroupView.tsx",
-			"import": "./src/chat/HeaderActionGroupView.tsx"
+		"./chat/HeaderActionBarView": {
+			"types": "./src/chat/HeaderActionBarView.tsx",
+			"import": "./src/chat/HeaderActionBarView.tsx"
 		},
 		"./chat/ChatHeaderActionsView": {
 			"types": "./src/chat/ChatHeaderActionsView.tsx",
@@ -674,6 +674,10 @@
 			"types": "./src/project/DefaultSessionRowView.tsx",
 			"import": "./src/project/DefaultSessionRowView.tsx"
 		},
+		"./project/manage-sessions-range": {
+			"types": "./src/project/manage-sessions-range.ts",
+			"import": "./src/project/manage-sessions-range.ts"
+		},
 		"./project/NewProjectDialogView": {
 			"types": "./src/project/NewProjectDialogView.tsx",
 			"import": "./src/project/NewProjectDialogView.tsx"
@@ -745,10 +749,6 @@
 		"./shared/useDelayedUnmount": {
 			"types": "./src/shared/useDelayedUnmount.ts",
 			"import": "./src/shared/useDelayedUnmount.ts"
-		},
-		"./sidebar/AddProjectMenuPopoverView": {
-			"types": "./src/sidebar/AddProjectMenuPopoverView.tsx",
-			"import": "./src/sidebar/AddProjectMenuPopoverView.tsx"
 		},
 		"./sidebar/AddProjectMenuTriggerView": {
 			"types": "./src/sidebar/AddProjectMenuTriggerView.tsx",

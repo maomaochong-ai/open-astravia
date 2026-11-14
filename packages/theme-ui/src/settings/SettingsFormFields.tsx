@@ -1,5 +1,5 @@
 import type { FocusEventHandler, JSX, KeyboardEvent } from "react";
-import { cn } from "@astravia-org/ui";
+import { cn, INPUT_FILL_CLASS, Input, TEXTAREA_FILL_CLASS } from "@astravia-org/ui";
 import { MotionSelect } from "./MotionSelect";
 
 /**
@@ -54,7 +54,7 @@ export function InputField({
 	className?: string;
 }): JSX.Element {
 	return (
-		<input
+		<Input
 			type={type}
 			value={value}
 			disabled={disabled}
@@ -64,10 +64,7 @@ export function InputField({
 			placeholder={placeholder}
 			autoFocus={autoFocus}
 			aria-label={ariaLabel}
-			className={cn(
-				"h-8 w-full rounded-lg border border-border bg-card px-2.5 text-[12px] font-medium text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors hover:bg-accent focus-visible:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50",
-				className,
-			)}
+			className={cn(INPUT_FILL_CLASS, className)}
 		/>
 	);
 }
@@ -89,7 +86,7 @@ export function TextareaField({
 			onChange={(e) => onChange(e.target.value)}
 			placeholder={placeholder}
 			rows={rows}
-			className="w-full resize-none rounded-lg border border-border bg-card px-2.5 py-2 font-mono text-[12px] text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors hover:bg-accent focus-visible:border-primary/50"
+			className={cn(TEXTAREA_FILL_CLASS, "w-full resize-none font-mono")}
 		/>
 	);
 }

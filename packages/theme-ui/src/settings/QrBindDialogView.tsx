@@ -153,7 +153,7 @@ export function QrBindDialogView({
 								</Button>
 							</>
 						) : (
-							<Button variant="outline" onClick={() => onOpenChange(false)}>
+							<Button variant="field" onClick={() => onOpenChange(false)}>
 								{labels.cancel}
 							</Button>
 						)}

@@ -55,6 +55,11 @@ export interface ModelSelectorLabels {
 	cloudOnly: string;
 	/** 三栏模式：收藏栏标题、星标标题、搜索命中标题。 */
 	favoritesHeader: string;
+	/**
+	 * 服务商栏的无障碍名称（三栅左栏）。插件自备文案，因此可缺省；
+	 * 缺省时该分组没有名字，与之前行为一致。
+	 */
+	providerHeader?: string;
 	favorite: string;
 	unfavorite: string;
 	searchResultsHeader: string;

@@ -116,7 +116,7 @@ export function ModelsFetchedModelsDrawerView({
 				<div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
 					<span className="icon-[solar--danger-triangle-linear] h-8 w-8 text-destructive" />
 					<p className="text-[12px] text-destructive">{error}</p>
-					<Button variant="outline" size="sm" onClick={onRetry}>
+					<Button variant="field" size="sm" onClick={onRetry}>
 						{labels.retry}
 					</Button>
 				</div>

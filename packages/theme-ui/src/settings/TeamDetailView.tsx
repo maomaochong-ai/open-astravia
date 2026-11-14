@@ -140,7 +140,7 @@ export function TeamDetailView({
 
 			{detail.members.some((member) => member.role !== "owner") && (
 				<div className="flex justify-end">
-					<Button variant="outline" size="sm" className="text-destructive" onClick={onLeave} />
+					<Button variant="field" size="sm" className="text-destructive" onClick={onLeave} />
 				</div>
 			)}
 		</div>

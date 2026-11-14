@@ -32,6 +32,8 @@ export interface AtPanelLabels {
 	emptyDirectory: string;
 	goUp: string;
 	enterDirectory: string;
+	/** 目录行上的「引用目录」：只把这个目录交给模型，不展开它。缺省时不渲染该动作。 */
+	referenceDirectory?: string;
 }
 
 export interface AtPanelViewProps {
@@ -48,6 +50,8 @@ export interface AtPanelViewProps {
 	onGoUp: () => void;
 	onHoverIndex: (index: number) => void;
 	onEntryClick: (entry: AtPanelEntryModel) => void;
+	/** 目录行上的「引用目录」：只把路径交给模型，不展开里面的文件。 */
+	onReferenceDirectory?: (entry: AtPanelEntryModel) => void;
 }
 
 export function AtPanelView({
@@ -64,6 +68,7 @@ export function AtPanelView({
 	onGoUp,
 	onHoverIndex,
 	onEntryClick,
+	onReferenceDirectory,
 }: AtPanelViewProps): JSX.Element {
 	return (
 		<AnimatePresence>
@@ -141,8 +146,14 @@ export function AtPanelView({
 											entry={entry}
 											className={classNames?.item}
 											enterDirectoryLabel={labels.enterDirectory}
+											referenceDirectoryLabel={
+												onReferenceDirectory && entry.isDirectory ? labels.referenceDirectory : undefined
+											}
 											onHover={() => onHoverIndex(entry.index)}
 											onClick={() => onEntryClick(entry)}
+											onReference={
+												onReferenceDirectory ? () => onReferenceDirectory(entry) : undefined
+											}
 										/>
 									))}
 								</div>
@@ -159,14 +170,18 @@ function AtPanelEntry({
 	entry,
 	className,
 	enterDirectoryLabel,
+	referenceDirectoryLabel,
 	onHover,
 	onClick,
+	onReference,
 }: {
 	entry: AtPanelEntryModel;
 	className?: string;
 	enterDirectoryLabel: string;
+	referenceDirectoryLabel?: string;
 	onHover: () => void;
 	onClick: () => void;
+	onReference?: () => void;
 }): JSX.Element {
 	return (
 		<button
@@ -211,8 +226,28 @@ function AtPanelEntry({
 				</span>
 			)}
 			{entry.isDirectory && (
-				<span className="ml-auto text-[10px] text-muted-foreground/50" title={enterDirectoryLabel}>
+				<span className="ml-auto shrink-0 text-[10px] text-muted-foreground/50" title={enterDirectoryLabel}>
 					{enterDirectoryLabel}
+				</span>
+			)}
+			{entry.isDirectory && referenceDirectoryLabel && onReference && (
+				// 包一层 span 而不是嵌套 button：行本身是 button，嵌按钮在 HTML 里非法。
+				<span
+					role="button"
+					tabIndex={-1}
+					title={referenceDirectoryLabel}
+					onMouseDown={(event) => {
+						// 先于行的 click：不让它把「进入目录」也触发一次。
+						event.preventDefault();
+						event.stopPropagation();
+					}}
+					onClick={(event) => {
+						event.stopPropagation();
+						onReference();
+					}}
+					className="shrink-0 rounded px-1 text-[10px] text-primary/80 hover:bg-primary/10 hover:text-primary"
+				>
+					{referenceDirectoryLabel}
 				</span>
 			)}
 		</button>

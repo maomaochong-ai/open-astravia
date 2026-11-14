@@ -148,7 +148,7 @@ export function GeneralSettingsView({
 				</SettingRow>
 				{updatesDetail ? <div className="border-b border-border px-5 pb-4">{updatesDetail}</div> : null}
 				<SettingRow title={labels.startAppGuide} description={labels.startAppGuideDescription} border={false}>
-					<Button size="sm" variant="outline" onClick={onStartAppGuide}>
+					<Button size="sm" variant="field" onClick={onStartAppGuide}>
 						{labels.startAppGuideAction}
 					</Button>
 				</SettingRow>
@@ -163,7 +163,7 @@ export function GeneralSettingsView({
 					description={labels.exportDiagnosticsDescription}
 					border={false}
 				>
-					<Button size="sm" variant="outline" disabled={exportingDiagnostics} onClick={onExportDiagnostics}>
+					<Button size="sm" variant="field" disabled={exportingDiagnostics} onClick={onExportDiagnostics}>
 						{exportingDiagnostics ? labels.exporting : labels.export}
 					</Button>
 				</SettingRow>

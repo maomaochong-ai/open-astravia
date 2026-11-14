@@ -105,3 +105,18 @@ textarea::placeholder {
 		transform: rotate(1.5deg);
 	}
 }
+
+/*
+ * 模型选择面板的开合：只用不透明度与极小位移，不跑 spring。
+ * 面板每次弹出都带三栏与虚拟列表，弹簧动画会在打开瞬间叠一次布局重算。
+ */
+@keyframes model-selector-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px) scale(0.985);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}

@@ -48,7 +48,7 @@ export function SidebarTopBar({
 				!floating && "drag-region",
 				className,
 			)}
-			style={{ paddingLeft: isMac ? 78 : 16, paddingRight: 6 }}
+			style={{ paddingLeft: isMac ? "calc(78px / var(--ui-zoom, 1))" : 16, paddingRight: 6 }}
 		>
 			{/* brand 只占内容宽；Mac 常为空，避免 flex-1 吃掉 actions 的测量空间 */}
 			{isMac ? (
@@ -65,7 +65,10 @@ export function SidebarTopBar({
 			{/*
 			 * flex-1：actions 始终吃掉剩余宽度，宿主放进来的自适应按钮才能随侧栏拉宽恢复完整文案。
 			 */}
-			<div className={cn("flex min-w-0 flex-1 items-center justify-end gap-1", classNames?.actions)}>
+			<div
+				className={cn("flex min-w-0 flex-1 items-center justify-end gap-1", classNames?.actions)}
+				data-titlebar-anchor=""
+			>
 				{actions}
 				{imOnline && (
 					<button

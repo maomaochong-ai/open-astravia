@@ -52,7 +52,7 @@ export function AutomationDetailPaneView({
 					onClick={onClose}
 					className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 				>
-					<span className="icon-[mdi--close] h-4 w-4" />
+					<span className="icon-[solar--close-linear] h-4 w-4" />
 				</button>
 			</header>
 			<div className="min-h-0 flex-1 overflow-y-auto px-6 pt-3 pb-6">

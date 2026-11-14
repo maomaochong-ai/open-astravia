@@ -73,6 +73,7 @@ export {
 export type { ChatExportHostViewProps } from "./ChatExportHostView";
 export { ChatExportHostView } from "./ChatExportHostView";
 export {
+	ChatHeaderActionGroup,
 	ChatHeaderActions,
 	ChatHeaderBottomPanelAction,
 	ChatHeaderExportAction,
@@ -80,6 +81,15 @@ export {
 	ChatHeaderPinAction,
 	ChatHeaderTerminalAction,
 } from "./ChatHeaderActionsView";
+export type {
+	HeaderActionBarItem,
+	HeaderActionBarLabels,
+	HeaderActionBarViewProps,
+	HeaderActionBehavior,
+	HeaderActionPopoverApi,
+	HeaderActionZone,
+} from "./HeaderActionBarView";
+export { HeaderActionBarView } from "./HeaderActionBarView";
 export type { CompactionStepViewProps } from "./CompactionStepView";
 export { CompactionStepView } from "./CompactionStepView";
 export type { ContextRingViewProps } from "./ContextRingView";
