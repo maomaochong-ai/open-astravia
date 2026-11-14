@@ -73,7 +73,9 @@ export interface InputBarLabels {
 		allowSession: string;
 	};
 	toolbar: {
+		add: string;
 		skills: string;
+		addTooltip: string;
 		addImage: string;
 		attachFile: string;
 		queue: string;

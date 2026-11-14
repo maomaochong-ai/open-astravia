@@ -11,6 +11,7 @@ import {
 	InputBarSpeechAction,
 	InputBarToolbarDivider,
 } from "./InputBarToolbar";
+import { TOOLBAR_SCROLL_CLASS, handleHorizontalWheel } from "@shared/lib/horizontal-wheel-scroll";
 import type { InputBarModel } from "./types";
 
 export function InputBarLeadingActions({ model }: { readonly model: InputBarModel }): JSX.Element {
@@ -26,7 +27,7 @@ export function InputBarLeadingActions({ model }: { readonly model: InputBarMode
 				<InputBarSkillsAction
 					active={commands.slashOpen}
 					disabled={!model.hasSession}
-					title={model.labels.toolbar.skills}
+					title={model.labels.toolbar.add}
 					onSelect={commands.onOpen}
 				/>
 			) : null}
@@ -87,7 +88,11 @@ export function InputBarToolbar({
 }): JSX.Element {
 	return (
 		<>
-			<MessageInput.ToolbarLeading>
+			{/*
+			 * 工具一多就会被裁掉，鼠标又没有横向滚轮：把纵向滚轮映射成横向滚动，
+			 * 溢出时拦截、不溢出时让页面照常滚。scrollbar 隐藏但容器仍可聚焦滚动。
+			 */}
+			<MessageInput.ToolbarLeading className={TOOLBAR_SCROLL_CLASS} onWheel={handleHorizontalWheel}>
 				<InputBarLeadingActions model={model} />
 			</MessageInput.ToolbarLeading>
 			<MessageInput.ToolbarTrailing>

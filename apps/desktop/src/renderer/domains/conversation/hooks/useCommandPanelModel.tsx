@@ -7,6 +7,7 @@ import { useAtomValue } from "jotai";
 import { type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type {
+	CommandPanelFileAction,
 	CommandPanelLabels,
 	CommandPanelOperationItem,
 	CommandPanelProps,
@@ -35,6 +36,7 @@ export interface CommandPanelModelInput {
 	className?: string;
 	/** 会话级操作仅在已绑定 Runtime 的聊天输入框中可用。 */
 	allowCompaction?: boolean;
+	fileActions?: readonly CommandPanelFileAction[];
 }
 
 export interface CommandPanelModel {
@@ -51,6 +53,7 @@ export function useCommandPanelModel({
 	cwd,
 	className,
 	allowCompaction = true,
+	fileActions,
 }: CommandPanelModelInput): CommandPanelModel {
 	const { t } = useTranslation("chat");
 	const normalizedFilter = filter.startsWith("/") ? filter.slice(1) : filter;
@@ -221,7 +224,9 @@ export function useCommandPanelModel({
 		() => ({
 			header: t("slashPanel.header"),
 			resultCount: t("slashPanel.resultCount", { count: items.length }),
-			connectorsSection: t("slashPanel.connectorsSection"),
+			connectorsSection: t("slashPanel.sections.connectors"),
+			filesSection: t("slashPanel.sections.files"),
+			skillsSectionTitle: t("slashPanel.sections.skills"),
 			emptyNoMatch: t("slashPanel.emptyNoMatch"),
 			emptyNoMatchHint: t("slashPanel.emptyNoMatchHint"),
 			emptyNoSkills: t("slashPanel.emptyNoSkills"),
@@ -259,6 +264,7 @@ export function useCommandPanelModel({
 			operation,
 			connectors,
 			connectorColumns: columns,
+			files: fileActions ?? [],
 			actions,
 			labels,
 			resolveIcon,

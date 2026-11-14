@@ -150,6 +150,20 @@ export function InputBarView({ model, className, classNames, children }: InputBa
 											cwd={model.effectiveCwd || undefined}
 											className={model.isFocused ? "border-primary/20" : undefined}
 											allowCompaction={commands.allowCompaction}
+											fileActions={[
+												{
+													id: "addFile",
+													label: model.labels.toolbar.attachFile,
+													icon: "icon-[solar--paperclip-linear]",
+													onSelect: () => void model.actions.handleSelectFiles(),
+												},
+												{
+													id: "addImage",
+													label: model.labels.toolbar.addImage,
+													icon: "icon-[solar--gallery-linear]",
+													onSelect: () => void model.actions.handleSelectImages(),
+												},
+											]}
 										/>
 									</PerfSendProfiler>
 								) : null}

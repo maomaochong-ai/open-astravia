@@ -3,6 +3,7 @@ import { ContextRingView } from "@astravia-org/theme-ui/chat/ContextRingView";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import { ConnectorGrid } from "./ConnectorGrid";
+import { FileActionSection } from "./FileActionSection";
 import { FadingScrollArea } from "./FadingScrollArea";
 import { SkillList } from "./SkillList";
 import { PANEL_REVEAL_ROWS, PANEL_REVEAL_TRANSITION } from "./constants";
@@ -37,6 +38,7 @@ export function CommandPanelView({
 	operation,
 	connectors,
 	connectorColumns,
+	files,
 	actions,
 	labels,
 	resolveIcon,
@@ -120,7 +122,11 @@ export function CommandPanelView({
 									</span>
 								</button>
 							) : null}
-							{/* 过滤态隐藏宫格：此时用户在找 skill，键盘导航也只走列表 */}
+							{/*
+							 * 过滤态隐藏直接动作区段：此时用户在按关键词找条目，文件动作没有可匹配的文本。
+							 * 顺序按 ADR-0156：文件 → 连接器 → 技能列表。
+							 */}
+							{!filtering && <FileActionSection items={files} title={labels.filesSection} />}
 							{!filtering && (
 								<ConnectorGrid
 									items={connectors}
@@ -129,6 +135,12 @@ export function CommandPanelView({
 									onSelect={onSelectConnector}
 								/>
 							)}
+							{/* 技能区段的标题：过滤态下用户已经在按关键词找，标题只会占地方。 */}
+							{!filtering && items.length > 0 ? (
+								<div className="px-4 pb-0.5 pt-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
+									{labels.skillsSectionTitle}
+								</div>
+							) : null}
 							{items.length > 0 || !operation ? <SkillList
 								items={items}
 								activeIndex={operation ? activeIndex - 1 : activeIndex}

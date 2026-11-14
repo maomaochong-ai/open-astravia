@@ -4,6 +4,7 @@ import { useCommandPanelModel } from "../../hooks/useCommandPanelModel";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import type { InputActionBarModel } from "../useInputActionBarModel";
 import { CommandPanelView } from "./CommandPanelView";
+import type { CommandPanelFileAction } from "./types";
 
 export interface CommandPanelProps {
 	/** 已由输入框 Connector 装配时直接复用，确保面板和激活胶囊来自同一动作模型。 */
@@ -19,6 +20,11 @@ export interface CommandPanelProps {
 	cwd?: string;
 	className?: string;
 	allowCompaction?: boolean;
+	/**
+	 * 「文件」区段的三段动作（添加文件 / 添加图片 / 引用对话中的文件）。
+	 * 由输入框宿主注入——附件选择的实现在它那里，面板只负责呈现（ADR-0156）。
+	 */
+	fileActions?: readonly CommandPanelFileAction[];
 }
 
 /**

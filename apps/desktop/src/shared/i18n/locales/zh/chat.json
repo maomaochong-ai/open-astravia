@@ -623,9 +623,10 @@
 			"selected": "{{count}} 个成员"
 		},
 		"toolbar": {
+			"addTooltip": "可添加文件、技能、连接器、插件、应用",
 			"addImage": "添加图片",
 			"attachFile": "附加文件引用",
-			"skills": "技能"
+			"add": "添加"
 		},
 		"speech": {
 			"actions": {
@@ -1147,6 +1148,18 @@
 		"emptyNoMatchHint": "换个关键词试试，或直接输入你的需求。",
 		"emptyNoSkills": "暂无可用的技能",
 		"emptyNoSkillsHint": "去能力广场安装技能后，这里就能直接调用。",
+		"sections": {
+			"files": "文件",
+			"skills": "技能",
+			"connectors": "连接器",
+			"plugins": "插件",
+			"apps": "应用"
+		},
+		"filesSection": {
+			"addFile": "添加文件",
+			"addImage": "添加图片",
+			"reference": "引用对话中的文件"
+		},
 		"header": "选择技能",
 		"resultCount": "{{count}} 个结果",
 		"skillsSection": "技能",

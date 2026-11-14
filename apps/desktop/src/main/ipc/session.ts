@@ -18,7 +18,6 @@ import type {
 import { DEFAULT_PERSONA_ID, PERSONAS } from "@astravia/coding-agent/profile";
 import {
 	CODING_AGENT_BACKGROUND_TASK_KILL,
-	CODING_AGENT_BACKGROUND_TASKS_CLEAR_FINISHED,
 	CODING_AGENT_BACKGROUND_TASKS_OBSERVATION,
 	CODING_AGENT_BACKGROUND_TASKS_READ,
 	CODING_AGENT_NEXT_PROMPT_SUGGESTIONS,
@@ -48,6 +47,7 @@ import { DEFAULT_AGENT_MODE, isAgentMode, MODE_PROMPTS } from "../agent-modes/in
 import { stopSessionBackgroundWork } from "../agent-runtime/stop-session-work.js";
 import { agentTeamSessionService } from "../agent-teams/team-session-service.js";
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
+import { clearFinishedWork } from "../conversations/clear-finished-work";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
 import { DesktopGoalController } from "../conversations/desktop-goal-controller.js";
@@ -1562,9 +1562,12 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		return runtime.revokeAllSandboxGrants(sessionId);
 	});
 
-	ipcMain.handle(CHANNELS.BACKGROUND_TASKS_CLEAR_FINISHED, (_event, sessionId: unknown) => {
+	ipcMain.handle(CHANNELS.BACKGROUND_TASKS_CLEAR_FINISHED, async (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
-		return runtime.invokeSessionExtension(sessionId, CODING_AGENT_BACKGROUND_TASKS_CLEAR_FINISHED, undefined);
+		// 面板按钮上的数字是「后台命令 + 子代理」之和，清除也必须覆盖这两类，
+		// 否则子代理行会留在原地，看起来就是点击无效。
+		const cleared = await clearFinishedWork(runtime, sessionId);
+		return cleared.tasks + cleared.subagents;
 	});
 
 	ipcMain.handle(CHANNELS.BACKGROUND_TASKS_KILL, (_event, sessionId: unknown, taskId: unknown) => {

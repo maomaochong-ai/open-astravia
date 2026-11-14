@@ -623,9 +623,10 @@
 			"selected": "{{count}} members"
 		},
 		"toolbar": {
+			"addTooltip": "Add files, skills, connectors, plugins, or apps",
 			"addImage": "Add image",
 			"attachFile": "Attach file reference",
-			"skills": "Skills"
+			"add": "Add"
 		},
 		"speech": {
 			"actions": {
@@ -1147,6 +1148,18 @@
 		"emptyNoMatchHint": "Try another keyword, or just type your request.",
 		"emptyNoSkills": "No skills available",
 		"emptyNoSkillsHint": "Install a skill from the ability market to call it here.",
+		"sections": {
+			"files": "Files",
+			"skills": "Skills",
+			"connectors": "Connectors",
+			"plugins": "Plugins",
+			"apps": "Apps"
+		},
+		"filesSection": {
+			"addFile": "Add file",
+			"addImage": "Add image",
+			"reference": "Reference a file from this chat"
+		},
 		"header": "Select a skill",
 		"resultCount": "{{count}} results",
 		"skillsSection": "Skills",

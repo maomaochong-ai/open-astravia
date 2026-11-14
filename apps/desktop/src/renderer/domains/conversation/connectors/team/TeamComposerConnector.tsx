@@ -413,7 +413,8 @@ export function TeamComposerConnector({
 				allowSession: t("inputBar.permission.allowSession"),
 			},
 			toolbar: {
-				skills: t("inputBar.toolbar.skills"),
+				add: t("inputBar.toolbar.add"),
+				skills: t("inputBar.toolbar.add"),
 				addImage: model.labels.attachImage,
 				attachFile: model.labels.attachFile,
 				queue: t("inputBar.drawer.queueLabel"),

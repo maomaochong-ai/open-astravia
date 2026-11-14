@@ -38,11 +38,14 @@ describe("CommandPanelView built-in operation", () => {
 				}}
 				connectors={[]}
 				connectorColumns={4}
+				files={[]}
 				actions={[]}
 				labels={{
 					header: "命令",
 					resultCount: "0 个结果",
-					connectorsSection: "已接入",
+					connectorsSection: "连接器",
+					filesSection: "文件",
+					skillsSectionTitle: "技能",
 					emptyNoMatch: "无结果",
 					emptyNoMatchHint: "",
 					emptyNoSkills: "无技能",

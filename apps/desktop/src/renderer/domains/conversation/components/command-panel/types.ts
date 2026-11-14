@@ -34,6 +34,20 @@ export interface CommandPanelLabels extends SkillListLabels {
 	header: string;
 	resultCount: string;
 	connectorsSection: string;
+	/** 分区标题（ADR-0156）：文件 / 技能 / 连接器。 */
+	filesSection: string;
+	skillsSectionTitle: string;
+}
+
+/**
+ * 文件区段的一行。它是直接动作（添加文件 / 添加图片 / 引用对话内文件），
+ * 不是可搜索条目，因此不进技能列表的键盘索引。
+ */
+export interface CommandPanelFileAction {
+	readonly id: string;
+	readonly label: string;
+	readonly icon: string;
+	readonly onSelect: () => void;
 }
 
 export interface CommandPanelActionItem {
@@ -62,6 +76,7 @@ export interface CommandPanelProps {
 	activeIndex: number;
 	operation?: CommandPanelOperationItem;
 	connectors: readonly ConnectorGridItem[];
+	files: readonly CommandPanelFileAction[];
 	connectorColumns: number;
 	actions: readonly CommandPanelActionItem[];
 	labels: CommandPanelLabels;
