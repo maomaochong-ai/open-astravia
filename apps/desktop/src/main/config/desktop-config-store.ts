@@ -305,6 +305,28 @@ export function readDesktopConfig(): Promise<DesktopConfig> {
 	});
 }
 
+/**
+ * `debugMode` 的热路径读取。
+ *
+ * 原先每轮对话结束时都要 `readConfigSync()` 一次（同步读文件 + 解析 + 迁移 + 读 SSH 主机）。
+ * 配置随项目数增长，这一下会落在主线程上，而且只在「要不要记调试请求」这个开关上。
+ * 这里记住上一次写入的版本号，写配置时递增——读到的永远是当前值，且没有同步 I/O。
+ */
+let debugModeCache: { version: number; value: boolean } | null = null;
+let configWriteVersion = 0;
+
+/** 配置写入后调用，让缓存失效。 */
+export function noteDesktopConfigWrite(): void {
+	configWriteVersion += 1;
+}
+
+export function isDebugModeEnabled(): boolean {
+	if (debugModeCache && debugModeCache.version === configWriteVersion) return debugModeCache.value;
+	const value = Boolean(readConfigSync().debugMode);
+	debugModeCache = { version: configWriteVersion, value };
+	return value;
+}
+
 export function readConfigSync(): DesktopConfig {
 	try {
 		const raw = readFileSync(CONFIG_PATH, "utf8");
@@ -526,6 +548,7 @@ export function updateDesktopConfig(update: DesktopConfigUpdater): Promise<Deskt
 		if (next === current) return current;
 		// sshHosts 由 writeSshHosts 独占：调用方手里的 DesktopConfig 只是只读投影，不能写回。
 		const notificationPreferences = preserveFutureNotificationFields(raw, next.notificationPreferences);
+		noteDesktopConfigWrite();
 		await atomicWriteJSONAsync(CONFIG_PATH, {
 			...raw,
 			...next,

@@ -58,6 +58,7 @@ import {
 	InteractiveSessionResidencyTracker,
 	reconcileIdleInteractiveSessions,
 } from "../conversations/idle-session-residency.js";
+import { startLoopLagProbe } from "../conversations/main-loop-lag-probe";
 import { getDesktopMcpElicitationBroker } from "../conversations/mcp-elicitation-broker.js";
 import { getDesktopPlanReviewBroker } from "../conversations/plan-review-broker.js";
 import { parsePromptRequest } from "../conversations/prompt-request-schema.js";
@@ -95,7 +96,7 @@ import {
 	DEFAULT_CONVERSATION_SESSION_DIR,
 	DEFAULT_IM_CONVERSATION_CWD,
 	DEFAULT_IM_CONVERSATION_SESSION_DIR,
-	readConfigSync,
+	isDebugModeEnabled,
 	readDesktopConfig,
 	updateDesktopConfig,
 } from "./fs.js";
@@ -424,6 +425,16 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const mcpAppRegistry = getDesktopMcpAppRegistry();
 	const sandboxAuthorizationBroker = getDesktopSandboxAuthorizationBroker();
 	const petPresentationController = new PetSessionPresentationController({ send: sendPetCommandToWindow });
+	/*
+	 * 主线程阻塞探针：活跃会话把应用卡住时，仅凭用户描述无法定位是哪一段同步工作。
+	 * 这里每 100 ms 醒一次，醒来晚了 300 ms 以上就记一条带标签的日志——用户把日志发回来，
+	 * 我们就能知道是「读历史」「写配置」还是别的阶段占住了主线程。
+	 */
+	const loopLagProbe = startLoopLagProbe({
+		onLag: (lagMs, tag) => {
+			sessionLog.warn("main loop blocked", { lagMs: Math.round(lagMs), ...(tag ? { phase: tag } : {}) });
+		},
+	});
 	const unsubscribeConversationListChanged = onConversationListChanged((event) => {
 		broadcastToAllWindows(CHANNELS.SESSIONS_CHANGED, event);
 	});
@@ -1597,7 +1608,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 						: runtimeEvent.channel === "assistant" && runtimeEvent.type === "error"
 							? runtimeEvent.error
 							: undefined;
-				if (assistantMessage && readConfigSync().debugMode) {
+				if (assistantMessage && isDebugModeEnabled()) {
 					const cwd = sessionCwdMap.get(sessionId);
 					if (cwd) {
 						const projectName = basename(cwd);
@@ -1836,17 +1847,29 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		// 流式输出期间每一段文本都会追写一次文件；每次都整份重读 + 重投影会把主线程
 		// 持续占住（4 MB 会话约 190 ms/次），而这条通道只是「看一眼历史」。
 		// 合并策略见 emit-coalescer：窗口内多次变更只投影一次，且最后一次一定会补发。
+		// 读历史走异步入口：同步版会在主线程上把整份文件读入、解析、投影
+		// （4 MB 约 190 ms，20 MB 上秒级）。流式输出期间文件每几百毫秒变一次，
+		// 同步读等于持续把主线程按住——用户看到的就是整个应用转圈/无响应。
+		let reading = false;
 		const coalescer = createEmitCoalescer({
 			debounceMs: VIEWER_DEBOUNCE_MS,
 			minIntervalMs: VIEWER_MIN_INTERVAL_MS,
 			emit: () => {
-				if (webContents.isDestroyed()) return;
-				try {
-					const snapshot = runtime.readSessionHistoryFromFile(abs);
-					webContents.send(CHANNELS.VIEWER_EVENT, subscriptionId, snapshot);
-				} catch {
-					// File may have been deleted between events; ignore.
-				}
+				if (webContents.isDestroyed() || reading) return;
+				reading = true;
+				loopLagProbe.tag("viewer-history-read");
+				const readAsync = runtime.readSessionHistoryFromFileAsync;
+				void Promise.resolve(readAsync ? readAsync.call(runtime, abs) : runtime.readSessionHistoryFromFile(abs))
+					.then((snapshot) => {
+						if (webContents.isDestroyed()) return;
+						webContents.send(CHANNELS.VIEWER_EVENT, subscriptionId, snapshot);
+					})
+					.catch(() => {
+						// 文件可能正好被删除或替换；下一次变更会再来一次。
+					})
+					.finally(() => {
+						reading = false;
+					});
 			},
 		});
 		const watcher = watch(abs, { persistent: false }, () => {
@@ -1874,6 +1897,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		unsubscribeConversationListChanged();
 		webContents.removeListener("did-start-navigation", onDidStartNavigation);
 		webContents.removeListener("render-process-gone", onRenderGone);
+		loopLagProbe.stop();
 		ipcMain.removeHandler(CHANNELS.VIEWER_OPEN_TAIL);
 		pluginToolRendererHost.dispose();
 		for (const sub of viewerSubs.values()) {

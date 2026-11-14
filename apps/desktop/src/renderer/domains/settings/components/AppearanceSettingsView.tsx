@@ -572,7 +572,7 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				<SettingHeading title={model.labels.sections.font} section={SETTINGS_SECTION["appearance-font"]} className="mb-3" />
 				<FontSelectRow
 					role="global"
-					label={model.labels.sections.font}
+					label={model.labels.fontFamily}
 					hint={model.labels.fontHint}
 					value={model.font}
 					options={model.fontOptions}

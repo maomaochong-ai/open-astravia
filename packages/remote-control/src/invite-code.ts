@@ -23,9 +23,15 @@ export const INVITE_ASSOCIATED_DATA = "astravia-invite-v1";
 /** Longest sealed envelope the relay keeps, as serialized JSON. */
 export const MAX_INVITE_ENVELOPE_CHARS = 8_192;
 /**
- * 邀请码邮筒的写者令牌头。前一个是本项目的名字，后一个是**线协议兼容别名**：默认中继
- * （`DEFAULT_REMOTE_RELAY_BASE_URL`）是上游部署的实例，只认旧头名。客户端两个都发，自有中继
- * 两个都收，这样换中继实现不需要与已部署的实例同时上线。
+ * 邀请码邮筒的写者令牌头。
+ *
+ * 第一个是本项目当前使用的头名；第二个是**线协议兼容别名**：默认中继
+ * （`DEFAULT_REMOTE_RELAY_BASE_URL`）指向一个只认旧头名的既有部署，改掉它会让已经
+ * 在用默认中继的设备无法配对。客户端两个头都发，自有中继两个都收，因此换中继实现
+ * 不需要与已部署的实例同时上线。
+ *
+ * 注意：第二个字符串是**线上协议的一部分**，不是注释或命名；在没有先让默认中继
+ * 接受新头名之前不要删除它。
  */
 export const INVITE_TOKEN_HEADERS = ["X-Astravia-Invite-Token", "X-Vetta-Invite-Token"] as const;
 

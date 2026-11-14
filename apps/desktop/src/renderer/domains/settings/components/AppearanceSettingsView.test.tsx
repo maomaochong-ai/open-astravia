@@ -92,6 +92,7 @@ function model(
 			textureHint: "textureHint",
 			title: "外观",
 			fontHint: "fontHint",
+			fontFamily: "fontFamily",
 		},
 		language: "system",
 		languages: [],

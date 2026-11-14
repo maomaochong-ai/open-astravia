@@ -17,7 +17,14 @@ import { getAppLogger } from "../logger.js";
 
 const log = getAppLogger("file-transfer-ipc");
 const PLAN_TTL_MS = 2 * 60 * 1000;
-const MAX_TRANSFER_ITEMS = 100;
+/**
+ * 一次搬运/拖放的条目上限。
+ *
+ * 原先 100：一次选中上百个文件、或拖一个目录进来都会被直接拒掉，而错误只进日志，
+ * 用户看到的是「拖了没反应」。上限本身是必要的（挡住病态输入），但 100 远低于
+ * 正常使用；抬到 5000 并保留原有的绝对路径与存在性校验。
+ */
+const MAX_TRANSFER_ITEMS = 5_000;
 
 const CHANNELS = {
 	PREPARE_DROP: "astravia:file-transfer:prepare-drop",

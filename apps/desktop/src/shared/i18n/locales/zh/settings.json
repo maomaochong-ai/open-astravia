@@ -1311,6 +1311,7 @@
   "section_appearance-language": "语言",
   "section_appearance-font": "字体",
   "fontHint": "只选一次，界面控件、会话正文、代码块、diff 与终端一起换。不改字号与排版。",
+  "fontFamily": "字体系列",
   "uiFontSystemTitle": "系统默认",
   "uiFontSystemHint": "跟随操作系统界面字体（macOS 为 SF Pro，Windows 为 Segoe UI）。",
   "uiFontRoundedTitle": "圆润",

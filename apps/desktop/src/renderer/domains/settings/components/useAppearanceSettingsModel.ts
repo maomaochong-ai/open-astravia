@@ -128,6 +128,7 @@ export interface AppearanceSettingsModel {
 		textureHint: string;
 		title: string;
 		fontHint: string;
+		fontFamily: string;
 	};
 	/** 用户语言偏好（含 system），用于选择器高亮。 */
 	language: LanguagePreference;
@@ -394,6 +395,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 			textureHint: t("textureHint"),
 			title: t("appearanceTitle"),
 			fontHint: t("fontHint"),
+			fontFamily: t("fontFamily"),
 		}),
 		[t],
 	);

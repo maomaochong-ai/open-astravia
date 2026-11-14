@@ -1311,6 +1311,7 @@
   "section_appearance-language": "Language",
   "section_appearance-font": "Font",
   "fontHint": "Choose once and it applies everywhere: interface, message text, code blocks, diffs and the terminal. Text size and layout stay the same.",
+  "fontFamily": "Font family",
   "uiFontSystemTitle": "System default",
   "uiFontSystemHint": "Follows the OS interface font (SF Pro on macOS, Segoe UI on Windows).",
   "uiFontRoundedTitle": "Rounded",
