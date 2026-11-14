@@ -17,7 +17,8 @@
         "plugin-workbench",
         "comfyui-media-provider",
         "content-creation",
-        "browser"
+        "browser",
+        "open-in-app"
       ]
     },
     "production": {
@@ -35,7 +36,8 @@
         "plugin-workbench",
         "comfyui-media-provider",
         "content-creation",
-        "browser"
+        "browser",
+        "open-in-app"
       ]
     }
   }

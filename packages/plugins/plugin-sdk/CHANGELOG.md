@@ -4,6 +4,12 @@ All notable changes to `@astravia-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+- 新增 `ctx.shell`：`listExternalApplications(targetPath)` 返回本机可打开该目录的应用（含分类与自己的图标 data URL），`openPathWithApplication(targetPath, appId, kind)` 与 `openPathWithDefaultApplication(targetPath)` 负责启动。权限 `shell.open-external-app`，要求 Plugin API `^2.10.0`。平台差异（macOS 的应用目录与 `open`、Windows 的注册表与 exe 启动、Linux 的 `.desktop`）全部由宿主处理，插件不必再自己拼 `open -a` 这类命令，也不会因为平台不同而只能支持其中一种。旧宿主没有 `ctx.shell`，使用前请把 `pluginApiVersion` 写成 `^2.10.0`。
+
+- 活动面板的宽度联动与侧边栏解耦：`setActivityPanelWidth("max")` 与 `openActivityTab(id, { width: "max" })` 不再自动收起宿主侧边栏，而是从可用宽度中扣除常驻侧栏占的那一栏。合同类型不变；依赖「拉满后侧栏消失」的插件需要自己收起侧栏，或接受更窄的面板。
+
+- 新增会话页顶栏贡献点 `ctx.ui.registerHeaderAction({ id, order?, useAction })` 与权限 `ui.slot.header-action`，要求 Plugin API `^2.9.0`。它是**声明式**的：`useAction` 是一个 hook，返回 `{ title, icon, badge?, active?, disabled?, onClick | menuItems | popover }`（或 `null` 表示不适用），由宿主把它渲染成顶栏统一按钮组里的一格，插件不能自定义样式，按钮上也没有文字（名称走悬浮提示）。顶栏最多显示 7 格（内置与插件共用），其余进入「收纳」；用户可在收纳托盘里拖动调整哪些上栏、顺序如何，布局按 `${插件 id}:${贡献 id}` 记在本机，新装插件的动作只会占空位、不会挤走已有布局。新增类型 `PluginHeaderActionState` / `PluginHeaderActionMenuItem` / `PluginHeaderActionPopoverProps`；`menuItems` ≤ 20 项、`title` ≤ 40 字等限制见 `docs/plugin/ui-slots.md`。旧宿主没有该方法，调用会得到 `undefined`，需要兼容旧宿主的插件请把 `pluginApiVersion` 写成 `^2.9.0`。
+
 - `PluginModelDefinition.input` 可声明 `text` / `image`。Desktop 模型写入合同同步保留该字段，修复网关已声明图像输入但模型注册后仍退回纯文本的问题；省略时仍采用宿主默认，旧宿主可能清除该字段。
 
 - 底部面板实例新增 `useBottomPanel().openTerminal({ command, cwd?, label? })` 与 `revealInstance(instanceId)`，配套权限 `terminal.run`，要求 Plugin API `^2.8.0`。脚本运行器一类插件此前只能用 `command.spawn` 轮询 64KB 的输出尾巴：没有伪终端、不能输入、没有颜色，也不支持远程项目。现在由宿主开内置终端、把命令敲进用户的 shell，交互、分屏、关闭确认与远程终端都直接复用；命令只在终端首次启动时敲一次，重开会话不会重跑。
@@ -11,8 +17,6 @@ All notable changes to `@astravia-org/plugin-sdk` are documented in this file.
 - `ctx.fs.listFilesRecursive(rootPath, options?)` 新增可选的 `names`（只返回这些文件名）与 `ignoredDirectories`（在宿主默认之外再跳过的目录），本地与 `ssh://` 远程项目都在遍历时就筛好。此前只能列出全部文件再自己筛，而结果有 10,000 条上限：在 monorepo 里找所有 `package.json` 时，无关源码会先把上限占满，排在后面的项目直接漏掉。要求 Plugin API `^2.8.0`；旧宿主忽略 `options` 并返回全部文件，需要兼容旧宿主的插件应自行再筛一次。
 
 - **破坏性**：`official.scheduler` 的任务结构随桌面端自动化重做一起更换。`createTask` / `updateTask` 不再接受 `cron`、`isOnce`、`cwd`、`modelKey`、`executionMode`、`skill`，改为 `schedule`（不重复/间隔/每小时/每天/每周/每月/自定义 cron）、`runTarget`（每次新建会话或同一个会话，并指定所属项目）、可选的 `model`（含思考强度）与 `notification`（webhook 通知）；`updateTask` 里 `model` / `notification` 传 `null` 表示清除；`runTarget.projectCwd` 可省略，省略即落在默认「对话」里。技能改为写在任务正文里的 `@skill:` 行内引用。旧结构的调用会被宿主的输入校验拒绝，不会被误读成别的配置。
-
-- 新增会话底部面板贡献点 `ctx.ui.registerBottomPanel()` 与配套权限 `ui.slot.bottom-panel`，要求 Plugin API `^2.7.0`。它与活动面板标签卡的分工是：活动面板在右侧、一个贡献一个实例，适合看某个东西的当前状态；底部面板横跨会话页下沿、可分屏、**同一个贡献可以开多个实例**，适合终端、日志跟随这类长驻工作面。实例的名字、图标、状态点与关闭前裁决都走命令式的 `useBottomPanel()`——多实例下「每帧返回 meta 的 hook」拿不到实例身份，会让改名在两份事实源之间打架。
 
 - 文件浏览器装饰新增语义 `color`、`faded`、`strikethrough`、父目录 `propagate` 与 `onDidChangeDecorations` 精确失效事件；新增用户可选的 `registerIconTheme`，支持精确文件名、复合扩展名、文件夹展开态及浅色/深色/高对比覆盖。旧 `icon` / `badge` / `tooltip` provider 保持兼容。使用新合同的插件应声明 Plugin API `^2.7.0`。
 

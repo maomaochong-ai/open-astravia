@@ -620,6 +620,98 @@ export interface PluginNewSessionContextContribution {
 }
 
 /**
+ * 顶栏动作的下拉菜单项。点击一项执行 `onSelect` 并关闭菜单。
+ */
+export interface PluginHeaderActionMenuItem {
+	/** 项在菜单内唯一的 id。 */
+	id: string;
+	label: string;
+	/** 菜单项前的图标，16px 方框内显示。 */
+	icon?: ReactNode;
+	onSelect: () => void;
+	disabled?: boolean;
+	/** 危险操作（红色）。 */
+	destructive?: boolean;
+	/** 在这一项之前画一条分隔线。 */
+	separatorBefore?: boolean;
+}
+
+/** 顶栏动作气泡里的内容组件拿到的 props。 */
+export interface PluginHeaderActionPopoverProps {
+	/** 关闭气泡（例如内容里点了「完成」）。 */
+	close: () => void;
+}
+
+/**
+ * 顶栏动作此刻的**声明**，由 {@link PluginHeaderActionContribution.useAction} 返回。
+ *
+ * 宿主用它统一渲染成与内置按钮完全一致的一格；插件能决定的只有下面这些字段，没有 `className`、
+ * `style`，也无法替换按钮本身，且**只有图标、没有文字**：名称靠悬浮提示（`title`）显示。
+ * `click` / `menuItems` / `popover` **三选一**：
+ * 同时给多个时按 `menuItems` > `popover` > `onClick` 取第一个；一个都没有则该动作不显示。
+ *
+ * 宿主会校验并截断：`title` 最长 40 字（超出截断），`menuItems` 最多
+ * 20 项，`badge` 只接受数字（≥ 1，超过 99 显示 `99+`）或 `true`（红点）。
+ */
+export interface PluginHeaderActionState {
+	/** 必填。悬浮提示、无障碍名称（按钮上不显示文字，用户靠它认出这个动作）。 */
+	title: string;
+	/**
+	 * 必填。图标节点，宿主放进 16px 的固定方框里并忽略指针事件，建议直接用
+	 * iconify 的 `<span className="icon-[solar--…]" />`。
+	 */
+	icon: ReactNode;
+	/** 角标：数字显示计数，`true` 显示红点。被收纳时宿主会把它汇总到收纳入口上。 */
+	badge?: number | boolean;
+	/** 选中态（例如面板已打开）。 */
+	active?: boolean;
+	disabled?: boolean;
+	/** 点击直接执行。 */
+	onClick?: () => void;
+	/** 点击向下弹出下拉菜单。 */
+	menuItems?: readonly PluginHeaderActionMenuItem[];
+	/**
+	 * 点击弹出气泡，内容是你自己的组件。气泡的背景、圆角、投影由宿主固定，宽高随内容自适应；
+	 * 被收纳时它会在收纳托盘里**内联展开**（宽约 260px），内容请能在这个宽度下正常显示。
+	 */
+	popover?: ComponentType<PluginHeaderActionPopoverProps>;
+}
+
+/**
+ * 会话页顶栏右侧按钮组里的一格（`ui.slot.header-action`）。
+ *
+ * 顶栏右侧是**宿主统一管理的一个按钮组**：内置按钮（导出 / 置顶 / 终端 / 底部面板）与所有插件
+ * 贡献排在同一组里，外观由宿主决定，插件不能自定义样式。显示规则：
+ * - 顶栏最多显示 7 格（不含最右侧固定的「活动面板」开关），内置与插件共用这 7 个名额；
+ * - 超出的、以及用户主动收起的动作进入「收纳」托盘（悬浮在按钮组上时，组下方出现的小白条）；
+ * - 用户可以在托盘里拖动调整顺序、决定哪些在顶栏哪些收纳，这份布局按动作 id 记在本机；
+ * - 新装插件的动作：顶栏还有空位就排进去，否则进收纳，不会挤走用户已有的布局。
+ * 所以插件**不能**假定自己一定在顶栏上，也不能依赖相邻的是谁。
+ *
+ * 当前仅出现在会话页。
+ */
+export interface PluginHeaderActionContribution {
+	/** 贡献 id，在本插件内唯一，最长 64 字符。用户的布局按 `${插件 id}:${id}` 记忆，请不要随意改名。 */
+	id: string;
+	/**
+	 * 默认排序权重，小的靠左。**只影响用户还没自己调整过时的初始位置**，省略按注册顺序排在最后；
+	 * 同值按插件 id、贡献 id 稳定排序。
+	 */
+	order?: number;
+	/**
+	 * 返回动作此刻的声明，返回 `null` 表示当前不适用（例如没有项目目录），宿主不显示也不占位。
+	 *
+	 * 这是一个 **React hook**：宿主在会话页顶栏挂载期间一直调用它，所以可以在里面用任意 hook
+	 * （`useActiveConversation()`、`useTranslation()`、你自己的 store……），数据变化时自然重新声明。
+	 * 约束：
+	 * - 渲染期必须是纯计算，不要在里面发请求、起定时器；这类副作用放进 `useEffect`；
+	 * - 抛错只会让这一项消失（错误边界隔离），不会影响其它动作；
+	 * - 每次渲染都可以返回新对象，宿主不依赖引用相等。
+	 */
+	useAction: () => PluginHeaderActionState | null;
+}
+
+/**
  * 宿主左侧侧边栏此刻的形态。给插件自适应布局用——尤其是沉浸式工作区视图：
  * 侧边栏收起时宿主页头会长出「展开侧边栏」按钮并占住左上角，视图自己画在那一带的
  * 东西需要让位。
@@ -659,6 +751,16 @@ export interface PluginUiApi {
 	 * `ui.slot.new-session-context` permission (missing permission = **warn+noop**).
 	 */
 	registerNewSessionContext(contribution: PluginNewSessionContextContribution): Disposable;
+	/**
+	 * Register a **header action** — one declarative slot in the conversation
+	 * page header's host-managed button group (icon / badge plus a click,
+	 * menu or popover; no custom styling — see
+	 * {@link PluginHeaderActionContribution}). The user decides, via the group's
+	 * overflow tray, which actions sit in the header (max 7 shared with the host's
+	 * own buttons) and in what order. Needs the `ui.slot.header-action`
+	 * permission (missing permission = **warn+noop**) and Plugin API `^2.9.0`.
+	 */
+	registerHeaderAction(contribution: PluginHeaderActionContribution): Disposable;
 	/**
 	 * Navigate to one of this plugin's own workspace views. `viewId` is the
 	 * contribution id passed to {@link PluginUiApi.registerWorkspaceView}. No-op
@@ -748,8 +850,8 @@ export interface PluginUiApi {
 	 *
 	 * Pass `options.width` to size the panel as it opens — a pixel number, or
 	 * `"max"` to expand it to the widest the current window allows (the host
-	 * still clamps to its min/max and auto-hides the sidebar when needed). Omit
-	 * to leave the user's current width untouched.
+	 * still clamps to its min/max and always yields the resident sidebar's
+	 * column). Omit to leave the user's current width untouched.
 	 *
 	 * Omit `options.cwd` for the conversation currently displayed by the host.
 	 * Tool handlers and background work should pass their session cwd explicitly.
@@ -769,7 +871,7 @@ export interface PluginUiApi {
 	setActivityTabVisible(tabId: string, visible: boolean, options?: PluginActivityTabTargetOptions): void;
 	/**
 	 * 直接设置活动面板宽度：像素值，或 `"max"` 表示「跟随窗口拉满」（宿主仍会夹到
-	 * 自己的 min/max 内，必要时自动收起侧边栏）。
+	 * 自己的 min/max 内，并从可用宽度中扣除常驻侧边栏占的那一栏）。
 	 *
 	 * `"max"` 是一种持续状态而非一次性求值：窗口尺寸变化时面板跟着变宽变窄，直到
 	 * 用户拖动分隔条或有人写入具体像素为止。传数字则是一次性的固定宽度。

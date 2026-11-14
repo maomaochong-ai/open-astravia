@@ -94,6 +94,10 @@ export type {
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
 	PluginNotifyOptions,
+	PluginHeaderActionContribution,
+	PluginHeaderActionMenuItem,
+	PluginHeaderActionPopoverProps,
+	PluginHeaderActionState,
 	PluginUiApi,
 } from "./ui.js";
 
@@ -246,6 +250,11 @@ export type {
 	PluginCommandSpawnHandle,
 	PluginCommandApi,
 } from "./command.js";
+export type {
+	PluginExternalApplication,
+	PluginExternalApplicationKind,
+	PluginShellApi,
+} from "./shell.js";
 export type {
 	PluginCliProviderApi,
 	PluginCliProviderPhase,

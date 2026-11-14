@@ -69,6 +69,12 @@ export interface PluginCommandSpawnHandle {
  * and app quit.
  */
 export interface PluginCommandApi {
+	/**
+	 * macOS：取某个已安装应用的图标，返回 PNG data URL；没装（或不在 `/Applications`、`/System/Applications`、
+	 * `~/Applications` 等标准目录里）返回 `null`。`appName` 是 `.app` 的文件名（不含扩展名），如 `"Visual Studio Code"`。
+	 * 用来在菜单里展示应用自己的图标，并据此判断没装的应用；需要 `agent.command.run`。
+	 */
+	appIcon(appName: string): Promise<string | null>;
 	run(file: string, args?: string[], options?: PluginCommandRunOptions): Promise<PluginCommandRunResult>;
 	spawn(file: string, args?: string[], options?: PluginCommandSpawnOptions): Promise<PluginCommandSpawnHandle>;
 }

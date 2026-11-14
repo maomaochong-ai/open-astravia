@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"type": "skill",
 	"slug": "install-ability",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"detail": {
 		"blocks": [
 			{

@@ -26,6 +26,11 @@ Astravia 的能力分三种，安装路径互不相同。**先分类，再动手
 - **只在用户明确要求安装时执行**。当前任务缺某个工具，不构成自行安装能力的理由。
 - 所有写操作都会弹宿主审批。用户拒绝就**停下并如实报告**，不要改走别的路子达成同一效果。
 - **禁止直接改注册表**：`~/.astravia/plugins/`、`~/.astravia/plugins-manifest.json`、`~/.astravia/skills-manifest.json`（市场安装的部分）、`~/.astravia/agent/mcp.json` 都由宿主维护，手写会与宿主状态错位。
+- **也禁止直接读这些配置文件**（包括 `~/.astravia/agent/mcp.json` 与项目里的 `mcp.json` / `.mcp.json`）：
+  看已装了什么、配置长什么样，一律用对应的查询动作（`mcp.query`），它们的返回值已经脱敏；
+  自己去读原始文件会看到明文密钥，等于把不该进上下文的东西拉进来。
+- **不要自己去执行或探测用户机器上的可执行文件**（`command run`、手跑 `npx` / `uvx` / 二进制）来
+  验证一个 MCP 装没装好。装了没装好以宿主状态为准；确实需要排错时才在用户要求下做（见 §4 校验）。
 - 安装源来自用户。第三方 zip / http 链接在安装前把来源念给用户确认一次。
 
 ## 2. 插件
@@ -139,7 +144,9 @@ mcp.manage {"operation":"upsert","name":"remote",
 - 缺省是 stdio；http 必须显式写 `"type":"http"`。可选字段：`env`、`cwd`、`disabled`、`autoApprove`、`startupTimeout`、`debug`。
 - **密钥只从用户处取**，放进 `env` / `headers`，不要写进仓库文件、不要回显到聊天里。
 - `upsert` 同名即覆盖，用它做「更新配置」，不要先 remove 再加。
-- 校验：`mcp.query {"operation":"get","name":"<name>"}`（密钥字段会脱敏）。起不来时，先把 `command args` 在终端手跑一次看报错，再改配置——不要靠反复 upsert 试。
+- 校验：`mcp.query {"operation":"get","name":"<name>"}` 能返回配置即算装好（密钥字段会脱敏）。
+  只有用户明确要求排错、或宿主回报启动失败时，才把 `command args` 在终端手跑一次看报错——
+  那是诊断手段，不是安装后的默认验证步骤，也不要用它反复试。
 - 停用 / 删除：`mcp.manage set-enabled` / `remove`。
 - 新装 MCP 的工具在**当前会话**里可能要等宿主重连才出现。这不是安装失败，别为了让工具出现而重装。
 

@@ -5,6 +5,7 @@ import type { PluginArtifactsApi } from "./artifacts.js";
 import type { PluginBrowserApi } from "./browser.js";
 import type { PluginCaptureApi } from "./capture.js";
 import type { PluginCommandApi } from "./command.js";
+import type { PluginShellApi } from "./shell.js";
 import type { PluginCliProviderApi } from "./cli-provider.js";
 import type { PluginConversationApi } from "./conversation.js";
 import type { Disposable } from "./disposable.js";
@@ -56,6 +57,8 @@ export interface PluginContext {
 	official: PluginOfficialApi;
 	fs: PluginFsApi;
 	command: PluginCommandApi;
+	/** 把本机路径交给外部应用（`shell.open-external-app` 权限）。 */
+	shell: PluginShellApi;
 	cliProviders: PluginCliProviderApi;
 	/** Plugin-provisioned, host-managed local services declared by `plugin.json#providers.services`. */
 	services: PluginServiceApi;

@@ -11,6 +11,7 @@ export const PLUGIN_PERMISSIONS = [
 	"ui.slot.turn-card",
 	"ui.slot.workspace-view",
 	"ui.slot.new-session-context",
+	"ui.slot.header-action",
 	"ui.shortcuts.register",
 	"conversation.draft.read",
 	"ui.file-explorer.decorations",
@@ -62,6 +63,7 @@ export const PLUGIN_PERMISSIONS = [
 	"secrets.read",
 	"secrets.write",
 	"shell.openExternal",
+	"shell.open-external-app",
 ] as const;
 
 export type PluginPermission = (typeof PLUGIN_PERMISSIONS)[number];
