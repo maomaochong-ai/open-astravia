@@ -4,7 +4,9 @@ import { access, readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { app } from "electron";
 import type { ExternalApplication, ExternalApplicationKind } from "../preload/api-types/system.js";
+import { getAppBundleIconDataUrl } from "./plugins/app-icon.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -64,7 +66,64 @@ export async function listExternalApplications(targetPath: string | null): Promi
 		}
 	}
 	// 稳定排序：同分类内保持「内置声明顺序」，VS Code 这类最常用的入口仍在最前。
-	return unique.sort(compareApplications);
+	return withIcons(unique.sort(compareApplications));
+}
+
+/**
+ * 给每个应用补上自己的图标。
+ *
+ * macOS 走 bundle 里的 `.icns`（`app.getFileIcon` 在这条路径上会让主进程崩溃，见 app-icon）；
+ * Windows / Linux 用 Electron 读可执行文件图标。图标只是装饰：取不到就不带 `iconUrl`，
+ * 调用方退回按分类的通用图标，绝不因为图标失败让菜单空掉。
+ */
+async function withIcons(applications: ExternalApplication[]): Promise<ExternalApplication[]> {
+	const limited = pLimit(4);
+	return Promise.all(
+		applications.map(async (application) => {
+			const iconUrl = await limited(() => resolveIconUrl(application.applicationPath));
+			return iconUrl ? { ...application, iconUrl } : application;
+		}),
+	);
+}
+
+const iconCache = new Map<string, string | null>();
+
+async function resolveIconUrl(applicationPath: string): Promise<string | null> {
+	const cached = iconCache.get(applicationPath);
+	if (cached !== undefined) return cached;
+	let iconUrl: string | null = null;
+	try {
+		if (process.platform === "darwin") {
+			// `.app` 目录本身就是 bundle；图标只在 bundle 内找，不读任意文件。
+			iconUrl = applicationPath.endsWith(".app") ? await getAppBundleIconDataUrl(applicationPath) : null;
+		} else {
+			const image = await app.getFileIcon(applicationPath, { size: "small" });
+			iconUrl = image.isEmpty() ? null : image.toDataURL();
+		}
+	} catch {
+		iconUrl = null;
+	}
+	iconCache.set(applicationPath, iconUrl);
+	return iconUrl;
+}
+
+/** 极简并发闸：图标要走系统调用，几十个应用同时问会把主进程顶住。 */
+function pLimit(limit: number): <T>(task: () => Promise<T>) => Promise<T> {
+	let active = 0;
+	const queue: Array<() => void> = [];
+	const next = (): void => {
+		active -= 1;
+		queue.shift()?.();
+	};
+	return async <T>(task: () => Promise<T>): Promise<T> => {
+		if (active >= limit) await new Promise<void>((resolve) => queue.push(resolve));
+		active += 1;
+		try {
+			return await task();
+		} finally {
+			next();
+		}
+	};
 }
 
 /** 用指定应用打开路径。`targetPath` 为 null 时只把应用启动起来。 */

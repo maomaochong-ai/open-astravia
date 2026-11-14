@@ -5,7 +5,10 @@
 	},
 	"banner": {
 		"title": "Discover more abilities",
-		"description": "Pick what you want to do — add it and use it straight from chat"
+		"description": "Pick what you want to do — add it and use it straight from chat",
+		"featured": "Recommended",
+		"details": "Details",
+		"goTo": "Go to item {{n}}"
 	},
 	"loading": "Loading…",
 	"type": {
@@ -442,7 +445,9 @@
 			"settingsWrite": "Changes app settings the host exposes to plugins and may alter app behavior.",
 			"shellOpenExternal": "Opens a plugin-selected external link in the system browser or default app.",
 			"uiSlotNewSessionContext": "Lets the plugin show a block beneath the new-session input, only when you pick one of its agents or teams, or mention one of its abilities.",
-			"conversationDraftRead": "Lets the plugin read what you have typed but not yet sent. Provided only while that plugin's context block is on screen."
+			"conversationDraftRead": "Lets the plugin read what you have typed but not yet sent. Provided only while that plugin's context block is on screen.",
+			"uiSlotHeaderAction": "Lets the plugin place an action in the conversation header, next to the built-in buttons.",
+			"shellOpenExternalApp": "Hands a path to an editor, file manager or terminal installed on this machine."
 		},
 		"uiSlotGlobal": "Global UI slot",
 		"uiSlotAbilityDetail": "Show detail configuration panel",
@@ -506,7 +511,9 @@
 		"settingsWrite": "Modify settings",
 		"shellOpenExternal": "Open links in the system browser",
 		"uiSlotNewSessionContext": "New Session Context Slot",
-		"conversationDraftRead": "Read input draft"
+		"conversationDraftRead": "Read input draft",
+		"uiSlotHeaderAction": "Conversation Header Action",
+		"shellOpenExternalApp": "Open files in local apps"
 	},
 	"meta": {
 		"title": "Other",

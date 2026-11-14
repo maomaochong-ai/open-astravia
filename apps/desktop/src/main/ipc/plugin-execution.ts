@@ -7,6 +7,8 @@ import type {
 } from "../../preload/api-types/plugins.js";
 import { PLUGIN_EXECUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { getDesktopCapabilityHost } from "../capabilities/capability-host.js";
+import { listExternalApplications, openPathWithApplication, openPathWithDefaultApplication } from "../external-apps.js";
+import { getAppIconDataUrl } from "../plugins/app-icon.js";
 import { runPluginCommand } from "../plugins/command-runner.js";
 import {
 	getPluginCommandSpawnStatus,
@@ -70,6 +72,40 @@ export function registerPluginExecutionIpc(): () => void {
 				args,
 				(options ?? undefined) as PluginCommandRunOptions | undefined,
 			),
+	);
+	ipcMain.handle(PLUGIN_EXECUTION_CHANNELS.APP_ICON, (_event, sessionId: unknown, appName: unknown) => {
+		// 与 command.run 同一档敏感度（能探测本机装了什么应用），所以同样要求 agent.command.run。
+		capabilityAdapter.pluginIdForSession(asPluginId(sessionId), { permission: "agent.command.run" });
+		return getAppIconDataUrl(typeof appName === "string" ? appName : "");
+	});
+	// 外部应用：与 appIcon 同一档敏感度（能枚举本机装了什么并启动程序），但单独一个权限，
+	// 免得「让插件跑命令」和「把目录交给编辑器」混成一个授权。
+	ipcMain.handle(
+		PLUGIN_EXECUTION_CHANNELS.SHELL_LIST_EXTERNAL_APPLICATIONS,
+		(_event, sessionId: unknown, targetPath: unknown) => {
+			capabilityAdapter.pluginIdForSession(asPluginId(sessionId), { permission: "shell.open-external-app" });
+			return listExternalApplications(typeof targetPath === "string" ? targetPath : null);
+		},
+	);
+	ipcMain.handle(
+		PLUGIN_EXECUTION_CHANNELS.SHELL_OPEN_PATH_WITH_APP,
+		(_event, sessionId: unknown, targetPath: unknown, appId: unknown, kind: unknown) => {
+			capabilityAdapter.pluginIdForSession(asPluginId(sessionId), { permission: "shell.open-external-app" });
+			const resolvedKind =
+				kind === "editor" || kind === "file-manager" || kind === "terminal" || kind === "other" ? kind : "other";
+			return openPathWithApplication(
+				typeof targetPath === "string" ? targetPath : null,
+				asRequiredString(appId, "application id"),
+				resolvedKind,
+			);
+		},
+	);
+	ipcMain.handle(
+		PLUGIN_EXECUTION_CHANNELS.SHELL_OPEN_PATH_WITH_DEFAULT_APP,
+		(_event, sessionId: unknown, targetPath: unknown) => {
+			capabilityAdapter.pluginIdForSession(asPluginId(sessionId), { permission: "shell.open-external-app" });
+			return openPathWithDefaultApplication(asRequiredString(targetPath, "target path"));
+		},
 	);
 	ipcMain.handle(
 		PLUGIN_EXECUTION_CHANNELS.COMMAND_SPAWN,

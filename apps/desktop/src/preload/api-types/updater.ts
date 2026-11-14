@@ -19,6 +19,8 @@ export interface DesktopUpdaterApi {
 	sync(): Promise<void>;
 	getState(): Promise<UpdaterState>;
 	getCurrentVersion(): Promise<string>;
+	/** 当前运行版本的发布说明（Markdown，不含标题）；没有随包说明时为 null。 */
+	getCurrentReleaseNote(): Promise<string | null>;
 	/** 启动后台下载（无感）。返回最终状态。 */
 	download(): Promise<UpdaterState>;
 	/** 立即重启并安装（仅当 state.phase === "ready"） */

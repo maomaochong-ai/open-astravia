@@ -9,15 +9,19 @@ const RETIRED_SERVER_NAMES = ["notion", "figma", "github"] as const;
 function isRetiredBuiltinServer(name: string, server: McpServerConfigData): boolean {
 	switch (name) {
 		case "notion":
-			return server.type === "http" && server.url === "https://mcp.notion.com/mcp";
+			return (server.type === "http" || server.type === "sse") && server.url === "https://mcp.notion.com/mcp";
 		case "figma":
+			// figma 是 stdio 服务器：URL 型配置没有 command/args，先收窄再看字段。
 			return (
 				server.type !== "http" &&
+				server.type !== "sse" &&
 				server.command === "npx" &&
 				server.args?.join("\0") === ["-y", "figma-developer-mcp", "--stdio"].join("\0")
 			);
 		case "github":
-			return server.type === "http" && server.url === "https://api.githubcopilot.com/mcp/";
+			return (
+				(server.type === "http" || server.type === "sse") && server.url === "https://api.githubcopilot.com/mcp/"
+			);
 		default:
 			return false;
 	}

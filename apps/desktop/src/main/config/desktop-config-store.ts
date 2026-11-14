@@ -61,6 +61,8 @@ export interface DesktopConfig {
 	shortcuts?: ShortcutsConfig;
 	quickPanel?: QuickPanelConfig;
 	appshot?: AppshotConfig;
+	/** 主窗口界面缩放比例（设置 → 外观 → 界面大小）。缺省按 100%。 */
+	uiZoomFactor?: number;
 	/**
 	 * 手机遥控本机的配置（ADR-0128）。设备列表为空时桌面端不开端口、不连中继，
 	 * 移动端相关逻辑完全不加载。
@@ -348,6 +350,10 @@ function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 			typeof parsed.schemaVersion === "number" && Number.isInteger(parsed.schemaVersion)
 				? parsed.schemaVersion
 				: DESKTOP_CONFIG_SCHEMA_VERSION,
+		uiZoomFactor:
+			typeof parsed.uiZoomFactor === "number" && Number.isFinite(parsed.uiZoomFactor)
+				? parsed.uiZoomFactor
+				: undefined,
 		projects: migrateProjectEntries(parsed.projects),
 		archivedProjects: migrateProjectEntries(parsed.archivedProjects),
 		workspacePath:
@@ -497,15 +503,18 @@ function normalizeSshHosts(value: unknown): SshHost[] | undefined {
 		const target = typeof input.target === "string" ? input.target.trim() : "";
 		if (id.length === 0 || target.length === 0) continue;
 		const port = typeof input.port === "number" && Number.isInteger(input.port) ? input.port : undefined;
+		// 密码登录时私钥路径没有意义：读盘路径与写入路径用同一条规则，否则旧配置里的残留会被带回来。
+		const usePassword = input.authMethod === "password";
 		hosts.push({
 			id,
 			label: typeof input.label === "string" && input.label.trim().length > 0 ? input.label.trim() : target,
 			target,
 			...(port !== undefined && port > 0 && port <= 65535 ? { port } : {}),
-			...(typeof input.identityFile === "string" && input.identityFile.trim().length > 0
+			...(!usePassword && typeof input.identityFile === "string" && input.identityFile.trim().length > 0
 				? { identityFile: input.identityFile.trim() }
 				: {}),
 			source: input.source === "ssh-config" ? "ssh-config" : "manual",
+			...(usePassword ? { authMethod: "password" as const } : {}),
 			...(typeof input.credentialRef === "string" && input.credentialRef.length > 0
 				? { credentialRef: input.credentialRef }
 				: {}),

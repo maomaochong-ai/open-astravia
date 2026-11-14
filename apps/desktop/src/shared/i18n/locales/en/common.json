@@ -19,11 +19,28 @@
 		"languageTitle": "Language",
 		"languageHint": "Defaults to your system language; change anytime"
 	},
-	"updateRestart": {
-		"title": "Update Ready",
-		"message": "Version {{latestVersion}} has been downloaded (current {{currentVersion}}). Restart Astravia to apply the update.",
-		"later": "Later",
-		"install": "Restart Now"
+	"updateDialog": {
+		"close": "Close",
+		"installing": "Restarting…",
+		"retry": "Retry",
+		"viewCurrent": "View What's New",
+		"checkingTitle": "Checking for Updates",
+		"checking": "Connecting to the update server…",
+		"currentVersion": "Current version {{version}}",
+		"latestTitle": "You're Up to Date",
+		"availableTitle": "New Version {{version}}",
+		"versionChange": "{{currentVersion}} → {{latestVersion}}",
+		"downloadingTitle": "Downloading {{version}}",
+		"downloading": "{{progress}}% downloaded — you can close this window, the download continues in the background",
+		"readyTitle": "{{version}} Is Ready",
+		"readyMessage": "Version {{latestVersion}} has been downloaded (current {{currentVersion}}). Restart Astravia to apply the update.",
+		"installingTitle": "Installing Update",
+		"errorTitle": "Update Check Failed",
+		"errorFallback": "Could not reach the update server. Please try again later.",
+		"currentTitle": "What's New in Astravia {{version}}",
+		"currentSubtitle": "What this release brings",
+		"currentEmpty": "No notes for this version.",
+		"updateNow": "Update Now"
 	},
 	"filePreview": {
 		"showInFolder": "Show in Folder",
@@ -961,6 +978,17 @@
 		"noResultsHint": "Try another model name, ID, or provider",
 		"unset": "Not set",
 		"defaultBadge": "Default",
+		"info": {
+			"button": "Model info",
+			"provider": "Provider",
+			"id": "Model ID",
+			"vision": "Vision",
+			"multiplier": "Multiplier",
+			"default": "Default model",
+			"yes": "Supported",
+			"no": "Not supported"
+		},
+		"fewerProviders": "Collapse",
 		"visionBadge": "vision",
 		"favoritesHeader": "Favorites",
 		"favorite": "Favorite",
@@ -969,6 +997,7 @@
 		"cloudOnly": "Cloud",
 		"reasoningHeader": "Reasoning",
 		"modelHeader": "Model",
+		"providerHeader": "Providers",
 		"multiplier": "{{value}}×",
 		"free": "Free",
 		"reasoningLevel": {

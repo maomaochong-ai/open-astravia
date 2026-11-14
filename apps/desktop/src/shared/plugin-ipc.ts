@@ -20,6 +20,10 @@ export const PLUGIN_MANAGEMENT_CHANNELS = {
 
 export const PLUGIN_EXECUTION_CHANNELS = {
 	COMMAND_RUN: "astravia:plugins:command-run",
+	APP_ICON: "astravia:plugins:app-icon",
+	SHELL_LIST_EXTERNAL_APPLICATIONS: "astravia:plugins:shell-list-external-applications",
+	SHELL_OPEN_PATH_WITH_APP: "astravia:plugins:shell-open-path-with-app",
+	SHELL_OPEN_PATH_WITH_DEFAULT_APP: "astravia:plugins:shell-open-path-with-default-app",
 	COMMAND_SPAWN: "astravia:plugins:command-spawn",
 	COMMAND_SPAWN_STOP: "astravia:plugins:command-spawn-stop",
 	COMMAND_SPAWN_STATUS: "astravia:plugins:command-spawn-status",

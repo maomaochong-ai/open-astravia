@@ -22,6 +22,13 @@ export interface SshHostFormInput {
 	target: string;
 	port?: number;
 	identityFile?: string;
+	/** 缺省为 `key`。 */
+	authMethod?: "key" | "password";
+	/**
+	 * 登录口令（仅 `password`）。只在提交时单向传给主进程，进加密凭据库；
+	 * 编辑时省略表示沿用已保存的口令。
+	 */
+	password?: string;
 }
 
 export interface SshHostProbe {

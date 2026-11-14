@@ -21,6 +21,7 @@ import type {
 	FsTextPreviewResult,
 } from "../../preload/fs-types.js";
 import { FS_READ_TEXT_PREVIEW_CHANNEL } from "../../preload/fs-types.js";
+import { isRemoteMcpServer } from "../../shared/mcp-server-kind.js";
 import { normalizeNotificationPreferences } from "../../shared/notification-preferences.js";
 import {
 	type AppshotConfig,
@@ -293,10 +294,18 @@ export function registerFsIpc(): () => void {
 		await createFilesystemDirectory(dirPath);
 	});
 
-	ipcMain.handle(CHANNELS.LIST_FILES_RECURSIVE, async (_event, rootPath: unknown): Promise<FsFileRef[]> => {
-		assertNonEmptyString(rootPath, "rootPath");
-		return listFilesystemFilesRecursive(rootPath);
-	});
+	ipcMain.handle(
+		CHANNELS.LIST_FILES_RECURSIVE,
+		async (_event, rootPath: unknown, options?: unknown): Promise<FsFileRef[]> => {
+			assertNonEmptyString(rootPath, "rootPath");
+			// 只有 @ 面板会要求目录；普通文件检索保持只回文件，调用方不必改。
+			const includeDirectories =
+				typeof options === "object" &&
+				options !== null &&
+				(options as { includeDirectories?: unknown }).includeDirectories === true;
+			return listFilesystemFilesRecursive(rootPath, { includeDirectories });
+		},
+	);
 
 	ipcMain.handle(CHANNELS.LIST_SUB_DIRS, async (_event, dirPath: unknown): Promise<FsEntry[]> => {
 		assertNonEmptyString(dirPath, "dirPath");
@@ -574,18 +583,21 @@ export function registerFsIpc(): () => void {
 		let scopes = typeof opts.oauthScopes === "string" ? opts.oauthScopes : "";
 
 		let serverUrl = optionUrl;
+		// 授权会话要与服务器实际使用的传输一致，否则 SSE 服务器的 token 端点对不上。
+		let transport: "streamable-http" | "sse" = "streamable-http";
 		// Read mcp.json for anything not passed by the renderer (re-authorize path).
 		if (!serverUrl || !oauthClientId || !deviceFlow || !scopes) {
 			const config = await mcp.getConfig();
 			const server = config.mcpServers[name];
 			if (!serverUrl) {
 				if (!server) throw new Error(`MCP server '${name}' not found`);
-				if (server.type !== "http" || typeof server.url !== "string" || !server.url.trim()) {
-					throw new Error(`MCP server '${name}' is not a remote HTTP server`);
+				if (!isRemoteMcpServer(server) || typeof server.url !== "string" || !server.url.trim()) {
+					throw new Error(`MCP server '${name}' is not a remote MCP server`);
 				}
 				serverUrl = server.url.trim();
 			}
-			if (server?.type === "http") {
+			if (server && isRemoteMcpServer(server)) {
+				if (server.type === "sse") transport = "sse";
 				if (!oauthClientId && typeof server.oauthClientId === "string") oauthClientId = server.oauthClientId.trim();
 				if (!deviceFlow && server.oauthDeviceFlow === true) deviceFlow = true;
 				if (!scopes && typeof server.oauthScopes === "string") scopes = server.oauthScopes;
@@ -607,6 +619,7 @@ export function registerFsIpc(): () => void {
 			serverName: name,
 			serverUrl,
 			oauthClientId: oauthClientId || undefined,
+			transport,
 		});
 	});
 

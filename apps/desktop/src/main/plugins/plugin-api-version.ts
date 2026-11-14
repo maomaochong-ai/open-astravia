@@ -6,8 +6,10 @@
  * - 2.6.0：活动面板标签卡自报默认排位（`registerActivityTab` 的 `order`）。
  * - 2.7.0：会话底部面板贡献点（`registerBottomPanel`）与 `ui.slot.bottom-panel` 权限；文件装饰状态、变更事件和独立文件图标主题。
  * - 2.8.0：`fs.listFilesRecursive` 的文件名筛选与额外忽略目录；底部面板实例的 `openTerminal` / `revealInstance` 与 `terminal.run` 权限。
+ * - 2.9.0：会话页顶栏动作贡献点（`registerHeaderAction`）与 `ui.slot.header-action` 权限。
+ * - 2.10.0：`ctx.shell` 外部应用能力（`shell.open-external-app` 权限）：列出本机可打开目录的应用并交给它打开。
  *
  * 清单校验对未知字段 fail-closed。作者把 `pluginApiVersion` 写成用到的那一档，
  * 旧宿主才能给出明确的版本错误。
  */
-export const PLUGIN_API_VERSION = "2.8.0";
+export const PLUGIN_API_VERSION = "2.10.0";

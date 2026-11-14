@@ -21,6 +21,8 @@ export interface DesktopMcpBrowserLoginOptions {
 	readonly serverName: string;
 	readonly serverUrl: string;
 	readonly oauthClientId?: string;
+	/** 默认 Streamable HTTP；`type: "sse"` 的服务器传 `"sse"`。 */
+	readonly transport?: "streamable-http" | "sse";
 }
 
 export interface DesktopMcpDeviceLoginOptions {
@@ -70,6 +72,7 @@ export class DesktopMcpOAuthService {
 				});
 				return createMcpBrowserOAuthSdkSession({
 					url: new URL(serverUrl),
+					transport: options.transport,
 					authProvider: provider,
 					clientInfo: { name: CLIENT_NAME, version: CLIENT_VERSION },
 					timeout: DEFAULT_TIMEOUT_MS,

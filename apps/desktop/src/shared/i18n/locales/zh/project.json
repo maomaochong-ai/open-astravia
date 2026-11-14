@@ -92,7 +92,8 @@
 		"openProject": "打开项目",
 		"addFromRemoteHost": "从远程主机添加",
 		"importProject": "导入项目",
-		"more": "更多"
+		"more": "更多",
+		"cloneFromGit": "从 Git 仓库导入"
 	},
 	"contextMenu": {
 		"openInFinder": "在访达中打开",
@@ -114,7 +115,8 @@
 			"new": "新标签…",
 			"manage": "管理标签…"
 		},
-		"createAutomation": "基于此会话创建自动化"
+		"createAutomation": "基于此会话创建自动化",
+		"manageSessions": "管理会话"
 	},
 	"tagEditor": {
 		"createTitle": "新建标签",
@@ -166,7 +168,9 @@
 		"claudeMdHint": "CLAUDE.md 同样会被 Astravia 加载；与 AGENTS.md 冲突时，以 AGENTS.md 为准。",
 		"contextMdHint": "CONTEXT.md 用于沉淀项目的核心背景、领域模型与长期上下文说明。",
 		"quickSave": "快速保存",
-		"context": { "title": "项目指令" },
+		"context": {
+			"title": "项目指令"
+		},
 		"previewMode": "预览",
 		"editMode": "编辑",
 		"emptyFileTitle": "尚未编写 {{file}}",
@@ -297,5 +301,61 @@
 		"hostInUse": "这台主机下已经有 {{count}} 个项目，绑到这里会让它们失联。请选另一台，或先为这个项目单独添加一次这台主机。",
 		"notOrphaned": "这个项目已经不需要重新绑定了，刷新一下试试。",
 		"footnote": "绑定后这台主机沿用项目里记着的标识；如果之前勾选过「记住密码」，连接时可能需要再输入一次。"
+	},
+	"addProjectSplash": {
+		"title": "添加项目",
+		"description": "选择一种方式把项目带进来。",
+		"items": {
+			"newProject": "在工作目录下创建一个空的项目文件夹，适合从零开始。",
+			"openProject": "把电脑上已有的文件夹直接登记成项目，文件留在原处，不复制。",
+			"addFromRemoteHost": "浏览已登记的 SSH 远程主机，把上面的目录作为项目，文件仍在远程。",
+			"importProject": "导入别人或另一台电脑导出的项目压缩包，连同会话一起还原。",
+			"cloneFromGit": "输入仓库地址，把代码克隆到本机并作为项目打开。"
+		},
+		"back": "返回",
+		"hintNavigate": "↑↓ 选择",
+		"hintSelect": "回车 确认",
+		"hintClose": "Esc 关闭",
+		"hintCreate": "回车 创建",
+		"hintClone": "回车 克隆",
+		"hintStop": "Esc 停止",
+		"hintBack": "Esc 返回"
+	},
+	"manageSessions": {
+		"title": "管理会话",
+		"searchPlaceholder": "搜索会话…",
+		"searchLabel": "搜索会话",
+		"loading": "加载中…",
+		"emptyAll": "还没有会话",
+		"emptyQuery": "没有匹配的会话",
+		"running": "运行中",
+		"moveToTag": "移动到标签",
+		"renamePlaceholder": "输入新的会话名称",
+		"clearAll": "清空全部",
+		"clearProjectTitle": "清空项目会话",
+		"clearProjectMessage": "将删除「{{name}}」下的全部 {{count}} 个会话，且无法恢复。",
+		"tabAll": "全部",
+		"hintTab": "切换标签",
+		"hintDelete": "删除",
+		"hintMore": "更多操作",
+		"hintRename": "回车 保存"
+	},
+	"gitCloneDialog": {
+		"description": "把远程仓库克隆到本机，完成后自动作为项目打开。",
+		"urlLabel": "仓库地址",
+		"urlPlaceholder": "https://github.com/owner/repo.git",
+		"parentLabel": "存放到",
+		"choose": "选择…",
+		"stop": "停止",
+		"cloning": "克隆中…",
+		"registerFailedTitle": "克隆完成，但无法添加为项目",
+		"errors": {
+			"git-unavailable": "未检测到 Git，请先安装后重试。",
+			"invalid-url": "仓库地址不合法。支持 https://、ssh:// 以及 git@主机:用户/仓库 的写法。",
+			"invalid-target": "存放目录不存在，请重新选择。",
+			"target-exists": "存放目录下已有同名文件夹，请换一个目录，或先处理掉它。",
+			"clone-failed": "克隆失败：{{message}}",
+			"cancelled": "已取消"
+		}
 	}
 }

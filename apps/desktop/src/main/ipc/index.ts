@@ -28,6 +28,7 @@ import { registerPluginCapabilitiesIpc } from "./plugin-capabilities.js";
 import { registerPluginMediaProvidersIpc } from "./plugin-media-providers.js";
 import { registerPluginOcrProvidersIpc } from "./plugin-ocr-providers.js";
 import { registerPluginsIpc } from "./plugins.js";
+import { registerProjectCloneIpc } from "./project-clone.js";
 import { registerProjectExportIpc } from "./project-export.js";
 import { registerProjectsIpc } from "./projects.js";
 import { registerQuickPanelIpc } from "./quickpanel.js";
@@ -42,6 +43,7 @@ import { registerSpeechInputIpc } from "./speech-input.js";
 import { registerSshIpc } from "./ssh.js";
 import { registerTerminalIpc } from "./terminal.js";
 import { registerThemesIpc } from "./themes.js";
+import { registerUiZoomIpc } from "./ui-zoom.js";
 import { registerUpdaterIpc } from "./updater.js";
 import { registerWebhookIpc } from "./webhook.js";
 
@@ -58,6 +60,7 @@ interface IpcTeardown {
 	teardownSkills: () => void;
 	teardownSpeechInput: () => void;
 	teardownThemes: () => void;
+	teardownUiZoom: () => void;
 	teardownDialog: () => void;
 	teardownClipboard: () => void;
 	teardownFs: () => void;
@@ -67,6 +70,7 @@ interface IpcTeardown {
 	teardownIm: () => void;
 	teardownMedia: () => void;
 	teardownDebug: () => void;
+	teardownProjectClone: () => void;
 	teardownProjectExport: () => void;
 	teardownProjects: () => void;
 	teardownSsh: () => void;
@@ -111,6 +115,7 @@ export function registerAllIpc(
 		teardownSkills: registerSkillsIpc(),
 		teardownSpeechInput: registerSpeechInputIpc(webContents),
 		teardownThemes: registerThemesIpc(),
+		teardownUiZoom: registerUiZoomIpc(),
 		teardownDialog: registerDialogIpc(),
 		teardownClipboard: registerClipboardIpc(),
 		teardownFs: registerFsIpc(),
@@ -120,6 +125,7 @@ export function registerAllIpc(
 		teardownIm: registerImIpc(webContents),
 		teardownMedia: registerMediaIpc(),
 		teardownDebug: registerDebugIpc(),
+		teardownProjectClone: registerProjectCloneIpc(),
 		teardownProjectExport: registerProjectExportIpc(),
 		teardownProjects: registerProjectsIpc(),
 		teardownSsh: registerSshIpc(),
@@ -157,6 +163,7 @@ export function teardownAllIpc(teardown: IpcTeardown): void {
 	teardown.teardownSkills();
 	teardown.teardownSpeechInput();
 	teardown.teardownThemes();
+	teardown.teardownUiZoom();
 	teardown.teardownDialog();
 	teardown.teardownClipboard();
 	teardown.teardownFs();
@@ -166,6 +173,7 @@ export function teardownAllIpc(teardown: IpcTeardown): void {
 	teardown.teardownIm();
 	teardown.teardownMedia();
 	teardown.teardownDebug();
+	teardown.teardownProjectClone();
 	teardown.teardownProjectExport();
 	teardown.teardownProjects();
 	teardown.teardownSsh();

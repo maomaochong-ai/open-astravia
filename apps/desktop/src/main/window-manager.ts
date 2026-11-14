@@ -6,6 +6,7 @@ import { type RendererConsoleLevel, shouldPersistRendererConsoleMessage } from "
 import { getAppLogger } from "./logger.js";
 import { openExternalUrl } from "./open-external.js";
 import { configureMainWindowMediaPermissions } from "./speech-input/media-permissions.js";
+import { attachUiZoom, getInitialTrafficLightPosition } from "./ui-zoom/ui-zoom-service.js";
 
 const isMac = process.platform === "darwin";
 const appRoot = app.isPackaged ? app.getAppPath() : process.cwd();
@@ -64,10 +65,9 @@ export function createWindow(): BrowserWindow {
 		transparent: false,
 		frame: isMac,
 		titleBarStyle: isMac ? "hiddenInset" : undefined,
-		// 圆点的可视圆心在 y + 7.75（实测：y=20 时圆点落在 22–33.5pt）。应用内顶栏与
-		// 活动面板标签行的内容中心都在 y=20，所以这里取 12 让两组中心重合，避免红绿灯
-		// 比标签页和顶栏按钮低半个圆点。
-		trafficLightPosition: isMac ? { x: 16, y: 12 } : undefined,
+		// 红绿灯位置由渲染进程实测页头图标中线后上报，ui-zoom-service 持续维护（含缩放、全屏进出）；
+		// 这里只给首帧的初始值，不再写死页头相关的数字。
+		trafficLightPosition: isMac ? getInitialTrafficLightPosition() : undefined,
 		vibrancy: isMac ? "sidebar" : undefined,
 		visualEffectState: isMac ? "active" : undefined,
 		backgroundColor: isMac ? "#00000000" : nativeTheme.shouldUseDarkColors ? "#161616" : "#f5f5f7",
@@ -82,6 +82,8 @@ export function createWindow(): BrowserWindow {
 	if (isSpeechInputBuildEnabled()) {
 		configureMainWindowMediaPermissions(mainWindow.webContents.session, mainWindow.webContents);
 	}
+	// 界面缩放跟窗口绑定：窗口创建与每次重新加载后都要把持久化的比例重新套上。
+	attachUiZoom(mainWindow.webContents);
 
 	// 内置浏览器（<webview>）单窗预览：页面内的 window.open/target=_blank 不另开窗口，
 	// 重定向到同一 webview 加载，保持单窗体验。

@@ -1,4 +1,5 @@
-import { ipcMain } from "electron";
+import { app, ipcMain } from "electron";
+import { readCurrentReleaseNote } from "../current-release-note.js";
 import { getAppVersion, updaterService } from "../updater.js";
 
 export function registerUpdaterIpc(): () => void {
@@ -16,6 +17,17 @@ export function registerUpdaterIpc(): () => void {
 
 	ipcMain.handle("astravia:updater:get-current-version", () => {
 		return getAppVersion();
+	});
+
+	ipcMain.handle("astravia:updater:get-current-release-note", () => {
+		return (
+			readCurrentReleaseNote({
+				version: getAppVersion(),
+				isPackaged: app.isPackaged,
+				resourcesPath: process.resourcesPath,
+				cwd: process.cwd(),
+			}) ?? null
+		);
 	});
 
 	ipcMain.handle("astravia:updater:download", async () => {
@@ -39,6 +51,7 @@ export function registerUpdaterIpc(): () => void {
 		ipcMain.removeHandler("astravia:updater:sync");
 		ipcMain.removeHandler("astravia:updater:get-state");
 		ipcMain.removeHandler("astravia:updater:get-current-version");
+		ipcMain.removeHandler("astravia:updater:get-current-release-note");
 		ipcMain.removeHandler("astravia:updater:download");
 		ipcMain.removeHandler("astravia:updater:install");
 		ipcMain.removeHandler("astravia:updater:dismiss");

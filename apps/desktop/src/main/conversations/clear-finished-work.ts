@@ -1,7 +1,7 @@
 import {
 	CODING_AGENT_BACKGROUND_TASKS_CLEAR_FINISHED,
 	CODING_AGENT_SUBAGENTS_CLEAR_FINISHED,
-} from "@astravia/coding-agent/function-extensions";
+} from "@astravia/coding-agent/session-extensions";
 import type { RuntimeHost } from "@astravia/runtime-core";
 
 export interface ClearFinishedWorkResult {

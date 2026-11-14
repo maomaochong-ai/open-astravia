@@ -11,6 +11,13 @@ export interface FsFileRef {
 	name: string;
 	path: string;
 	relPath: string;
+	/**
+	 * 递归列目录时是否携带目录项。
+	 *
+	 * 默认只返回文件（此时缺省）；`{ includeDirectories: true }` 时目录项也进结果，
+	 * 并置为 `true`，@ 面板据此区分「引用整个目录」与「引用一个文件」。
+	 */
+	isDirectory?: boolean;
 }
 
 export interface FsStatResult {
@@ -122,7 +129,8 @@ export interface DesktopFsApi {
 	createDirectory(dirPath: string): Promise<void>;
 	listSubDirs(dirPath: string): Promise<FsEntry[]>;
 	/** 递归列出 rootPath 下所有文件（跳过隐藏/重型目录，有数量上限），用于 @ 引用的全局模糊匹配。 */
-	listFilesRecursive(rootPath: string): Promise<FsFileRef[]>;
+	/** @ 面板引用目录时传 `{ includeDirectories: true }`；默认只回文件。 */
+	listFilesRecursive(rootPath: string, options?: { readonly includeDirectories?: boolean }): Promise<FsFileRef[]>;
 	/** 查询工作区的 git 状态（路径→两字符状态码）。非 git 仓库返回空 Map。 */
 	gitStatus(rootPath: string): Promise<Record<string, string>>;
 	watchDir(dirPath: string): Promise<void>;

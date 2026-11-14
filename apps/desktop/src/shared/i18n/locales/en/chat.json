@@ -240,9 +240,6 @@
 		"newFile": "New file",
 		"newFolder": "New folder",
 		"collapseAll": "Collapse all",
-		"openWorkspaceWithApp": "Open workspace in external app",
-		"noApplications": "No available applications",
-		"defaultApp": "Default",
 		"newFileInputLabel": "Enter a new file name",
 		"newFolderInputLabel": "Enter a new folder name",
 		"createAlreadyExists": "A file or folder with this name already exists",
@@ -294,11 +291,7 @@
 			"commitFailed": "File transfer failed",
 			"failedCount": "{{count}} item(s) failed to transfer"
 		},
-		"openWorkspaceWithAppNoWorkspace": "Open in external app (no workspace bound yet)",
-		"openWorkspaceWithAppRemote": "Remote project files live on another machine, so a local app can't open them",
-		"loadingApplications": "Detecting installed apps…",
-		"openWithDefaultApp": "Open with system default",
-		"openWorkspaceWithAppFailed": "Could not open with the selected app"
+		"newMenu": "New file or folder"
 	},
 	"fileEditor": {
 		"loading": "Opening file…",
@@ -324,7 +317,8 @@
 		"next": "Next (→)",
 		"downloadShort": "Download",
 		"refresh": "Refresh",
-		"close": "Close"
+		"close": "Close",
+		"locate": "Reveal in file tree"
 	},
 	"appshot": {
 		"errorSelfCapture": "Appshot skipped: the frontmost window is Astravia itself",
@@ -354,6 +348,7 @@
 		"header": "Reference file",
 		"loading": "Loading...",
 		"noResults": "No matches found",
+		"referenceDirectory": "Reference this folder",
 		"searchResults": "{{count}} results"
 	},
 	"backgroundTasksBadge": {
@@ -434,8 +429,13 @@
 	},
 	"chatView": {
 		"headerActions": {
-			"more": "More actions",
-			"edit": "Adjust"
+			"customize": "Customize header",
+			"topFull": "Header is full",
+			"moveToTop": "Add to header",
+			"moveToTray": "Stow",
+			"adjust": "Rearrange",
+			"done": "Done",
+			"more": "More actions"
 		},
 		"defaultSessionTitle": "Astravia Session",
 		"bottomPanelButton": {

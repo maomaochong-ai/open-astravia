@@ -857,6 +857,19 @@ export interface DesktopPluginsApi {
 	reportServiceReady(sessionId: string, serviceId: string, ready: boolean): Promise<PluginServiceStatus>;
 	onServiceStatusChanged(handler: (event: { pluginId: string; status: PluginServiceStatus }) => void): () => void;
 	/** Run an allowed command for a plugin via the main process (execFile, no shell). */
+	/** PNG data URL of an installed macOS app's icon (standard app folders only); `null` when not installed. */
+	getAppIcon(sessionId: string, appName: string): Promise<string | null>;
+	/** 本机可打开该路径的外部应用（编辑器 / 文件管理器 / 终端），含应用自己的图标。 */
+	listExternalApplications(sessionId: string, targetPath: string | null): Promise<ExternalApplication[]>;
+	/** 用指定应用打开路径；`targetPath` 为 null 时只启动应用。 */
+	openPathWithApplication(
+		sessionId: string,
+		targetPath: string | null,
+		appId: string,
+		kind: ExternalApplicationKind,
+	): Promise<void>;
+	/** 用系统默认应用打开路径。 */
+	openPathWithDefaultApplication(sessionId: string, targetPath: string): Promise<void>;
 	runCommand(
 		sessionId: string,
 		file: string,
@@ -1127,4 +1140,5 @@ export interface PluginOffscreenCaptureResult {
 	probe?: unknown;
 }
 
+import type { ExternalApplication, ExternalApplicationKind } from "./system.js";
 import type { FsEntry, FsFileRef, FsStatResult } from "../fs-types.js";

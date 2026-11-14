@@ -240,9 +240,6 @@
 		"newFile": "新建文件",
 		"newFolder": "新建文件夹",
 		"collapseAll": "全部折叠",
-		"openWorkspaceWithApp": "在外部应用中打开工作区",
-		"noApplications": "没有可用的应用",
-		"defaultApp": "默认",
 		"newFileInputLabel": "输入新文件名称",
 		"newFolderInputLabel": "输入新文件夹名称",
 		"createAlreadyExists": "同名文件或文件夹已存在",
@@ -294,11 +291,7 @@
 			"commitFailed": "文件传输失败",
 			"failedCount": "有 {{count}} 项传输失败"
 		},
-		"openWorkspaceWithAppNoWorkspace": "在外部应用中打开（当前会话未绑定工作区）",
-		"openWorkspaceWithAppRemote": "远程项目的文件在远端主机上，无法用本机应用打开",
-		"loadingApplications": "正在识别本机应用…",
-		"openWithDefaultApp": "用系统默认应用打开",
-		"openWorkspaceWithAppFailed": "无法用所选应用打开"
+		"newMenu": "新建文件或文件夹"
 	},
 	"fileEditor": {
 		"loading": "正在打开文件…",
@@ -324,7 +317,8 @@
 		"next": "下一个 (→)",
 		"downloadShort": "下载",
 		"refresh": "刷新",
-		"close": "关闭"
+		"close": "关闭",
+		"locate": "在文件树中定位"
 	},
 	"appshot": {
 		"errorSelfCapture": "Appshot 已忽略：前台窗口是 Astravia 自身",
@@ -354,6 +348,7 @@
 		"header": "引用文件",
 		"loading": "加载中...",
 		"noResults": "未找到匹配项",
+		"referenceDirectory": "引用此目录",
 		"searchResults": "{{count}} 个结果"
 	},
 	"backgroundTasksBadge": {
@@ -434,8 +429,13 @@
 	},
 	"chatView": {
 		"headerActions": {
-			"more": "更多操作",
-			"edit": "调整"
+			"customize": "自定义顶栏",
+			"topFull": "顶栏已满",
+			"moveToTop": "放到顶栏",
+			"moveToTray": "收纳",
+			"adjust": "调整",
+			"done": "完成",
+			"more": "更多操作"
 		},
 		"defaultSessionTitle": "Astravia 会话",
 		"bottomPanelButton": {

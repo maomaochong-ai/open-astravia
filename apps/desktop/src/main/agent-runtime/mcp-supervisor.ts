@@ -6,6 +6,7 @@ import {
 	EMPTY_MCP_CONFIG_SOURCE,
 	MCP_APP_CLIENT_CAPABILITY,
 	MCP_APPS_EXTENSION_ID,
+	type McpConfigSource,
 	type McpServerInteractionHandlers,
 	type McpServerSupervisor,
 } from "@astravia/runtime-mcp";
@@ -62,6 +63,31 @@ function managedRuntimeId(config: unknown): string | undefined {
 	return typeof value === "string" && value ? value : undefined;
 }
 
+/**
+ * 项目层 MCP 配置的来源。单独导出是为了能直接验「仓库根的 .mcp.json 真的被读」：
+ * 库层支持该选项不等于产品里传了它（曾因漏传而让 `.mcp.json` 静默失效）。
+ */
+export function createDesktopMcpConfigSource(
+	options: Pick<DesktopMcpSupervisorOptions, "projectRoot" | "agentDir" | "dynamicOnly" | "resourceScope">,
+	onDiagnostic: (message: string) => void = () => undefined,
+): McpConfigSource {
+	if (options.dynamicOnly) return EMPTY_MCP_CONFIG_SOURCE;
+	return new FileMcpConfigSource({
+		globalConfigPath: join(options.agentDir, "mcp.json"),
+		projectConfigPath: join(options.projectRoot, CONFIG_DIR_NAME, "mcp.json"),
+		projectRoot: options.projectRoot,
+		// 仓库根目录的 .mcp.json 作为项目层配置的兼容来源：同名以 .mcp/config.json 为准。
+		compatProjectConfigPath: join(options.projectRoot, ".mcp.json"),
+		onDiagnostic,
+		...(options.resourceScope
+			? {
+					includeServer: ({ origin, config }: { origin: "global" | "project"; config: McpServerConfig }) =>
+						resolveDesktopMcpServerResourceScope(origin, config) === options.resourceScope,
+				}
+			: {}),
+	});
+}
+
 /** Selects the Node MCP implementation at the Desktop Composition Root. */
 export function createDesktopMcpSupervisor(options: DesktopMcpSupervisorOptions): McpServerSupervisor {
 	let log: ReturnType<typeof getAppLogger> | undefined;
@@ -78,19 +104,7 @@ export function createDesktopMcpSupervisor(options: DesktopMcpSupervisorOptions)
 		else if (options.debug) log.debug(message);
 	};
 	const interactionHandlers = createDesktopMcpInteractionHandlers(options, writeDiagnostic);
-	const configSource = options.dynamicOnly
-		? EMPTY_MCP_CONFIG_SOURCE
-		: new FileMcpConfigSource({
-				globalConfigPath: join(options.agentDir, "mcp.json"),
-				projectConfigPath: join(options.projectRoot, CONFIG_DIR_NAME, "mcp.json"),
-				projectRoot: options.projectRoot,
-				...(options.resourceScope
-					? {
-							includeServer: ({ origin, config }: { origin: "global" | "project"; config: McpServerConfig }) =>
-								resolveDesktopMcpServerResourceScope(origin, config) === options.resourceScope,
-						}
-					: {}),
-			});
+	const configSource = createDesktopMcpConfigSource(options, writeDiagnostic);
 	return createNodeMcpSupervisor({
 		projectRoot: options.projectRoot,
 		agentDir: options.agentDir,

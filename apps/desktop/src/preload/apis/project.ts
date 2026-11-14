@@ -4,6 +4,8 @@ import type { DesktopApi } from "../api.js";
 const CHANNELS = {
 	EXPORT: "astravia:project:export",
 	IMPORT: "astravia:project:import",
+	CLONE: "astravia:project:clone",
+	CANCEL_CLONE: "astravia:project:clone-cancel",
 	READ_META: "astravia:project:read-meta",
 	LIST: "astravia:projects:list",
 	CREATE: "astravia:projects:create",
@@ -19,6 +21,8 @@ export function createProjectApi(ipc: IpcRenderer): Pick<DesktopApi, "project"> 
 		project: {
 			export: (projectDir) => ipc.invoke(CHANNELS.EXPORT, projectDir),
 			import: () => ipc.invoke(CHANNELS.IMPORT),
+			clone: (input) => ipc.invoke(CHANNELS.CLONE, input),
+			cancelClone: (requestId) => ipc.invoke(CHANNELS.CANCEL_CLONE, requestId),
 			readMeta: (projectDir) => ipc.invoke(CHANNELS.READ_META, projectDir),
 			list: () => ipc.invoke(CHANNELS.LIST),
 			create: (input) => ipc.invoke(CHANNELS.CREATE, input),

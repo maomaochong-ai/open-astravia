@@ -11,6 +11,8 @@ export interface ExternalApplication {
 	/** 用途分类：菜单据此排序并挑图标。 */
 	kind: ExternalApplicationKind;
 	isDefault: boolean;
+	/** 应用自己的图标（PNG data URL）；取不到时省略，调用方退回按 `kind` 的通用图标。 */
+	iconUrl?: string;
 }
 
 export interface DesktopShellApi {

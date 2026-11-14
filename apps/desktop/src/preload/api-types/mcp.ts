@@ -40,7 +40,20 @@ export interface McpHttpServerConfigData extends McpServerCommonConfigData {
 	oauthScopes?: string;
 }
 
-export type McpServerConfigData = McpStdioServerConfigData | McpHttpServerConfigData;
+/**
+ * 旧式 HTTP+SSE 传输，仅为仍在使用它的服务器保留（新服务器请用 `http`）。
+ * 与 `http` 共用请求头与 OAuth 字段；没有受管 runtime，也不支持 modern 协议。
+ */
+export interface McpSseServerConfigData extends McpServerCommonConfigData {
+	type: "sse";
+	url: string;
+	headers?: Record<string, string>;
+	oauthClientId?: string;
+	oauthDeviceFlow?: boolean;
+	oauthScopes?: string;
+}
+
+export type McpServerConfigData = McpStdioServerConfigData | McpHttpServerConfigData | McpSseServerConfigData;
 
 export interface McpConfigData {
 	mcpServers: Record<string, McpServerConfigData>;

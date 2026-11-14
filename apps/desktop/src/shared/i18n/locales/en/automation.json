@@ -32,6 +32,9 @@
 		"name": "Task title",
 		"namePlaceholder": "Task title (optional)",
 		"promptPlaceholder": "Describe the task and tell Astravia what to do (type / for skills)",
+		"promptEdit": "Edit",
+		"promptEditTitle": "Edit task content",
+		"promptDone": "Done",
 		"runTarget": "Run in",
 		"runMode": {
 			"new-session": "New session each time",

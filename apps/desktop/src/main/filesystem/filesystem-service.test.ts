@@ -114,6 +114,19 @@ describe("listFilesystemFilesRecursive", () => {
 		await writeFile(join(projectRoot, relPath), "");
 	}
 
+	it("lists directories only when asked, without dropping files or walking ignored trees", async () => {
+		await touch("README.md");
+		await touch("src/deep/a.ts");
+		await touch("node_modules/pkg/index.js");
+		await mkdir(join(projectRoot, "empty"), { recursive: true });
+
+		const withDirs = await listFilesystemFilesRecursive(projectRoot, { includeDirectories: true });
+		const labeled = withDirs
+			.map((file) => `${file.relPath.split("\\").join("/")}${file.isDirectory === true ? "/" : ""}`)
+			.sort();
+		expect(labeled).toEqual(["README.md", "empty/", "src/", "src/deep/", "src/deep/a.ts"]);
+	});
+
 	it("keeps only the named files and skips default and extra ignored directories", async () => {
 		for (const file of [
 			"package.json",

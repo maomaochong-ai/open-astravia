@@ -23,6 +23,15 @@ const HTTP_SERVER_KEYS = new Set([
 	"oauthScopes",
 ]);
 
+const SSE_SERVER_KEYS = new Set([
+	...COMMON_SERVER_KEYS,
+	"url",
+	"headers",
+	"oauthClientId",
+	"oauthDeviceFlow",
+	"oauthScopes",
+]);
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -85,6 +94,17 @@ function assertCommonServerConfig(server: Record<string, unknown>, path: string)
 function assertServerConfig(value: unknown, path: string): asserts value is McpServerConfigData {
 	if (!isRecord(value)) throw new Error(`Invalid ${path}`);
 	assertCommonServerConfig(value, path);
+
+	if (value.type === "sse") {
+		assertAllowedKeys(value, SSE_SERVER_KEYS, path);
+		assertOptionalString(value.url, `${path}.url`, true);
+		if (value.url === undefined) throw new Error(`Invalid ${path}.url`);
+		assertOptionalStringRecord(value.headers, `${path}.headers`);
+		assertOptionalString(value.oauthClientId, `${path}.oauthClientId`);
+		assertOptionalBoolean(value.oauthDeviceFlow, `${path}.oauthDeviceFlow`);
+		assertOptionalString(value.oauthScopes, `${path}.oauthScopes`);
+		return;
+	}
 
 	if (value.type === "http") {
 		assertAllowedKeys(value, HTTP_SERVER_KEYS, path);

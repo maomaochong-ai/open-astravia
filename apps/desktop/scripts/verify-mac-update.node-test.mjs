@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { stringify } from "yaml";
-import { verifyMacUpdate } from "./verify-mac-update.mjs";
+import { retryTransientNetwork, verifyMacUpdate } from "./verify-mac-update.mjs";
 
 const temporaryRoots = [];
 
@@ -59,4 +59,53 @@ test("rejects a Mac update with a mismatched hash", async () => {
 		verifyMacUpdate({ releaseDir, requireSignature: false }),
 		/SHA-512 mismatch/,
 	);
+});
+
+const networkError = () =>
+	Object.assign(new Error("Command failed: xcrun stapler validate"), {
+		stdout: 'NSURLErrorDomain Code=-1005 "The network connection was lost."\nError 68.',
+	});
+
+test("retries a transient CloudKit network failure until it succeeds", async () => {
+	let calls = 0;
+	const result = await retryTransientNetwork(
+		async () => {
+			calls += 1;
+			if (calls < 3) throw networkError();
+			return "ok";
+		},
+		{ sleep: async () => {} },
+	);
+	assert.equal(result, "ok");
+	assert.equal(calls, 3);
+});
+
+test("gives up after the allowed attempts on a persistent network failure", async () => {
+	let calls = 0;
+	await assert.rejects(
+		retryTransientNetwork(
+			async () => {
+				calls += 1;
+				throw networkError();
+			},
+			{ attempts: 3, sleep: async () => {} },
+		),
+		/stapler validate/,
+	);
+	assert.equal(calls, 3);
+});
+
+test("does not retry a genuine validation failure", async () => {
+	let calls = 0;
+	await assert.rejects(
+		retryTransientNetwork(
+			async () => {
+				calls += 1;
+				throw Object.assign(new Error("rejected"), { stdout: "The validate action failed! Error 65." });
+			},
+			{ sleep: async () => {} },
+		),
+		/rejected/,
+	);
+	assert.equal(calls, 1);
 });

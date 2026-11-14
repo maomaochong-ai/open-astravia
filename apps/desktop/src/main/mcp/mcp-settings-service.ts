@@ -8,8 +8,10 @@ import type {
 	McpConfigData,
 	McpHttpServerConfigData,
 	McpServerConfigData,
+	McpSseServerConfigData,
 	McpStdioServerConfigData,
 } from "../../preload/api-types/mcp.js";
+import { isRemoteMcpServer, isStdioMcpServer } from "../../shared/mcp-server-kind.js";
 import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
 import { stopOpenMarketplaceManagedMcpRuntime } from "../abilities/open-marketplace/open-marketplace-mcp-runtime-host.js";
 import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
@@ -77,6 +79,41 @@ function redactRecordSecrets(
 	return next;
 }
 
+type RemoteUpsertData = Extract<McpServerUpsertData, { type: "http" | "sse" }>;
+
+function isRemoteUpsertData(data: McpServerUpsertData): data is RemoteUpsertData {
+	return data.type === "http" || data.type === "sse";
+}
+
+function buildHttpConfig(existing: McpServerConfigData | undefined, data: RemoteUpsertData): McpHttpServerConfigData {
+	const previous = existing?.type === "http" ? existing : undefined;
+	const url = data.url ?? previous?.url;
+	if (!url) throw new Error("HTTP MCP server requires url.");
+	return {
+		...(previous ?? {}),
+		...data,
+		type: "http",
+		url,
+		...(data.headers === undefined ? {} : { headers: { ...data.headers } }),
+		...(data.autoApprove === undefined ? {} : { autoApprove: [...data.autoApprove] }),
+	};
+}
+
+/** 只在同为 sse 时沿用旧值；从 http 改成 sse 不能把受管 runtime 等 http 专属字段带过来。 */
+function buildSseConfig(existing: McpServerConfigData | undefined, data: RemoteUpsertData): McpSseServerConfigData {
+	const previous = existing?.type === "sse" ? existing : undefined;
+	const url = data.url ?? previous?.url;
+	if (!url) throw new Error("SSE MCP server requires url.");
+	return {
+		...(previous ?? {}),
+		...data,
+		type: "sse",
+		url,
+		...(data.headers === undefined ? {} : { headers: { ...data.headers } }),
+		...(data.autoApprove === undefined ? {} : { autoApprove: [...data.autoApprove] }),
+	};
+}
+
 function redactServer(name: string, server: McpServerConfigData): McpServerDetail {
 	const common = {
 		name,
@@ -85,7 +122,7 @@ function redactServer(name: string, server: McpServerConfigData): McpServerDetai
 		...(server.startupTimeout === undefined ? {} : { startupTimeout: server.startupTimeout }),
 		...(server.debug === undefined ? {} : { debug: server.debug }),
 	};
-	if (server.type === "http") {
+	if (isRemoteMcpServer(server)) {
 		const headers = redactRecordSecrets(server.headers, [
 			"authorization",
 			"api-key",
@@ -97,7 +134,7 @@ function redactServer(name: string, server: McpServerConfigData): McpServerDetai
 		]);
 		return {
 			...common,
-			type: "http",
+			type: server.type,
 			url: server.url,
 			...(headers === undefined ? {} : { headers }),
 		};
@@ -133,9 +170,9 @@ export class McpSettingsService {
 		const config = await this.getConfig();
 		return Object.entries(config.mcpServers).map(([name, server]) => ({
 			name,
-			type: server.type === "http" ? "http" : "stdio",
+			type: isRemoteMcpServer(server) ? server.type : "stdio",
 			disabled: Boolean(server.disabled),
-			...(server.type === "http" ? { url: server.url } : { command: server.command }),
+			...(isRemoteMcpServer(server) ? { url: server.url } : { command: server.command }),
 		}));
 	}
 
@@ -159,20 +196,10 @@ export class McpSettingsService {
 			const config = await this.options.readConfig();
 			const existing = config.mcpServers[name];
 			let next: McpServerConfigData;
-			if (data.type === "http") {
-				const previous = existing?.type === "http" ? existing : undefined;
-				const url = data.url ?? previous?.url;
-				if (!url) throw new Error("HTTP MCP server requires url.");
-				next = {
-					...(previous ?? {}),
-					...data,
-					type: "http",
-					url,
-					...(data.headers === undefined ? {} : { headers: { ...data.headers } }),
-					...(data.autoApprove === undefined ? {} : { autoApprove: [...data.autoApprove] }),
-				} satisfies McpHttpServerConfigData;
+			if (isRemoteUpsertData(data)) {
+				next = data.type === "sse" ? buildSseConfig(existing, data) : buildHttpConfig(existing, data);
 			} else {
-				const previous = existing && existing.type !== "http" ? existing : undefined;
+				const previous = existing && isStdioMcpServer(existing) ? existing : undefined;
 				const command = data.command ?? previous?.command;
 				if (!command) throw new Error("stdio MCP server requires command.");
 				next = {

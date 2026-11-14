@@ -5,6 +5,9 @@ vi.mock("electron", () => ({
 	app: { isPackaged: true },
 }));
 
+// 缩放走主进程持久化比例，不碰 Chromium；菜单测试只关心快捷键接到了同一个入口。
+vi.mock("./ui-zoom/ui-zoom-service.js", () => ({ resetUiZoom: vi.fn(), stepUiZoom: vi.fn() }));
+
 import type { MenuItemConstructorOptions } from "electron";
 import { buildApplicationMenuTemplate } from "./app-menu";
 
@@ -44,6 +47,32 @@ describe("application menu template", () => {
 	// 非 mac 主窗口是 frameless，没有菜单栏；菜单只用于承载开发期快捷键。
 	it("installs no menu at all on non-mac when devtools are not allowed", () => {
 		expect(buildApplicationMenuTemplate({ isMac: false, allowDevTools: false })).toBeNull();
+	});
+
+	// role 版缩放直接改 Chromium，不经持久化比例，会和外观页各改各的。
+	it("缩放快捷键走自定义项而不是 zoom role，且同时支持 Cmd+= 与 Cmd+Plus", () => {
+		const template = buildApplicationMenuTemplate({ isMac: true, allowDevTools: false }) ?? [];
+		const roles = collectRoles(template);
+		expect(roles).not.toContain("zoomIn");
+		expect(roles).not.toContain("zoomOut");
+		expect(roles).not.toContain("resetZoom");
+
+		const accelerators: string[] = [];
+		const walk = (items: MenuItemConstructorOptions[]) => {
+			for (const item of items) {
+				if (Array.isArray(item.submenu)) walk(item.submenu);
+				else if (typeof item.accelerator === "string") accelerators.push(item.accelerator);
+			}
+		};
+		walk(template);
+		expect(accelerators).toEqual(
+			expect.arrayContaining([
+				"CommandOrControl+0",
+				"CommandOrControl+Plus",
+				"CommandOrControl+=",
+				"CommandOrControl+-",
+			]),
+		);
 	});
 
 	it("keeps a devtools-only menu on non-mac during development", () => {

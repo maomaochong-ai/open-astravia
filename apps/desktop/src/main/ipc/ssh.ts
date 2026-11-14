@@ -1,9 +1,11 @@
 import type { SshHostInput } from "@astravia/ssh-transport";
 import { ipcMain } from "electron";
+import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getSshPortForwardService } from "../ssh/port-forward-service.js";
 import { probeSshHost } from "../ssh/ssh-host-probe.js";
 import { SshHostRebindError } from "../ssh/ssh-host-service.js";
 import { getSshHostService, listSshConfigAliases } from "../ssh/ssh-host-service-instance.js";
+import { sshCredentialRef } from "../ssh/ssh-prompt-service.js";
 import { getSshConnection, getSshHostStatus } from "../ssh/ssh-runtime.js";
 
 const CHANNELS = {
@@ -40,7 +42,26 @@ function toHostInput(value: unknown): SshHostInput {
 		target: asString(raw.target),
 		port: typeof raw.port === "number" ? raw.port : undefined,
 		identityFile: typeof raw.identityFile === "string" ? raw.identityFile : undefined,
+		authMethod: raw.authMethod === "password" ? "password" : "key",
 	};
+}
+
+/** 口令进加密凭据库；切回私钥登录时把旧口令清掉，不留在磁盘上。 */
+function syncHostPassword(hostId: string, authMethod: unknown, password: unknown): void {
+	const ref = sshCredentialRef(hostId, "password");
+	const vault = getDesktopCredentialVault();
+	if (authMethod !== "password") {
+		vault.remove(ref);
+		return;
+	}
+	// 空串表示「沿用已保存的口令」。
+	if (typeof password === "string" && password.length > 0) {
+		try {
+			vault.put(ref, password, { kind: "password", consumer: "ssh" });
+		} catch {
+			// 安全存储不可用时存不下口令；主机本身已登记，连接时会改为当场询问。
+		}
+	}
 }
 
 export function registerSshIpc(): () => void {
@@ -50,16 +71,24 @@ export function registerSshIpc(): () => void {
 		return hosts.map((host) => ({ ...host, status: getSshHostStatus(host.id) }));
 	});
 
-	ipcMain.handle(CHANNELS.CREATE_HOST, (_event, input: unknown) => getSshHostService().create(toHostInput(input)));
-
-	ipcMain.handle(CHANNELS.UPDATE_HOST, (_event, input: unknown) => {
+	ipcMain.handle(CHANNELS.CREATE_HOST, async (_event, input: unknown) => {
 		const raw = (input ?? {}) as Record<string, unknown>;
-		return getSshHostService().update(asString(raw.id), toHostInput(raw));
+		const created = await getSshHostService().create(toHostInput(input));
+		syncHostPassword(created.id, raw.authMethod, raw.password);
+		return created;
+	});
+
+	ipcMain.handle(CHANNELS.UPDATE_HOST, async (_event, input: unknown) => {
+		const raw = (input ?? {}) as Record<string, unknown>;
+		const updated = await getSshHostService().update(asString(raw.id), toHostInput(raw));
+		syncHostPassword(updated.id, raw.authMethod, raw.password);
+		return updated;
 	});
 
 	ipcMain.handle(CHANNELS.REMOVE_HOST, async (_event, hostId: unknown) => {
 		const id = asString(hostId);
 		await getSshHostService().remove(id);
+		getDesktopCredentialVault().remove(sshCredentialRef(id, "password"));
 		// 主机没了，它的转发也就指不到任何地方；留着只会在端口面板里当一条撤不掉的死条目。
 		await getSshPortForwardService().closeHost(id);
 	});
