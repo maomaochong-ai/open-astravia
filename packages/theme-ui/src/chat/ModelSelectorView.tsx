@@ -1,5 +1,11 @@
-import { AnimatePresence, motion } from "motion/react";
-import type { ChangeEvent, JSX, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
+import { AnimatePresence } from "motion/react";
+import type {
+	ChangeEvent,
+	JSX,
+	KeyboardEvent as ReactKeyboardEvent,
+	MouseEvent as ReactMouseEvent,
+	ReactNode,
+} from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@astravia-org/ui/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui/popover";
@@ -7,12 +13,13 @@ import { ThemeSurface } from "../appearance/ThemeSurface";
 import { MultiplierTag } from "../shared/MultiplierTag";
 import { ProviderIcon } from "../shared/provider-icon";
 import {
+	FAVORITES_COLUMN_ID,
 	MODEL_FAVORITES_STORAGE_KEY,
 	parseModelFavorites,
 	serializeModelFavorites,
 	toggleModelFavorite,
 } from "./model-selector-columns";
-import { ModelSelectorMenuPanel } from "./ModelSelectorMenuPanel";
+import { ModelSelectorMenuPanel, type ModelSelectorMenuPanelHandle } from "./ModelSelectorMenuPanel";
 import { ModelSelectorTrigger } from "./ModelSelectorTrigger";
 
 /**
@@ -59,6 +66,20 @@ export interface ModelSelectorLabels {
 	 * 宿主的计费口径，视图不猜。
 	 */
 	multiplierLabel?: (option: ModelSelectorOptionView) => string | undefined;
+	/**
+	 * 行尾详情入口的标题。提供后，识图 / 倍率 / 默认这些标识就收进浮层，行上只留名字与星标。
+	 * 不给时保持旧行为（标识直接排在行里），插件复用本视图时不会凭空多出一个按钮。
+	 */
+	infoButton?: string;
+	infoProvider?: string;
+	infoId?: string;
+	infoVision?: string;
+	infoMultiplier?: string;
+	infoDefault?: string;
+	infoYes?: string;
+	infoNo?: string;
+	/** 服务商栏折叠后的「收起」文案；不给时只在展开态显示一个箭头。 */
+	fewerProviders?: string;
 }
 
 export interface ModelSelectorProviderGroup {
@@ -83,6 +104,9 @@ export interface ModelSelectorViewProps {
 		readonly label: string;
 		readonly onSelect: () => void;
 	};
+	/** 面板底栏：左侧放权限/模式这类低频入口，右侧放辅助动作。 */
+	footerStart?: ReactNode;
+	footerEnd?: ReactNode;
 	className?: string;
 	classNames?: {
 		trigger?: string;
@@ -95,9 +119,9 @@ export interface ModelSelectorViewProps {
 	onReasoningSelect: (value: string) => void;
 	/** 菜单开合回调，宿主可借此在打开时刷新模型目录 */
 	onOpenChange?: (open: boolean) => void;
+	/** 受控开合：宿主用自己的快捷键（Cmd/Ctrl+P）打开同一面板时传这个。 */
+	open?: boolean;
 }
-
-const MODEL_ITEM_SELECTOR = "[data-model-key]";
 
 /** 紧凑行：覆盖 @astravia-org/ui 默认的 px-3 py-2 text-[13px]，让模型多时列表不至于过长。 */
 const COMPACT_ITEM_CLASS = "gap-1.5 rounded-md px-2 py-1 text-xs";
@@ -117,13 +141,17 @@ export function ModelSelectorView({
 	ariaLabel,
 	disabled = false,
 	emptyOption,
+	footerStart,
+	footerEnd,
 	className,
 	classNames,
 	onModelSelect,
 	onReasoningSelect,
 	onOpenChange,
+	open: controlledOpen,
 }: ModelSelectorViewProps): JSX.Element {
-	const [open, setOpen] = useState(false);
+	const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+	const open = controlledOpen ?? uncontrolledOpen;
 	const [searchQuery, setSearchQuery] = useState("");
 	/**
 	 * 收藏只存本机：它是「我这台机器常用的模型」，跨设备同步反而会让别人的目录影响
@@ -138,16 +166,20 @@ export function ModelSelectorView({
 		}
 	});
 	const searchInputRef = useRef<HTMLInputElement>(null);
-	const modelListRef = useRef<HTMLDivElement>(null);
+	const panelRef = useRef<ModelSelectorMenuPanelHandle>(null);
 	const triggerRef = useRef<HTMLButtonElement>(null);
 	const portalContainer = open
 		? (triggerRef.current?.closest<HTMLElement>('[data-slot="drawer-content"], [data-slot="dialog-content"]') ??
 			undefined)
 		: undefined;
+	// 当前模型已收藏时默认停在收藏栏：用户常用它就说明它比某个服务商更近。
+	const initialProviderId =
+		selectedModel && favorites.includes(selectedModel) ? FAVORITES_COLUMN_ID : undefined;
+
 
 	const handleOpenChange = useCallback(
 		(nextOpen: boolean) => {
-			setOpen(nextOpen);
+			setUncontrolledOpen(nextOpen);
 			if (!nextOpen) {
 				setSearchQuery("");
 			}
@@ -159,17 +191,14 @@ export function ModelSelectorView({
 	useEffect(() => {
 		if (!open) return;
 
+		// 只负责把焦点放进搜索框；当前模型的定位由面板按 key + 行下标自己算，
+		// 窗口化后目标行常常还没挂载，从这里查 DOM 永远查不到。
 		const frame = requestAnimationFrame(() => {
 			searchInputRef.current?.focus();
-			if (!selectedModel) return;
-			const selectedItem = Array.from(
-				modelListRef.current?.querySelectorAll<HTMLElement>(MODEL_ITEM_SELECTOR) ?? [],
-			).find((item) => item.dataset.modelKey === selectedModel);
-			selectedItem?.scrollIntoView({ block: "nearest" });
 		});
 
 		return () => cancelAnimationFrame(frame);
-	}, [open, selectedModel]);
+	}, [open]);
 
 	const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
 		setSearchQuery(event.target.value);
@@ -180,11 +209,12 @@ export function ModelSelectorView({
 		event.stopPropagation();
 
 		if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-		const items = Array.from(modelListRef.current?.querySelectorAll<HTMLElement>(MODEL_ITEM_SELECTOR) ?? []);
-		const target = event.key === "ArrowDown" ? items[0] : items[items.length - 1];
-		if (!target) return;
+		// 列表是窗口化渲染的：按下方向键先让面板按行下标定位并聚焦首/尾行。
+		const moved =
+			event.key === "ArrowDown" ? panelRef.current?.focusFirstModel() : panelRef.current?.focusLastModel();
+		// 没有可选项时不要吞掉按键：按下去什么也不发生比没有快捷键更糟。
+		if (!moved) return;
 		event.preventDefault();
-		target.focus();
 	};
 
 	const handleSearchClick = (event: ReactMouseEvent<HTMLInputElement | HTMLButtonElement>) => {
@@ -214,7 +244,7 @@ export function ModelSelectorView({
 		setSearchQuery("");
 		// 有思考档位时保持打开：用户接下来还要在同一面板里选强度（右栏）。
 		// 没有档位就关掉——此时选中即完成，留着面板只会挡视线。
-		if (menuLevels.length === 0) setOpen(false);
+		if (menuLevels.length === 0) handleOpenChange(false);
 	};
 
 	return (
@@ -249,18 +279,14 @@ export function ModelSelectorView({
 						// 菜单贴窗口右缘时会被推到边上：留出边距让它整体往左收。
 						collisionPadding={16}
 						className={cn(
-							// 底色跟搜索框走同一个变量：搜索行去掉底色后要和面板融成一块
-							"w-[min(34rem,calc(100vw-2rem))] min-w-[20rem] max-w-[34rem] overflow-visible bg-background p-0",
+							// 毛玻璃：半透明底色 + 背景模糊，真正透出面板背后的内容。
+							// 不再叠自绘的高光去「假装」玻璃；深色下靠一圈极淡描边与背景分开。
+							"w-[min(34rem,calc(100vw-2rem))] min-w-[20rem] max-w-[34rem] overflow-visible border border-transparent bg-background/60 p-0 shadow-xl backdrop-blur-2xl backdrop-saturate-150 dark:border-border/60",
 							classNames?.content,
 						)}
-						style={{ animation: "none" }}
+						// 开合交给 CSS：三栏面板每次弹出都跑一遍 spring，滚动时看着像卡了一下。
+						style={{ animation: "model-selector-in 110ms cubic-bezier(0.16, 1, 0.3, 1)" }}
 					>
-						<motion.div
-							initial={{ opacity: 0, scale: 0.96, y: 8 }}
-							animate={{ opacity: 1, scale: 1, y: 0 }}
-							exit={{ opacity: 0, scale: 0.96, y: 8 }}
-							transition={{ duration: 0.1, ease: [0.16, 1, 0.3, 1] }}
-						>
 							<div className="relative overflow-visible rounded-[inherit]">
 								<ThemeSurface slot="chat.modelSelectorMenu" />
 								<div
@@ -299,21 +325,24 @@ export function ModelSelectorView({
 										</div>
 									</div>
 									<ModelSelectorMenuPanel
+										ref={panelRef}
 										groups={groups}
 										selectedModel={selectedModel}
+										revealModelKey={open ? selectedModel : null}
 										currentLevel={currentLevel}
 										menuLevels={menuLevels}
 										defaultKey={defaultKey}
 										labels={labels}
 										favoriteKeys={favorites}
 										searchQuery={searchQuery}
+										{...(initialProviderId ? { initialProviderId } : {})}
 										emptyOption={
 											emptyOption
 												? {
 														label: emptyOption.label,
 														onSelect: () => {
 															emptyOption.onSelect();
-															setOpen(false);
+															handleOpenChange(false);
 														},
 													}
 												: undefined
@@ -328,9 +357,14 @@ export function ModelSelectorView({
 										}}
 										onToggleFavorite={handleToggleFavorite}
 									/>
+									{(footerStart || footerEnd) && (
+										<div className="flex shrink-0 items-center justify-between gap-2 border-t border-border/40 px-1.5 py-1">
+											<div className="flex min-w-0 items-center">{footerStart}</div>
+											<div className="flex min-w-0 shrink-0 items-center">{footerEnd}</div>
+										</div>
+									)}
 								</div>
 							</div>
-						</motion.div>
 					</PopoverContent>
 				)}
 			</AnimatePresence>
