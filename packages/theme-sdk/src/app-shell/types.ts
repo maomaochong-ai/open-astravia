@@ -34,6 +34,11 @@ export type PageHeaderModelInput = Pick<PageHeaderProps, "narrow" | "sidebarColl
 export interface PageHeaderModel {
 	readonly fallbackTitleKey?: PageHeaderTitleKey;
 	readonly leftSlot: ReactNode;
+	/**
+	 * 与「展开侧边栏」按钮合成同一个按钮组的动作（如会话页的新会话）。
+	 * 仅在侧边栏触发器可见时渲染；不传则触发器仍是独立按钮。
+	 */
+	readonly leftActions?: ReactNode;
 	readonly path: string;
 	readonly rightSlot: ReactNode;
 	readonly sidebarTriggerTitle: string;

@@ -1,7 +1,7 @@
 import { useSetAtom } from "jotai";
 import { memo, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { pageHeaderLeftSlotAtom, pageHeaderRightSlotAtom } from "@shared/store/atoms";
+import { pageHeaderLeftActionsAtom, pageHeaderRightSlotAtom } from "@shared/store/atoms";
 import { usePageHeaderUtilitySlot } from "@shared/app-shell/page-header/usePageHeaderUtilitySlot";
 import { useActiveSessionRuntimeIds } from "@shared/workspace/active-session-runtime";
 import { createConversationActivityWorkspace } from "@shared/workspace/activity-workspace";
@@ -55,7 +55,7 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 	const terminal = useOpenTerminal(model.workSurface);
 	const bottomPanel = useBottomPanelToggle(model.workSurface);
 	const setHeaderRightSlot = useSetAtom(pageHeaderRightSlotAtom);
-	const setHeaderLeftSlot = useSetAtom(pageHeaderLeftSlotAtom);
+	const setHeaderLeftActions = useSetAtom(pageHeaderLeftActionsAtom);
 	const workspace = useMemo(
 		() => createConversationActivityWorkspace(model.cwd, model.sessionId, runtimeIds),
 		[model.cwd, model.sessionId, runtimeIds],
@@ -159,10 +159,11 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 	// 优先级 0：对话页自己的工作区最相关；活动面板的文件标签作为低优先级备选。
 	usePageHeaderUtilitySlot("conversation", 0, workspaceAppButton);
 
+	// 新会话与「展开侧边栏」并进同一颗胶囊：侧边栏不可见时两者总是同时出现。
 	useEffect(() => {
-		setHeaderLeftSlot(<ChatHeaderNewSessionButton />);
-		return () => setHeaderLeftSlot(null);
-	}, [setHeaderLeftSlot]);
+		setHeaderLeftActions(<ChatHeaderNewSessionButton />);
+		return () => setHeaderLeftActions(null);
+	}, [setHeaderLeftActions]);
 
 	return (
 		<DefaultChatView

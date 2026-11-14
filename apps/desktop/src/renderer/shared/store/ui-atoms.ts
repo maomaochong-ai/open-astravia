@@ -66,6 +66,11 @@ export const pageHeaderUtilitySlotAtom = atom<ReactNode | null>((get) => {
 });
 /** 顶栏左侧（侧边栏触发按钮之后、标题之前）的自定义插槽，如设置页的返回按钮。 */
 export const pageHeaderLeftSlotAtom = atom<ReactNode | null>(null);
+/**
+ * 与「展开侧边栏」按钮合成按钮组的动作（会话页用它放「新会话」）。
+ * 与 leftSlot 分开：leftSlot 在标题左侧独立成块，这一格在触发按钮可见时并进同一个胶囊。
+ */
+export const pageHeaderLeftActionsAtom = atom<ReactNode | null>(null);
 /** 紧贴顶栏标题 label 右侧的徽标插槽（如知识库「正在建立索引…」）。 */
 export const pageHeaderTitleBadgeAtom = atom<ReactNode | null>(null);
 // 设为 true 时彻底隐藏顶栏标题（连路由兜底标题也不显示），用于 NewSessionPage 等。

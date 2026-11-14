@@ -57,4 +57,33 @@ describe("PageHeaderContent", () => {
 
 		expect(markup).toContain("page-action");
 	});
+
+	it("侧边栏触发器可见且给了 leftActions 时，两者合成同一个按钮组", () => {
+		const markup = renderToStaticMarkup(
+			<PageHeaderContent
+				actions={actions}
+				model={createModel({
+					triggerVisible: true,
+					leftActions: <button type="button" aria-label="新会话" />,
+				})}
+				narrow={false}
+			/>,
+		);
+
+		// 一个组、两个按钮：触发器与新会话并进同一颗胶囊。
+		expect(markup).toContain('data-slot="button-group"');
+		expect(markup).toContain('aria-label="Expand sidebar"');
+		expect(markup).toContain('aria-label="新会话"');
+		// 组内分隔线由 ButtonGroupItem 的 before 伪元素提供，不再插独立分隔元素。
+		expect(markup).not.toContain('role="separator"');
+	});
+
+	it("没有 leftActions 时触发器仍是独立按钮（行为不变）", () => {
+		const markup = renderToStaticMarkup(
+			<PageHeaderContent actions={actions} model={createModel({ triggerVisible: true })} narrow={false} />,
+		);
+
+		expect(markup).toContain('aria-label="Expand sidebar"');
+		expect(markup).not.toContain('data-slot="button-group"');
+	});
 });
