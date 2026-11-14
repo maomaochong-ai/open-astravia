@@ -37,6 +37,14 @@
 			"types": "./src/popover.tsx",
 			"import": "./src/popover.tsx"
 		},
+		"./button-group": {
+			"types": "./src/button-group.tsx",
+			"import": "./src/button-group.tsx"
+		},
+		"./session-top-item": {
+			"types": "./src/session-top-item.tsx",
+			"import": "./src/session-top-item.tsx"
+		},
 		"./select": {
 			"types": "./src/select.tsx",
 			"import": "./src/select.tsx"

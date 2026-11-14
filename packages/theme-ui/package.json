@@ -354,6 +354,10 @@
 			"types": "./src/chat/BashTerminalCard.tsx",
 			"import": "./src/chat/BashTerminalCard.tsx"
 		},
+		"./chat/HeaderActionGroupView": {
+			"types": "./src/chat/HeaderActionGroupView.tsx",
+			"import": "./src/chat/HeaderActionGroupView.tsx"
+		},
 		"./chat/ChatHeaderActionsView": {
 			"types": "./src/chat/ChatHeaderActionsView.tsx",
 			"import": "./src/chat/ChatHeaderActionsView.tsx"

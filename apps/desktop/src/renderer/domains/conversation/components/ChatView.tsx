@@ -11,7 +11,7 @@ import { useChatViewModel } from "../hooks/useChatViewModel";
 import { useWindowPinAction } from "../hooks/useWindowPinAction";
 import { useBottomPanelToggle } from "@domains/bottom-panel/hooks/useBottomPanelToggle";
 import { useOpenTerminal } from "@domains/bottom-panel/hooks/useOpenTerminal";
-import { ChatHeaderActions } from "@astravia-org/theme-ui/chat";
+import { HeaderActionGroup } from "@astravia-org/theme-ui/chat/HeaderActionGroupView";
 import { BackgroundTasksBadge } from "./BackgroundTasksBadge";
 import { SandboxGrantsBadge } from "./SandboxGrantsBadge";
 import { OpenWorkspaceWithAppButton } from "@domains/file-explorer/components/OpenWorkspaceWithAppButton";
@@ -63,46 +63,60 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 			<>
 				<BackgroundTasksBadge runtimeIds={runtimeIds} activityWorkspaceId={workspace.id} />
 				<SandboxGrantsBadge runtimeIds={runtimeIds} />
-				<ChatHeaderActions.Export
-					title={model.header.exportTitle}
-					disabled={model.header.exportDisabled}
-					exporting={model.header.exporting}
-					onClick={actions.openExport}
-				/>
-				<ChatHeaderActions.Pin
-					title={pin.pinned ? t("chatView.pinButton.pinned") : t("chatView.pinButton.unpinned")}
-					pinned={pin.pinned}
-					onClick={pin.toggle}
-				/>
-				<ChatHeaderActions.Terminal
-					title={
-						!terminal.available
-							? t("chatView.terminalButton.unavailable")
-							: terminal.focused
-								? t("chatView.terminalButton.focused")
-								: t("chatView.terminalButton.open")
-					}
-					focused={terminal.focused}
-					disabled={!terminal.available}
-					onClick={terminal.open}
-				/>
-				<ChatHeaderActions.BottomPanel
-					title={
-						bottomPanel.open
-							? t("chatView.bottomPanelButton.open")
-							: t("chatView.bottomPanelButton.closed")
-					}
-					open={bottomPanel.open}
-					onClick={bottomPanel.toggle}
-				/>
-				<ChatHeaderActions.Panel
-					title={model.header.panelTitle}
-					open={model.header.panelOpen}
-					onClick={actions.togglePanel}
+				{/*
+				 * 五个动作收进一个按钮组：窗口变窄时由 HeaderActionGroup 决定放得下几个，
+				 * 其余收进「更多」菜单，而不是让它们溢出或被裁掉。
+				 */}
+				<HeaderActionGroup
+					labels={{ more: t("chatView.headerActions.more") }}
+					items={[
+						{
+							id: "export",
+							title: model.header.exportTitle,
+							icon: "icon-[solar--square-share-line-linear]",
+							disabled: model.header.exportDisabled,
+							onClick: actions.openExport,
+						},
+						{
+							id: "pin",
+							title: pin.pinned ? t("chatView.pinButton.pinned") : t("chatView.pinButton.unpinned"),
+							icon: "icon-[solar--pin-linear]",
+							active: pin.pinned,
+							onClick: pin.toggle,
+						},
+						{
+							id: "terminal",
+							title: !terminal.available
+								? t("chatView.terminalButton.unavailable")
+								: terminal.focused
+									? t("chatView.terminalButton.focused")
+									: t("chatView.terminalButton.open"),
+							icon: "icon-[solar--programming-linear]",
+							active: terminal.focused,
+							disabled: !terminal.available,
+							onClick: terminal.open,
+						},
+						{
+							id: "bottom-panel",
+							title: bottomPanel.open
+								? t("chatView.bottomPanelButton.open")
+								: t("chatView.bottomPanelButton.closed"),
+							icon: "icon-[solar--window-frame-linear]",
+							active: bottomPanel.open,
+							onClick: bottomPanel.toggle,
+						},
+						{
+							id: "activity-panel",
+							title: model.header.panelTitle,
+							icon: "icon-[solar--sidebar-minimalistic-linear]",
+							active: model.header.panelOpen,
+							onClick: actions.togglePanel,
+						},
+					]}
 				/>
 			</>
 		),
-		[actions, bottomPanel, model.cwd, model.header, pin, runtimeIds, t, terminal, workspace.id],
+		[actions, bottomPanel, model.header, pin, runtimeIds, t, terminal, workspace.id],
 	);
 	const onAbort = useCallback(() => {
 		void props.onAbort();

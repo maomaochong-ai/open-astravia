@@ -433,6 +433,9 @@
 		"defaultSessionName": "Astravia 会话"
 	},
 	"chatView": {
+		"headerActions": {
+			"more": "更多操作"
+		},
 		"defaultSessionTitle": "Astravia 会话",
 		"bottomPanelButton": {
 			"closed": "打开底部面板",

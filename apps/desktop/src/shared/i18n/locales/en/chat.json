@@ -433,6 +433,9 @@
 		"defaultSessionName": "Astravia Session"
 	},
 	"chatView": {
+		"headerActions": {
+			"more": "More actions"
+		},
 		"defaultSessionTitle": "Astravia Session",
 		"bottomPanelButton": {
 			"closed": "Open bottom panel",

@@ -1,4 +1,12 @@
 export { Button, buttonVariants } from "./button";
+export {
+	ButtonGroup,
+	ButtonGroupItem,
+	type ButtonGroupItemProps,
+	type ButtonGroupProps,
+	type ButtonGroupShape,
+	useInButtonGroup,
+} from "./button-group";
 export type { CalendarProps } from "./calendar";
 export { Calendar, CalendarDayButton } from "./calendar";
 export type { DatePickerLabels, DatePickerProps } from "./date-picker";
@@ -63,6 +71,13 @@ export {
 	SelectTrigger,
 	SelectValue,
 } from "./select";
+export {
+	SessionTopGroup,
+	SessionTopItem,
+	type SessionTopItemProps,
+	type SessionTopMenuItem,
+	type SessionTopPopoverApi,
+} from "./session-top-item";
 export { Slider, type SliderProps } from "./slider";
 export { Spin, type SpinProps, type SpinSize } from "./spin";
 export { Switch } from "./switch";
