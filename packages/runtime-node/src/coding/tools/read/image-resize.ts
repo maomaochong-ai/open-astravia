@@ -264,20 +264,23 @@ function getImageDimensions(buffer: Buffer, mimeType: string): ImageDimensions |
 	}
 }
 
-function validateInputDimensions(
-	inputBuffer: Buffer,
-	mimeType: string,
-	options: Required<ImageResizeOptions>,
-): ImageResizeFailure | undefined {
-	let dimensions: ImageDimensions | undefined;
+function readHeaderDimensions(inputBuffer: Buffer, mimeType: string): ImageDimensions | undefined {
 	try {
-		dimensions = getImageDimensions(inputBuffer, mimeType);
+		return getImageDimensions(inputBuffer, mimeType);
 	} catch (error) {
 		console.warn(
 			`[image-resize] Failed to read image metadata before Photon decode (${inputBuffer.length} bytes, ${mimeType}); continuing with Photon decode. Error: ${describeError(error)}`,
 		);
 		return undefined;
 	}
+}
+
+function validateInputDimensions(
+	inputBuffer: Buffer,
+	mimeType: string,
+	dimensions: ImageDimensions | undefined,
+	options: Required<ImageResizeOptions>,
+): ImageResizeFailure | undefined {
 	if (!dimensions) {
 		return undefined;
 	}
@@ -308,6 +311,16 @@ function asBuffer(bytes: Buffer | Uint8Array): Buffer {
 	return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 }
 
+function fitsWithinLimits(
+	dimensions: ImageDimensions,
+	byteLength: number,
+	options: Required<ImageResizeOptions>,
+): boolean {
+	return (
+		dimensions.width <= options.maxWidth && dimensions.height <= options.maxHeight && byteLength <= options.maxBytes
+	);
+}
+
 export async function resizeImageBuffer(
 	bytes: Buffer | Uint8Array,
 	mimeType: string,
@@ -316,9 +329,25 @@ export async function resizeImageBuffer(
 ): Promise<ImageResizeResult> {
 	const resolvedOptions = { ...DEFAULT_OPTIONS, ...options };
 	const inputBuffer = asBuffer(bytes);
-	const inputDimensionFailure = validateInputDimensions(inputBuffer, mimeType, resolvedOptions);
+	const headerDimensions = readHeaderDimensions(inputBuffer, mimeType);
+	const inputDimensionFailure = validateInputDimensions(inputBuffer, mimeType, headerDimensions, resolvedOptions);
 	if (inputDimensionFailure) {
 		return inputDimensionFailure;
+	}
+	// 文件头已给出尺寸且无需缩放时直接放行：完整解码只为拿宽高，会同步占住 Electron 主进程数百毫秒。
+	if (headerDimensions && fitsWithinLimits(headerDimensions, inputBuffer.length, resolvedOptions)) {
+		return debugLog(
+			{
+				data: originalBase64 ?? inputBuffer.toString("base64"),
+				mimeType,
+				originalWidth: headerDimensions.width,
+				originalHeight: headerDimensions.height,
+				width: headerDimensions.width,
+				height: headerDimensions.height,
+				wasResized: false,
+			},
+			inputBuffer.length,
+		);
 	}
 
 	const photon = await loadPhoton();
@@ -344,11 +373,7 @@ export async function resizeImageBuffer(
 		const originalHeight = image.get_height();
 		const format = mimeType.split("/")[1] ?? "png";
 
-		if (
-			originalWidth <= resolvedOptions.maxWidth &&
-			originalHeight <= resolvedOptions.maxHeight &&
-			inputBuffer.length <= resolvedOptions.maxBytes
-		) {
+		if (fitsWithinLimits({ width: originalWidth, height: originalHeight }, inputBuffer.length, resolvedOptions)) {
 			return debugLog(
 				{
 					data: originalBase64 ?? inputBuffer.toString("base64"),

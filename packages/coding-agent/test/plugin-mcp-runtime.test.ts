@@ -12,7 +12,7 @@ import type {
 	McpToolResultPolicy,
 	RuntimeMcpClientFactory,
 } from "@astravia/runtime-mcp";
-import { EMPTY_MCP_CONFIG_SOURCE } from "@astravia/runtime-mcp";
+import { EMPTY_MCP_CONFIG_SOURCE, isHttpServerConfig } from "@astravia/runtime-mcp";
 import { createNodeMcpSupervisor } from "@astravia/runtime-node/mcp";
 import { describe, expect, it, vi } from "vitest";
 import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/ecosystem/tool-interceptor-adapter.js";
@@ -282,7 +282,7 @@ class FakeMcpClient implements McpClientHandle {
 			content: [
 				{
 					type: "text",
-					text: this.config.type === "http" ? this.config.url : this.config.command,
+					text: isHttpServerConfig(this.config) ? this.config.url : this.config.command,
 				},
 			],
 		};

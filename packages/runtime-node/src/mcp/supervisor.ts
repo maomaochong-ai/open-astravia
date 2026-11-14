@@ -48,7 +48,9 @@ export function createNodeMcpSupervisor(options: NodeMcpSupervisorOptions): Node
 		new FileMcpConfigSource({
 			globalConfigPath: join(options.agentDir, "mcp.json"),
 			projectConfigPath: join(options.projectRoot, options.projectConfigDirectoryName ?? ".astravia", "mcp.json"),
+			compatProjectConfigPath: join(options.projectRoot, ".mcp.json"),
 			projectRoot: options.projectRoot,
+			onDiagnostic: options.onDiagnostic,
 		});
 	const oauthStore = new FileMcpOAuthStateStore({ authDirectory: join(options.agentDir, "mcp-auth") });
 	const clientFactory = options.clientFactory ?? createMcpClient;

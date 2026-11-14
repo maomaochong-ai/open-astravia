@@ -1,7 +1,9 @@
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import {
 	CreateMessageRequestSchema,
 	ElicitRequestSchema,
@@ -16,8 +18,12 @@ import type {
 	McpServerInteractionHandlers,
 } from "../../protocol/index.js";
 
+/** `sse` 是旧 HTTP+SSE 传输，只为仍在使用它的服务器保留。 */
+export type McpHttpSdkTransportKind = "streamable-http" | "sse";
+
 export interface McpHttpSdkSessionOptions {
 	readonly url: URL;
+	readonly transport?: McpHttpSdkTransportKind;
 	readonly requestInit?: RequestInit;
 	readonly fetch?: (input: string | URL, init?: RequestInit) => Promise<Response>;
 	readonly authProvider?: OAuthClientProvider;
@@ -53,16 +59,28 @@ export function isMcpSdkUnauthorizedError(error: unknown): boolean {
 	return message.includes("unauthorized") || message.includes("401");
 }
 
+/** 同一份请求头、鉴权与 fetch 注入同时作用于 SSE 的 GET 事件流和 POST 请求。 */
+export function createMcpSdkTransport(
+	kind: McpHttpSdkTransportKind,
+	url: URL,
+	options: Pick<McpHttpSdkSessionOptions, "requestInit" | "authProvider" | "fetch">,
+): StreamableHTTPClientTransport | SSEClientTransport {
+	const transportOptions = {
+		requestInit: options.requestInit,
+		authProvider: options.authProvider,
+		fetch: options.fetch,
+	};
+	return kind === "sse"
+		? new SSEClientTransport(url, transportOptions)
+		: new StreamableHTTPClientTransport(url, transportOptions);
+}
+
 class DefaultMcpHttpSdkSession implements McpHttpSdkSession {
-	private readonly transport: StreamableHTTPClientTransport;
+	private readonly transport: Transport & { protocolVersion?: string };
 	private readonly client: Client;
 
 	constructor(private readonly options: McpHttpSdkSessionOptions) {
-		this.transport = new StreamableHTTPClientTransport(options.url, {
-			requestInit: options.requestInit,
-			authProvider: options.authProvider,
-			fetch: options.fetch,
-		});
+		this.transport = createMcpSdkTransport(options.transport ?? "streamable-http", options.url, options);
 		this.client = new Client(options.clientInfo, { capabilities: options.capabilities ?? {} });
 		this.registerInteractionHandlers();
 	}

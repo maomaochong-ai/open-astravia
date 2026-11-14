@@ -22,6 +22,11 @@ export interface SshHost {
 	/** 私钥路径。留空表示交给 ssh-agent 与 OpenSSH 的默认身份。 */
 	readonly identityFile?: string;
 	/**
+	 * 认证方式。缺省等同 `key`（私钥 / ssh-agent / ssh config）。
+	 * `password` 时登录口令存在凭据库，连接时由 askpass 回填，配置里不出现明文。
+	 */
+	readonly authMethod?: SshAuthMethod;
+	/**
 	 * 条目来源。`ssh-config` 的条目每次导入都按 `~/.ssh/config` 刷新，
 	 * `manual` 的条目永不被导入覆盖——否则用户手工改过的端口会在下次导入时被悄悄改回去。
 	 */
@@ -33,11 +38,15 @@ export interface SshHost {
 /** 连接生命周期。`unverifiable` 不能与 `disconnected` 合并，见 ADR-0124 的执行边界。 */
 export type SshConnectionStatus = "disconnected" | "connecting" | "connected" | "unverifiable";
 
+/** 一台主机的认证方式。`key` 覆盖私钥、ssh-agent 与 ssh config 的全部身份设置。 */
+export type SshAuthMethod = "key" | "password";
+
 export interface SshHostInput {
 	readonly label: string;
 	readonly target: string;
 	readonly port?: number;
 	readonly identityFile?: string;
+	readonly authMethod?: SshAuthMethod;
 	readonly source?: SshHost["source"];
 	readonly credentialRef?: string;
 }
@@ -61,11 +70,14 @@ export function normalizeSshHostInput(input: SshHostInput): Omit<SshHost, "id"> 
 	if (input.port !== undefined && !isValidPort(input.port)) {
 		throw new Error(`Invalid SSH port: ${input.port}`);
 	}
+	const usePassword = input.authMethod === "password";
 	return {
 		label,
 		target,
 		...(input.port === undefined ? {} : { port: input.port }),
-		...(input.identityFile?.trim() ? { identityFile: input.identityFile.trim() } : {}),
+		// 密码登录时私钥路径没有意义，丢掉以免与另一种认证方式的残留混在一起。
+		...(!usePassword && input.identityFile?.trim() ? { identityFile: input.identityFile.trim() } : {}),
+		...(usePassword ? { authMethod: "password" as const } : {}),
 		source: input.source ?? "manual",
 		...(input.credentialRef ? { credentialRef: input.credentialRef } : {}),
 	};

@@ -19,7 +19,9 @@ interface ReadImageDetails {
 	};
 }
 
-const REAL_IMAGE_PROCESSING_TIMEOUT_MS = 20_000;
+// 这条用例要加载 Photon 的 WASM 并真的缩放一张 4K JPEG：在慢机器或与其它测试并行时
+// 接近 20s 很常见，超时会变成「随机红」。放宽到 45s，它测的是行为不是速度。
+const REAL_IMAGE_PROCESSING_TIMEOUT_MS = 45_000;
 
 function createRuntimeSubject(cwd: string, options?: ReadBehaviorSubjectOptions): ReadBehaviorSubject {
 	const registration = createReadToolRegistration(cwd, options);

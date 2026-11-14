@@ -34,7 +34,7 @@ export const McpStdioServerConfigSchema = Type.Object(
 export const McpHttpServerConfigSchema = Type.Object(
 	{
 		...McpServerCommonConfigProperties,
-		type: Type.Literal("http"),
+		type: Type.Union([Type.Literal("http"), Type.Literal("sse")]),
 		url: Type.String({ minLength: 1 }),
 		managedRuntimeEnv: Type.Optional(Type.Record(Type.String(), Type.String())),
 		headers: Type.Optional(Type.Union([Type.Record(Type.String(), Type.Unknown()), Type.Null()])),
@@ -58,9 +58,22 @@ export type McpConfigSchemaValue = Static<typeof McpConfigSchema>;
 
 /** Parse disk JSON while preserving the legacy field-level error contract. */
 export function parseMcpConfig(value: unknown): McpConfig {
-	if (Value.Check(McpConfigSchema, value)) return value as McpConfig;
+	if (Value.Check(McpConfigSchema, value)) {
+		assertSseProtocolMode(value as McpConfig);
+		return value as McpConfig;
+	}
 	throwCompatibleConfigError(value);
 	throw new Error("Invalid MCP config: schema validation failed");
+}
+
+/** 无状态的 modern 协议只定义在 Streamable HTTP 之上，旧 SSE 传输无法承载。 */
+function assertSseProtocolMode(config: McpConfig): void {
+	const servers = Array.isArray(config.mcpServers) ? [] : Object.entries(config.mcpServers);
+	for (const [name, server] of servers) {
+		if (server.type === "sse" && (server.protocolMode === "modern" || server.protocolMode === "auto")) {
+			throw new Error(`Invalid server config for '${name}': 'type' "sse" only supports protocolMode "legacy"`);
+		}
+	}
 }
 
 function throwCompatibleConfigError(value: unknown): void {
@@ -75,10 +88,10 @@ function throwCompatibleConfigError(value: unknown): void {
 function validateServerConfig(name: string, value: unknown): void {
 	if (!isObject(value)) throw new Error(`Invalid server config for '${name}': must be an object`);
 	const type = value.type ?? "stdio";
-	if (type !== "stdio" && type !== "http") {
-		throw new Error(`Invalid server config for '${name}': 'type' must be "stdio" or "http"`);
+	if (type !== "stdio" && type !== "http" && type !== "sse") {
+		throw new Error(`Invalid server config for '${name}': 'type' must be "stdio", "http" or "sse"`);
 	}
-	if (type === "http") {
+	if (type === "http" || type === "sse") {
 		if (!value.url || !Value.Check(Type.String(), value.url)) {
 			throw new Error(`Invalid server config for '${name}': missing or invalid 'url'`);
 		}

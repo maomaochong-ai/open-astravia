@@ -4,7 +4,7 @@ export interface McpProtocolObservation {
 	readonly operation: "negotiation" | "request" | "mrtr" | "task" | "app";
 	readonly phase: "started" | "completed" | "failed" | "fallback";
 	readonly serverName?: string;
-	readonly transport?: "http" | "stdio";
+	readonly transport?: "http" | "sse" | "stdio";
 	readonly era?: "legacy" | "modern";
 	readonly protocolVersion?: string;
 	readonly methodCategory?: "discover" | "initialize" | "tools" | "resources" | "prompts" | "tasks" | "apps" | "other";

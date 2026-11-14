@@ -2,11 +2,15 @@ import type { McpBrowserOAuthSession } from "@astravia/runtime-mcp/auth";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import type { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { McpClientInfo } from "../protocol/index.js";
+import { type McpHttpSdkTransportKind, createMcpSdkTransport } from "../transports/http/sdk-session-adapter.js";
 
 export interface McpBrowserOAuthSdkSessionOptions {
 	readonly url: URL;
+	/** 默认 Streamable HTTP；旧 SSE 服务器要用同样的传输完成授权，否则 token 对不上它的端点。 */
+	readonly transport?: McpHttpSdkTransportKind;
 	readonly authProvider: OAuthClientProvider;
 	readonly clientInfo: McpClientInfo;
 	readonly timeout: number;
@@ -37,7 +41,7 @@ export function createMcpOAuthDiagnosticFetch(fetchFn: typeof fetch = fetch): ty
 }
 
 class DefaultMcpBrowserOAuthSdkSession implements McpBrowserOAuthSession {
-	private readonly transport: StreamableHTTPClientTransport;
+	private readonly transport: StreamableHTTPClientTransport | SSEClientTransport;
 	private readonly client: Client;
 
 	constructor(private readonly options: McpBrowserOAuthSdkSessionOptions) {
@@ -67,8 +71,8 @@ class DefaultMcpBrowserOAuthSdkSession implements McpBrowserOAuthSession {
 		await client.close().catch(() => undefined);
 	}
 
-	private createTransport(): StreamableHTTPClientTransport {
-		return new StreamableHTTPClientTransport(this.options.url, {
+	private createTransport(): StreamableHTTPClientTransport | SSEClientTransport {
+		return createMcpSdkTransport(this.options.transport ?? "streamable-http", this.options.url, {
 			authProvider: this.options.authProvider,
 			fetch: createMcpOAuthDiagnosticFetch(this.options.fetchFn),
 		});

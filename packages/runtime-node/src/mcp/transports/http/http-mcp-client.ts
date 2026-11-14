@@ -51,7 +51,7 @@ export interface HttpMcpClientOptions {
 	readonly onDiagnostic?: (message: string) => void;
 }
 
-/** Official MCP SDK adapter for Streamable HTTP, independent of product credential paths. */
+/** Official MCP SDK adapter for Streamable HTTP (and the legacy SSE transport), independent of product credential paths. */
 export class HttpMcpClient implements McpClientHandle {
 	private readonly name: string;
 	private readonly config: McpHttpServerConfig;
@@ -90,6 +90,10 @@ export class HttpMcpClient implements McpClientHandle {
 			serverUrl: this.resolvedUrl,
 			config: resolvedConfig,
 		});
+		const isSse = this.config.type === "sse";
+		if (isSse && (this.config.protocolMode === "modern" || this.config.protocolMode === "auto")) {
+			throw new Error(`MCP server '${this.name}': type "sse" only supports protocolMode "legacy"`);
+		}
 		if (this.config.protocolMode === "modern" || this.config.protocolMode === "auto") {
 			this.modernClient = new ModernStatelessMcpClient({
 				config: resolvedConfig,
@@ -119,6 +123,7 @@ export class HttpMcpClient implements McpClientHandle {
 		}
 		this.session = this.sdkSessionFactory({
 			url: new URL(this.resolvedUrl),
+			transport: isSse ? "sse" : "streamable-http",
 			requestInit: this.config.headers ? { headers: this.config.headers } : undefined,
 			fetch: buildHeaderResolvingFetch(this.config.resolveHeaders),
 			authProvider: this.authProvider,

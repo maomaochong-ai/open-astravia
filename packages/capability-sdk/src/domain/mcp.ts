@@ -10,11 +10,17 @@ import {
 export const MCP_SERVER_TYPES = {
 	STDIO: "stdio",
 	HTTP: "http",
+	/** 旧式 HTTP+SSE 传输，仅为兼容仍在使用它的服务器。 */
+	SSE: "sse",
 } as const;
 
 const mcpEmptyInputType = Type.Object({}, { additionalProperties: false });
 
-const mcpServerTypeType = Type.Union([Type.Literal(MCP_SERVER_TYPES.STDIO), Type.Literal(MCP_SERVER_TYPES.HTTP)]);
+const mcpServerTypeType = Type.Union([
+	Type.Literal(MCP_SERVER_TYPES.STDIO),
+	Type.Literal(MCP_SERVER_TYPES.HTTP),
+	Type.Literal(MCP_SERVER_TYPES.SSE),
+]);
 
 const mcpStringMapType = Type.Record(Type.String(), Type.String());
 
@@ -74,10 +80,10 @@ const mcpStdioServerUpsertDataType = Type.Object(
 	{ additionalProperties: false },
 );
 
-/** http upsert: type must be "http"; stdio-only fields are rejected via additionalProperties. */
+/** http/sse upsert: type must be "http" or "sse"; stdio-only fields are rejected via additionalProperties. */
 const mcpHttpServerUpsertDataType = Type.Object(
 	{
-		type: Type.Literal(MCP_SERVER_TYPES.HTTP),
+		type: Type.Union([Type.Literal(MCP_SERVER_TYPES.HTTP), Type.Literal(MCP_SERVER_TYPES.SSE)]),
 		url: Type.Optional(Type.String()),
 		headers: Type.Optional(mcpStringMapType),
 		...mcpServerCommonUpsertFields,

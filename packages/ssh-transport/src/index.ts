@@ -105,6 +105,7 @@ export {
 export { SshConnectionManager, type SshConnectionManagerOptions } from "./ssh-connection-manager.js";
 export {
 	normalizeSshHostInput,
+	type SshAuthMethod,
 	type SshConnectionStatus,
 	type SshHost,
 	type SshHostInput,

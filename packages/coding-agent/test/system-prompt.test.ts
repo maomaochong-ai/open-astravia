@@ -19,6 +19,16 @@ describe("ASTRAVIA_CLI_GUIDANCE", () => {
 		expect(ASTRAVIA_CLI_GUIDANCE).toContain("authoritative inventory is always `astravia action search`");
 		expect(ASTRAVIA_CLI_GUIDANCE).toContain("Do not expect CLI help to list every parameter");
 	});
+
+	test("tells the agent to keep CLI failures visible and to stop after repeated start failures", () => {
+		expect(ASTRAVIA_CLI_GUIDANCE).toContain("do not pipe `astravia` output through `head`");
+		expect(ASTRAVIA_CLI_GUIDANCE).toContain("twice in a row, stop probing other binaries or install paths");
+	});
+
+	test("keeps secrets out of the conversation by routing inspection through query actions", () => {
+		expect(ASTRAVIA_CLI_GUIDANCE).toContain("never by reading Astravia's config files");
+		expect(ASTRAVIA_CLI_GUIDANCE).toContain("plaintext secrets");
+	});
 });
 
 describe("buildSystemPrompt", () => {

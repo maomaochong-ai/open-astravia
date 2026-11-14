@@ -56,8 +56,12 @@ export interface McpStdioServerConfig extends McpServerCommonConfig {
 	cwd?: string;
 }
 
+/**
+ * URL 型远程 server。`http` 是 Streamable HTTP；`sse` 是 2024-11 规范里的旧 HTTP+SSE 传输，
+ * 仅为连接仍在使用它的服务器而保留，且只走 legacy 协议路径。
+ */
 export interface McpHttpServerConfig extends McpServerCommonConfig {
-	type: "http";
+	type: "http" | "sse";
 	url: string;
 	/** Host-managed process environment overrides; ignored by ordinary remote HTTP transports. */
 	managedRuntimeEnv?: Record<string, string>;
@@ -73,8 +77,9 @@ export interface McpHttpServerConfig extends McpServerCommonConfig {
 
 export type McpServerConfig = McpStdioServerConfig | McpHttpServerConfig;
 
+/** URL 型远程 server：Streamable HTTP 与旧 SSE 都走 HttpMcpClient，由它按 `type` 选传输。 */
 export function isHttpServerConfig(config: McpServerConfig): config is McpHttpServerConfig {
-	return config.type === "http";
+	return config.type === "http" || config.type === "sse";
 }
 
 export function isStdioServerConfig(config: McpServerConfig): config is McpStdioServerConfig {

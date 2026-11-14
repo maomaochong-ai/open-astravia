@@ -44,6 +44,10 @@ export function buildSshArgv(host: SshHost, options: SshArgvOptions, remoteComma
 	];
 	if (host.port !== undefined) argv.push("-p", String(host.port));
 	if (host.identityFile) argv.push("-i", host.identityFile);
+	// 密码登录：不让 ssh 先拿本机所有私钥逐个试错（会耗尽服务端 MaxAuthTries），直接走口令。
+	if (host.authMethod === "password") {
+		argv.push("-o", "PreferredAuthentications=password,keyboard-interactive", "-o", "PubkeyAuthentication=no");
+	}
 	argv.push(options.requestTty ? "-tt" : "-T");
 	// `--` 之后 OpenSSH 不再解析选项，目标和远端命令都按字面量处理。
 	argv.push("--", host.target);

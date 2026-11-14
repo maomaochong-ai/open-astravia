@@ -140,6 +140,24 @@ describe("resizeImage", () => {
 		if (!isImageResizeFailure(result)) return;
 		expect(result.reason).toBe("input_too_large");
 	});
+
+	// 每次模型调用都会对历史中的每张图走一遍这里；在限内的图若仍完整解码，会在 Electron 主进程同步阻塞数百毫秒。
+	// 只有文件头的 PNG 无法被解码，能通过即证明限内图片没有进入像素解码。
+	it("should pass through in-limit images using header dimensions without decoding pixels", async () => {
+		const headerOnly = createPngHeader(800, 600);
+		const result = await resizeImageBuffer(headerOnly, "image/png", {
+			maxWidth: 2000,
+			maxHeight: 2000,
+			maxBytes: 1024 * 1024,
+		});
+
+		expect(isImageResizeFailure(result)).toBe(false);
+		if (isImageResizeFailure(result)) return;
+		expect(result.wasResized).toBe(false);
+		expect(result.data).toBe(headerOnly.toString("base64"));
+		expect(result.originalWidth).toBe(800);
+		expect(result.originalHeight).toBe(600);
+	});
 });
 
 describe("formatDimensionNote", () => {
