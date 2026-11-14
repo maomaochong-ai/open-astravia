@@ -1,0 +1,8 @@
+{
+	"plugin.name": "Open in External App",
+	"plugin.description": "Adds a button to the conversation header that hands the project folder to an editor, file manager or terminal on this machine (macOS, Windows and Linux, local projects).",
+	"action.title": "Open in external app",
+	"action.openDefault": "Open with default app",
+	"app.reveal": "Reveal in file manager",
+	"error.failed": "Couldn't open the project folder"
+}

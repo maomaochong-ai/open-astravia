@@ -1,0 +1,8 @@
+{
+	"plugin.name": "从外部应用打开",
+	"plugin.description": "在会话页顶栏加一个按钮，把当前项目目录交给本机的编辑器、文件管理器或终端打开（macOS、Windows、Linux 本地项目）。",
+	"action.title": "用外部应用打开",
+	"action.openDefault": "用系统默认应用打开",
+	"app.reveal": "在文件管理器中显示",
+	"error.failed": "无法打开项目目录"
+}
