@@ -12,6 +12,8 @@ const buttonVariants = cva(
 				primary: "bg-primary text-primary-foreground hover:bg-primary/90",
 				outline:
 					"border-border bg-transparent text-foreground hover:bg-accent/50 aria-expanded:bg-accent/50",
+				/** 设置页里设置项右侧的操作按钮：与下拉 / 输入框同皮（muted 底、无边框、12px）。 */
+				field: "bg-muted text-[12px] text-foreground hover:bg-accent aria-expanded:bg-accent",
 				secondary: "bg-secondary text-foreground hover:bg-accent",
 				ghost: "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
 				destructive:

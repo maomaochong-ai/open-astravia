@@ -1,7 +1,7 @@
 import * as React from "react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import { CheckIcon } from "lucide-react";
-import { cn } from "./utils";
+import { cn, FLOATING_SURFACE_CLASS } from "./utils";
 
 function DropdownMenu(props: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
 	return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
@@ -11,8 +11,7 @@ function DropdownMenuTrigger(props: React.ComponentProps<typeof DropdownMenuPrim
 	return <DropdownMenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
 }
 
-const CONTENT_CLASS =
-	"no-drag z-50 min-w-[10rem] overflow-hidden rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-md outline-hidden duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95";
+const CONTENT_CLASS = `${FLOATING_SURFACE_CLASS} no-drag z-50 min-w-[10rem] overflow-hidden p-1.5 outline-hidden duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95`;
 
 function DropdownMenuContent({
 	className,

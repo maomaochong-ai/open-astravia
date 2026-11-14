@@ -1,7 +1,16 @@
 import * as React from "react";
 import { Select as SelectPrimitive } from "radix-ui";
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react";
-import { cn } from "./utils";
+import { cn, FLOATING_SURFACE_CLASS } from "./utils";
+
+/**
+ * 下拉触发器与弹出面板的统一皮肤：无边框（边框位用透明占位，免得与有边框控件对不齐）+ muted 底色。
+ * Select、MotionSelect 以及界面大小这类「触发器长得像下拉、弹出别的东西」的控件都从这里取，
+ * 改样式只改这一处。
+ */
+export const SELECT_TRIGGER_CLASS =
+	"border border-transparent bg-muted hover:bg-accent data-[state=open]:bg-accent focus-visible:border-primary/50";
+export const SELECT_PANEL_CLASS = "border border-transparent ring-0 dark:ring-0";
 
 /**
  * 基础 Select（无 motion）。
@@ -36,9 +45,8 @@ function SelectTrigger({
 			data-slot="select-trigger"
 			data-size={size}
 			className={cn(
-				"flex w-fit items-center justify-between gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[12px] font-medium whitespace-nowrap text-foreground transition-colors outline-none select-none",
-				"hover:bg-accent data-[state=open]:bg-accent",
-				"focus-visible:border-primary/50",
+				"flex w-fit items-center justify-between gap-1.5 rounded-lg px-2.5 text-[12px] font-medium whitespace-nowrap text-foreground transition-colors outline-none select-none",
+				SELECT_TRIGGER_CLASS,
 				"disabled:cursor-not-allowed disabled:opacity-50",
 				"aria-invalid:border-destructive",
 				"data-placeholder:text-muted-foreground",
@@ -72,7 +80,9 @@ function SelectContent({
 				data-align-trigger={position === "item-aligned"}
 				className={cn(
 					// 面板：1px border + card/popover 面，无重 shadow/ring 叠层
-					"no-drag relative z-50 max-h-(--radix-select-content-available-height) min-w-36 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-md",
+					FLOATING_SURFACE_CLASS,
+					SELECT_PANEL_CLASS,
+					"no-drag relative z-50 max-h-(--radix-select-content-available-height) min-w-36 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto p-1.5",
 					"data-[align-trigger=true]:animate-none",
 					"data-[side=bottom]:slide-in-from-top-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1 data-[side=top]:slide-in-from-bottom-1",
 					"data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 duration-100",

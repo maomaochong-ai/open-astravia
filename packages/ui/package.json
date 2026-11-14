@@ -49,6 +49,10 @@
 			"types": "./src/select.tsx",
 			"import": "./src/select.tsx"
 		},
+		"./step-slider": {
+			"types": "./src/step-slider.tsx",
+			"import": "./src/step-slider.tsx"
+		},
 		"./slider": {
 			"types": "./src/slider.tsx",
 			"import": "./src/slider.tsx"

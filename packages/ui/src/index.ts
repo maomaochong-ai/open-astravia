@@ -48,7 +48,7 @@ export {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "./dropdown-menu";
-export { Input } from "./input";
+export { INPUT_FILL_CLASS, Input, TEXTAREA_FILL_CLASS } from "./input";
 export {
 	Popover,
 	PopoverAnchor,
@@ -60,6 +60,8 @@ export {
 	PopoverTrigger,
 } from "./popover";
 export {
+	SELECT_PANEL_CLASS,
+	SELECT_TRIGGER_CLASS,
 	Select,
 	SelectContent,
 	SelectGroup,
@@ -80,5 +82,12 @@ export {
 } from "./session-top-item";
 export { Slider, type SliderProps } from "./slider";
 export { Spin, type SpinProps, type SpinSize } from "./spin";
+export { StepSlider, type StepSliderProps } from "./step-slider";
 export { Switch } from "./switch";
-export { type ClassValue, cn } from "./utils";
+export {
+	type ClassValue,
+	cn,
+	FLOATING_SURFACE_CLASS,
+	OVERLAY_BACKDROP_CLASS,
+	PANEL_SHADOW_CLASS,
+} from "./utils";
