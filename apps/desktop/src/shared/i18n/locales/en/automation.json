@@ -121,6 +121,15 @@
 			"Fri",
 			"Sat"
 		],
+		"weekdayShortNames": [
+			"Sun",
+			"Mon",
+			"Tue",
+			"Wed",
+			"Thu",
+			"Fri",
+			"Sat"
+		],
 		"intervalMinutes": "Every {{minutes}} min",
 		"intervalHours": "Every {{hours}} h"
 	},

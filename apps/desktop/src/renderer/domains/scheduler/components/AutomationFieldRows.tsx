@@ -77,7 +77,7 @@ export const rowInputClass =
 
 export function chipClass(selected: boolean): string {
 	return cn(
-		"flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-[12px] tabular-nums transition-colors",
+		"flex h-7 min-w-7 items-center justify-center whitespace-nowrap rounded-md px-1.5 text-[12px] tabular-nums transition-colors",
 		selected ? "bg-primary/15 text-primary" : "bg-muted/50 text-muted-foreground hover:text-foreground",
 	);
 }

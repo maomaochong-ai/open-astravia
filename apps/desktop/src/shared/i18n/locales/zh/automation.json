@@ -121,6 +121,15 @@
 			"周五",
 			"周六"
 		],
+		"weekdayShortNames": [
+			"日",
+			"一",
+			"二",
+			"三",
+			"四",
+			"五",
+			"六"
+		],
 		"intervalMinutes": "每隔 {{minutes}} 分钟",
 		"intervalHours": "每隔 {{hours}} 小时"
 	},

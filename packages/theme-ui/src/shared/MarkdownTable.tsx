@@ -118,7 +118,7 @@ export const MarkdownTable = memo(function MarkdownTable({
 			<div className="md-table-shadow-host relative" data-md-table-frame="">
 				<div
 					ref={scrollRef}
-					className="max-h-[70vh] overflow-auto overscroll-x-contain rounded-xl border border-border/60 bg-muted p-[3px]"
+					className="max-h-[70vh] overflow-auto overscroll-x-contain rounded-xl border border-border/60 bg-[color-mix(in_srgb,var(--foreground)_8%,var(--background))] dark:bg-muted p-[3px]"
 					style={{ boxShadow: overflowShadow(overflow) }}
 				>
 					<table
@@ -189,7 +189,7 @@ export function MarkdownTableHeaderCell({
 				CELL_CLASS,
 				// -top-[3px] 抵消容器的 3px 内边距：表头吸顶时要贴住外框上边缘，
 				// 否则滚动内容会从它上方那条缝里穿过去。
-				"sticky -top-[3px] z-[1] whitespace-nowrap bg-muted py-2.5 text-[12px] font-medium text-muted-foreground/80",
+				"sticky -top-[3px] z-[1] whitespace-nowrap bg-[color-mix(in_srgb,var(--foreground)_8%,var(--background))] dark:bg-muted py-2.5 text-[12px] font-medium text-muted-foreground/80",
 			)}
 		>
 			{children}

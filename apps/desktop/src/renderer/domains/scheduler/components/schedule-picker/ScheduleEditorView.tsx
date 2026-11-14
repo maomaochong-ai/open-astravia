@@ -117,7 +117,8 @@ function KindRows({
 		case "daily":
 			return <TimeRow schedule={schedule} onChange={(time) => onChange({ ...schedule, ...time })} />;
 		case "weekly": {
-			const names = t("schedule.weekdayNames", { returnObjects: true }) as string[];
+			// 选择按钮用简称：中文「周日」这类两字在窄格里会被折成两行、溢出选框。
+			const names = t("schedule.weekdayShortNames", { returnObjects: true }) as string[];
 			// 周一在前，符合日常习惯；取值仍是 cron 的 0 = 周日。
 			const order = [1, 2, 3, 4, 5, 6, 0];
 			return (
@@ -279,7 +280,7 @@ function CronFieldPicker({
 	const { t } = useTranslation("automation");
 	const parsed = parseCronField(field, spec);
 	const values = Array.from({ length: spec.max - spec.min + 1 }, (_, index) => spec.min + index);
-	const names = spec.key === "weekday" ? (t("schedule.weekdayNames", { returnObjects: true }) as string[]) : null;
+	const names = spec.key === "weekday" ? (t("schedule.weekdayShortNames", { returnObjects: true }) as string[]) : null;
 	const summary = parsed === null ? t("form.cronAny") : field;
 
 	return (
