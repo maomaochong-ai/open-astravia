@@ -30,6 +30,7 @@ export function FileTabContent({ cwd }: FileTabContentProps): JSX.Element {
 							enableKeyboard
 							onToggleSidebar={model.toggleTree}
 							sidebarCollapsed={model.treeCollapsed}
+							onLocate={model.locate}
 						/>
 					) : (
 						<div className="flex min-h-0 flex-1" />

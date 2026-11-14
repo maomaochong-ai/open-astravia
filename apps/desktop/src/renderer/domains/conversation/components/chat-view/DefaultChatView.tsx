@@ -93,13 +93,17 @@ export function DefaultChatView({
 						onFinished={exportState.onFinished}
 					/>
 				) : null}
-				<div className="flex min-h-0 flex-1 gap-2 overflow-visible">
+				{/*
+				 * 沉浸式顶栏（main[data-header-overlay=true]）浮在整个内容区上：整行先让出顶栏高度，
+				 * 活动面板才不会被顶栏压住；消息列再用负 margin 抵回去，让消息流的渐隐铺到顶栏下面。
+				 */}
+				<div className="flex min-h-0 flex-1 gap-2 overflow-visible [[data-header-overlay=true]_&]:pt-11">
 					{/*
 					 * 用 clip + clip-margin 代替 overflow-hidden：活动面板收起时底部面板要铺到
 					 * 窗口边缘，右边得越过这一行的 gap-2 再加 AppFrame 的 p-2（共 16px），
 					 * 而消息流本身仍然需要被裁住。
 					 */}
-					<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-clip [overflow-clip-margin:16px]">
+					<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-clip [overflow-clip-margin:16px] [[data-header-overlay=true]_&]:-mt-11">
 						{subHeader}
 						{children}
 						{/*

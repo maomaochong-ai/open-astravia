@@ -17,6 +17,7 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"ui.slot.turn-card": "permission.uiSlotTurnCard",
 	"ui.slot.workspace-view": "permission.uiSlotWorkspaceView",
 	"ui.slot.new-session-context": "permission.uiSlotNewSessionContext",
+	"ui.slot.header-action": "permission.uiSlotHeaderAction",
 	"ui.shortcuts.register": "permission.uiShortcutsRegister",
 	"conversation.draft.read": "permission.conversationDraftRead",
 	"ui.file-explorer.decorations": "permission.uiFileExplorerDecorations",
@@ -68,6 +69,7 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"settings.read": "permission.settingsRead",
 	"settings.write": "permission.settingsWrite",
 	"shell.openExternal": "permission.shellOpenExternal",
+	"shell.open-external-app": "permission.shellOpenExternalApp",
 } as const satisfies Record<PluginPermission, string>;
 
 export type PluginPermissionGroup = "interface" | "projectData" | "agent" | "execution" | "intelligence";
@@ -179,6 +181,13 @@ export const PLUGIN_PERMISSION_PRESENTATIONS = {
 	},
 	"ui.slot.new-session-context": {
 		descriptionKey: "permission.description.uiSlotNewSessionContext",
+		group: "interface",
+		risk: "low",
+		visual: "interface",
+		uiPreview: "workspaceView",
+	},
+	"ui.slot.header-action": {
+		descriptionKey: "permission.description.uiSlotHeaderAction",
 		group: "interface",
 		risk: "low",
 		visual: "interface",
@@ -447,6 +456,12 @@ export const PLUGIN_PERMISSION_PRESENTATIONS = {
 	},
 	"shell.openExternal": {
 		descriptionKey: "permission.description.shellOpenExternal",
+		group: "execution",
+		risk: "medium",
+		visual: "external",
+	},
+	"shell.open-external-app": {
+		descriptionKey: "permission.description.shellOpenExternalApp",
 		group: "execution",
 		risk: "medium",
 		visual: "external",

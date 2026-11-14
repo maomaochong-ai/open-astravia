@@ -17,10 +17,12 @@ import { Sidebar } from "../domains/project/components/sidebar/Sidebar";
 import { PageHeader } from "../shared/app-shell/page-header";
 import { SessionOpenProvider } from "../shared/app-shell/session-open-context";
 import { TooltipProvider } from "../shared/components/ui/tooltip";
+import { pageHeaderImmersiveAtom } from "../shared/store/atoms";
 import { useActiveThemePageRoute } from "../shared/theme/pages";
 import { SidebarTour } from "../shared/tour";
 import { AppBackground } from "./app-background/AppBackground";
 import { RootGlobalOverlays } from "./RootGlobalOverlays";
+import { useTitlebarAnchor } from "./useTitlebarAnchor";
 import type { RootLayoutModel } from "./types";
 
 /**
@@ -59,6 +61,8 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 	// 插件工作区视图可声明沉浸式页头：页头浮在内容之上（拖拽区/触发器照常在最上层），
 	// 内容占满全高，视图自己的门面从窗口第一像素开始，不再被 44px 页头推出一条空带。
 	const workspaceViewHeader = useActiveWorkspaceViewHeader();
+	// 会话页声明沉浸式页头：页头浮在消息流之上，内容占满全高（见 ChatView 的 pageHeaderImmersiveAtom）。
+	const pageImmersive = useAtomValue(pageHeaderImmersiveAtom);
 	// 活动面板铺满时，宿主外壳（侧边栏 + 全局顶栏）整体让位：面板的按钮和
 	// 根布局的让位都读同一个 atom，避免出现「面板铺满但侧栏还在」的半吊子形态。
 	const activityFocus = useAtomValue(activityPanelFocusAtom);
@@ -72,6 +76,11 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 		sidebarWidth,
 	} = model;
 	const showSidebar = pageLayout !== "app" && !activityFocus;
+	// macOS 红绿灯按页头图标的实测中线摆放；页头形态（布局、窄窗、侧栏、沉浸式）变了就重新量。
+	useTitlebarAnchor(
+		`${pageLayout}:${narrow}:${sidebarCollapsed}:${workspaceViewHeader?.immersive === true || pageImmersive}`,
+	);
+
 	const ensureSidebarVisible = useCallback(() => {
 		if (narrow) actions.openOverlay();
 	}, [actions.openOverlay, narrow]);
@@ -138,7 +147,7 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 					<MainContentFrame
 						className="app-main-frame"
 						header={pageHeader}
-						headerOverlay={workspaceViewHeader?.immersive === true}
+						headerOverlay={workspaceViewHeader?.immersive === true || pageImmersive}
 					>
 						<RouteContent routePending={routePending} onOpenSession={onOpenSession} />
 					</MainContentFrame>

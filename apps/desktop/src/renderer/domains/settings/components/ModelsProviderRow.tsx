@@ -130,8 +130,6 @@ export function ModelsProviderRow({
 							{visibleModels.length > 0 && (
 							<div className="space-y-px">
 								{visibleModels.map((item) => {
-									const modelKey = `${name}/${item.id}`;
-									const isDefault = model.config?.defaultModel === modelKey;
 									const displayName = item.name || item.id;
 
 									return (
@@ -144,11 +142,6 @@ export function ModelsProviderRow({
 													<span className="truncate text-[12px] font-medium text-foreground" title={displayName}>
 														{displayName}
 													</span>
-													{isDefault && (
-														<span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-px text-[9px] font-medium text-primary">
-															{t("default")}
-														</span>
-													)}
 													{item.input?.includes("image") && (
 														<span className="shrink-0 rounded bg-primary/10 px-1 py-px text-[9px] text-primary">
 															{t("vision")}
@@ -173,21 +166,6 @@ export function ModelsProviderRow({
 												</div>
 											</div>
 											<div className="flex shrink-0 items-center gap-0.5">
-												<Button
-													variant="ghost"
-													size="icon-xs"
-													onClick={() => void model.onSetDefaultModel(name, item.id)}
-													className={cn(
-														"transition-opacity",
-														isDefault
-															? "text-primary opacity-100"
-															: "text-muted-foreground opacity-0 hover:text-primary group-hover:opacity-100 focus-visible:opacity-100",
-													)}
-													title={isDefault ? t("unsetDefault") : t("setDefault")}
-													aria-label={isDefault ? t("unsetDefault") : t("setDefault")}
-												>
-													<span className={`${isDefault ? "icon-[mdi--star]" : "icon-[mdi--star-outline]"} h-3.5 w-3.5`} />
-												</Button>
 												<Button
 													variant="ghost"
 													size="icon-xs"

@@ -4,7 +4,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
 import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { classifyProbe, useSshHostsSettingsModel } from "./useSshHostsSettingsModel";
+import { classifyProbe, composeTarget, splitTarget, useSshHostsSettingsModel } from "./useSshHostsSettingsModel";
 
 vi.mock("react-i18next", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
@@ -42,7 +42,7 @@ describe("SSH 主机设置", () => {
 		await waitFor(() => expect(result.current.loading).toBe(false));
 
 		act(() => result.current.actions.startAdd());
-		act(() => result.current.actions.setForm({ target: "build-01" }));
+		act(() => result.current.actions.setForm({ host: "build-01" }));
 		await act(async () => {
 			await result.current.actions.submit();
 		});
@@ -52,6 +52,50 @@ describe("SSH 主机设置", () => {
 		expect(result.current.editingId).toBeNull();
 	});
 
+	it("密码登录：口令随提交传出，不带私钥路径", async () => {
+		const { result } = renderModel();
+		await waitFor(() => expect(result.current.loading).toBe(false));
+
+		act(() => result.current.actions.startAdd());
+		act(() =>
+			result.current.actions.setForm({
+				host: "box",
+				username: "root",
+				authMethod: "password",
+				password: "s3cret",
+				identityFile: "~/k",
+			}),
+		);
+		await act(async () => {
+			await result.current.actions.submit();
+		});
+
+		expect(ssh.createHost).toHaveBeenCalledWith({
+			label: "root@box",
+			target: "root@box",
+			authMethod: "password",
+			password: "s3cret",
+		});
+	});
+
+	it("编辑密码主机时不回填口令，留空即沿用已存口令", async () => {
+		const passwordHost = { ...host, target: "root@box", authMethod: "password" as const };
+		ssh.listHosts.mockResolvedValue([passwordHost]);
+		const { result } = renderModel();
+		await waitFor(() => expect(result.current.loading).toBe(false));
+
+		act(() => result.current.actions.startEdit(passwordHost));
+		expect(result.current.form.authMethod).toBe("password");
+		expect(result.current.form.username).toBe("root");
+		expect(result.current.form.host).toBe("box");
+		expect(result.current.form.password).toBe("");
+
+		await act(async () => {
+			await result.current.actions.submit();
+		});
+		expect(ssh.updateHost).toHaveBeenCalledWith({ id: "h1", label: "构建机", target: "root@box", authMethod: "password" });
+	});
+
 	it("保存失败时表单保持打开并保留已填内容，错误就地显示", async () => {
 		// 让用户在原地改，而不是把输入清掉让他重填一遍。
 		ssh.createHost.mockRejectedValueOnce(new Error("An SSH host for \"build-01\" already exists."));
@@ -59,7 +103,7 @@ describe("SSH 主机设置", () => {
 		await waitFor(() => expect(result.current.loading).toBe(false));
 
 		act(() => result.current.actions.startAdd());
-		act(() => result.current.actions.setForm({ target: "build-01", label: "我的构建机" }));
+		act(() => result.current.actions.setForm({ host: "build-01", label: "我的构建机" }));
 		await act(async () => {
 			await result.current.actions.submit();
 		});
@@ -75,13 +119,13 @@ describe("SSH 主机设置", () => {
 		await waitFor(() => expect(result.current.loading).toBe(false));
 
 		act(() => result.current.actions.startAdd());
-		act(() => result.current.actions.setForm({ target: "x" }));
+		act(() => result.current.actions.setForm({ host: "x" }));
 		await act(async () => {
 			await result.current.actions.submit();
 		});
 		expect(result.current.formError).not.toBeNull();
 
-		act(() => result.current.actions.setForm({ target: "y" }));
+		act(() => result.current.actions.setForm({ host: "y" }));
 		expect(result.current.formError).toBeNull();
 	});
 
@@ -190,5 +234,14 @@ describe("连接探测结果分类", () => {
 			platform: "Linux x86_64",
 			tools: "git",
 		});
+	});
+});
+
+describe("主机地址与用户名", () => {
+	it("拆分与拼回 user@host，别名没有用户名", () => {
+		expect(splitTarget("root@box")).toEqual({ username: "root", host: "box" });
+		expect(splitTarget("relay")).toEqual({ username: "", host: "relay" });
+		expect(composeTarget("root", "box")).toBe("root@box");
+		expect(composeTarget(" ", "relay")).toBe("relay");
 	});
 });

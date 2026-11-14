@@ -197,7 +197,7 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 							}
 						/>
 						<Button
-							variant="outline"
+							variant="field"
 							size="sm"
 							onClick={() => void model.onProbeModel()}
 							disabled={model.probing || !config.agentModel}
@@ -304,12 +304,12 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 						)}
 					</div>
 					<div className="flex items-center gap-2">
-						<Button variant="outline" size="sm" onClick={() => void model.onOpenLogs()}>
+						<Button variant="field" size="sm" onClick={() => void model.onOpenLogs()}>
 							<span className="icon-[solar--document-text-linear] h-3.5 w-3.5" />
 							{t("viewLogs")}
 						</Button>
 						<Button
-							variant="outline"
+							variant="field"
 							size="sm"
 							onClick={() => void model.onRestart()}
 							disabled={!config.enabled}

@@ -1,6 +1,7 @@
 import type { FetchedProviderModel, ModelsConfigData } from "@preload/api.js";
 import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import { localModelsConfigAtom, modelCatalog } from "@shared/store/model-catalog";
+import { writeSelectedModel } from "@shared/store/selected-model-storage";
 import { showToast } from "@shared/store/toast-atoms";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -93,7 +94,8 @@ export interface ModelsSettingsModel {
 	onCancelEditModel: () => void;
 	onUpdateModel: (providerName: string, oldModelId: string) => Promise<void>;
 	onDeleteModel: (providerName: string, modelId: string) => Promise<void>;
-	onSetDefaultModel: (providerName: string, modelId: string) => Promise<void>;
+	/** 设置或清空默认模型（模型设置页顶部统一选择器）。 */
+	onChangeDefaultModel: (modelKey: string | null) => Promise<void>;
 	/** 点击「从接口拉取」：先同步打开抽屉，再拉取，不在点击处等待网络。 */
 	onStartFetchProviderModels: (providerName: string) => void;
 	onRetryFetchProviderModels: () => void;
@@ -399,20 +401,16 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 		[config, saveConfig],
 	);
 
-	const handleSetDefaultModel = useCallback(
-		async (providerName: string, modelId: string) => {
+	const handleChangeDefaultModel = useCallback(
+		async (modelKey: string | null) => {
 			if (!config) return;
-			const modelKey = `${providerName}/${modelId}`;
-			const newDefault = config.defaultModel === modelKey ? undefined : modelKey;
-			await saveConfig({ ...config, defaultModel: newDefault });
-			if (newDefault) {
-				localStorage.setItem("astravia-selected-model", newDefault);
-			}
-			recordSettingsUsage({
-				tab: "models",
-				action: newDefault ? "selected" : "reset",
-				target: "default-model",
-			});
+			const next = modelKey ?? undefined;
+			if (config.defaultModel === next) return;
+			await saveConfig({ ...config, defaultModel: next });
+			// 新会话优先读本地记住的选择：设了默认就同步，清空默认就一并删掉。
+			// 只改 `config.defaultModel` 的话，设置页显示「未设置」、新会话却仍按记忆的模型发消息。
+			writeSelectedModel(next);
+			recordSettingsUsage({ tab: "models", action: next ? "selected" : "reset", target: "default-model" });
 		},
 		[config, saveConfig],
 	);
@@ -576,7 +574,7 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 		},
 		onUpdateModel: handleUpdateModel,
 		onDeleteModel: handleDeleteModel,
-		onSetDefaultModel: handleSetDefaultModel,
+		onChangeDefaultModel: handleChangeDefaultModel,
 		onStartFetchProviderModels: handleStartFetchProviderModels,
 		onRetryFetchProviderModels: handleRetryFetchProviderModels,
 		onFetchedModelsSearchChange: (query: string) =>

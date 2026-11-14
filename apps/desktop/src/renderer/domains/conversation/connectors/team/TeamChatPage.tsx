@@ -81,47 +81,45 @@ export function TeamChatPage({ createNewSession = false }: { readonly createNewS
 			<>
 				<BackgroundTasksBadge runtimeIds={runtimeIds} activityWorkspaceId={activityWorkspaceId} />
 				<SandboxGrantsBadge runtimeIds={runtimeIds} />
-				<ChatHeaderActions.Export
-					title={t("chat:chatView.exportButton.title")}
-					disabled={model.feedItems.length === 0 || isStreaming || exporting}
-					exporting={exporting}
-					onClick={() => setExporting(true)}
-				/>
-				<ChatHeaderActions.Pin
-					title={
-						pin.pinned
-							? t("chat:chatView.pinButton.pinned")
-							: t("chat:chatView.pinButton.unpinned")
-					}
-					pinned={pin.pinned}
-					onClick={pin.toggle}
-				/>
-				<ChatHeaderActions.Terminal
-					title={
-						!terminal.available
-							? t("chat:chatView.terminalButton.unavailable")
-							: terminal.focused
-								? t("chat:chatView.terminalButton.focused")
-								: t("chat:chatView.terminalButton.open")
-					}
-					focused={terminal.focused}
-					disabled={!terminal.available}
-					onClick={terminal.open}
-				/>
-				<ChatHeaderActions.BottomPanel
-					title={
-						bottomPanel.open
-							? t("chat:chatView.bottomPanelButton.open")
-							: t("chat:chatView.bottomPanelButton.closed")
-					}
-					open={bottomPanel.open}
-					onClick={bottomPanel.toggle}
-				/>
-				<ChatHeaderActions.Panel
-					title={t("chat.activity")}
-					open={activityOpen}
-					onClick={() => setActivityOpen((open) => !open)}
-				/>
+				<ChatHeaderActions.Group>
+					<ChatHeaderActions.Export
+						title={t("chat:chatView.exportButton.title")}
+						disabled={model.feedItems.length === 0 || isStreaming || exporting}
+						exporting={exporting}
+						onClick={() => setExporting(true)}
+					/>
+					<ChatHeaderActions.Pin
+						title={pin.pinned ? t("chat:chatView.pinButton.pinned") : t("chat:chatView.pinButton.unpinned")}
+						pinned={pin.pinned}
+						onClick={pin.toggle}
+					/>
+					<ChatHeaderActions.Terminal
+						title={
+							!terminal.available
+								? t("chat:chatView.terminalButton.unavailable")
+								: terminal.focused
+									? t("chat:chatView.terminalButton.focused")
+									: t("chat:chatView.terminalButton.open")
+						}
+						focused={terminal.focused}
+						disabled={!terminal.available}
+						onClick={terminal.open}
+					/>
+					<ChatHeaderActions.BottomPanel
+						title={
+							bottomPanel.open
+								? t("chat:chatView.bottomPanelButton.open")
+								: t("chat:chatView.bottomPanelButton.closed")
+						}
+						open={bottomPanel.open}
+						onClick={bottomPanel.toggle}
+					/>
+					<ChatHeaderActions.Panel
+						title={t("chat.activity")}
+						open={activityOpen}
+						onClick={() => setActivityOpen((open) => !open)}
+					/>
+				</ChatHeaderActions.Group>
 			</>
 		),
 		[

@@ -1,9 +1,19 @@
-import { Button } from "@astravia-org/ui";
-import { Switch } from "@astravia-org/ui";
-import { useMemo } from "react";
+import {
+	Button,
+	Switch,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+	cn,
+} from "@astravia-org/ui";
+import { useMemo, useState } from "react";
 import { SettingsAiAssist } from "../ai-assist";
 import { SETTINGS_SECTION } from "../registry";
-import { MotionSelect, SettingHeading, SettingRow, SettingSection } from "@astravia-org/theme-ui/settings";
+import { MotionSelect, SettingRow, SettingSection } from "@astravia-org/theme-ui/settings";
 import type { AgentSettingsModel } from "./useAgentSettingsModel";
 import { RuntimeConfigurationSections } from "./RuntimeConfigurationSections";
 import type { RuntimeConfigurationModel } from "./useRuntimeConfigurationModel";
@@ -14,6 +24,59 @@ export interface AgentSettingsViewProps {
 	model: AgentSettingsModel;
 	imageGeneration: ImageGenerationSettingsModel;
 	runtimeConfiguration: RuntimeConfigurationModel;
+}
+
+/**
+ * 自定义指令：设置项右侧只放一个入口按钮，点开 Dialog 编辑，点「应用」才写入；
+ * 关闭未应用则放弃草稿，回到已保存的内容。
+ *
+ * 指令可以很长，摊在设置页里会把同一页的其他人设选项挤下去，也不便与别的设置项并排比较。
+ */
+function CustomInstructionsDialog({ model }: { model: AgentSettingsModel }): JSX.Element {
+	const [open, setOpen] = useState(false);
+	const close = (next: boolean) => {
+		if (!next) model.actions.discardCustomPromptDraft();
+		setOpen(next);
+	};
+	return (
+		<Dialog open={open} onOpenChange={close}>
+			<DialogTrigger asChild>
+				<Button variant="field">
+					<span className="icon-[mdi--pencil-outline] h-3.5 w-3.5 text-muted-foreground" />
+					{model.labels.customInstructionsEdit}
+				</Button>
+			</DialogTrigger>
+			<DialogContent className="sm:max-w-[520px]">
+				<DialogHeader>
+					<DialogTitle>{model.labels.customInstructions}</DialogTitle>
+					<DialogDescription>{model.labels.customInstructionsDescription}</DialogDescription>
+				</DialogHeader>
+				<textarea
+					value={model.customPrompt}
+					onChange={(event) => model.actions.setCustomPrompt(event.target.value)}
+					placeholder={model.labels.customInstructionsPlaceholder}
+					className={cn(
+						"w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-[13px] leading-relaxed text-foreground outline-none transition-colors focus:border-primary/50",
+					)}
+					style={{ minHeight: "200px" }}
+				/>
+				<DialogFooter>
+					<Button variant="ghost" size="sm" onClick={() => close(false)}>
+						{model.labels.cancel}
+					</Button>
+					<Button
+						variant="primary"
+						size="sm"
+						className="min-w-[76px]"
+						disabled={!model.dirty || model.saving}
+						onClick={() => void model.actions.applyPersonalization().then(() => setOpen(false))}
+					>
+						{model.saving ? model.labels.saving : model.labels.apply}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
 }
 
 export function AgentSettingsView({ model, imageGeneration, runtimeConfiguration }: AgentSettingsViewProps): JSX.Element {
@@ -29,63 +92,28 @@ export function AgentSettingsView({ model, imageGeneration, runtimeConfiguration
 				<SettingsAiAssist tabId="agent" />
 			</div>
 
-			<div className="mb-6 p-1.5">
-				<SettingHeading
-					title={model.labels.sections.personalization}
-					section={SETTINGS_SECTION["agent-personalization"]}
-					className="mb-1"
-				/>
-				<p className="mb-4 text-[12px] text-muted-foreground">{model.labels.agentDescription}</p>
-
-				<div>
-					<div className="text-[13px] font-medium text-foreground">{model.labels.persona}</div>
-					<div className="mt-2">
-						<MotionSelect
-							value={model.personaId}
-							onValueChange={model.actions.setPersonaId}
-							options={personaOptions}
-							placeholder={model.labels.defaultPersona}
-							triggerClassName="w-full max-w-[200px]"
-							aria-label={model.labels.persona}
-						/>
-					</div>
-					{model.selectedPersona?.description && (
-						<p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
-							{model.selectedPersona.description}
-						</p>
-					)}
-				</div>
-
-				<div className="mt-5">
-					<div className="text-[13px] font-medium text-foreground">{model.labels.customInstructions}</div>
-					<p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-						{model.labels.customInstructionsDescription}
-					</p>
-					<textarea
-						value={model.customPrompt}
-						onChange={(event) => model.actions.setCustomPrompt(event.target.value)}
-						placeholder={model.labels.customInstructionsPlaceholder}
-						className="mt-3 w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-[13px] leading-relaxed text-foreground outline-none transition-colors focus:border-primary/50"
-						style={{ minHeight: "120px" }}
+			<SettingSection
+				title={model.labels.sections.personalization}
+				section={SETTINGS_SECTION["agent-personalization"]}
+				description={model.labels.agentDescription}
+			>
+				<SettingRow title={model.labels.persona} description={model.selectedPersona?.description}>
+					<MotionSelect
+						value={model.personaId}
+						onValueChange={(value) => void model.actions.selectPersona(value)}
+						options={personaOptions}
+						placeholder={model.labels.defaultPersona}
+						aria-label={model.labels.persona}
 					/>
-				</div>
-
-				<div className="mt-4 flex justify-end">
-					<Button
-						variant="primary"
-						size="sm"
-						className="min-w-[76px]"
-						disabled={!model.dirty || model.saving}
-						onClick={() => void model.actions.applyPersonalization()}
-					>
-						{model.saving
-							? model.labels.saving
-							: model.justSaved && !model.dirty
-								? model.labels.applied
-								: model.labels.apply}
-					</Button>
-				</div>
-			</div>
+				</SettingRow>
+				<SettingRow
+					title={model.labels.customInstructions}
+					description={model.labels.customInstructionsDescription}
+					border={false}
+				>
+					<CustomInstructionsDialog model={model} />
+				</SettingRow>
+			</SettingSection>
 
 			<ImageGenerationSettingsSection model={imageGeneration} />
 

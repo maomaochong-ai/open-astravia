@@ -14,6 +14,8 @@ interface UseProjectContextMenuModelArgs {
 	onClearClaw?: (cwd: string) => void;
 	onClearConversation?: (cwd: string) => void;
 	onClose: () => void;
+	/** 打开「管理会话」面板；未提供时不显示入口。 */
+	onManageSessions?: (project: Project) => void;
 	onRemove: (cwd: string) => void;
 	onOpenClawSettings?: () => void;
 	project: Project;
@@ -27,6 +29,7 @@ export function useProjectContextMenuModel({
 	onClearClaw,
 	onClearConversation,
 	onClose,
+	onManageSessions,
 	onRemove,
 	onOpenClawSettings,
 	project,
@@ -48,6 +51,11 @@ export function useProjectContextMenuModel({
 		onClearConversation?.(cwd);
 		onClose();
 	}, [cwd, onClearConversation, onClose]);
+
+	const handleManageSessions = useCallback(() => {
+		onManageSessions?.(project);
+		onClose();
+	}, [onClose, onManageSessions, project]);
 
 	const handleRemove = useCallback(() => {
 		onRemove(cwd);
@@ -72,6 +80,7 @@ export function useProjectContextMenuModel({
 		defaultScope,
 		isDefault: project.isDefault === true,
 		labels: {
+			manageSessions: t("contextMenu.manageSessions"),
 			openInFolder: isMac ? t("contextMenu.openInFinder") : t("contextMenu.openInExplorer"),
 			archiveProject: t("contextMenu.archiveProject"),
 			removeFromList: t("contextMenu.removeFromList"),
@@ -85,6 +94,7 @@ export function useProjectContextMenuModel({
 		onClearClaw: onClearClaw ? handleClearClaw : undefined,
 		onClearConversation: onClearConversation ? handleClearConversation : undefined,
 		onClose,
+		onManageSessions: onManageSessions ? handleManageSessions : undefined,
 		onOpenClawSettings: onOpenClawSettings ? handleOpenClawSettings : undefined,
 		onOpenInFolder: handleOpenInFolder,
 		onRemove: handleRemove,

@@ -22,9 +22,9 @@ export function NewSessionHeaderActions({
 	pinned,
 }: NewSessionHeaderActionsProps): JSX.Element {
 	return (
-		<>
+		<ChatHeaderActions.Group>
 			<ChatHeaderActions.Pin title={pinTitle} pinned={pinned} onClick={onTogglePin} />
 			<ChatHeaderActions.Panel title={panelTitle} open={activityOpen} onClick={onToggleActivity} />
-		</>
+		</ChatHeaderActions.Group>
 	);
 }

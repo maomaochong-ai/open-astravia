@@ -16,7 +16,7 @@ interface McpUpsertInput {
 	operation: "upsert";
 	name: string;
 	data?: {
-		type?: "stdio" | "http";
+		type?: "stdio" | "http" | "sse";
 		command?: string;
 		args?: string[];
 		cwd?: string;
@@ -83,9 +83,10 @@ function McpUpsertApprovalContent({ approval }: { approval: ActiveActionApproval
 		envText: serializeKeyValueMap(input?.data?.env),
 		headersText: serializeKeyValueMap(input?.data?.headers),
 	});
-	const [serverType, setServerType] = useState<"stdio" | "http">(
-		input?.data?.type === "http" || input?.data?.url ? "http" : "stdio",
+	const [serverType, setServerType] = useState<"stdio" | "http" | "sse">(
+		input?.data?.type === "sse" ? "sse" : input?.data?.type === "http" || input?.data?.url ? "http" : "stdio",
 	);
+	const isRemote = serverType !== "stdio";
 
 	useEffect(() => {
 		if (!input?.name) return;
@@ -96,8 +97,8 @@ function McpUpsertApprovalContent({ approval }: { approval: ActiveActionApproval
 				if (cancelled) return;
 				const existing = config.mcpServers[input.name];
 				if (!existing) return;
-				if (existing.type === "http") {
-					setServerType("http");
+				if (existing.type === "http" || existing.type === "sse") {
+					setServerType(existing.type);
 					setForm((prev) => ({
 						...prev,
 						url: prev.url || existing.url || "",
@@ -128,8 +129,8 @@ function McpUpsertApprovalContent({ approval }: { approval: ActiveActionApproval
 		const data: Record<string, DesktopActionJsonValue> = {
 			...(input.data as Record<string, DesktopActionJsonValue> | undefined),
 		};
-		if (serverType === "http") {
-			data.type = "http";
+		if (serverType !== "stdio") {
+			data.type = serverType;
 			if (form.url.trim()) data.url = form.url.trim();
 			const headers = parseKeyValueLines(form.headersText);
 			if (headers) data.headers = headers;
@@ -172,7 +173,7 @@ function McpUpsertApprovalContent({ approval }: { approval: ActiveActionApproval
 						subtitle={t("manageApproval.fields.serverName")}
 						badge={serverType}
 					/>
-					{serverType === "stdio" ? (
+					{!isRemote ? (
 						<>
 							<ApprovalFormField id="mcp-command" label={t("manageApproval.fields.command")}>
 								<Input

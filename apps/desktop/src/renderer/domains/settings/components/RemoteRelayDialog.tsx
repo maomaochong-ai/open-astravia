@@ -91,7 +91,7 @@ export function RemoteRelayDialog({
 						/>
 					</label>
 					<div className="flex items-center gap-3 text-[12px] text-muted-foreground">
-						<Button variant="outline" size="sm" disabled={saving || result === "testing"} onClick={() => void test()}>
+						<Button variant="field" size="sm" disabled={saving || result === "testing"} onClick={() => void test()}>
 							{t("remote.relay.test")}
 						</Button>
 						{resultText ? (
@@ -111,7 +111,7 @@ export function RemoteRelayDialog({
 						{t("remote.relay.restore")}
 					</Button>
 					<div className="flex gap-2">
-						<Button variant="outline" size="sm" disabled={saving} onClick={() => onOpenChange(false)}>
+						<Button variant="field" size="sm" disabled={saving} onClick={() => onOpenChange(false)}>
 							{t("remote.relay.cancel")}
 						</Button>
 						<Button size="sm" disabled={saving || address === custom} onClick={() => void save(address || undefined)}>

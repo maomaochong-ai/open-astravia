@@ -1,8 +1,9 @@
-import type { SessionContextMenuSession } from "@shared/store/atoms";
+import type { Project, SessionContextMenuSession } from "@shared/store/atoms";
 import {
 	automationSessionLinksAtom,
 	confirmDialogAtom,
 	conversationFilterSource,
+	manageSessionsProjectAtom,
 	projectContextMenuAtom,
 	runningSessionPathsAtom,
 	sessionContextMenuAtom,
@@ -17,6 +18,7 @@ export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 	const [projectMenu, setProjectMenu] = useAtom(projectContextMenuAtom);
 	const runningSessionPaths = useAtomValue(runningSessionPathsAtom);
 	const setConfirm = useSetAtom(confirmDialogAtom);
+	const setManageSessionsProject = useSetAtom(manageSessionsProjectAtom);
 	const automationLinks = useAtomValue(automationSessionLinksAtom);
 	const { t } = useTranslation("project");
 
@@ -68,6 +70,10 @@ export function useProjectsPanelMenusModel(model: ProjectsPanelModel) {
 			removeProject: (cwd: string) => {
 				setProjectMenu(null);
 				model.actions.removeProject(cwd);
+			},
+			manageSessions: (project: Project) => {
+				setProjectMenu(null);
+				setManageSessionsProject(project);
 			},
 			clearConversation: (cwd: string) => {
 				setProjectMenu(null);

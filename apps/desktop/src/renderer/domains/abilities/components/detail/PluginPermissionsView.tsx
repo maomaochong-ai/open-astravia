@@ -9,6 +9,7 @@ import {
 	PLUGIN_PERMISSION_PRESENTATIONS,
 	type PluginPermissionGroup,
 	type PluginPermissionRisk,
+	type PluginPermissionVisualKind,
 } from "../../lib/plugin-permission-labels";
 import type { AbilitiesModel, PluginAbility } from "../../types";
 import { PluginPermissionVisual } from "./PluginPermissionVisual";
@@ -26,6 +27,29 @@ const RISK_CLASSES: Record<PluginPermissionRisk, string> = {
 	medium: "bg-amber-500/15 text-amber-400",
 	high: "bg-destructive/10 text-destructive",
 };
+
+/**
+ * 「允许时会怎样」「禁用时会怎样」按可视类别取文案。
+ * 写成字面量联合而不是拼字符串：i18next 的 t() 只接受已知键，
+ * 模板串会让它在类型层面变成 any，并在调用处报不可赋值。
+ */
+const SCOPE_DESCRIPTION_KEYS = {
+	interface: "permission.page.scope.interface",
+	data: "permission.page.scope.data",
+	agent: "permission.page.scope.agent",
+	execution: "permission.page.scope.execution",
+	external: "permission.page.scope.external",
+	intelligence: "permission.page.scope.intelligence",
+} as const satisfies Record<PluginPermissionVisualKind, string>;
+
+const DISABLED_DESCRIPTION_KEYS = {
+	interface: "permission.page.disabled.interface",
+	data: "permission.page.disabled.data",
+	agent: "permission.page.disabled.agent",
+	execution: "permission.page.disabled.execution",
+	external: "permission.page.disabled.external",
+	intelligence: "permission.page.disabled.intelligence",
+} as const satisfies Record<PluginPermissionVisualKind, string>;
 
 const RISK_ICONS: Record<PluginPermissionRisk, string> = {
 	low: "icon-[solar--shield-check-linear]",
@@ -174,7 +198,7 @@ function PermissionInsight({ permission }: { permission: PluginPermission }): JS
 						{t("permission.page.scopeTitle")}
 					</dt>
 					<dd className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-						{t(`permission.page.scope.${presentation.visual}`)}
+						{t(SCOPE_DESCRIPTION_KEYS[presentation.visual])}
 					</dd>
 				</div>
 				<div className="py-3">
@@ -183,7 +207,7 @@ function PermissionInsight({ permission }: { permission: PluginPermission }): JS
 						{t("permission.page.disabledTitle")}
 					</dt>
 					<dd className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-						{t(`permission.page.disabled.${presentation.visual}`)}
+						{t(DISABLED_DESCRIPTION_KEYS[presentation.visual])}
 					</dd>
 				</div>
 			</dl>

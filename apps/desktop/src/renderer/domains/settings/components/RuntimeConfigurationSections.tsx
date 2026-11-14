@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { MotionSelect, SettingRow, SettingSection } from "@astravia-org/theme-ui/settings";
-import { Switch } from "@astravia-org/ui";
+import { INPUT_FILL_CLASS, Input, Switch } from "@astravia-org/ui";
+import { cn } from "@shared/lib/utils";
 import { IMAGE_CUSTOM_PRESET, type ImageNumericPreset, imageNumericPresets } from "./image-numeric-presets";
 import type { RuntimeConfigurationFieldModel, RuntimeConfigurationModel } from "./useRuntimeConfigurationModel";
 import { SETTINGS_SECTION } from "../registry";
@@ -54,13 +55,13 @@ function RuntimeConfigurationControl({
 	}
 	const numeric = schema.type === "number" || schema.type === "integer";
 	return (
-		<input
+		<Input
 			type={numeric ? "number" : "text"}
 			min={numeric ? schema.minimum : undefined}
 			max={numeric ? schema.maximum : undefined}
 			step={schema.type === "integer" ? 1 : undefined}
 			aria-label={field.title}
-			className="h-8 w-[200px] min-w-0 rounded-lg border border-border bg-transparent px-2.5 text-right text-[12px] tabular-nums outline-none transition-colors focus:border-primary/50"
+			className={cn(INPUT_FILL_CLASS, "w-[200px] text-right tabular-nums")}
 			value={typeof value === "string" || typeof value === "number" ? String(value) : ""}
 			onChange={(event) => {
 				if (!numeric) {
@@ -129,13 +130,13 @@ function ImageNumericPresetControl({
 				aria-label={field.title}
 			/>
 			{custom ? (
-				<input
+				<Input
 					type="number"
 					min={field.schema.minimum}
 					max={field.schema.maximum}
 					step={field.schema.type === "integer" ? 1 : undefined}
 					aria-label={`${customLabel} ${field.title}`}
-					className="h-8 w-28 min-w-0 rounded-lg border border-border bg-transparent px-2.5 text-right text-[12px] tabular-nums outline-none transition-colors focus:border-primary/50"
+					className={cn(INPUT_FILL_CLASS, "w-28 text-right tabular-nums")}
 					value={draft}
 					onChange={(event) => setDraft(event.target.value)}
 					onBlur={commit}

@@ -1,9 +1,11 @@
 import { usePreviewNav } from "@domains/file-preview/components/FilePreviewView";
+import { revealPluginFileExplorerPath } from "@domains/plugins/runtime/plugin-file-explorer-host";
 import { waitForCommittedPaint } from "@shared/lib/committed-paint";
 import {
 	activityPanelPreviewAvailableAtom,
 	closeInlineFilePreviewAtom,
 	type FilePreviewContext,
+	type FilePreviewItem,
 	inlineFilePreviewAtom,
 	inlineFilePreviewContextReadonlyAtom,
 } from "@shared/store/atoms";
@@ -28,6 +30,7 @@ export interface FileTabContentModel {
 	canNext: boolean;
 	onTreeResize: (delta: number) => void;
 	toggleTree: () => void;
+	locate: (item: FilePreviewItem) => void;
 	goPrev: () => void;
 	goNext: () => void;
 	closePreview: () => void;
@@ -70,6 +73,23 @@ export function useFileTabContentModel(): FileTabContentModel {
 
 	const [treeCollapsed, setTreeCollapsed] = useState(false);
 	const toggleTree = useCallback(() => setTreeCollapsed((collapsed) => !collapsed), []);
+	const locate = useCallback(
+		(item: FilePreviewItem) => {
+			const path = item.path;
+			if (!path) return;
+			const run = (): void => {
+				void revealPluginFileExplorerPath(path, { select: true, focus: true }).catch(() => {});
+			};
+			if (!treeCollapsed) {
+				run();
+				return;
+			}
+			// 目录树收起时 FilesPanel 未挂载，先展开，等它绑定完成再定位。
+			setTreeCollapsed(false);
+			void waitForCommittedPaint().then(run);
+		},
+		[treeCollapsed],
+	);
 	useEffect(() => {
 		if (!showPreview) setTreeCollapsed(false);
 	}, [showPreview]);
@@ -98,6 +118,7 @@ export function useFileTabContentModel(): FileTabContentModel {
 		canNext: previewCtx !== null && previewCtx.index < previewCtx.items.length - 1,
 		onTreeResize,
 		toggleTree,
+		locate,
 		goPrev,
 		goNext,
 		closePreview: onClosePreview,

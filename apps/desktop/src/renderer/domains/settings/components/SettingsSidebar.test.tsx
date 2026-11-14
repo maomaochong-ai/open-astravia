@@ -5,14 +5,14 @@ import { describe, expect, it, vi } from "vitest";
 import { SettingsSidebarView } from "@astravia-org/theme-ui/settings";
 
 const TABS = [
-	{ key: "general", icon: "icon-[a]", label: "通用设置" },
+	{ key: "general", icon: "icon-[solar--settings-linear]", label: "通用设置" },
 	{
 		key: "extensions",
-		icon: "icon-[b]",
+		icon: "icon-[solar--widget-linear]",
 		label: "更多选项",
 		children: [
-			{ key: "workspace:browser/console", icon: "icon-[c]", label: "浏览器操作" },
-			{ key: "workspace:astravia-ui-design/gallery", icon: "icon-[d]", label: "设计" },
+			{ key: "workspace:browser/console", icon: "icon-[solar--globus-linear]", label: "浏览器操作" },
+			{ key: "workspace:astravia-ui-design/gallery", icon: "icon-[solar--palette-linear]", label: "设计" },
 		],
 	},
 ];

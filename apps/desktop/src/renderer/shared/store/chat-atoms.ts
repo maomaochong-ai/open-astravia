@@ -15,6 +15,7 @@ import { selectAtom } from "jotai/utils";
 import type { LastActiveSession } from "./last-active-session-storage";
 import { LAST_ACTIVE_SESSION_STORAGE_KEY, readLastActiveSession } from "./last-active-session-storage";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
+import { readSelectedModel } from "./selected-model-storage";
 
 export type TeamMemberSummaryEventViewModel = {
 	readonly kind: "team-member-summary";
@@ -267,6 +268,12 @@ export const activeSessionAtom = atom<ActiveSession | null>(null);
  * 每条消息都触发一次重渲。
  */
 export const activeSessionCwdAtom = selectAtom(activeSessionAtom, (session) => session?.cwd ?? null);
+/**
+ * 会话的 runtimeId 与 sessionPath 同样各自派生：插件顶栏动作是常驻的，
+ * 会话对象换实例但这两项没变时，订阅方不该重渲（selectAtom 按 Object.is 比较选中值）。
+ */
+export const activeSessionRuntimeIdAtom = selectAtom(activeSessionAtom, (session) => session?.runtimeId ?? null);
+export const activeSessionPathAtom = selectAtom(activeSessionAtom, (session) => session?.sessionPath ?? null);
 export const pendingSessionCreationAtom = atom<PendingSessionCreation | null>(null);
 export const pendingSessionOpenAtom = atom<PendingSessionOpen | null>(null);
 /** 已接受发送、但新会话/runtime 尚未准备好的 UI 过渡态。 */
@@ -321,7 +328,12 @@ export const isConversationBusyAtom = atom<boolean>(
 	(get) => get(isStreamingAtom) || get(pendingSessionSendAtom) !== null,
 );
 function getStoredExecutionMode(): SessionExecutionMode {
-	return localStorage.getItem("astravia-session-execution-mode") === "sandbox" ? "sandbox" : "full-access";
+	// 纯 Node 环境（单元测试、无 DOM 渲染）没有 localStorage，按默认模式走。
+	try {
+		return localStorage.getItem("astravia-session-execution-mode") === "sandbox" ? "sandbox" : "full-access";
+	} catch {
+		return "full-access";
+	}
 }
 
 export const sessionExecutionModeAtom = atom<SessionExecutionMode>(getStoredExecutionMode());
@@ -386,16 +398,14 @@ export const promptSuggestionsAtom = atom<Record<string, string[]>>({});
 export const promptPredictingAtom = atom<Record<string, boolean>>({});
 
 /** 新会话全局模型偏好（localStorage）；已有会话仍以 session settings 为准 pull 覆盖。 */
-export const SELECTED_MODEL_STORAGE_KEY = "astravia-selected-model";
+export { SELECTED_MODEL_STORAGE_KEY } from "./selected-model-storage";
 
 /**
  * 当前选中模型，格式 "provider/modelId"。
  * - 新会话 / 欢迎页：从 localStorage 的全局偏好恢复，用户切换时写回。
  * - 打开已有会话：由后端 session settings pull 覆盖为该会话模型。
  */
-export const selectedModelAtom = atom<string | null>(
-	typeof localStorage !== "undefined" ? localStorage.getItem(SELECTED_MODEL_STORAGE_KEY) : null,
-);
+export const selectedModelAtom = atom<string | null>(readSelectedModel());
 
 /**
  * Per-model reasoning level memory: maps modelKey ("provider/modelId") → chosen level value.

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ModelSelectorMenuPanel } from "@astravia-org/theme-ui/chat/ModelSelectorMenuPanel";
 import type { ModelSelectorLabels } from "@astravia-org/theme-ui/chat/ModelSelectorView";
@@ -120,5 +121,65 @@ describe("模型菜单三栏", () => {
 	it("搜索无结果时给出空态", () => {
 		setup({ searchQuery: "zzzz" });
 		expect(screen.getByText("没有匹配的模型")).toBeTruthy();
+	});
+
+	it("当前模型已收藏时默认停在收藏栏", () => {
+		// 不给 initialProviderId 时默认也是收藏栏；这里验证显式传入后同样落在收藏。
+		const { container } = setup({
+			favoriteKeys: ["anthropic/sonnet"],
+			selectedModel: "anthropic/sonnet",
+			initialProviderId: "__favorites",
+		});
+		expect(container.querySelector('[data-model-key="anthropic/sonnet"]')).toBeTruthy();
+	});
+
+	it("行内不再画选中对勾：选中态只由底色表达", () => {
+		const { container } = setup({ selectedModel: "openai/gpt-5" });
+		const row = container.querySelector('[data-model-key="openai/gpt-5"]');
+		expect(row?.getAttribute("aria-current")).toBe("true");
+		expect(row?.innerHTML).not.toContain("check-circle");
+	});
+
+	it("详情入口收进浮层：识图、倍率、默认都在浮层里，且文字可选中", async () => {
+		const user = userEvent.setup();
+		const { container } = setup({
+			labels: {
+				...labels,
+				infoButton: "模型信息",
+				infoProvider: "服务商",
+				infoId: "模型 ID",
+				infoVision: "识图",
+				infoMultiplier: "倍率",
+				infoDefault: "默认模型",
+				infoYes: "支持",
+				infoNo: "不支持",
+			},
+			defaultKey: "openai/gpt-5",
+		});
+		const row = container.querySelector('[data-model-key="openai/gpt-5"]');
+		// 行内不再直接排识图/默认标识，只有名字与两个按钮。
+		expect(row?.textContent).toBe("GPT-5");
+
+		await user.click(screen.getByRole("button", { name: "模型信息：GPT-5" }));
+		const panel = await screen.findByText("模型 ID");
+		const content = panel.closest('[data-slot="popover-content"]');
+		expect(content?.className).toContain("select-text");
+		// 标签在上、值在下：dt 与 dd 是同一行容器里的两层。
+		expect(content?.querySelector("dt")?.textContent).toBe("服务商");
+		expect(content?.querySelector("dd")?.textContent).toBe("OpenAI");
+		expect(content?.textContent).toContain("不支持");
+	});
+
+	it("服务商过多时左栏折叠，展开后能看到其余服务商", () => {
+		const many = Array.from({ length: 10 }, (_, index) => ({
+			provider: `p${index}`,
+			label: `Provider ${index}`,
+			models: [{ key: `p${index}/m`, provider: `p${index}`, modelId: "m", displayName: `M${index}` }],
+		}));
+		const { container } = setup({ groups: many });
+		const firstColumn = container.querySelector('[role="group"]');
+		expect(firstColumn?.textContent).not.toContain("Provider 9");
+		fireEvent.click(screen.getByRole("button", { name: /\+3/ }));
+		expect(container.querySelector('[role="group"]')?.textContent).toContain("Provider 9");
 	});
 });

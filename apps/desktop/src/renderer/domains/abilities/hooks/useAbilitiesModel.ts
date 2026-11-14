@@ -2,7 +2,7 @@
  * 能力页统一模型：数据源（useAbilityData）+ 操作层（useAbilityActions）+ 搜索过滤。
  * 五种 type 共用同一份条目集合，列表页与详情页都从这里取。
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
 import { useMcpSettingsModel } from "../../settings/components/useMcpSettingsModel";
@@ -93,26 +93,53 @@ export function useAbilitiesModel(options: UseAbilitiesModelOptions = {}): Abili
 		[data.market, i18n.language],
 	);
 
-	const allItems = useMemo<AbilityItem[]>(() => {
+	// 目录组装（全量遍历）只依赖数据；安装进度每秒多次更新，不能让它触发整库重算。
+	const baseItems = useMemo<AbilityItem[]>(() => {
 		const singles = [
 			...buildSkillAbilities(market, localState),
 			...buildMcpAbilities(market, localState, t),
 			...buildPluginAbilities(market, localState, trPlugin),
-		]
-			.map((item) => withLocalAbilityPresentation(item, data.localPresentations))
-			.map((item) => ({
-				...item,
-				operation: actions.operationById.get(item.id),
-				operationProgress: actions.operationProgressById.get(item.id),
-			}));
-		return decorateAbilityConflicts([...singles, ...buildBundleAbilities(market, singles, localState, t)]).map(
-			(item) => ({
-				...item,
-				operation: actions.operationById.get(item.id),
-				operationProgress: actions.operationProgressById.get(item.id),
-			}),
-		);
-	}, [market, localState, t, trPlugin, data.localPresentations, actions.operationById, actions.operationProgressById]);
+		].map((item) => withLocalAbilityPresentation(item, data.localPresentations));
+		return decorateAbilityConflicts([...singles, ...buildBundleAbilities(market, singles, localState, t)]);
+	}, [market, localState, t, trPlugin, data.localPresentations]);
+
+	// 叠加操作状态时复用未变化条目的引用，让 memo 过的卡片在别项安装时不重渲染。
+	const overlayCache = useRef(
+		new Map<
+			string,
+			{
+				base: AbilityItem;
+				operation: AbilityItem["operation"];
+				progress: AbilityItem["operationProgress"];
+				item: AbilityItem;
+			}
+		>(),
+	);
+	const allItems = useMemo<AbilityItem[]>(() => {
+		const prev = overlayCache.current;
+		const next = new Map<
+			string,
+			{
+				base: AbilityItem;
+				operation: AbilityItem["operation"];
+				progress: AbilityItem["operationProgress"];
+				item: AbilityItem;
+			}
+		>();
+		const result = baseItems.map((base) => {
+			const operation = actions.operationById.get(base.id);
+			const progress = actions.operationProgressById.get(base.id);
+			const hit = prev.get(base.id);
+			const item =
+				hit && hit.base === base && hit.operation === operation && hit.progress === progress
+					? hit.item
+					: { ...base, operation, operationProgress: progress };
+			next.set(base.id, { base, operation, progress, item });
+			return item;
+		});
+		overlayCache.current = next;
+		return result;
+	}, [baseItems, actions.operationById, actions.operationProgressById]);
 
 	const changeScope = useCallback((nextScope: AbilityScope) => {
 		setScope(nextScope);
@@ -154,13 +181,31 @@ export function useAbilitiesModel(options: UseAbilitiesModelOptions = {}): Abili
 
 	const groups = useMemo<AbilityGroup[]>(() => groupAbilities(items), [items]);
 
-	const bannerIcons = useMemo<AbilityBannerIcon[]>(
-		() =>
-			allItems
-				.filter((item) => item.fromMarket && isAbilityListedInDiscover(item))
-				.map((item) => ({ id: item.id, type: item.type, icon: item.icon })),
-		[allItems],
-	);
+	/**
+	 * 横幅只需要「条目的身份与展示字段」：安装进度每次 tick 都会产出新的
+	 * `operationProgressById`，`allItems` 随之换引用，但横幅内容其实一个字都没变。
+	 * 按这些字段的签名缓存结果：签名不变就返回同一个数组，横幅不会重排、不会跳回第一张。
+	 */
+	const bannerCache = useRef<{ signature: string; icons: AbilityBannerIcon[] }>({ signature: "", icons: [] });
+	const bannerIcons = useMemo<AbilityBannerIcon[]>(() => {
+		const sources = allItems.filter((item) => item.fromMarket && isAbilityListedInDiscover(item));
+		const signature = sources
+			.map((item) => [item.id, item.type, item.icon, item.title, item.description].join("\u0000"))
+			.join("\u0001");
+		if (bannerCache.current.signature === signature) return bannerCache.current.icons;
+		const icons = sources.map((item) => ({
+			id: item.id,
+			type: item.type,
+			icon: item.icon,
+			title: item.title,
+			description: item.description,
+		}));
+		bannerCache.current = {
+			signature,
+			icons,
+		};
+		return icons;
+	}, [allItems]);
 
 	const findById = useCallback(
 		(id: string) => {

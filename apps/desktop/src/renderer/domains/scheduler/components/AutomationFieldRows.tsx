@@ -1,13 +1,13 @@
+import { MotionSelect } from "@astravia-org/theme-ui/settings";
 import { cn } from "@astravia-org/ui/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@astravia-org/ui/select";
 import type { ReactNode } from "react";
 
-/** 分组卡片：组标题 + 圆角卡片，卡片内的行以细线分隔。 */
+/** 分组卡片：与设置页 SettingSection 同款——组标题 + 圆角卡片，卡片内的行以细线分隔。 */
 export function FieldGroup({ title, children }: { readonly title?: string; readonly children: ReactNode }): JSX.Element {
 	return (
-		<section className="space-y-2">
-			{title ? <h3 className="px-1 text-[12px] text-muted-foreground">{title}</h3> : null}
-			<div className="divide-y divide-border/50 rounded-xl border border-border/60 bg-card/40">{children}</div>
+		<section>
+			{title ? <h2 className="mb-3 text-[15px] font-semibold text-foreground">{title}</h2> : null}
+			<div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">{children}</div>
 		</section>
 	);
 }
@@ -27,17 +27,17 @@ export function FieldRow({
 	readonly children: ReactNode;
 }): JSX.Element {
 	return (
-		<div className={cn("px-4 py-2.5", stacked ? "space-y-2" : "flex min-h-11 items-center gap-3")}>
+		<div className={cn("px-4 py-2.5", stacked ? "space-y-2" : "flex items-center justify-between gap-6")}>
 			<div className={cn("min-w-0", !stacked && "flex-1")}>
-				<div className="text-[13px] text-foreground">{label}</div>
-				{hint ? <div className="mt-0.5 text-[11px] text-muted-foreground/70">{hint}</div> : null}
+				<div className="truncate text-[13px] font-medium text-foreground">{label}</div>
+				{hint ? <div className="mt-0.5 text-[12px] text-muted-foreground">{hint}</div> : null}
 			</div>
 			<div className={cn("min-w-0", stacked ? "w-full" : "flex shrink-0 justify-end")}>{children}</div>
 		</div>
 	);
 }
 
-/** 行尾的下拉选择；Radix Select 不接受空串取值，这里做一次映射。 */
+/** 行尾的下拉选择：设置页同款 MotionSelect（空串映射由它自己处理）。 */
 export function RowSelect({
 	ariaLabel,
 	options,
@@ -51,24 +51,15 @@ export function RowSelect({
 	readonly disabled?: boolean;
 	readonly onChange: (value: string) => void;
 }): JSX.Element {
-	const encode = (raw: string): string => (raw === "" ? "__empty__" : raw);
-	const decode = (encoded: string): string => (encoded === "__empty__" ? "" : encoded);
 	return (
-		<Select value={encode(value)} onValueChange={(next) => onChange(decode(next))} disabled={disabled}>
-			<SelectTrigger
-				aria-label={ariaLabel}
-				className="h-7 max-w-[260px] border-transparent bg-transparent px-2 text-muted-foreground hover:bg-accent"
-			>
-				<SelectValue />
-			</SelectTrigger>
-			<SelectContent align="end">
-				{options.map((option) => (
-					<SelectItem key={option.value} value={encode(option.value)}>
-						<span className="block max-w-[320px] truncate">{option.label}</span>
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
+		<MotionSelect
+			aria-label={ariaLabel}
+			options={options}
+			value={value}
+			disabled={disabled}
+			onValueChange={onChange}
+			triggerClassName="max-w-[260px]"
+		/>
 	);
 }
 
@@ -78,6 +69,6 @@ export const rowInputClass =
 export function chipClass(selected: boolean): string {
 	return cn(
 		"flex h-7 min-w-7 items-center justify-center whitespace-nowrap rounded-md px-1.5 text-[12px] tabular-nums transition-colors",
-		selected ? "bg-primary/15 text-primary" : "bg-muted/50 text-muted-foreground hover:text-foreground",
+		selected ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
 	);
 }

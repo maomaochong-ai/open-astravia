@@ -18,6 +18,7 @@ import {
 	createJobsApi,
 	createMediaApi,
 	createOcrApi,
+	createShellApi,
 	createStorageApi,
 } from "./plugin-host-apis";
 import type { PluginLocalContributions } from "./plugin-local-contributions";
@@ -90,6 +91,7 @@ export function createPluginContext({
 		conversation,
 		fs,
 		command: createCommandApi(plugin, capabilitySessionId, disposers),
+		shell: createShellApi(plugin, capabilitySessionId),
 		cliProviders: createPluginCliProviderApi(plugin, disposers),
 		services: createPluginServiceApi(plugin, capabilitySessionId, disposers),
 		models: createPluginModelsApi(permissions, capabilitySessionId),

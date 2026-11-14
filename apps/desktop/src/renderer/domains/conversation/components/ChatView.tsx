@@ -1,8 +1,11 @@
 import { useSetAtom } from "jotai";
 import { memo, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { pageHeaderLeftActionsAtom, pageHeaderRightSlotAtom } from "@shared/store/atoms";
-import { usePageHeaderUtilitySlot } from "@shared/app-shell/page-header/usePageHeaderUtilitySlot";
+import {
+	pageHeaderImmersiveAtom,
+	pageHeaderLeftActionsAtom,
+	pageHeaderRightSlotAtom,
+} from "@shared/store/atoms";
 import { useActiveSessionRuntimeIds } from "@shared/workspace/active-session-runtime";
 import { createConversationActivityWorkspace } from "@shared/workspace/activity-workspace";
 import type { WorkSurfaceScope } from "@shared/workspace/work-surface";
@@ -11,12 +14,11 @@ import { useChatViewModel } from "../hooks/useChatViewModel";
 import { useWindowPinAction } from "../hooks/useWindowPinAction";
 import { useBottomPanelToggle } from "@domains/bottom-panel/hooks/useBottomPanelToggle";
 import { useOpenTerminal } from "@domains/bottom-panel/hooks/useOpenTerminal";
-import { HeaderActionGroup } from "@astravia-org/theme-ui/chat/HeaderActionGroupView";
-import { type HeaderActionItem } from "@astravia-org/theme-ui/chat/HeaderActionGroupView";
-import { useHeaderActionPreference } from "../hooks/useHeaderActionPreference";
+import { ChatHeaderActions } from "@astravia-org/theme-ui/chat";
+import type { HeaderActionBarItem } from "@astravia-org/theme-ui/chat";
+import { ConversationHeaderActions } from "@domains/header-actions/ConversationHeaderActions";
 import { BackgroundTasksBadge } from "./BackgroundTasksBadge";
 import { SandboxGrantsBadge } from "./SandboxGrantsBadge";
-import { OpenWorkspaceWithAppButton } from "@domains/file-explorer/components/OpenWorkspaceWithAppButton";
 import { ChatHeaderNewSessionButton } from "./chat-view/ChatHeaderNewSessionButton";
 import { DefaultChatView, ChatComposer } from "./chat-view/DefaultChatView";
 import { SessionConversation } from "../session-conversation/SessionConversation";
@@ -55,95 +57,88 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 	const terminal = useOpenTerminal(model.workSurface);
 	const bottomPanel = useBottomPanelToggle(model.workSurface);
 	const setHeaderRightSlot = useSetAtom(pageHeaderRightSlotAtom);
+	const setHeaderImmersive = useSetAtom(pageHeaderImmersiveAtom);
 	const setHeaderLeftActions = useSetAtom(pageHeaderLeftActionsAtom);
 	const workspace = useMemo(
 		() => createConversationActivityWorkspace(model.cwd, model.sessionId, runtimeIds),
 		[model.cwd, model.sessionId, runtimeIds],
 	);
-	// 顶栏动作：顺序与显示交给用户（本地保存），「调整」模式可拖动排序、点击隐藏。
-	const headerActionItems = useMemo<readonly HeaderActionItem[]>(
+	// 内置动作与插件动作同属一个按钮组（顶栏最多 7 格，可收纳、可拖动）；这里只给数据，渲染与布局在宿主按钮组里。
+	const builtinHeaderActions = useMemo<HeaderActionBarItem[]>(
 		() => [
 			{
-				id: "export",
+				key: "builtin:export",
 				title: model.header.exportTitle,
-				icon: "icon-[solar--square-share-line-linear]",
 				disabled: model.header.exportDisabled,
-				onClick: actions.openExport,
-				priority: 3,
+				icon: (
+					<span
+						className={
+							model.exporting ? "icon-[mdi--loading] animate-spin" : "icon-[solar--square-share-line-linear]"
+						}
+					/>
+				),
+				behavior: { type: "click", onClick: actions.openExport },
 			},
 			{
-				id: "pin",
+				key: "builtin:pin",
 				title: pin.pinned ? t("chatView.pinButton.pinned") : t("chatView.pinButton.unpinned"),
-				icon: "icon-[solar--pin-linear]",
 				active: pin.pinned,
-				onClick: pin.toggle,
-				priority: 1,
+				// 窗口置顶开着时，即使被收纳也要在面板开关旁露出来，否则用户找不到取消的入口。
+				promoteWhenActive: true,
+				// 顶栏被挤窄、其余按钮收进「更多」时，置顶仍留在活动面板开关旁边。
+				retainWhenNarrow: true,
+				icon: <span className={pin.pinned ? "icon-[solar--pin-bold]" : "icon-[solar--pin-linear]"} />,
+				behavior: { type: "click", onClick: pin.toggle },
 			},
 			{
-				id: "terminal",
+				key: "builtin:terminal",
 				title: !terminal.available
 					? t("chatView.terminalButton.unavailable")
 					: terminal.focused
 						? t("chatView.terminalButton.focused")
 						: t("chatView.terminalButton.open"),
-				icon: "icon-[solar--programming-linear]",
 				active: terminal.focused,
 				disabled: !terminal.available,
-				onClick: terminal.open,
-				priority: 2,
+				icon: <span className="icon-[solar--programming-linear]" />,
+				behavior: { type: "click", onClick: terminal.open },
 			},
 			{
-				id: "bottom-panel",
+				key: "builtin:bottom-panel",
 				title: bottomPanel.open
 					? t("chatView.bottomPanelButton.open")
 					: t("chatView.bottomPanelButton.closed"),
-				icon: "icon-[solar--window-frame-linear]",
 				active: bottomPanel.open,
-				onClick: bottomPanel.toggle,
-				priority: 2,
-			},
-			{
-				id: "activity-panel",
-				title: model.header.panelTitle,
-				icon: "icon-[solar--sidebar-minimalistic-linear]",
-				active: model.header.panelOpen,
-				onClick: actions.togglePanel,
-				priority: 5,
+				icon: <span className="icon-[solar--window-frame-linear]" />,
+				behavior: { type: "click", onClick: bottomPanel.toggle },
 			},
 		],
-		[actions, bottomPanel, model.header, pin, t, terminal],
+		[actions.openExport, bottomPanel, model.exporting, model.header, pin, t, terminal],
 	);
-	const headerPreference = useHeaderActionPreference(headerActionItems);
-
 	const headerActions = useMemo(
 		() => (
 			<>
 				<BackgroundTasksBadge runtimeIds={runtimeIds} activityWorkspaceId={workspace.id} />
 				<SandboxGrantsBadge runtimeIds={runtimeIds} />
-				{/*
-				 * 动作收进一个按钮组：窗口变窄时由 HeaderActionGroup 决定放得下几个，
-				 * 其余收进「更多」菜单；「调整」模式可拖动排序并按需隐藏。
-				 */}
-				<HeaderActionGroup
-					labels={{ more: t("chatView.headerActions.more"), edit: t("chatView.headerActions.edit") }}
-					items={headerPreference.items}
-					editing={headerPreference.editing}
-					hiddenIds={headerPreference.hiddenIds}
-					onReorder={headerPreference.reorder}
-					onToggleVisibility={headerPreference.toggleVisibility}
-					extraActions={[
-						{
-							id: "__adjust",
-							title: t("chatView.headerActions.edit"),
-							icon: "icon-[solar--sort-from-top-to-bottom-linear]",
-							active: headerPreference.editing,
-							onClick: () => headerPreference.setEditing(!headerPreference.editing),
-						},
-					]}
+				<ConversationHeaderActions
+					builtins={builtinHeaderActions}
+					pinned={
+						<ChatHeaderActions.Panel
+							title={model.header.panelTitle}
+							open={model.header.panelOpen}
+							onClick={actions.togglePanel}
+						/>
+					}
 				/>
 			</>
 		),
-		[actions, bottomPanel, headerPreference, model.header, pin, runtimeIds, t, terminal, workspace.id],
+		[
+			actions.togglePanel,
+			builtinHeaderActions,
+			model.header.panelOpen,
+			model.header.panelTitle,
+			runtimeIds,
+			workspace.id,
+		],
 	);
 	const onAbort = useCallback(() => {
 		void props.onAbort();
@@ -154,10 +149,11 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 		return () => setHeaderRightSlot(null);
 	}, [headerActions, setHeaderRightSlot]);
 
-	// 「在外部应用中打开工作区」占顶栏工具位，渲染在页面自身动作（导出、置顶等）的左侧。
-	const workspaceAppButton = useMemo(() => <OpenWorkspaceWithAppButton rootDir={model.cwd} />, [model.cwd]);
-	// 优先级 0：对话页自己的工作区最相关；活动面板的文件标签作为低优先级备选。
-	usePageHeaderUtilitySlot("conversation", 0, workspaceAppButton);
+	// 沉浸式顶栏：消息流滚到顶栏下面，顶部留白与滚动渐隐由 MessageFeedLayoutVirtualizer 负责。
+	useEffect(() => {
+		setHeaderImmersive(true);
+		return () => setHeaderImmersive(false);
+	}, [setHeaderImmersive]);
 
 	// 新会话与「展开侧边栏」并进同一颗胶囊：侧边栏不可见时两者总是同时出现。
 	useEffect(() => {

@@ -44,9 +44,14 @@ export const ACTIVITY_PANEL_PREVIEW_MIN_WIDTH = 520;
 
 export const ACTIVITY_PANEL_WIDTH_STORAGE_KEY = "astravia-activity-panel-width";
 
-/** 当前窗口宽度下，活动面板的最大宽度。 */
-export function activityPanelMaxWidth(windowWidth: number): number {
-	return Math.max(ACTIVITY_PANEL_MIN_WIDTH, windowWidth - ACTIVITY_PANEL_MIN_CHAT_AREA);
+/**
+ * 当前窗口宽度下，活动面板能占据的最大宽度。
+ *
+ * `sidebarReserve` 是侧边栏常驻时占掉的左栏宽度：面板必须让出它，而不是反过来把
+ * 侧边栏挤走。窄屏浮层态或用户手动收起时传 0。
+ */
+export function activityPanelMaxWidth(windowWidth: number, sidebarReserve = 0): number {
+	return Math.max(ACTIVITY_PANEL_MIN_WIDTH, windowWidth - sidebarReserve - ACTIVITY_PANEL_MIN_CHAT_AREA);
 }
 
 /**
@@ -84,8 +89,12 @@ function persistWidthMode(mode: ActivityPanelWidthMode): void {
 }
 
 /** 把意图落到当前窗口下的实际像素宽度。 */
-export function resolveActivityPanelWidth(mode: ActivityPanelWidthMode, windowWidth: number): number {
-	const max = activityPanelMaxWidth(windowWidth);
+export function resolveActivityPanelWidth(
+	mode: ActivityPanelWidthMode,
+	windowWidth: number,
+	sidebarReserve = 0,
+): number {
+	const max = activityPanelMaxWidth(windowWidth, sidebarReserve);
 	if (mode.kind === "max") return max;
 	return Math.min(max, Math.max(ACTIVITY_PANEL_MIN_WIDTH, mode.px));
 }
@@ -103,6 +112,12 @@ const activityPanelWidthBaseAtom = atom(resolveActivityPanelWidth(initialWidthMo
 const activityPanelPreviewAvailableBaseAtom = atom(
 	resolveActivityPanelWidth(initialWidthMode, window.innerWidth) >= ACTIVITY_PANEL_PREVIEW_MIN_WIDTH,
 );
+
+/**
+ * 常驻侧边栏此刻占掉的左栏宽度，由活动面板模型按侧栏可见性写入：
+ * 窄屏浮层态与用户手动收起时为 0。面板上限必须扣除它——侧栏不再为面板让位。
+ */
+const activityPanelSidebarReserveBaseAtom = atom(0);
 
 /**
  * 文件区是否有足够宽度展示内嵌预览。消费者只订阅这个离散状态，避免面板逐像素变化时
@@ -123,7 +138,7 @@ export const activityPanelWidthModeAtom = atom((get) => get(activityPanelWidthMo
 /** 同时更新意图与解析后的像素宽度；夹紧在此统一完成。 */
 function applyWidthMode(get: Getter, set: Setter, mode: ActivityPanelWidthMode, persist: boolean): void {
 	if (!sameWidthMode(get(activityPanelWidthModeBaseAtom), mode)) set(activityPanelWidthModeBaseAtom, mode);
-	const next = resolveActivityPanelWidth(mode, window.innerWidth);
+	const next = resolveActivityPanelWidth(mode, window.innerWidth, get(activityPanelSidebarReserveBaseAtom));
 	if (next !== get(activityPanelWidthBaseAtom)) set(activityPanelWidthBaseAtom, next);
 	set(syncActivityPanelPreviewAvailabilityAtom, next);
 	if (persist) persistWidthMode(mode);
@@ -175,11 +190,29 @@ export const setActivityPanelWidthAtom = atom(null, (get, set, width: number | "
 });
 
 /**
- * 窗口宽度变化时按当前意图重解析：`max` 跟着窗口涨落，`fixed` 在窗口变窄时夹紧、
- * 变宽时回到用户原本指定的宽度。不落盘——意图没变，存的仍是意图。
+ * 窗口宽度或侧栏占位宽度变化时按当前意图重解析：`max` 跟着可用宽度涨落，`fixed` 在可用
+ * 宽度变窄时夹紧、变宽时回到用户原本指定的宽度。不落盘——意图没变，存的仍是意图。
  */
 export const syncActivityPanelWidthToWindowAtom = atom(null, (get, set, windowWidth: number) => {
-	const next = resolveActivityPanelWidth(get(activityPanelWidthModeBaseAtom), windowWidth);
+	const next = resolveActivityPanelWidth(
+		get(activityPanelWidthModeBaseAtom),
+		windowWidth,
+		get(activityPanelSidebarReserveBaseAtom),
+	);
+	if (next !== get(activityPanelWidthBaseAtom)) set(activityPanelWidthBaseAtom, next);
+	set(syncActivityPanelPreviewAvailabilityAtom, next);
+});
+
+/**
+ * 写入常驻侧边栏占掉的左栏宽度（窄屏浮层态与手动收起时为 0）。
+ *
+ * 侧栏可见性一变就按当前宽度意图重解析一次：`max` 于是随侧栏收/放涨落，固定像素宽度在
+ * 可用宽度变窄时夹紧、变宽时回到原值——意图本身不变，侧栏也就不会被面板挤走。
+ */
+export const setActivityPanelSidebarReserveAtom = atom(null, (get, set, reserveWidth: number) => {
+	if (reserveWidth === get(activityPanelSidebarReserveBaseAtom)) return;
+	set(activityPanelSidebarReserveBaseAtom, reserveWidth);
+	const next = resolveActivityPanelWidth(get(activityPanelWidthModeBaseAtom), window.innerWidth, reserveWidth);
 	if (next !== get(activityPanelWidthBaseAtom)) set(activityPanelWidthBaseAtom, next);
 	set(syncActivityPanelPreviewAvailabilityAtom, next);
 });

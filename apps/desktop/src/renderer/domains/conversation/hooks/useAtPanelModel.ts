@@ -175,7 +175,8 @@ export function useAtPanelModel({
 			return;
 		}
 		let cancelled = false;
-		void window.astravia.fs.listFilesRecursive(directory).then(
+		// 带上目录：搜索里能直接引用一整棵子树。目录不占文件上限，文件结果不会因此变少。
+		void window.astravia.fs.listFilesRecursive(directory, { includeDirectories: true }).then(
 			(files) => {
 				if (!cancelled) setAllFiles(files);
 			},
@@ -220,7 +221,11 @@ export function useAtPanelModel({
 		for (const f of allFiles) {
 			const score = fuzzyScore(q, f.relPath, f.name);
 			if (score !== null) {
-				scored.push({ item: { path: f.path, name: f.name, isDirectory: false, relPath: f.relPath }, score });
+				scored.push({
+					item: { path: f.path, name: f.name, isDirectory: f.isDirectory === true, relPath: f.relPath },
+					// 同名时目录排在前面：引用目录比它的同名文件更常用（整个模块 vs 一个文件）。
+					score: f.isDirectory === true ? score + 0.5 : score,
+				});
 			}
 		}
 		scored.sort((a, b) => b.score - a.score);
@@ -242,9 +247,22 @@ export function useAtPanelModel({
 
 	const totalCount = (canGoUp ? 1 : 0) + allItems.length;
 
+	const referenceDirectory = useCallback(
+		(item: DisplayItem) => {
+			onSelect({ path: item.path, name: item.name, isDirectory: true } satisfies SelectedFile);
+		},
+		[onSelect],
+	);
+
 	const handleEntrySelect = useCallback(
 		(item: DisplayItem) => {
 			if (item.isDirectory) {
+				// 搜索结果里的目录没有「可进入的位置」：那一片是跨目录的命中列表，
+				// 点它就是要引用它；浏览态下才用点击进目录，另给「引用目录」入口。
+				if (isSearching) {
+					referenceDirectory(item);
+					return;
+				}
 				setCurrentDir(item.path);
 				return;
 			}
@@ -254,7 +272,7 @@ export function useAtPanelModel({
 			}
 			onSelect({ path: item.path, name: item.name, isDirectory: false } satisfies SelectedFile);
 		},
-		[onSelect],
+		[isSearching, onSelect, referenceDirectory],
 	);
 
 	const handleGoUp = useCallback(() => {
@@ -354,6 +372,7 @@ export function useAtPanelModel({
 		emptyDirectory: t("atPanel.emptyDirectory"),
 		goUp: t("atPanel.goUp"),
 		enterDirectory: t("atPanel.enterDirectory"),
+		referenceDirectory: t("atPanel.referenceDirectory"),
 	};
 
 	return {
@@ -372,6 +391,7 @@ export function useAtPanelModel({
 			onGoUp: handleGoUp,
 			onHoverIndex: setActiveIndex,
 			onEntryClick: handleEntrySelect,
+			onReferenceDirectory: (entry) => referenceDirectory(entry),
 		},
 	};
 }

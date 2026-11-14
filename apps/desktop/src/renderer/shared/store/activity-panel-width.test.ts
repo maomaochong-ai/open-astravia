@@ -28,9 +28,19 @@ async function loadAtoms() {
 	return await import("./activity-atoms");
 }
 
-/** 该窗口宽度下面板能达到的最大宽度（= 窗口宽 - 聊天区最小宽 384）。 */
+/** 该窗口宽度下面板能达到的最大宽度（= 窗口宽 - 常驻侧栏 220 - 聊天区最小宽 384）。 */
 function maxAt(windowWidth: number): number {
-	return windowWidth - 384;
+	return windowWidth - 220 - 384;
+}
+
+/**
+ * 侧栏占位宽度由活动面板模型在挂载时写入；atom 层的用例直接写 220（默认侧栏宽度），
+ * 等价于「侧栏常驻在左栏」。
+ */
+function createPanelStore(atoms: typeof import("./activity-atoms")) {
+	const store = createStore();
+	store.set(atoms.setActivityPanelSidebarReserveAtom, 220);
+	return store;
 }
 
 describe("活动面板宽度意图", () => {
@@ -41,7 +51,7 @@ describe("活动面板宽度意图", () => {
 
 	it('写入 "max" 后，窗口变宽时面板宽度跟着变大', async () => {
 		const atoms = await loadAtoms();
-		const store = createStore();
+		const store = createPanelStore(atoms);
 		store.set(atoms.setActivityPanelWidthAtom, "max");
 		expect(store.get(atoms.activityPanelWidthAtom)).toBe(maxAt(1200));
 
@@ -54,9 +64,52 @@ describe("活动面板宽度意图", () => {
 		expect(store.get(atoms.activityPanelWidthAtom)).toBe(maxAt(900));
 	});
 
+	it("侧栏常驻：占位宽度变化时面板让位，但不改写宽度意图", async () => {
+		const atoms = await loadAtoms();
+		const store = createPanelStore(atoms);
+		store.set(atoms.setActivityPanelWidthAtom, "max");
+		expect(store.get(atoms.activityPanelWidthAtom)).toBe(maxAt(1200));
+
+		// 手动收起侧栏：可用宽度变大，拉满态跟着变宽。
+		store.set(atoms.setActivityPanelSidebarReserveAtom, 0);
+		expect(store.get(atoms.activityPanelWidthAtom)).toBe(1200 - 384);
+		expect(store.get(atoms.activityPanelWidthModeAtom)).toEqual({ kind: "max" });
+
+		// 展开回来：面板让出侧栏宽度，而不是把侧栏挤走。
+		store.set(atoms.setActivityPanelSidebarReserveAtom, 220);
+		expect(store.get(atoms.activityPanelWidthAtom)).toBe(maxAt(1200));
+
+		// 固定宽度同理：窗口放到 1400（上限 796 / 1016），能看出「夹紧」与「回到原值」两侧。
+		setWindowWidth(1400);
+		store.set(atoms.setActivityPanelSidebarReserveAtom, 220);
+		store.set(atoms.setActivityPanelWidthAtom, 1000);
+		expect(store.get(atoms.activityPanelWidthAtom)).toBe(1400 - 220 - 384);
+		expect(store.get(atoms.activityPanelWidthModeAtom)).toEqual({ kind: "fixed", px: 1000 });
+
+		// 收起侧栏后可用宽度回到 1016，固定宽度回到用户原值（就是这里丢了意图）。
+		store.set(atoms.setActivityPanelSidebarReserveAtom, 0);
+		expect(store.get(atoms.activityPanelWidthAtom)).toBe(1000);
+	});
+
+	it("占位宽度没变时不重解析（避免每轮渲染白白重算）", async () => {
+		const atoms = await loadAtoms();
+		const store = createPanelStore(atoms);
+		store.set(atoms.setActivityPanelWidthAtom, "max");
+		expect(store.get(atoms.activityPanelWidthAtom)).toBe(maxAt(1200));
+
+		// 窗口变小但还没人驱动同步：重复写同一个占位必须 no-op，宽度保持不变。
+		setWindowWidth(800);
+		store.set(atoms.setActivityPanelSidebarReserveAtom, 220);
+		expect(store.get(atoms.activityPanelWidthAtom)).toBe(maxAt(1200));
+
+		// 占位真的变了才按当下窗口重解析。
+		store.set(atoms.setActivityPanelSidebarReserveAtom, 0);
+		expect(store.get(atoms.activityPanelWidthAtom)).toBe(800 - 384);
+	});
+
 	it("用户拖动分隔条即退出拉满态，之后不再跟随窗口", async () => {
 		const atoms = await loadAtoms();
-		const store = createStore();
+		const store = createPanelStore(atoms);
 		store.set(atoms.setActivityPanelWidthAtom, "max");
 		expect(store.get(atoms.activityPanelWidthModeAtom)).toEqual({ kind: "max" });
 
@@ -71,7 +124,7 @@ describe("活动面板宽度意图", () => {
 	it("固定宽度在窗口变窄时夹紧、变宽时回到用户指定的宽度", async () => {
 		setWindowWidth(1600);
 		const atoms = await loadAtoms();
-		const store = createStore();
+		const store = createPanelStore(atoms);
 		store.set(atoms.setActivityPanelWidthAtom, 900);
 		expect(store.get(atoms.activityPanelWidthAtom)).toBe(900);
 
@@ -86,7 +139,7 @@ describe("活动面板宽度意图", () => {
 
 	it("持久化的是意图：拉满存哨兵值，固定宽度存像素", async () => {
 		const atoms = await loadAtoms();
-		const store = createStore();
+		const store = createPanelStore(atoms);
 		store.set(atoms.setActivityPanelWidthAtom, "max");
 		expect(localStorage.getItem(atoms.ACTIVITY_PANEL_WIDTH_STORAGE_KEY)).toBe("max");
 
@@ -96,7 +149,7 @@ describe("活动面板宽度意图", () => {
 
 	it("拖拽中的瞬时宽度不落盘，拖拽结束才写入最终值", async () => {
 		const atoms = await loadAtoms();
-		const store = createStore();
+		const store = createPanelStore(atoms);
 		store.set(atoms.setActivityPanelWidthAtom, 480);
 		store.set(atoms.setTransientActivityPanelWidthAtom, (prev) => prev + 60);
 		expect(store.get(atoms.activityPanelWidthAtom)).toBe(540);
@@ -108,7 +161,7 @@ describe("活动面板宽度意图", () => {
 
 	it("预览可用状态只在跨过宽度阈值时通知内容消费者", async () => {
 		const atoms = await loadAtoms();
-		const store = createStore();
+		const store = createPanelStore(atoms);
 		const changes: boolean[] = [];
 		const unsubscribe = store.sub(atoms.activityPanelPreviewAvailableAtom, () => {
 			changes.push(store.get(atoms.activityPanelPreviewAvailableAtom));
@@ -137,7 +190,7 @@ describe("tab 拖拽期间的宽度请求", () => {
 
 	it("拖拽中挂起，结束时只应用最后一次请求，且拉满态照样生效", async () => {
 		const atoms = await loadAtoms();
-		const store = createStore();
+		const store = createPanelStore(atoms);
 		store.set(atoms.setActivityPanelWidthAtom, 480);
 
 		store.set(atoms.setActivityPanelTabDraggingAtom, true);
@@ -156,7 +209,7 @@ describe("历史 localStorage 记录", () => {
 		installStorage({ "astravia-activity-panel-width": "820" });
 		setWindowWidth(1600);
 		const atoms = await loadAtoms();
-		const store = createStore();
+		const store = createPanelStore(atoms);
 		expect(store.get(atoms.activityPanelWidthModeAtom)).toEqual({ kind: "fixed", px: 820 });
 		expect(store.get(atoms.activityPanelWidthAtom)).toBe(820);
 	});
@@ -165,7 +218,7 @@ describe("历史 localStorage 记录", () => {
 		installStorage({ "astravia-activity-panel-width": "max" });
 		setWindowWidth(1600);
 		const atoms = await loadAtoms();
-		const store = createStore();
+		const store = createPanelStore(atoms);
 		expect(store.get(atoms.activityPanelWidthModeAtom)).toEqual({ kind: "max" });
 		expect(store.get(atoms.activityPanelWidthAtom)).toBe(maxAt(1600));
 	});

@@ -1,4 +1,4 @@
-import type { FilePreviewContext } from "@astravia-org/theme-ui/file-preview";
+import type { FilePreviewContext, FilePreviewItem } from "@astravia-org/theme-ui/file-preview";
 import { FilePreviewView as ThemeFilePreviewView } from "@astravia-org/theme-ui/file-preview/FilePreviewView";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -18,6 +18,8 @@ interface FilePreviewViewProps {
 	enableKeyboard?: boolean;
 	onToggleSidebar?: () => void;
 	sidebarCollapsed?: boolean;
+	/** 在左侧目录树中展开并选中当前文件。 */
+	onLocate?: (item: FilePreviewItem) => void;
 }
 
 export function FilePreviewView({
@@ -30,6 +32,7 @@ export function FilePreviewView({
 	enableKeyboard = false,
 	onToggleSidebar,
 	sidebarCollapsed,
+	onLocate,
 }: FilePreviewViewProps): JSX.Element | null {
 	const { t } = useTranslation("chat");
 	const item = ctx.items[ctx.index] ?? null;
@@ -38,6 +41,7 @@ export function FilePreviewView({
 		() => ({
 			showTree: t("fileEditor.showTree"),
 			hideTree: t("fileEditor.hideTree"),
+			locate: t("fileEditor.locate"),
 			prev: t("fileEditor.previous"),
 			next: t("fileEditor.next"),
 			download: t("fileEditor.downloadShort"),
@@ -79,6 +83,7 @@ export function FilePreviewView({
 			canNext={canNext}
 			onToggleSidebar={onToggleSidebar}
 			sidebarCollapsed={sidebarCollapsed}
+			onLocate={onLocate}
 			onDownload={onDownload}
 			renderBody={renderBody}
 		/>

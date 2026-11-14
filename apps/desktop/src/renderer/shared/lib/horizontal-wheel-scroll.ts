@@ -70,6 +70,13 @@ export function handleHorizontalWheel(event: {
 	target.scrollLeft = result.scrollLeft;
 }
 
-/** 工具行的滚动容器类名：隐藏滚动条，但仍可滚动与键盘聚焦。 */
+/**
+ * 工具行的滚动容器类名：隐藏滚动条，但仍可滚动与键盘聚焦。
+ *
+ * 左侧工具行是这一行里唯一可滚动的部分，所以「空间不够」的代价由它承担：
+ * `basis-0 + grow` 让它先吃满剩余宽度、再在内部横向滚动，右侧的模型选择器与发送按钮
+ * 保持内容宽度。反过来让右侧收缩的话，模型名会被压到 0 宽而文字照旧溢出，
+ * 直接盖在语音与发送按钮上（窗口 1280px 宽即可复现）。
+ */
 export const TOOLBAR_SCROLL_CLASS =
-	"overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+	"min-w-0 shrink overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";

@@ -31,6 +31,9 @@ import { __setPluginHostBridge, PluginAppActionError } from "@astravia-org/plugi
 import { useSidebarState } from "@shared/app-shell/sidebar-state";
 import {
 	activeSessionAtom,
+	activeSessionCwdAtom,
+	activeSessionPathAtom,
+	activeSessionRuntimeIdAtom,
 	chatMessagesAtom,
 	inputValueAtom,
 	isStreamingAtom,
@@ -790,19 +793,13 @@ const conversation: PluginConversationApi = {
 // ─── Hooks ───
 
 function useActiveConversation(): ConversationState {
-	const active = useAtomValue(activeSessionAtom);
+	// 分别订阅三个派生 atom：会话对象换实例但字段没变时不重渲（顶栏探针是常驻的）。
+	const id = useAtomValue(activeSessionRuntimeIdAtom);
+	const cwd = useAtomValue(activeSessionCwdAtom);
+	const sessionPath = useAtomValue(activeSessionPathAtom);
 	const isStreaming = useAtomValue(isStreamingAtom);
 	const model = useAtomValue(selectedModelAtom);
-	return useMemo(
-		() => ({
-			id: active?.runtimeId ?? null,
-			cwd: active?.cwd ?? null,
-			sessionPath: active?.sessionPath ?? null,
-			model,
-			isStreaming,
-		}),
-		[active, model, isStreaming],
-	);
+	return useMemo(() => ({ id, cwd, sessionPath, model, isStreaming }), [id, cwd, sessionPath, model, isStreaming]);
 }
 
 function useConversationMessages(): ConversationMessage[] {

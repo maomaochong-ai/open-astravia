@@ -1,4 +1,3 @@
-import { SkillPromptArea } from "@domains/conversation/components/SkillPromptArea";
 import { ModelSelect } from "@shared/components/ModelSelect";
 import { cn } from "@astravia-org/ui/utils";
 import { Switch } from "@astravia-org/ui/switch";
@@ -6,6 +5,7 @@ import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { AutomationNotifyWhen, AutomationRunTargetMode } from "../../../../shared/automation";
 import { NEW_SESSION_OPTION, type SchedulerTaskFieldsModel } from "../hooks/useSchedulerTaskFieldsModel";
+import { AutomationPromptField } from "./AutomationPromptField";
 import { FieldGroup, FieldRow, RowSelect } from "./AutomationFieldRows";
 import { ScheduleEditorView } from "./schedule-picker/ScheduleEditorView";
 
@@ -62,15 +62,13 @@ export function SchedulerTaskFieldsView({
 				placeholder={namePlaceholder}
 			/>
 
-			<SkillPromptArea
+			<AutomationPromptField
 				prompt={promptBody}
-				onPromptChange={(body) => onPromptChange(body, promptSkill)}
 				skills={promptSkill ? [promptSkill] : []}
-				onSkillsChange={(skills) => onPromptChange(promptBody, skills[0] ?? null)}
-				maxSkills={1}
 				placeholder={t("form.promptPlaceholder")}
-				minHeight={promptMinHeight}
 				cwd={draft.projectCwd}
+				dialogMinHeight={Math.max(promptMinHeight, 240)}
+				onChange={(body, skills) => onPromptChange(body, skills[0] ?? null)}
 			/>
 
 			<FieldGroup title={t("form.sectionDetails")}>

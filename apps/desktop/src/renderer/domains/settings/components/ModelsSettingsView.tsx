@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { SettingsPageShellView } from "@astravia-org/theme-ui/settings";
 import { SettingsAiAssist } from "../ai-assist";
 import { ModelTransportSettingsSection } from "./ModelTransportSettingsSection";
+import { ModelsDefaultModelSection } from "./ModelsDefaultModelSection";
 import { ModelsProvidersSection } from "./ModelsProvidersSection";
 import { PresetProvidersSection } from "./PresetProvidersSection";
 import type { ModelTransportSettingsModel } from "./useModelTransportSettingsModel";
@@ -32,6 +33,7 @@ export function ModelsSettingsView({
 		>
 			{model.config && (
 				<>
+					<ModelsDefaultModelSection model={model} />
 					<PresetProvidersSection config={model.config} saveConfig={model.saveConfig} />
 					<ModelsProvidersSection model={model} />
 					<ModelTransportSettingsSection model={transport} />

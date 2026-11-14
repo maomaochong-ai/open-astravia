@@ -6,6 +6,30 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: "en" } }) }));
 vi.mock("../../plugins/runtime/plugin-i18n", () => ({ usePluginTextResolver: () => (text: string) => text }));
 
+const progress = vi.hoisted(() => ({
+	probed: { operationProgressById: new Map<string, number>() as Map<string, number> },
+}));
+
+const MARKET = vi.hoisted(() => [
+	{
+		slug: "demo-skill",
+		type: "skill" as const,
+		name: "Demo Skill",
+		description: "演示条目",
+		license: "MIT",
+		version: "1.0.0",
+		author: "test",
+		icon: "",
+		category: "",
+		tags: [],
+		sha256: "",
+		download_count: 0,
+		config: {},
+		detail: {},
+		updated_at: "2026-01-01T00:00:00.000Z",
+	},
+]);
+
 const stable = vi.hoisted(() => {
 	const noop = () => undefined;
 	const asyncNoop = async () => undefined;
@@ -35,7 +59,7 @@ vi.mock("./useAbilityActions", () => ({
 		install: vi.fn(),
 		installBundleMembers: vi.fn(),
 		operationById: new Map(),
-		operationProgressById: new Map(),
+		operationProgressById: progress.probed.operationProgressById,
 		pendingPluginSetup: null,
 		permissionPromptSlug: null,
 		promptMcpSetup: stable.promptMcpSetup,
@@ -67,7 +91,7 @@ vi.mock("./useAbilityData", () => ({
 		loading: false,
 		localPresentations: {},
 		localSkills: [],
-		market: [],
+		market: MARKET,
 		marketplaceCatalog: { abilities: [], failedSourceIds: [], snapshots: [], sources: [] },
 		marketplaceSources: [],
 		mcpSetupStatus: {},
@@ -96,5 +120,28 @@ describe("useAbilitiesModel row action stability", () => {
 		expect(result.current.configure).toBe(first.configure);
 		expect(result.current.edit).toBe(first.edit);
 		expect(result.current.revokeAuthorization).toBe(first.revokeAuthorization);
+	});
+});
+
+/**
+ * 横幅（能力页顶部的引导卡片）按自己的图标池随机洗牌，池子换引用就会重新洗牌并跳回第一张。
+ * 安装进度每秒几次 tick，`allItems` 因此不断换引用，但横幅的内容其实没变。
+ */
+describe("useAbilitiesModel banner stability", () => {
+	it("keeps the same banner icons while install progress ticks", () => {
+		progress.probed.operationProgressById = new Map();
+		const { result, rerender } = renderHook(() => useAbilitiesModel());
+		const firstBanners = result.current.bannerIcons;
+		const firstItems = result.current.allItems;
+		expect(firstBanners.length).toBeGreaterThan(0);
+
+		// 一次安装进度 tick：条目集合没变，只多了操作进度。
+		progress.probed.operationProgressById = new Map([["skill:demo-skill", 0.4]]);
+		rerender();
+
+		// 进度确实进来了（说明这次是真的重算过），但横幅池子的身份必须保持。
+		expect(result.current.allItems).not.toBe(firstItems);
+		expect(result.current.bannerIcons).toBe(firstBanners);
+		expect(result.current.bannerIcons.map((icon) => icon.title)).toEqual(firstBanners.map((icon) => icon.title));
 	});
 });

@@ -10,6 +10,7 @@ function loadedPlugin(): LoadedPlugin {
 		defaultLocale: "zh",
 		locales: {},
 		slots: [],
+		headerActions: [],
 		abilityDetailSlots: [],
 		filePreviews: [],
 		fileExplorerContextMenuActions: [],

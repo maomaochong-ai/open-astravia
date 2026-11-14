@@ -15,6 +15,7 @@ import type {
 	PluginJobsApi,
 	PluginMediaApi,
 	PluginSecretsApi,
+	PluginShellApi,
 } from "@astravia-org/plugin-sdk";
 import { resolveCatalogKey, resolvePluginText } from "@astravia-org/plugin-sdk";
 import type { InstalledPlugin } from "@preload/api";
@@ -635,6 +636,11 @@ export function createCommandApi(
 		return file;
 	};
 	return {
+		appIcon: async (appName) => {
+			permissions.require("agent.command.run");
+			if (typeof appName !== "string" || appName.trim().length === 0) return null;
+			return window.astravia.plugins.getAppIcon(capabilitySessionId, appName);
+		},
 		run: (file, args, options) => {
 			permissions.require("agent.command.run");
 			const allowed = assertCommandAllowed(file);
@@ -702,6 +708,51 @@ export function createCaptureApi(plugin: InstalledPlugin, disposers: Array<() =>
 			permissions.require("capture.offscreen");
 			sessionKeys.delete(sessionKey);
 			return window.astravia.plugins.offscreenRelease(plugin.id, sessionKey);
+		},
+	};
+}
+
+/**
+ * `ctx.shell`：把本机路径交给外部应用。
+ *
+ * 平台差异（macOS 的 `open`、Windows 的注册表与 exe 启动、Linux 的 `.desktop`）全在主进程
+ * `external-apps` 里。调用走带 capability session 的 IPC：权限由主进程按会话再校验一次，
+ * 插件不该、也无法绕过 ctx 直接拿到这项能力。
+ */
+export function createShellApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginShellApi {
+	const permissions = createPermissionApi(plugin);
+	const assertTarget = (value: unknown): string | null => {
+		if (value === null) return null;
+		if (typeof value !== "string" || value.trim().length === 0) {
+			throw new Error("Target path must be a non-empty string or null");
+		}
+		return value;
+	};
+	const assertAppId = (value: unknown): string => {
+		if (typeof value !== "string" || value.trim().length === 0) {
+			throw new Error("Application id is required");
+		}
+		return value;
+	};
+	return {
+		listExternalApplications: async (targetPath) => {
+			permissions.require("shell.open-external-app");
+			return window.astravia.plugins.listExternalApplications(capabilitySessionId, assertTarget(targetPath));
+		},
+		openPathWithApplication: async (targetPath, appId, kind) => {
+			permissions.require("shell.open-external-app");
+			const target = assertTarget(targetPath);
+			const id = assertAppId(appId);
+			if (kind !== "editor" && kind !== "file-manager" && kind !== "terminal" && kind !== "other") {
+				throw new Error(`Unknown application kind: ${String(kind)}`);
+			}
+			await window.astravia.plugins.openPathWithApplication(capabilitySessionId, target, id, kind);
+		},
+		openPathWithDefaultApplication: async (targetPath) => {
+			permissions.require("shell.open-external-app");
+			const target = assertTarget(targetPath);
+			if (target === null) throw new Error("Default open requires a target path");
+			await window.astravia.plugins.openPathWithDefaultApplication(capabilitySessionId, target);
 		},
 	};
 }

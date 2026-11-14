@@ -70,6 +70,8 @@ export function McpServerFields({
 					items={[
 						{ key: "stdio" as McpTransportType, label: t("stdio") },
 						{ key: "http" as McpTransportType, label: "HTTP" },
+						// 旧式 HTTP+SSE，仅为仍只提供 SSE 端点的服务器保留。
+						{ key: "sse" as McpTransportType, label: "SSE" },
 					]}
 					value={form.transport}
 					onChange={(transport) => setForm((current) => ({ ...current, transport }))}

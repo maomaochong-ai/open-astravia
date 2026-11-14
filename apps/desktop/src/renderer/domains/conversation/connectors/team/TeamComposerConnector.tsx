@@ -414,7 +414,9 @@ export function TeamComposerConnector({
 			},
 			toolbar: {
 				add: t("inputBar.toolbar.add"),
+				// 团队输入栏没有技能抽屉，加号只打开文件与连接器，所以不复用「技能」那份文案。
 				skills: t("inputBar.toolbar.add"),
+				addTooltip: t("inputBar.toolbar.addTooltip"),
 				addImage: model.labels.attachImage,
 				attachFile: model.labels.attachFile,
 				queue: t("inputBar.drawer.queueLabel"),

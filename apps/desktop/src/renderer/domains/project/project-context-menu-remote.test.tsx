@@ -13,6 +13,7 @@ const props: ProjectContextMenuViewProps = {
 		archiveProject: "Archive",
 		removeFromList: "Remove from list",
 		clearConversation: "Clear conversation",
+		manageSessions: "Manage sessions",
 		clearConversationDisabled: "Nothing to clear",
 		clearClaw: "Clear claw",
 		clearClawDisabled: "Nothing to clear",

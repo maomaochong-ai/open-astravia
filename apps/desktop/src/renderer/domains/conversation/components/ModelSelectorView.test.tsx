@@ -22,6 +22,10 @@ const labels: ModelSelectorViewProps["labels"] = {
 	cloudOnly: "Cloud",
 	visionBadge: "Vision",
 	defaultBadge: "Default",
+	favoritesHeader: "Favorites",
+	favorite: "Favorite",
+	unfavorite: "Unfavorite",
+	searchResultsHeader: "Search results",
 	levelLabel: (value) => value,
 };
 

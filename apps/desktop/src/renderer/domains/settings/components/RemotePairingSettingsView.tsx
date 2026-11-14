@@ -257,7 +257,7 @@ function PairingPanel({ model }: { model: RemotePairingSettingsModel }): JSX.Ele
 							<div className="flex h-[144px] flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card px-4 text-center text-[12px] leading-relaxed text-muted-foreground">
 								<p>{codeStatus}</p>
 								{pairing.canCreate ? (
-									<Button size="sm" variant="outline" disabled={model.busy} onClick={model.actions.createInvite}>
+									<Button size="sm" variant="field" disabled={model.busy} onClick={model.actions.createInvite}>
 										{labels.pairing.create}
 									</Button>
 								) : null}

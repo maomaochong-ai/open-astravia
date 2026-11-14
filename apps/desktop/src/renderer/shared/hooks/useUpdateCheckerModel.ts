@@ -3,12 +3,17 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { filePreviewAtom } from "../store/file-preview-atoms";
-import { updaterRestartDialogOpenAtom, updaterStateAtom } from "../store/updater-atoms";
+import {
+	updaterCurrentNotesDialogOpenAtom,
+	updaterRestartDialogOpenAtom,
+	updaterStateAtom,
+} from "../store/updater-atoms";
 
 export function useUpdateCheckerModel(): UpdateCheckerViewProps {
 	const { t } = useTranslation("settings");
 	const state = useAtomValue(updaterStateAtom);
 	const openRestartDialog = useSetAtom(updaterRestartDialogOpenAtom);
+	const openCurrentNotes = useSetAtom(updaterCurrentNotesDialogOpenAtom);
 	const setFilePreview = useSetAtom(filePreviewAtom);
 	const [busy, setBusy] = useState(false);
 
@@ -46,9 +51,12 @@ export function useUpdateCheckerModel(): UpdateCheckerViewProps {
 			},
 			latestVersion: state.latestVersion,
 			onCheck: () => {
+				// 结果（检查中 / 已是最新 / 新版本 / 出错）都在更新对话框里展示。
+				openRestartDialog(true);
 				setBusy(true);
 				void window.astravia.updater.check().finally(() => setBusy(false));
 			},
+			onViewCurrent: () => openCurrentNotes(true),
 			onPrimary: () => {
 				if (state.phase === "available") {
 					void window.astravia.updater.download();

@@ -38,11 +38,16 @@ import type {
 	FileExplorerSelectOptions,
 	FilesPanelViewProps,
 } from "@astravia-org/theme-ui/file-explorer";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@astravia-org/ui";
 import { findFileTreeElement } from "@astravia-org/theme-ui/file-explorer/file-tree-dom";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { usePageHeaderUtilitySlot } from "@shared/app-shell/page-header/usePageHeaderUtilitySlot";
 import {
 	bindPluginFileExplorerHost,
 	emitPluginFileExplorerFilesChanged,
@@ -53,7 +58,6 @@ import { FileContextMenu } from "../components/FileContextMenu";
 import { FileTransferDialog } from "../components/FileTransferDialog";
 import { FileTree } from "../components/FileTree";
 import { FileExplorerSettings } from "../components/FileExplorerSettings";
-import { OpenWorkspaceWithAppButton } from "../components/OpenWorkspaceWithAppButton";
 import { type FileExplorerClipboard, resolvePasteDirectory } from "../services/clipboard";
 import { resolveCreateParentDirectory } from "../services/create-entry";
 import { isProjectInternalDrop } from "../services/file-drop";
@@ -190,12 +194,6 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		setContextMenu(null);
 		selection.clear();
 	}, [selection, setContextMenu]);
-
-	// 把「在外部应用中打开工作区」按钮登记到顶栏工具位：多个入口共存时由优先级
-	// 决定画哪一个，而不是互相覆盖；卸载只回收自己那份。
-	const workspaceAppButton = useMemo(() => <OpenWorkspaceWithAppButton rootDir={rootDir} />, [rootDir]);
-	// 优先级 10：对话页自己有工作区时由对话页占位，这里只在其它页面兜底。
-	usePageHeaderUtilitySlot("file-explorer", 10, workspaceAppButton);
 
 	useEffect(() => {
 		setCreatingEntry(null);
@@ -746,22 +744,23 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 	));
 	const toolbarActions = (
 		<>
-			<Button
-				variant="ghost"
-				size="icon-xs"
-				title={t("fileExplorer.newFile")}
-				onClick={() => beginCreate("file")}
-			>
-				<span className="icon-[solar--document-add-linear] h-3.5 w-3.5" />
-			</Button>
-			<Button
-				variant="ghost"
-				size="icon-xs"
-				title={t("fileExplorer.newFolder")}
-				onClick={() => beginCreate("directory")}
-			>
-				<span className="icon-[solar--add-folder-linear] h-3.5 w-3.5" />
-			</Button>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button variant="ghost" size="icon-xs" title={t("fileExplorer.newMenu")}>
+						<span className="icon-[solar--document-add-outline] h-3.5 w-3.5" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="start">
+					<DropdownMenuItem onSelect={() => beginCreate("file")}>
+						<span className="icon-[solar--document-add-linear] h-4 w-4" />
+						{t("fileExplorer.newFile")}
+					</DropdownMenuItem>
+					<DropdownMenuItem onSelect={() => beginCreate("directory")}>
+						<span className="icon-[solar--add-folder-linear] h-4 w-4" />
+						{t("fileExplorer.newFolder")}
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
 			<Button
 				variant="ghost"
 				size="icon-xs"

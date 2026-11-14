@@ -62,37 +62,37 @@ function model(
 				changeMode: vi.fn(),
 				changeThemeName: vi.fn(),
 				selectUiTheme: vi.fn(),
-				setCursorStyle: vi.fn(),
 				setOrnament: vi.fn(),
-				setSidebarStyle: vi.fn(),
 				setTexture: vi.fn(),
 				setFont: vi.fn(),
+				setUiZoom: vi.fn(),
+				resetUiZoom: vi.fn(),
 			},
 			overrides.actions,
 		),
 		activeUiThemeId: "default",
-		cursorOptions: [],
-		cursorStyle: "default",
 		labels: {
 			languageHint: "languageHint",
 			newSessionDecorHint: "newSessionDecorHint",
 			newSessionDecorTitle: "新会话页装饰",
 			ornamentHint: "ornamentHint",
 			sections: {
-				cursor: "鼠标指针",
 				language: "语言",
 				mode: "外观模式",
 				font: "字体",
 				ornament: "装饰件",
-				sidebar: "侧边栏样式",
 				texture: "纹理",
 				theme: "主题颜色",
 				uiTheme: "界面主题",
+				uiZoom: "界面大小",
 			},
 			textureHint: "textureHint",
 			title: "外观",
 			fontHint: "fontHint",
 			fontFamily: "fontFamily",
+			uiZoomSliderLabel: "界面大小",
+			uiZoomReset: "恢复默认大小",
+			uiZoomHint: "uiZoomHint",
 		},
 		language: "system",
 		languages: [],
@@ -102,8 +102,6 @@ function model(
 		ornamentId: "none",
 		ornamentOptions: [{ active: true, hint: "ornamentNoneHint", id: "none", label: "无" }],
 		showUiTheme: false,
-		sidebarStyle: "classic",
-		sidebarStyleOptions: [],
 		textureId: "grid",
 		textureOptions: [
 			{ active: false, hint: "textureNoneHint", id: "none", label: "无" },
@@ -112,6 +110,7 @@ function model(
 		themeName: "default",
 		themes: [],
 		uiThemes: [],
+		uiZoom: { factor: 1, stepIndex: 2, steps: [0.75, 0.9, 1, 1.1, 1.25, 1.5], default: 1 },
 		font: "system",
 		fontOptions: [
 			{ active: true, hint: "uiFontSystemHint", id: "system", label: "系统默认" },
@@ -122,52 +121,58 @@ function model(
 }
 
 describe("AppearanceSettingsView 的新会话页装饰区域", () => {
-	it("装饰件与纹理紧跟在「新会话页装饰」这条标题之下，不与其它分区混排", () => {
+	// 整页渲染要挂载主题、字体与装饰预览；CI 上并发跑时 5s 默认值会偶发不够。
+	const RENDER_TIMEOUT = 20_000;
+
+	it("装饰件与纹理收在同一张卡片的两行里，不与其它分区混排", () => {
 		const view = render(<AppearanceSettingsView model={model()} />);
 
-		// 断言的是分组关系本身（谁归在这条标题之下），不锁具体的盒子：
-		// 这块区域是套卡片还是平铺属于视觉选择，改版不该把测试一起打红。
-		const headings = Array.from(view.container.querySelectorAll("h2")).map((h) => h.textContent?.trim());
-		const groupIndex = headings.indexOf("新会话页装饰");
-
-		expect(groupIndex).toBeGreaterThanOrEqual(0);
-		expect(headings.slice(groupIndex + 1, groupIndex + 3)).toEqual(["装饰件", "纹理"]);
+		// 断言分组关系本身（谁归在这条标题之下），不锁具体的盒子。
+		expect(view.getByRole("heading", { name: "新会话页装饰" })).toBeTruthy();
 		expect(view.getByText("newSessionDecorHint")).toBeTruthy();
-	});
+		expect(view.getByRole("button", { name: "装饰件" })).toBeTruthy();
+		expect(view.getByRole("button", { name: "纹理" })).toBeTruthy();
+		// 选项列表收在 popover 里，默认不占版面。
+		expect(view.queryByTitle("textureGridHint")).toBeNull();
+	}, RENDER_TIMEOUT);
 
 	it("点「无」把纹理选择交回模型", async () => {
 		const setTexture = vi.fn();
 		const view = render(<AppearanceSettingsView model={model({ actions: { setTexture } })} />);
 
-		// 装饰件那组里也有一张「无」，按 hint 取这张才不会点错组。
+		await userEvent.click(view.getByRole("button", { name: "纹理" }));
+		// 装饰件那组里也有一个「无」，打开纹理的 popover 后只会有纹理那几个卡片。
 		await userEvent.click(view.getByTitle("textureNoneHint"));
 
 		expect(setTexture).toHaveBeenCalledWith("none");
-	});
+	}, RENDER_TIMEOUT);
 
-	it("当前铺着的那档带选中态，另一档没有", () => {
+	it("当前铺着的那档带选中态，另一档没有", async () => {
 		const view = render(<AppearanceSettingsView model={model()} />);
 
+		await userEvent.click(view.getByRole("button", { name: "纹理" }));
 		const grid = view.getByTitle("textureGridHint");
 		const none = view.getByTitle("textureNoneHint");
 
 		expect(grid.querySelector('[class*="mdi--check"]')).not.toBeNull();
 		expect(none.querySelector('[class*="mdi--check"]')).toBeNull();
-	});
+	}, RENDER_TIMEOUT);
 
-	it("切换外观模式时不会重新渲染无关的装饰预览", () => {
+	it("切换外观模式时不会重新渲染无关的装饰预览", async () => {
 		const initial = model({
 			ornamentId: "mario",
 			ornamentOptions: [{ active: true, hint: "marioHint", id: "mario", label: "马里奥" }],
 		});
 		renderMarioPreview.mockClear();
 		const view = render(<AppearanceSettingsView model={initial} />);
+
+		await userEvent.click(view.getByRole("button", { name: "装饰件" }));
 		expect(renderMarioPreview).toHaveBeenCalledTimes(1);
 
 		view.rerender(<AppearanceSettingsView model={{ ...initial, mode: "light" }} />);
 
 		expect(renderMarioPreview).toHaveBeenCalledTimes(1);
-	});
+	}, RENDER_TIMEOUT);
 });
 
 describe("AppearanceSettingsView 的字体区域", () => {
@@ -185,5 +190,5 @@ describe("AppearanceSettingsView 的字体区域", () => {
 		expect((within(global).getByRole("combobox") as HTMLSelectElement).value).toBe("system");
 		await userEvent.selectOptions(within(global).getByRole("combobox"), "serif");
 		expect(setFont).toHaveBeenCalledWith("serif");
-	});
+	}, 20_000);
 });

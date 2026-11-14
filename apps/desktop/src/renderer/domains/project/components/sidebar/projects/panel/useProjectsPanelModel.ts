@@ -583,6 +583,9 @@ export function useProjectsPanelModel({
 			renameSession: renamePanelSession,
 			selectBatchSession,
 			selectSession: selectSidebarSession,
+			loadSessions: (cwd) => {
+				void loadSessions(cwd);
+			},
 		},
 	};
 }

@@ -199,6 +199,9 @@ export interface AbilityBannerIcon {
 	/** 无图时按 type 落默认图。 */
 	type: AbilityType;
 	icon?: string;
+	/** 轮播轮到这一项时右侧展示的标题与简介；占位图标为空串。 */
+	title: string;
+	description: string;
 }
 
 export interface AbilitiesModel {

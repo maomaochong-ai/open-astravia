@@ -248,7 +248,7 @@ function ReasoningLevelsEditor({
 									placeholder={t("reasoningLevelPlaceholder")}
 								/>
 								<Button
-									variant="outline"
+									variant="field"
 									size="xs"
 									disabled={!level.trim()}
 									onClick={() => setForm((current) => ({ ...current, defaultReasoningLevel: level }))}
@@ -261,7 +261,7 @@ function ReasoningLevelsEditor({
 									{t("reasoningDefault")}
 								</Button>
 								<Button
-									variant="outline"
+									variant="field"
 									size="xs"
 									onClick={() =>
 										setForm((current) => {
@@ -285,7 +285,7 @@ function ReasoningLevelsEditor({
 				</div>
 				<div className="flex gap-2">
 					<Button
-						variant="outline"
+						variant="field"
 						size="xs"
 						onClick={() => setForm((current) => ({ ...current, reasoningLevels: [...current.reasoningLevels, ""] }))}
 					>
@@ -293,7 +293,7 @@ function ReasoningLevelsEditor({
 					</Button>
 					{getReasoningPreset(form.api) && (
 						<Button
-							variant="outline"
+							variant="field"
 							size="xs"
 							onClick={() => {
 								const preset = getReasoningPreset(form.api);
@@ -316,7 +316,7 @@ function ReasoningLevelsEditor({
 						{candidates.map((candidate) => (
 							<Button
 								key={candidate}
-								variant="outline"
+								variant="field"
 								size="xs"
 								onClick={() =>
 									setForm((current) =>

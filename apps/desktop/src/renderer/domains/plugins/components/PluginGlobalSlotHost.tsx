@@ -10,8 +10,10 @@ import {
 	pluginFileExplorerToolbarActionsAtom,
 	pluginFileIconThemesAtom,
 	type PluginI18nEntry,
+	type RegisteredHeaderAction,
 	pluginI18nByIdAtom,
 	pluginInputActionsAtom,
+	pluginHeaderActionsAtom,
 	pluginNewSessionContextsAtom,
 	type RegisteredNewSessionContext,
 	pluginToolCallSlotsAtom,
@@ -64,6 +66,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	const setBottomPanels = useSetAtom(pluginBottomPanelsAtom);
 	const setInputActions = useSetAtom(pluginInputActionsAtom);
 	const setNewSessionContexts = useSetAtom(pluginNewSessionContextsAtom);
+	const setHeaderActions = useSetAtom(pluginHeaderActionsAtom);
 	const setCardRenderers = useSetAtom(pluginCardRenderersAtom);
 	const setToolCallSlots = useSetAtom(pluginToolCallSlotsAtom);
 	const setTurnCards = useSetAtom(pluginTurnCardsAtom);
@@ -326,6 +329,29 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		);
 		if (contexts.length > 0 || !hostLoading) setNewSessionContexts(contexts);
 	}, [plugins, revision, hostLoading, setNewSessionContexts]);
+
+	// Publish conversation-header actions, sorted once here so the header only renders.
+	useEffect(() => {
+		const actions: RegisteredHeaderAction[] = plugins
+			.flatMap((plugin) =>
+				plugin.headerActions.map((contribution, index) => ({
+					pluginId: plugin.id,
+					pluginName: plugin.name,
+					actionId: `${plugin.id}:${contribution.id}`,
+					useAction: contribution.useAction,
+					sortOrder: contribution.order ?? Number.MAX_SAFE_INTEGER,
+					registrationIndex: index,
+				})),
+			)
+			.sort(
+				(left, right) =>
+					left.sortOrder - right.sortOrder ||
+					left.pluginId.localeCompare(right.pluginId) ||
+					left.registrationIndex - right.registrationIndex,
+			)
+			.map(({ sortOrder: _sortOrder, registrationIndex: _registrationIndex, ...action }) => action);
+		if (actions.length > 0 || !hostLoading) setHeaderActions(actions);
+	}, [plugins, revision, hostLoading, setHeaderActions]);
 
 	// Publish card renderers (keyed by type). The per-message card host resolves
 	// each card descriptor's `type` to one of these.

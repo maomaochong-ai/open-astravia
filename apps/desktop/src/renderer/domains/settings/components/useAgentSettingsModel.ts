@@ -34,6 +34,10 @@ function localizePersona(persona: PersonaOption, t: (key: PersonaI18nKey) => str
 export interface AgentSettingsModel {
 	actions: {
 		applyPersonalization: () => Promise<void>;
+		/** 放弃弹窗里未应用的草稿，回到已应用的自定义指令。 */
+		discardCustomPromptDraft: () => void;
+		/** 换人设：立即生效，只带上已应用的自定义指令，不把弹窗里没点应用的草稿一并写入。 */
+		selectPersona: (value: string) => Promise<void>;
 		setCustomPrompt: (value: string) => void;
 		setPersonaId: (value: string) => void;
 		toggleAgentSkills: (checked: boolean) => void;
@@ -61,8 +65,10 @@ interface AgentSettingsLabels {
 	appOpDescription: string;
 	applied: string;
 	apply: string;
+	cancel: string;
 	customInstructions: string;
 	customInstructionsDescription: string;
+	customInstructionsEdit: string;
 	customInstructionsPlaceholder: string;
 	defaultPersona: string;
 	inputPrediction: string;
@@ -120,22 +126,21 @@ export function useAgentSettingsModel(): AgentSettingsModel {
 		recordSettingsUsage({ tab: "agent", action: checked ? "enabled" : "disabled", target: "agent-skills" });
 	}, []);
 
-	const dirty = personaId !== applied.personaId || customPrompt !== applied.customPrompt;
+	const dirty = customPrompt !== applied.customPrompt;
 
 	const localizedPersonas = useMemo(() => personas.map((persona) => localizePersona(persona, t)), [personas, t]);
 	const selectedPersona = localizedPersonas.find((persona) => persona.id === personaId);
 
-	const applyPersonalization = useCallback(async () => {
+	const persist = useCallback(async (next: { personaId: string; customPrompt: string }) => {
 		setSaving(true);
 		const startedAt = performance.now();
 		try {
-			const next = { personaId, customPrompt };
 			await window.astravia.session.setPersonalization(next);
 			setApplied(next);
 			recordSettingsUsage({
 				tab: "agent",
 				action: "saved",
-				target: customPrompt.trim() ? "personalization-custom" : "personalization",
+				target: next.customPrompt.trim() ? "personalization-custom" : "personalization",
 			});
 			const elapsed = performance.now() - startedAt;
 			if (elapsed < 450) await new Promise((resolve) => setTimeout(resolve, 450 - elapsed));
@@ -144,7 +149,22 @@ export function useAgentSettingsModel(): AgentSettingsModel {
 		} finally {
 			setSaving(false);
 		}
-	}, [customPrompt, personaId]);
+	}, []);
+
+	const applyPersonalization = useCallback(
+		() => persist({ personaId, customPrompt }),
+		[customPrompt, personaId, persist],
+	);
+
+	const selectPersona = useCallback(
+		async (value: string) => {
+			setPersonaId(value);
+			await persist({ personaId: value, customPrompt: applied.customPrompt });
+		},
+		[applied.customPrompt, persist],
+	);
+
+	const discardCustomPromptDraft = useCallback(() => setCustomPrompt(applied.customPrompt), [applied.customPrompt]);
 
 	const labels = useMemo<AgentSettingsLabels>(
 		() => ({
@@ -155,8 +175,10 @@ export function useAgentSettingsModel(): AgentSettingsModel {
 			appOpDescription: t("agentSettings.appOpDesc"),
 			applied: t("agentSettings.applied"),
 			apply: t("agentSettings.apply"),
+			cancel: t("cancel"),
 			customInstructions: t("agentSettings.customInstructions"),
 			customInstructionsDescription: t("agentSettings.customInstructionsDesc"),
+			customInstructionsEdit: t("agentSettings.customInstructionsEdit"),
 			customInstructionsPlaceholder: t("agentSettings.customInstructionsPlaceholder"),
 			defaultPersona: t("agentSettings.default"),
 			inputPrediction: t("agentSettings.inputPrediction"),
@@ -175,6 +197,8 @@ export function useAgentSettingsModel(): AgentSettingsModel {
 	return {
 		actions: {
 			applyPersonalization,
+			discardCustomPromptDraft,
+			selectPersona,
 			setCustomPrompt,
 			setPersonaId,
 			toggleAgentSkills,

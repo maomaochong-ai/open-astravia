@@ -70,6 +70,7 @@ vi.mock("../../components/SandboxGrantsBadge", () => ({
 vi.mock("@astravia-org/theme-ui/chat", () => ({
 	AgentAvatarView: ({ name }: { name: string }) => <span data-testid={`avatar-${name}`}>{name}</span>,
 	ChatHeaderActions: {
+		Group: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 		Export: ({ title, onClick }: { title: string; onClick: () => void }) => <button onClick={onClick}>{title}</button>,
 		Pin: ({ title, onClick }: { title: string; onClick: () => void }) => <button onClick={onClick}>{title}</button>,
 		Terminal: ({ title, onClick }: { title: string; onClick: () => void }) => <button onClick={onClick}>{title}</button>,

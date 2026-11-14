@@ -106,7 +106,7 @@ export function InputBarActiveActions({
 
 export function InputBarModelAction({ visible, updateActiveSession = true, scope }: { readonly visible: boolean; readonly updateActiveSession?: boolean; readonly scope?: ModelSelectorScope }): JSX.Element {
 	return (
-		<div className={visible ? "min-w-0 shrink" : "hidden"}>
+		<div className={visible ? "flex min-w-0 shrink" : "hidden"}>
 			<ModelSelector updateActiveSession={updateActiveSession} scope={scope} />
 		</div>
 	);

@@ -12,12 +12,10 @@ export interface ProjectsPanelProps {
 	filter: SidebarFilter;
 	onOpenSession: (cwd: string, sessionPath?: string, executionMode?: SessionExecutionMode) => Promise<void>;
 }
-
 export interface BatchProjectEntry {
 	project: Project;
 	sessions: SidebarConversationInfo[];
 }
-
 export interface ProjectsPanelModel {
 	activeSessionPath: string;
 	activeTeamSessionId: string;
@@ -50,6 +48,8 @@ export interface ProjectsPanelModel {
 		expandBatchProject(cwd: string): void;
 		expandProject(cwd: string): void;
 		isProjectActive(cwd: string): boolean;
+		/** 按需加载某个项目的会话：管理会话面板在项目未展开时直接打开也要看到内容。 */
+		loadSessions(cwd: string): void;
 		navigateProject(cwd: string): void;
 		openClawSettings(): void;
 		removeProject(cwd: string): void;

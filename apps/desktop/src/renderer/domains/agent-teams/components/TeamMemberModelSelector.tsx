@@ -59,6 +59,7 @@ export function TeamMemberModelSelector({
 		defaultBadge: t("modelSelect.defaultBadge"),
 		levelLabel: (level) => t(`modelSelect.reasoningLevel.${level}`, { defaultValue: level }),
 		modelHeader: t("modelSelect.modelHeader"),
+		providerHeader: t("modelSelect.providerHeader"),
 		multiplierLabel: (option: ModelSelectorOptionView) => {
 			const multiplier = options.find((candidate) => candidate.key === option.key)?.multiplier;
 			if (!multiplier) return undefined;

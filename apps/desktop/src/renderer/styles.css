@@ -49,7 +49,7 @@
 	--secondary-foreground: rgb(220, 224, 234);
 	--muted: rgb(30, 30, 32);
 	--muted-foreground: rgb(138, 144, 160);
-	--accent: rgb(41, 41, 43);
+	--accent: rgb(40, 44, 62);
 	--accent-foreground: rgb(220, 224, 234);
 	--destructive: rgb(255, 91, 91);
 	--destructive-foreground: rgb(0, 0, 0);
@@ -143,7 +143,7 @@
 	--secondary-foreground: rgb(0, 0, 0);
 	--muted: rgb(242, 242, 242);
 	--muted-foreground: rgb(82, 82, 82);
-	--accent: rgb(235, 235, 235);
+	--accent: rgb(226, 232, 248);
 	--accent-foreground: rgb(0, 0, 0);
 	--destructive: rgb(229, 75, 79);
 	--destructive-foreground: rgb(255, 255, 255);
@@ -579,6 +579,29 @@ textarea:disabled,
 	.sidebar-dock
 	.sidebar-surface {
 	--sidebar-vibrancy-tint: 35%;
+}
+
+/* 有弹出层蒙层（.overlay-backdrop，见 @astravia-org/ui 的 OVERLAY_BACKDROP_CLASS）时把侧边栏换成实色。
+   侧边栏半透明是为了透出原生毛玻璃，但 backdrop-filter 模糊出的结果同样半透明，
+   盖不住底下仍然清晰的文字，会出现「主内容糊了、侧边栏字还是清楚的」。换成实色后蒙层
+   才能把整块都模糊掉。进入时不过渡（蒙层自己在淡入）；退出时按上面的 240ms 淡回半透明。 */
+:root[data-platform="mac"]:has(.overlay-backdrop)
+	.sidebar-dock
+	.sidebar-surface {
+	background-color: var(--background);
+	transition: none;
+}
+
+/* 弹出层蒙层（OVERLAY_BACKDROP_CLASS 的 .overlay-backdrop）：模糊背景 + 磨砂底色。
+   选择器带 :root 是为了压过 Tailwind 的 backdrop-blur 工具类（保留它作为没有本样式时的兜底）。 */
+:root .overlay-backdrop {
+	backdrop-filter: blur(10px);
+	/* 磨砂的浅色而不是灰压暗：灰蒙蒙的底色是「脏」的主要来源。 */
+	background-color: rgb(255 255 255 / 0.2);
+}
+
+:root[data-mode="dark"] .overlay-backdrop {
+	background-color: rgb(0 0 0 / 0.18);
 }
 
 /* 明暗切换期间先遮住原生 vibrancy（它由主进程翻转，动不了也不进 View Transition 快照，

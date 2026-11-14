@@ -1,18 +1,15 @@
-import { useCursorStyle } from "@shared/hooks/useCustomCursor";
 import { useHeroOrnament } from "@shared/hooks/useHeroOrnament";
 import { useLanguage } from "@shared/hooks/useLanguage";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
 import { useNewSessionTexture } from "@shared/hooks/useNewSessionTexture";
-import { useSidebarStyle } from "@shared/hooks/useSidebarStyle";
 import { useTheme } from "@shared/hooks/useTheme";
 import { useUiFont } from "@shared/hooks/useUiFont";
+import { useUiZoom } from "@shared/hooks/useUiZoom";
 import type { ThemeMode } from "@shared/store/atoms";
 import { COLOR_THEME_LABEL_KEYS } from "@shared/theme/color-theme-label-keys";
-import { type CursorStyle, STOAT_CURSOR_PREVIEW_URL } from "@shared/theme/cursor";
 import { NEW_SESSION_TEXTURE_CATALOG, type NewSessionTextureId } from "@shared/theme/new-session-texture";
 import { ORNAMENT_CATALOG, type OrnamentId } from "@shared/theme/ornament";
 import { useThemeRuntime } from "@shared/theme/runtime";
-import type { SidebarStyle } from "@shared/theme/sidebar-style";
 import { THEMES } from "@shared/theme/themes";
 import type { ThemeDef } from "@shared/theme/tokens";
 import type { UiFontFamily } from "@shared/theme/ui-font";
@@ -20,6 +17,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { isAppearanceUiThemeEnabled } from "@/shared/feature-flags";
 import type { LanguagePreference } from "@/shared/i18n/config";
+import { UI_ZOOM_DEFAULT, UI_ZOOM_STEPS, uiZoomStepIndex } from "@/shared/ui-zoom";
 import defaultThemePreview from "../assets/default.webp";
 import xianxiaThemePreview from "../assets/xianxia.webp";
 import { SETTINGS_SECTION } from "../registry";
@@ -53,16 +51,6 @@ export interface AppearanceUiThemeOption {
 	unavailable: boolean;
 }
 
-export interface AppearanceCursorOption {
-	active: boolean;
-	hint: string;
-	id: CursorStyle;
-	label: string;
-	/** 预览图 URL；缺省时用 icon */
-	preview?: string;
-	icon?: string;
-}
-
 export interface AppearanceOrnamentOption {
 	active: boolean;
 	hint: string;
@@ -79,13 +67,6 @@ export interface AppearanceTextureOption {
 	label: string;
 }
 
-export interface AppearanceSidebarStyleOption {
-	active: boolean;
-	hint: string;
-	id: SidebarStyle;
-	label: string;
-}
-
 export interface AppearanceFontOption<T extends string = UiFontFamily> {
 	active: boolean;
 	hint: string;
@@ -98,16 +79,15 @@ export interface AppearanceSettingsModel {
 		changeMode: (mode: ThemeMode, point: AppearancePoint) => void;
 		changeThemeName: (id: string, point: AppearancePoint) => void;
 		selectUiTheme: (id: string) => void;
-		setCursorStyle: (style: CursorStyle) => void;
 		setOrnament: (id: OrnamentId) => void;
-		setSidebarStyle: (style: SidebarStyle) => void;
 		setTexture: (id: NewSessionTextureId) => void;
 		/** 全局字体：界面、消息正文、代码与终端一起换。 */
 		setFont: (family: UiFontFamily) => void;
+		/** 界面大小：只接受档位表里的值，主进程负责套用到主窗口。 */
+		setUiZoom: (factor: number) => void;
+		resetUiZoom: () => void;
 	};
 	activeUiThemeId: string;
-	cursorOptions: AppearanceCursorOption[];
-	cursorStyle: CursorStyle;
 	labels: {
 		languageHint: string;
 		/** 「新会话页装饰」这块合并区域的说明，点明装饰件与纹理只影响新会话页。 */
@@ -115,12 +95,11 @@ export interface AppearanceSettingsModel {
 		newSessionDecorTitle: string;
 		ornamentHint: string;
 		sections: {
-			cursor: string;
+			uiZoom: string;
 			language: string;
 			mode: string;
 			font: string;
 			ornament: string;
-			sidebar: string;
 			texture: string;
 			theme: string;
 			uiTheme: string;
@@ -129,6 +108,9 @@ export interface AppearanceSettingsModel {
 		title: string;
 		fontHint: string;
 		fontFamily: string;
+		uiZoomSliderLabel: string;
+		uiZoomHint: string;
+		uiZoomReset: string;
 	};
 	/** 用户语言偏好（含 system），用于选择器高亮。 */
 	language: LanguagePreference;
@@ -142,13 +124,18 @@ export interface AppearanceSettingsModel {
 	font: UiFontFamily;
 	/** 是否展示「界面主题」区段（`ASTRAVIA_SHOW_UI_THEME=true`） */
 	showUiTheme: boolean;
-	sidebarStyle: SidebarStyle;
-	sidebarStyleOptions: AppearanceSidebarStyleOption[];
 	textureId: NewSessionTextureId;
 	textureOptions: AppearanceTextureOption[];
 	themeName: string;
 	themes: ThemeDef[];
 	uiThemes: AppearanceUiThemeOption[];
+	/** 界面大小：六档吸附滑块与快捷键共用同一列档位。 */
+	uiZoom: {
+		factor: number;
+		stepIndex: number;
+		steps: readonly number[];
+		default: number;
+	};
 }
 
 type AppearanceSettingsActions = AppearanceSettingsModel["actions"];
@@ -204,34 +191,6 @@ const UI_THEME_OPTIONS = [
 	},
 ] as const;
 
-const CURSOR_OPTIONS = [
-	{
-		id: "default" as const,
-		labelKey: "cursorDefaultTitle",
-		hintKey: "cursorDefaultHint",
-		icon: "icon-[mdi--cursor-default-outline]",
-	},
-	{
-		id: "stoat" as const,
-		labelKey: "cursorStoatTitle",
-		hintKey: "cursorStoatHint",
-		preview: STOAT_CURSOR_PREVIEW_URL,
-	},
-] as const;
-
-const SIDEBAR_STYLE_OPTIONS = [
-	{
-		id: "classic" as const,
-		labelKey: "sidebarStyleClassicTitle",
-		hintKey: "sidebarStyleClassicHint",
-	},
-	{
-		id: "floating" as const,
-		labelKey: "sidebarStyleFloatingTitle",
-		hintKey: "sidebarStyleFloatingHint",
-	},
-] as const;
-
 /**
  * 内置字族表。只有一档，选定后全局生效（界面、消息正文、代码块、diff、终端）。
  * 顺序按「读长文」到「写代码」排，每档都能在 macOS 与 Windows 落到近似字形。
@@ -260,14 +219,13 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	const { mode, themeName, setMode, setThemeName } = useTheme();
 	const { activeThemeId, availableThemes, selectTheme, status: themeRuntimeStatus } = useThemeRuntime();
 	const { languagePreference, setLanguage } = useLanguage();
-	const { style: cursorStyle, setStyle: setCursorStyle } = useCursorStyle();
-	const { style: sidebarStyle, setStyle: setSidebarStyle } = useSidebarStyle();
 	const { ornamentId, setOrnament } = useHeroOrnament();
 	const { textureId, setTexture } = useNewSessionTexture();
 	const { t } = useTranslation("settings");
 	const narrow = useNarrowScreen();
 
 	const { family: font, setFamily: setFont } = useUiFont();
+	const { factor: uiZoomFactor, setFactor: setUiZoomFactor, reset: resetUiZoomFactor } = useUiZoom();
 	const languages = useMemo<AppearanceLanguageOption[]>(
 		() => [
 			{
@@ -311,19 +269,6 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		[activeThemeId, availableThemes, t, themeRuntimeStatus],
 	);
 
-	const cursorOptions = useMemo<AppearanceCursorOption[]>(
-		() =>
-			CURSOR_OPTIONS.map((option) => ({
-				id: option.id,
-				active: cursorStyle === option.id,
-				label: t(option.labelKey),
-				hint: t(option.hintKey),
-				preview: "preview" in option ? option.preview : undefined,
-				icon: "icon" in option ? option.icon : undefined,
-			})),
-		[cursorStyle, t],
-	);
-
 	const ornamentOptions = useMemo<AppearanceOrnamentOption[]>(
 		() =>
 			ORNAMENT_CATALOG.map((entry) => ({
@@ -347,17 +292,6 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		[t, textureId],
 	);
 
-	const sidebarStyleOptions = useMemo<AppearanceSidebarStyleOption[]>(
-		() =>
-			SIDEBAR_STYLE_OPTIONS.map((option) => ({
-				id: option.id,
-				active: sidebarStyle === option.id,
-				label: t(option.labelKey),
-				hint: t(option.hintKey),
-			})),
-		[sidebarStyle, t],
-	);
-
 	const fontOptions = useMemo<AppearanceFontOption[]>(
 		() => FONT_FAMILY_OPTIONS.map((o) => toFontOption(o.id, font === o.id, t(o.labelKey), t(o.hintKey))),
 		[t, font],
@@ -378,16 +312,16 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	const labels = useMemo(
 		() => ({
 			languageHint: t("languageHint"),
+			uiZoomHint: t("uiZoomHint"),
 			newSessionDecorHint: t("newSessionDecorHint"),
 			newSessionDecorTitle: t("newSessionDecorTitle"),
 			ornamentHint: t("ornamentHint"),
 			sections: {
-				cursor: t(SETTINGS_SECTION["appearance-cursor"].titleKey),
 				language: t(SETTINGS_SECTION["appearance-language"].titleKey),
+				uiZoom: t(SETTINGS_SECTION["appearance-ui-zoom"].titleKey),
 				mode: t(SETTINGS_SECTION["appearance-mode"].titleKey),
 				font: t(SETTINGS_SECTION["appearance-font"].titleKey),
 				ornament: t(SETTINGS_SECTION["appearance-ornament"].titleKey),
-				sidebar: t(SETTINGS_SECTION["appearance-sidebar"].titleKey),
 				texture: t(SETTINGS_SECTION["appearance-texture"].titleKey),
 				theme: t(SETTINGS_SECTION["appearance-theme"].titleKey),
 				uiTheme: t(SETTINGS_SECTION["appearance-ui-theme"].titleKey),
@@ -396,6 +330,8 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 			title: t("appearanceTitle"),
 			fontHint: t("fontHint"),
 			fontFamily: t("fontFamily"),
+			uiZoomSliderLabel: t("uiZoomSliderLabel"),
+			uiZoomReset: t("uiZoomReset"),
 		}),
 		[t],
 	);
@@ -417,15 +353,6 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 				void selectTheme(id);
 				recordSettingsUsage({ tab: "appearance", action: "selected", target: "ui-theme", value: id });
 			},
-			setCursorStyle: (style) => {
-				setCursorStyle(style);
-				recordSettingsUsage({
-					tab: "appearance",
-					action: "changed",
-					target: "cursor-style",
-					value: style,
-				});
-			},
 			setOrnament: (id) => {
 				setOrnament(id);
 				recordSettingsUsage({ tab: "appearance", action: "changed", target: "ornament", value: id });
@@ -434,38 +361,40 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 				setTexture(id);
 				recordSettingsUsage({ tab: "appearance", action: "changed", target: "new-session-texture", value: id });
 			},
-			setSidebarStyle: (style) => {
-				setSidebarStyle(style);
-				recordSettingsUsage({
-					tab: "appearance",
-					action: "changed",
-					target: "sidebar-style",
-					value: style,
-				});
-			},
 			setFont: (family) => {
 				setFont(family);
 				recordSettingsUsage({ tab: "appearance", action: "changed", target: "font", value: family });
 			},
+			setUiZoom: (factor) => {
+				setUiZoomFactor(factor);
+				recordSettingsUsage({ tab: "appearance", action: "changed", target: "ui-zoom", value: String(factor) });
+			},
+			resetUiZoom: () => {
+				resetUiZoomFactor();
+				recordSettingsUsage({
+					tab: "appearance",
+					action: "changed",
+					target: "ui-zoom",
+					value: String(UI_ZOOM_DEFAULT),
+				});
+			},
 		}),
 		[
 			selectTheme,
-			setCursorStyle,
 			setLanguage,
 			setMode,
 			setOrnament,
-			setSidebarStyle,
 			setTexture,
 			setThemeName,
 			setFont,
+			setUiZoomFactor,
+			resetUiZoomFactor,
 		],
 	);
 
 	return {
 		actions,
 		activeUiThemeId: activeThemeId,
-		cursorOptions,
-		cursorStyle,
 		labels,
 		language: languagePreference,
 		languages,
@@ -475,8 +404,6 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		ornamentId,
 		ornamentOptions,
 		showUiTheme: isAppearanceUiThemeEnabled(),
-		sidebarStyle,
-		sidebarStyleOptions,
 		textureId,
 		textureOptions,
 		themeName,
@@ -484,5 +411,11 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		font,
 		fontOptions,
 		uiThemes,
+		uiZoom: {
+			factor: uiZoomFactor,
+			stepIndex: uiZoomStepIndex(uiZoomFactor),
+			steps: UI_ZOOM_STEPS,
+			default: UI_ZOOM_DEFAULT,
+		},
 	};
 }

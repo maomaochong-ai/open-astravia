@@ -10,6 +10,7 @@ import type {
 	PluginFileIconTheme,
 	PluginFilePreviewContribution,
 	PluginGlobalSlotContribution,
+	PluginHeaderActionContribution,
 	PluginInputActionContribution,
 	PluginLocales,
 	PluginNewSessionContextContribution,
@@ -53,6 +54,7 @@ export interface LoadedPlugin {
 	bottomPanels: ResolvedPluginBottomPanelContribution[];
 	inputActions: PluginInputActionContribution[];
 	newSessionContexts: ResolvedPluginNewSessionContextContribution[];
+	headerActions: PluginHeaderActionContribution[];
 	cardRenderers: PluginCardRendererContribution[];
 	toolCallSlots: PluginToolCallSlotContribution[];
 	turnCards: PluginTurnCardContribution[];
@@ -82,6 +84,7 @@ export class PluginLocalContributions {
 	readonly bottomPanels: ResolvedPluginBottomPanelContribution[] = [];
 	readonly inputActions: PluginInputActionContribution[] = [];
 	readonly newSessionContexts: ResolvedPluginNewSessionContextContribution[] = [];
+	readonly headerActions: PluginHeaderActionContribution[] = [];
 	readonly cardRenderers: PluginCardRendererContribution[] = [];
 	readonly toolCallSlots: PluginToolCallSlotContribution[] = [];
 	readonly turnCards: PluginTurnCardContribution[] = [];
@@ -99,6 +102,7 @@ export class PluginLocalContributions {
 		this.bottomPanels.length = 0;
 		this.inputActions.length = 0;
 		this.newSessionContexts.length = 0;
+		this.headerActions.length = 0;
 		this.cardRenderers.length = 0;
 		this.toolCallSlots.length = 0;
 		this.turnCards.length = 0;
@@ -123,6 +127,7 @@ export class PluginLocalContributions {
 			bottomPanels: this.bottomPanels,
 			inputActions: this.inputActions,
 			newSessionContexts: this.newSessionContexts,
+			headerActions: this.headerActions,
 			cardRenderers: this.cardRenderers,
 			toolCallSlots: this.toolCallSlots,
 			turnCards: this.turnCards,

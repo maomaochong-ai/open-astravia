@@ -6,9 +6,14 @@ import { useTranslation } from "react-i18next";
 
 export interface SshHostFormState {
 	label: string;
-	target: string;
+	/** 主机地址：IP、域名，或 ~/.ssh/config 里的别名。 */
+	host: string;
+	/** 用户名，可空（空则由 ssh config 或本机用户名决定）。 */
+	username: string;
 	port: string;
 	identityFile: string;
+	authMethod: "key" | "password";
+	password: string;
 }
 
 /**
@@ -39,11 +44,19 @@ export interface SshHostsSettingsLabels {
 	importDone: string;
 	fieldLabel: string;
 	fieldLabelHint: string;
-	fieldTarget: string;
-	fieldTargetHint: string;
+	fieldHost: string;
+	fieldHostHint: string;
+	fieldUsername: string;
+	fieldUsernameHint: string;
+	passwordIgnoresConfigKey: string;
 	fieldPort: string;
 	fieldIdentityFile: string;
 	fieldIdentityFileHint: string;
+	authKey: string;
+	authPassword: string;
+	fieldPassword: string;
+	fieldPasswordHint: string;
+	fieldPasswordSavedHint: string;
 	test: string;
 	testing: string;
 	testDetails: string;
@@ -81,7 +94,15 @@ export interface SshHostsSettingsModel {
 	};
 }
 
-const EMPTY_FORM: SshHostFormState = { label: "", target: "", port: "", identityFile: "" };
+const EMPTY_FORM: SshHostFormState = {
+	label: "",
+	host: "",
+	username: "",
+	port: "",
+	identityFile: "",
+	authMethod: "key",
+	password: "",
+};
 
 export function useSshHostsSettingsModel(): SshHostsSettingsModel {
 	const { t } = useTranslation("settings");
@@ -129,9 +150,11 @@ export function useSshHostsSettingsModel(): SshHostsSettingsModel {
 	const startEdit = useCallback((host: SshHostSummary) => {
 		setFormState({
 			label: host.label,
-			target: host.target,
+			...splitTarget(host.target),
 			port: host.port === undefined ? "" : String(host.port),
 			identityFile: host.identityFile ?? "",
+			authMethod: host.authMethod ?? "key",
+			password: "",
 		});
 		setFormError(null);
 		setEditingId(host.id);
@@ -145,11 +168,16 @@ export function useSshHostsSettingsModel(): SshHostsSettingsModel {
 	const submit = useCallback(async () => {
 		if (editingId === null) return;
 		const port = form.port.trim();
+		const target = composeTarget(form.username, form.host);
 		const input: SshHostFormInput = {
-			label: form.label.trim() || form.target.trim(),
-			target: form.target.trim(),
+			label: form.label.trim() || target,
+			target,
 			...(port ? { port: Number(port) } : {}),
-			...(form.identityFile.trim() ? { identityFile: form.identityFile.trim() } : {}),
+			...(form.authMethod === "password"
+				? { authMethod: "password" as const, ...(form.password ? { password: form.password } : {}) }
+				: form.identityFile.trim()
+					? { identityFile: form.identityFile.trim() }
+					: {}),
 		};
 		setSaving(true);
 		setFormError(null);
@@ -259,11 +287,19 @@ export function useSshHostsSettingsModel(): SshHostsSettingsModel {
 			importDone: t("sshImportDone", { count: 0 }),
 			fieldLabel: t("sshFieldLabel"),
 			fieldLabelHint: t("sshFieldLabelHint"),
-			fieldTarget: t("sshFieldTarget"),
-			fieldTargetHint: t("sshFieldTargetHint"),
+			fieldHost: t("sshFieldHost"),
+			fieldHostHint: t("sshFieldHostHint"),
+			fieldUsername: t("sshFieldUsername"),
+			fieldUsernameHint: t("sshFieldUsernameHint"),
+			passwordIgnoresConfigKey: t("sshPasswordIgnoresConfigKey"),
 			fieldPort: t("sshFieldPort"),
 			fieldIdentityFile: t("sshFieldIdentityFile"),
 			fieldIdentityFileHint: t("sshFieldIdentityFileHint"),
+			authKey: t("sshAuthKey"),
+			authPassword: t("sshAuthPassword"),
+			fieldPassword: t("sshFieldPassword"),
+			fieldPasswordHint: t("sshFieldPasswordHint"),
+			fieldPasswordSavedHint: t("sshFieldPasswordSavedHint"),
 			test: t("sshTest"),
 			testing: t("sshTesting"),
 			testDetails: t("sshTestDetails"),
@@ -314,6 +350,17 @@ export function classifyProbe(probe: SshHostProbe): SshProbeOutcome {
 	if (missing.length === 0) return { kind: "ok", platform };
 	// 用半角逗号分隔：这个列表会直接拼进中英文两种文案，顿号在英文句子里不成立。
 	return { kind: "ok-missing-tools", platform, tools: missing.join(", ") };
+}
+
+/** `user@host` 拆成两个输入框；别名或纯主机名没有用户名。 */
+export function splitTarget(target: string): { host: string; username: string } {
+	const at = target.lastIndexOf("@");
+	return at <= 0 ? { host: target, username: "" } : { username: target.slice(0, at), host: target.slice(at + 1) };
+}
+
+export function composeTarget(username: string, host: string): string {
+	const name = username.trim();
+	return name ? `${name}@${host.trim()}` : host.trim();
 }
 
 function toMessage(error: unknown): string {

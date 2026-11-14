@@ -14,6 +14,7 @@ function loadedPlugin(id: string, dispose: () => Promise<void>): LoadedPlugin {
 		defaultLocale: "en",
 		locales: {},
 		slots: [],
+		headerActions: [],
 		abilityDetailSlots: [],
 		filePreviews: [],
 		fileExplorerContextMenuActions: [],

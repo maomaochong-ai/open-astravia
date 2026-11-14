@@ -1,4 +1,5 @@
-import type { McpServerConfigData, McpStdioServerConfigData } from "@preload/api.js";
+import type { McpServerConfigData } from "@preload/api.js";
+import { isStdioMcpServer } from "@/shared/mcp-server-kind";
 
 /** settings 命名空间下、内置 MCP 可用的 i18n key（须与 locales 同步扩展） */
 export type BuiltinMcpLabelKey =
@@ -61,7 +62,7 @@ export interface BuiltinMcpPreset {
 	descriptionKey?: BuiltinMcpLabelKey;
 	displayName?: string;
 	description?: string;
-	config: McpStdioServerConfigData | Extract<McpServerConfigData, { type: "http" }>;
+	config: McpServerConfigData;
 	/** 需要用户提供的密钥；有则添加前弹出表单 */
 	secrets?: readonly BuiltinMcpSecretField[];
 	/** 弹窗内展示的「怎么获取」简短步骤（i18n，可用换行） */
@@ -242,6 +243,7 @@ export function matchBuiltinMcpPreset(name: string, config: McpServerConfigData)
 			(preset) => Boolean(preset.packageHint) && preset.config.type === "http" && url.includes(preset.packageHint!),
 		);
 	}
+	if (!isStdioMcpServer(config)) return undefined;
 	const args = config.args?.join(" ") ?? "";
 	return BUILTIN_MCP_PRESETS.find((preset) => preset.packageHint && args.includes(preset.packageHint));
 }
@@ -281,7 +283,7 @@ export function buildBuiltinMcpServerConfig(
 	labels: { displayName: string; description: string },
 	secretValues?: Record<string, string>,
 ): McpServerConfigData {
-	const env: Record<string, string> = { ...(preset.config.type === "http" ? {} : preset.config.env) };
+	const env: Record<string, string> = { ...(isStdioMcpServer(preset.config) ? preset.config.env : {}) };
 	if (secretValues) {
 		for (const [key, value] of Object.entries(secretValues)) {
 			const trimmed = value.trim();
@@ -296,6 +298,7 @@ export function buildBuiltinMcpServerConfig(
 		if (base.managedRuntimeId) return { ...base, managedRuntimeEnv: env };
 		return { ...base, headers: { ...base.headers, ...env } };
 	}
+	if (base.type === "sse") return { ...base, headers: { ...base.headers, ...env } };
 	return { ...base, env: { ...base.env, ...env } };
 }
 
@@ -304,7 +307,13 @@ export function missingRequiredSecrets(preset: BuiltinMcpPreset, config: McpServ
 	const secrets = preset.secrets?.filter((field) => field.required) ?? [];
 	if (secrets.length === 0) return [];
 	const env =
-		config.type === "http" ? (config.managedRuntimeId ? config.managedRuntimeEnv : config.headers) : config.env;
+		config.type === "http"
+			? config.managedRuntimeId
+				? config.managedRuntimeEnv
+				: config.headers
+			: config.type === "sse"
+				? config.headers
+				: config.env;
 	return secrets.filter((field) => !env?.[field.envKey]?.trim());
 }
 
@@ -320,7 +329,13 @@ function stripSecretTemplate(stored: string, template?: string): string {
 
 export function existingSecretValues(preset: BuiltinMcpPreset, config: McpServerConfigData): Record<string, string> {
 	const env =
-		config.type === "http" ? (config.managedRuntimeId ? config.managedRuntimeEnv : config.headers) : config.env;
+		config.type === "http"
+			? config.managedRuntimeId
+				? config.managedRuntimeEnv
+				: config.headers
+			: config.type === "sse"
+				? config.headers
+				: config.env;
 	const values: Record<string, string> = {};
 	for (const field of preset.secrets ?? []) {
 		const current = env?.[field.envKey];

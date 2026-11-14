@@ -3,6 +3,7 @@ import type {
 	McpConfigData,
 	McpHttpServerConfigData,
 	McpServerConfigData,
+	McpSseServerConfigData,
 	McpStdioServerConfigData,
 } from "@preload/api.js";
 import type { MarketMcpServer } from "@shared/lib/api";
@@ -27,7 +28,7 @@ import { recordSettingsUsage } from "./recordSettingsUsage";
 export type McpBuiltinAddResult = "installed" | "needs-setup";
 
 export type McpEditMode = "visual" | "json";
-export type McpTransportType = "stdio" | "http";
+export type McpTransportType = "stdio" | "http" | "sse";
 
 export interface McpAbilityInstallOptions {
 	abilityVersion?: string;
@@ -144,10 +145,10 @@ function validateMcpJsonValue(value: unknown): McpJsonValidationResult {
 	for (const [name, server] of Object.entries(value.mcpServers)) {
 		if (!isRecord(server)) return { valid: false, error: "jsonMissingCommand", name };
 		const type = server.type ?? "stdio";
-		if (type !== "stdio" && type !== "http") {
+		if (type !== "stdio" && type !== "http" && type !== "sse") {
 			return { valid: false, error: "jsonTypeMustBeStdioOrHttp", name };
 		}
-		if (type === "http") {
+		if (type === "http" || type === "sse") {
 			if (typeof server.url !== "string" || !server.url.trim()) {
 				return { valid: false, error: "jsonMissingUrl", name };
 			}
@@ -160,6 +161,13 @@ function validateMcpJsonValue(value: unknown): McpJsonValidationResult {
 
 export function isHttpMcpServerConfigData(config: McpServerConfigData): config is McpHttpServerConfigData {
 	return config.type === "http";
+}
+
+/** 以 URL 连接的远程 server：Streamable HTTP 或旧式 SSE。 */
+export function isRemoteMcpServerConfigData(
+	config: McpServerConfigData,
+): config is McpHttpServerConfigData | McpSseServerConfigData {
+	return config.type === "http" || config.type === "sse";
 }
 
 export interface McpSettingsModelOptions {
@@ -297,7 +305,7 @@ export function useMcpSettingsModel(options?: McpSettingsModelOptions): McpSetti
 			};
 
 			// OAuth 首次添加：先浏览器授权成功，再写入 mcp.json，避免列表提前显示「已添加」
-			if (presetUsesOAuth(preset) && secretsDialogMode === "add" && next.type === "http") {
+			if (presetUsesOAuth(preset) && secretsDialogMode === "add" && isRemoteMcpServerConfigData(next)) {
 				setBusyPresetName(preset.name);
 				setSecretsDialogError(null);
 				setSecretsDialogAuthorizing(true);
@@ -704,7 +712,7 @@ export function useMcpSettingsModel(options?: McpSettingsModelOptions): McpSetti
 
 export function isMcpFormValid(form: McpServerFormState): boolean {
 	if (!form.name.trim()) return false;
-	if (form.transport === "http") return Boolean(form.url.trim());
+	if (form.transport === "http" || form.transport === "sse") return Boolean(form.url.trim());
 	return Boolean(form.command.trim());
 }
 
@@ -740,11 +748,12 @@ function serverToForm(name: string, server: McpServerConfigData): McpServerFormS
 		debug: server.debug ?? false,
 		resourceScope: server.resourceScope,
 	};
-	if (isHttpMcpServerConfigData(server)) {
+	if (isRemoteMcpServerConfigData(server)) {
 		return {
 			...emptyMcpServer,
 			...common,
-			transport: "http",
+			// 旧式 SSE 与 Streamable HTTP 都是 URL 连接，编辑时保留原本的传输方式。
+			transport: server.type,
 			url: server.url,
 			headers: objectToKvLines(server.headers),
 		};
@@ -769,8 +778,11 @@ function formToServer(form: McpServerFormState): McpServerConfigData {
 		: undefined;
 	const startupTimeout = form.startupTimeout.trim() ? Number(form.startupTimeout.trim()) : undefined;
 
-	if (form.transport === "http") {
-		const config: McpHttpServerConfigData = { type: "http", url: form.url.trim() };
+	if (form.transport === "http" || form.transport === "sse") {
+		const config: McpHttpServerConfigData | McpSseServerConfigData = {
+			type: form.transport,
+			url: form.url.trim(),
+		};
 		const headers = kvLinesToObject(form.headers);
 		if (headers) config.headers = headers;
 		if (form.disabled) config.disabled = true;
@@ -828,7 +840,8 @@ function mergeMarketServer(existing: McpServerConfigData | undefined, next: McpS
 		...(existing.autoApprove === undefined ? {} : { autoApprove: [...existing.autoApprove] }),
 		...(existing.resourceScope === undefined ? {} : { resourceScope: existing.resourceScope }),
 	};
-	if (isHttpMcpServerConfigData(existing) && isHttpMcpServerConfigData(next)) {
+	// 两种 URL 传输（http / sse）合并请求头：本地额外填的 header 不应被市场配置冲掉。
+	if (isRemoteMcpServerConfigData(existing) && isRemoteMcpServerConfigData(next)) {
 		const headers = { ...existing.headers, ...next.headers };
 		return {
 			...existing,
@@ -837,7 +850,8 @@ function mergeMarketServer(existing: McpServerConfigData | undefined, next: McpS
 			...(Object.keys(headers).length > 0 ? { headers } : {}),
 		};
 	}
-	if (!isHttpMcpServerConfigData(existing) && !isHttpMcpServerConfigData(next)) {
+	// 两边都是 stdio 才能合并 env：跨传输时字段根本不存在。
+	if (!isRemoteMcpServerConfigData(existing) && !isRemoteMcpServerConfigData(next)) {
 		const env = { ...existing.env, ...next.env };
 		return {
 			...existing,

@@ -24,7 +24,7 @@ function entry(overrides: Partial<ExtensionEntryModel> = {}): ExtensionEntryMode
 		label: "Console",
 		description: "",
 		pluginName: "Browser",
-		icon: "icon-[a]",
+		icon: "icon-[solar--globus-linear]",
 		open: () => undefined,
 		...overrides,
 	};
@@ -164,6 +164,6 @@ describe("ExtensionsSettingsView", () => {
 
 		expect(container.querySelectorAll("img")).toHaveLength(1);
 		expect(container.querySelector('img[src="astravia-plugin://demo/icon.png"]')).toBeTruthy();
-		expect(container.querySelector("span.icon-\\[a\\]")).toBeTruthy();
+		expect(container.querySelector("span.icon-\\[solar--globus-linear\\]")).toBeTruthy();
 	});
 });

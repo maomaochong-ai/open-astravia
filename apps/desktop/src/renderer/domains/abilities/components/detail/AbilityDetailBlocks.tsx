@@ -80,12 +80,15 @@ function AbilityDetailBlockView({
 		return (
 			<section className="flex flex-col gap-3">
 				<DetailChapterTitle>{block.title}</DetailChapterTitle>
-				<div className="flex flex-col">
+				<div className="flex flex-col overflow-hidden rounded-xl bg-foreground/[0.05]">
 					{block.items.map((item, index) => (
 						<Button
 							key={`${item.label}-${item.href}`}
 							variant="ghost"
-							className={cn("h-auto w-full justify-between rounded-none px-0 py-3 text-[13px] font-medium", index > 0 && DETAIL_RULE)}
+							className={cn(
+								"h-auto w-full justify-between rounded-none border-0 px-4 py-3 text-[13px] font-medium",
+								index > 0 && DETAIL_RULE,
+							)}
 							onClick={() => void window.astravia.shell.openExternal(item.href)}
 						>
 							{item.label}

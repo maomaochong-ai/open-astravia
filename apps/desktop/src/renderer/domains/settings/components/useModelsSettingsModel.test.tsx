@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
+import { SELECTED_MODEL_STORAGE_KEY } from "@shared/store/chat-atoms";
+import { localModelsConfigAtom } from "@shared/store/model-catalog";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { getDefaultStore } from "jotai";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { useModelsSettingsModel } from "./useModelsSettingsModel";
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
@@ -165,5 +168,30 @@ describe("useModelsSettingsModel clear provider models", () => {
 
 		// 没有模型可清时不应发起保存。
 		expect(window.astravia.models.set).not.toHaveBeenCalled();
+	});
+});
+
+/**
+ * 「默认模型」与「上次选择的模型」是两个事实源：设置页读前者，新会话读后者。
+ * 清空默认却只清前者，用户会看到「未设置」，而新会话继续按记忆里的模型发消息。
+ */
+describe("useModelsSettingsModel 清空默认模型", () => {
+	const DEFAULTS = { providers: { local: { baseUrl: "http://localhost:11434/v1", models: [{ id: "qwen3" }] } } };
+
+	afterEach(() => {
+		getDefaultStore().set(localModelsConfigAtom, DEFAULTS);
+		localStorage.removeItem(SELECTED_MODEL_STORAGE_KEY);
+	});
+
+	it("清空默认模型时一并删掉新会话读取的记忆键", async () => {
+		const { set } = mockModelsApi();
+		getDefaultStore().set(localModelsConfigAtom, { ...DEFAULTS, defaultModel: "local/qwen3" });
+		localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "local/qwen3");
+
+		const { result } = renderHook(() => useModelsSettingsModel());
+		await act(() => result.current.onChangeDefaultModel(null));
+
+		expect(set).toHaveBeenCalledWith(expect.objectContaining({ defaultModel: undefined }));
+		expect(localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBeNull();
 	});
 });

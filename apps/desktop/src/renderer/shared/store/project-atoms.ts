@@ -268,3 +268,5 @@ export const sessionContextMenuAtom = atom<{
 } | null>(null);
 export const renamingSessionPathAtom = atom<string | null>(null);
 export const projectContextMenuAtom = atom<{ x: number; y: number; project: Project } | null>(null);
+/** 「管理会话」面板正在管理的项目；null 表示面板关闭。 */
+export const manageSessionsProjectAtom = atom<Project | null>(null);

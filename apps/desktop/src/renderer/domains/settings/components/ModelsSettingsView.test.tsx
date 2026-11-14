@@ -10,6 +10,9 @@ vi.mock("../ai-assist", () => ({ SettingsAiAssist: () => null }));
 vi.mock("@astravia-org/theme-ui/settings", () => ({
 	SettingsPageShellView: ({ children }: { children: React.ReactNode }) => <main>{children}</main>,
 }));
+vi.mock("./ModelsDefaultModelSection", () => ({
+	ModelsDefaultModelSection: () => <section data-testid="model-settings-section">default-model</section>,
+}));
 vi.mock("./PresetProvidersSection", () => ({
 	PresetProvidersSection: () => <section data-testid="model-settings-section">preset-providers</section>,
 }));
@@ -31,6 +34,7 @@ describe("ModelsSettingsView", () => {
 		render(<ModelsSettingsView model={model} transport={transport} />);
 
 		expect(screen.getAllByTestId("model-settings-section").map((section) => section.textContent)).toEqual([
+			"default-model",
 			"preset-providers",
 			"providers",
 			"transport",

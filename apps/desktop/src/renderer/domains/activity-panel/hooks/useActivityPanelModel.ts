@@ -1,3 +1,4 @@
+import { useSidebarState } from "@shared/app-shell/sidebar-state";
 import type { TabBarItem } from "@shared/components/ui/tab-bar";
 import { useNarrowScreen, useWindowWidth } from "@shared/hooks/useNarrowScreen";
 import { type ActivityTabKey, useProjectProfile } from "@shared/lib/project-profile";
@@ -5,19 +6,17 @@ import { withTabVisibility } from "@shared/lib/tab-visibility";
 import {
 	ACTIVITY_PANEL_MIN_CHAT_AREA,
 	ACTIVITY_PANEL_MIN_WIDTH,
+	activityPanelFocusAtom,
 	activityPanelMaxWidth,
 	activityPanelOpenAtom,
 	activityPanelResizingAtom,
 	activityPanelTabByProjectAtom,
 	activityPanelWidthAtom,
-	activityPanelWidthModeAtom,
 	activityTabOrderAtom,
 	attachedPluginTabsAtom,
 	type FloatingActivityTabPlacement,
 	hiddenActivityTabsAtom,
-	resolveActivityPanelWidth,
-	sidebarCollapsedAtom,
-	sidebarWidthAtom,
+	setActivityPanelSidebarReserveAtom,
 	syncActivityPanelPreviewAvailabilityAtom,
 	syncActivityPanelWidthToWindowAtom,
 } from "@shared/store/atoms";
@@ -66,15 +65,25 @@ export function useActivityPanelModel({
 	const [isResizing, setIsResizing] = useAtom(activityPanelResizingAtom);
 	const syncPreviewAvailability = useSetAtom(syncActivityPanelPreviewAvailabilityAtom);
 	const syncWidthToWindow = useSetAtom(syncActivityPanelWidthToWindowAtom);
-	const widthMode = useAtomValue(activityPanelWidthModeAtom);
+	const setSidebarReserve = useSetAtom(setActivityPanelSidebarReserveAtom);
 	const [overflowKeys, setOverflowKeys] = useState<ActivityTabKey[]>([]);
 	const [tabByProject, setTabByProject] = useAtom(activityPanelTabByProjectAtom);
 	const windowWidth = useWindowWidth();
-	const sidebarWidth = useAtomValue(sidebarWidthAtom);
-	const maxWidth = activityPanelMaxWidth(windowWidth);
-	const [sidebarCollapsed, setSidebarCollapsed] = useAtom(sidebarCollapsedAtom);
-	const widthCollapsedSidebarRef = useRef<boolean | null>(null);
-	const prevSidebarCollapsedRef = useRef(sidebarCollapsed);
+	const sidebar = useSidebarState();
+	// 铺满时侧栏与全局页头整块让位，占位必须归 0：否则面板上限会被一条并不存在的左栏扣掉。
+	const activityFocus = useAtomValue(activityPanelFocusAtom);
+	const sidebarReserve = activityFocus ? 0 : sidebar.width;
+	const maxWidth = activityPanelMaxWidth(windowWidth, sidebarReserve);
+	/**
+	 * 面板何时不再占内容行、改为从底部抽屉滑出。
+	 *
+	 * 侧栏常驻后，一列面板必须同时容下侧栏占位、面板最小宽与聊天区最小宽；窗口放不下时
+	 * 继续占列会把聊天区压成一条窄条，输入栏直接挤变形。改走抽屉后聊天区宽度不变，
+	 * 侧栏也不用因此让位。用户手动收起侧栏时占位变 0，阈值随之回落；铺满时面板本来就
+	 * 占满整行，不能又把它降级成抽屉（否则铺满按钮只会剩下图标变化）。
+	 */
+	const panelSheetThreshold = sidebarReserve + ACTIVITY_PANEL_MIN_WIDTH + ACTIVITY_PANEL_MIN_CHAT_AREA;
+	const panelAsSheet = !activityFocus && (narrow || windowWidth < panelSheetThreshold);
 	const liveWidthRef = useRef(width);
 	const { profile } = useProjectProfile(cwd);
 	const mainTabListRef = useRef<HTMLDivElement | null>(null);
@@ -156,34 +165,14 @@ export function useActivityPanelModel({
 		scopeKey: workspaceId,
 	});
 	const floatingKeys = useMemo(
-		() => (narrow ? new Set<ActivityTabKey>() : floating.model.floatingKeys),
-		[narrow, floating.model.floatingKeys],
+		() => (panelAsSheet ? new Set<ActivityTabKey>() : floating.model.floatingKeys),
+		[panelAsSheet, floating.model.floatingKeys],
 	);
 	const dockedTabItems = useMemo(
 		() => tabItems.filter((item) => !floatingKeys.has(item.key)),
 		[tabItems, floatingKeys],
 	);
 
-	const reconcileSidebarForWidth = useCallback(
-		(liveWidth: number): void => {
-			const openLimit = Math.max(
-				ACTIVITY_PANEL_MIN_WIDTH,
-				windowWidth - sidebarWidth - ACTIVITY_PANEL_MIN_CHAT_AREA,
-			);
-			const shouldCollapse = isOpen && liveWidth > openLimit;
-			if (shouldCollapse) {
-				if (widthCollapsedSidebarRef.current === null) {
-					widthCollapsedSidebarRef.current = sidebarCollapsed;
-					setSidebarCollapsed(true);
-				}
-			} else if (widthCollapsedSidebarRef.current !== null) {
-				const restore = widthCollapsedSidebarRef.current;
-				widthCollapsedSidebarRef.current = null;
-				setSidebarCollapsed(restore);
-			}
-		},
-		[isOpen, setSidebarCollapsed, sidebarCollapsed, sidebarWidth, windowWidth],
-	);
 	const onResizeStart = useCallback(() => {
 		liveWidthRef.current = width;
 		setIsResizing(true);
@@ -192,9 +181,8 @@ export function useActivityPanelModel({
 		(liveWidth: number) => {
 			liveWidthRef.current = liveWidth;
 			syncPreviewAvailability(liveWidth);
-			reconcileSidebarForWidth(liveWidth);
 		},
-		[reconcileSidebarForWidth, syncPreviewAvailability],
+		[syncPreviewAvailability],
 	);
 	const onResizeEnd = useCallback(
 		(finalWidth: number) => {
@@ -207,10 +195,15 @@ export function useActivityPanelModel({
 	const onClose = useCallback(() => setOpen(false), [setOpen]);
 	useEffect(() => () => setIsResizing(false), [setIsResizing]);
 
+	// 侧栏可见性（或铺满状态）变化时把占位宽度写进宽度原子：面板上限要扣除它，侧栏本身不动。
+	useEffect(() => {
+		setSidebarReserve(sidebarReserve);
+	}, [setSidebarReserve, sidebarReserve]);
+
 	// 窗口尺寸变化时按宽度意图重解析：拉满态跟着窗口一起变宽，固定像素则夹紧/回弹。
 	useEffect(() => {
 		syncWidthToWindow(windowWidth);
-	}, [windowWidth, syncWidthToWindow]);
+	}, [syncWidthToWindow, windowWidth]);
 
 	/**
 	 * 打开面板时按**当下**的窗口宽度再解析一次。
@@ -225,37 +218,6 @@ export function useActivityPanelModel({
 		if (!isOpen) return;
 		syncWidthToWindow(window.innerWidth);
 	}, [isOpen, syncWidthToWindow]);
-
-	/**
-	 * 当前窗口宽度下面板**应有**的宽度。侧边栏联动必须用它而不是 `width`：`width` 由上面的
-	 * effect 异步写回，窗口刚变宽的那一轮里它还是旧值，用旧宽度会误判成「面板不再过宽」而
-	 * 展开侧边栏，下一轮又把面板压回 openLimit——拉满态会因此被打回固定宽度。
-	 */
-	const effectiveWidth = resolveActivityPanelWidth(widthMode, windowWidth);
-
-	useEffect(() => {
-		const openLimit = Math.max(ACTIVITY_PANEL_MIN_WIDTH, windowWidth - sidebarWidth - ACTIVITY_PANEL_MIN_CHAT_AREA);
-		const collapsedChanged = prevSidebarCollapsedRef.current !== sidebarCollapsed;
-		prevSidebarCollapsedRef.current = sidebarCollapsed;
-		if (collapsedChanged && !sidebarCollapsed && isOpen && effectiveWidth > openLimit) {
-			widthCollapsedSidebarRef.current = null;
-			setWidth(openLimit);
-			return;
-		}
-
-		const sidebarDecisionWidth = isResizing ? liveWidthRef.current : effectiveWidth;
-		const shouldCollapse = isOpen && sidebarDecisionWidth > openLimit;
-		if (shouldCollapse) {
-			if (widthCollapsedSidebarRef.current === null) {
-				widthCollapsedSidebarRef.current = sidebarCollapsed;
-				setSidebarCollapsed(true);
-			}
-		} else if (widthCollapsedSidebarRef.current !== null) {
-			const restore = widthCollapsedSidebarRef.current;
-			widthCollapsedSidebarRef.current = null;
-			setSidebarCollapsed(restore);
-		}
-	}, [effectiveWidth, windowWidth, sidebarWidth, isOpen, isResizing, sidebarCollapsed, setSidebarCollapsed, setWidth]);
 
 	const activeTab = useMemo<ActivityTabKey>(() => {
 		if (knowledgeHistory && dockedTabItems.some((item) => item.key === "knowledge-history")) {
@@ -487,17 +449,16 @@ export function useActivityPanelModel({
 			onTabDragStart,
 		],
 	);
-
 	return {
 		actions,
 		model: {
 			activeTab,
 			availableTabs,
-			bottomSheet: narrow && isOpen,
+			bottomSheet: panelAsSheet && isOpen,
 			cwd,
 			workspaceId,
-			dockPreviewBounds: narrow ? null : floating.model.dockPreviewBounds,
-			floatingTabs: narrow ? EMPTY_FLOATING_TABS : floating.model.floatingTabs,
+			dockPreviewBounds: panelAsSheet ? null : floating.model.dockPreviewBounds,
+			floatingTabs: panelAsSheet ? EMPTY_FLOATING_TABS : floating.model.floatingTabs,
 			isOpen,
 			isResizing,
 			knowledgeHistory,
@@ -505,7 +466,7 @@ export function useActivityPanelModel({
 			mainTabListRef,
 			minWidth: ACTIVITY_PANEL_MIN_WIDTH,
 			mountedTabs,
-			narrowSheet: narrow,
+			narrowSheet: panelAsSheet,
 			overflowTabs,
 			panelRef,
 			restorableTabs,

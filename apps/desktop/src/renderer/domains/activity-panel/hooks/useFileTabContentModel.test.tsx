@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import * as explorerHost from "@domains/plugins/runtime/plugin-file-explorer-host";
 import { inlineFilePreviewAtom, openInlineFilePreviewAtom } from "@shared/store/atoms";
 import { act, cleanup, render, renderHook } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
@@ -99,4 +100,36 @@ it("keeps a preview opened before the file tab mounts when the tab remounts imme
 	view.unmount();
 	await act(async () => {});
 	expect(store.get(inlineFilePreviewAtom)).toBeNull();
+});
+
+// ADR-0162：预览顶栏「在文件树中定位」——目录树收起时先展开，等它绑定后再定位。
+it("locate 在树展开时直接定位，收起时先展开再定位", async () => {
+	const reveal = vi.spyOn(explorerHost, "revealPluginFileExplorerPath").mockResolvedValue();
+	const { result } = setup();
+
+	act(() => result.current.locate({ name: "a.ts", path: "/a.ts" }));
+	expect(reveal).toHaveBeenCalledWith("/a.ts", { select: true, focus: true });
+
+	reveal.mockClear();
+	act(() => result.current.toggleTree());
+	expect(result.current.treeCollapsed).toBe(true);
+	act(() => result.current.locate({ name: "a.ts", path: "/a.ts" }));
+	expect(result.current.treeCollapsed).toBe(false);
+
+	// 展开后等一次已提交的绘制，FilesPanel 绑定完成才能定位。
+	await paintFrame();
+	await paintFrame();
+	await act(async () => {
+		await vi.runAllTimersAsync();
+	});
+	expect(reveal).toHaveBeenCalledWith("/a.ts", { select: true, focus: true });
+	reveal.mockRestore();
+});
+
+it("locate 对没有路径的条目不发请求", () => {
+	const reveal = vi.spyOn(explorerHost, "revealPluginFileExplorerPath").mockResolvedValue();
+	const { result } = setup();
+	act(() => result.current.locate({ name: "a.ts" }));
+	expect(reveal).not.toHaveBeenCalled();
+	reveal.mockRestore();
 });

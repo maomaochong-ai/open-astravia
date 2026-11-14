@@ -33,7 +33,6 @@ function stubModel(overrides: { expandedProvider?: string | null } = {}): Models
 		onCopyProviderApiKey: vi.fn(),
 		onStartEditModel: vi.fn(),
 		onDeleteModel: vi.fn(),
-		onSetDefaultModel: vi.fn(),
 		onStartFetchProviderModels: vi.fn(),
 	} as unknown as ModelsSettingsModel;
 }

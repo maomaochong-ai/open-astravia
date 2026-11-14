@@ -227,6 +227,7 @@ export function TeamModelSelector({
 						noResultsHint: t("common:modelSelect.noResultsHint"),
 						reasoningHeader: t("common:modelSelect.reasoningHeader"),
 						modelHeader: t("common:modelSelect.modelHeader"),
+						providerHeader: t("common:modelSelect.providerHeader"),
 						cloudOnly: t("common:modelSelect.cloudOnly"),
 				favoritesHeader: t("common:modelSelect.favoritesHeader"),
 				favorite: t("common:modelSelect.favorite"),

@@ -6,7 +6,6 @@ import {
 	pageHeaderTitleAtom,
 	pageHeaderTitleBadgeAtom,
 	pageHeaderTitleHiddenAtom,
-	pageHeaderUtilitySlotAtom,
 } from "@shared/store/atoms";
 import { resolveThemePageTitle, useActiveThemePageRoute } from "@shared/theme/pages";
 import { useMatches } from "@tanstack/react-router";
@@ -38,7 +37,6 @@ export function usePageHeaderModel({
 	const path = matches[matches.length - 1]?.pathname ?? "/";
 	const titleOverride = useAtomValue(pageHeaderTitleAtom);
 	const titleHidden = useAtomValue(pageHeaderTitleHiddenAtom);
-	const utilitySlot = useAtomValue(pageHeaderUtilitySlotAtom);
 	const titleBadge = useAtomValue(pageHeaderTitleBadgeAtom);
 	const rightSlot = useAtomValue(pageHeaderRightSlotAtom);
 	const leftSlot = useAtomValue(pageHeaderLeftSlotAtom);
@@ -60,7 +58,6 @@ export function usePageHeaderModel({
 		path,
 		rightSlot: workspaceViewHeader?.right ?? rightSlot,
 		sidebarTriggerTitle,
-		utilitySlot,
 		title,
 		titleBadge,
 		titleHidden: titleHidden || workspaceViewHeader?.hideTitle === true,

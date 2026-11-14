@@ -97,11 +97,11 @@ export function ImChannelConfigDialog({
 					<div className="flex items-center gap-2">
 						{isWhatsApp && (
 							<>
-								<Button variant="outline" onClick={() => void model.onBind()} disabled={model.busy}>{t("imWhatsappBind")}</Button>
-								<Button variant="outline" onClick={() => void model.onLogout()} disabled={model.busy}>{t("imWhatsappLogout")}</Button>
+								<Button variant="field" onClick={() => void model.onBind()} disabled={model.busy}>{t("imWhatsappBind")}</Button>
+								<Button variant="field" onClick={() => void model.onLogout()} disabled={model.busy}>{t("imWhatsappLogout")}</Button>
 							</>
 						)}
-						{!isWhatsApp && !isIMessage && <Button variant="outline" onClick={() => void model.onTest()} disabled={model.busy}>{t("testConnection")}</Button>}
+						{!isWhatsApp && !isIMessage && <Button variant="field" onClick={() => void model.onTest()} disabled={model.busy}>{t("testConnection")}</Button>}
 						{!isWhatsApp && <Button onClick={() => void model.onSave()} disabled={model.busy}>{t("saveLabel")}</Button>}
 					</div>
 				</DialogFooter>

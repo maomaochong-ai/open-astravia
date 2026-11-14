@@ -1,5 +1,6 @@
 import { ProjectsPanelMenusView } from "@astravia-org/theme-ui/project/ProjectsPanelMenusView";
 import { ConversationTagEditorDialog } from "../../../ConversationTagEditorDialog";
+import { ManageSessionsSplash } from "../../../ManageSessionsSplash";
 import { useProjectsPanelMenusModel } from "../../../../hooks/useProjectsPanelMenusModel";
 import { ProjectContextMenu } from "../../../ProjectContextMenu";
 import { SessionContextMenu } from "../../../SessionContextMenu";
@@ -14,7 +15,12 @@ export function ProjectsPanelMenus({ model }: ProjectsPanelMenusProps): JSX.Elem
 
 	return (
 		<ProjectsPanelMenusView
-			dialogs={<ConversationTagEditorDialog />}
+			dialogs={
+				<>
+					<ConversationTagEditorDialog />
+					<ManageSessionsSplash model={model} />
+				</>
+			}
 			sessionMenu={
 				menus.contextMenu ? (
 					<SessionContextMenu
@@ -36,6 +42,7 @@ export function ProjectsPanelMenus({ model }: ProjectsPanelMenusProps): JSX.Elem
 						project={menus.projectMenu.project}
 						onClose={menus.actions.closeProjectMenu}
 						onArchive={menus.actions.archiveProject}
+						onManageSessions={menus.actions.manageSessions}
 						onRemove={menus.actions.removeProject}
 						defaultScope={menus.defaultScope}
 						onClearConversation={menus.actions.clearConversation}

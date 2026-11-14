@@ -9,6 +9,7 @@ interface ProjectContextMenuProps {
 	project: Project;
 	onClose: () => void;
 	onArchive: (cwd: string) => void;
+	onManageSessions?: (project: Project) => void;
 	onRemove: (cwd: string) => void;
 	defaultScope?: "conversation" | "claw";
 	onClearConversation?: (cwd: string) => void;
@@ -24,6 +25,7 @@ export function ProjectContextMenu({
 	project,
 	onClose,
 	onArchive,
+	onManageSessions,
 	onRemove,
 	defaultScope,
 	onClearConversation,
@@ -36,6 +38,7 @@ export function ProjectContextMenu({
 		project,
 		onClose,
 		onArchive,
+		onManageSessions,
 		onRemove,
 		defaultScope,
 		onClearConversation,

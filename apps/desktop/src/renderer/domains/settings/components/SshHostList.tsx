@@ -1,6 +1,5 @@
 import { Button } from "@shared/components/ui/button";
 import type { SshConnectionStatus } from "@astravia/ssh-transport";
-import { SshHostForm } from "./SshHostForm";
 import type { SshHostRowMessage, SshHostsSettingsModel } from "./useSshHostsSettingsModel";
 
 export function SshHostList({ model }: { model: SshHostsSettingsModel }): JSX.Element {
@@ -8,7 +7,6 @@ export function SshHostList({ model }: { model: SshHostsSettingsModel }): JSX.El
 	return (
 		<ul className="flex flex-col">
 			{model.hosts.map((host) => {
-				const editing = model.editingId === host.id;
 				const testing = model.testingId === host.id;
 				const message = model.rowMessage[host.id];
 				return (
@@ -56,7 +54,6 @@ export function SshHostList({ model }: { model: SshHostsSettingsModel }): JSX.El
 								</Button>
 							</div>
 						</div>
-						{editing && <SshHostForm model={model} heading={labels.editTitle} />}
 					</li>
 				);
 			})}
