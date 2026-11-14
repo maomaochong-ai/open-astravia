@@ -158,8 +158,7 @@ describe("PluginTabPickerView", () => {
 				labels={labels}
 			/>,
 		);
-		expect(withAvailable.querySelector("button")?.innerHTML).toContain(
-			"icon-[solar--add-circle-linear]",
-		);
+		// 加号不再套外圈：与页头按钮组的图标风格一致（无边框加号）。
+		expect(withAvailable.querySelector("button")?.innerHTML).toContain("icon-[mdi--plus]");
 	});
 });

@@ -76,7 +76,8 @@ export function PluginTabPickerView({
 					type="button"
 					title={labels.menu}
 					aria-label={labels.menu}
-					className="mb-0.5 mr-2 flex h-7 min-w-7 shrink-0 items-center justify-center gap-0.5 rounded-md px-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+					// 右边距让图标中线对齐页头按钮组最右一项的中线（页头右内边距 12 + 组内边距 2 + 半个按钮 20 = 34）。
+					className="mb-0.5 mr-5 flex h-7 min-w-7 shrink-0 items-center justify-center gap-0.5 rounded-md px-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 				>
 					{hasOverflow && (
 						<span className="text-[10px] font-semibold tabular-nums leading-none">
@@ -86,7 +87,7 @@ export function PluginTabPickerView({
 					<span
 						className={
 							hasAvailable
-								? "icon-[solar--add-circle-linear] h-4 w-4"
+								? "icon-[mdi--plus] h-4 w-4"
 								: "icon-[solar--alt-arrow-down-linear] h-4 w-4"
 						}
 					/>

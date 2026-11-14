@@ -38,7 +38,7 @@ export function AddProjectMenuTriggerView({
 					open ? "bg-accent text-foreground" : "text-foreground hover:bg-accent",
 				)}
 			>
-				<span className="icon-[solar--add-circle-linear] h-4 w-4 shrink-0" />
+				<span className="icon-[solar--add-linear] h-4 w-4 shrink-0" />
 				{label}
 			</button>
 		);
@@ -54,7 +54,7 @@ export function AddProjectMenuTriggerView({
 				open ? "opacity-100" : "opacity-0 group-hover:opacity-60 group-hover:hover:opacity-100",
 			)}
 		>
-			<span className="icon-[solar--add-square-outline] h-4 w-4" />
+			<span className="icon-[solar--add-linear] h-4 w-4" />
 		</button>
 	);
 }

@@ -48,7 +48,7 @@ const BUILTIN_NAV_ITEMS = [
 	{
 		type: "new-session",
 		labelKey: "sidebar.nav.newSession",
-		icon: "icon-[solar--pen-new-square-linear]",
+		icon: "icon-[solar--pen-2-linear]",
 	},
 	{
 		type: "route",

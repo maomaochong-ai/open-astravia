@@ -532,10 +532,10 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 			</div>
 
 			{/* 语言区 + 右侧外观吉祥物 */}
-			<div className="mb-6 flex items-center gap-4 pr-10">
+			<div className="mb-10 flex items-center gap-4 pr-10">
 				<div className="min-w-0 flex-1">
 					<SettingHeading title={model.labels.sections.language} section={SETTINGS_SECTION["appearance-language"]} className="mb-1" />
-					<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.languageHint}</p>
+					<p className="mb-4 text-[12px] text-muted-foreground">{model.labels.languageHint}</p>
 					<LanguageSelect language={model.language} languages={model.languages} onSelect={model.actions.changeLanguage} />
 				</div>
 				{!model.narrow && (
@@ -551,8 +551,8 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				)}
 			</div>
 
-			<div className="mb-6">
-				<SettingHeading title={model.labels.sections.mode} section={SETTINGS_SECTION["appearance-mode"]} className="mb-3" />
+			<div className="mb-10">
+				<SettingHeading title={model.labels.sections.mode} section={SETTINGS_SECTION["appearance-mode"]} className="mb-4" />
 				<div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4">
 					{model.modeOptions.map((mode) => (
 						<ModeCard
@@ -568,8 +568,8 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				</div>
 			</div>
 
-			<div className="mb-6">
-				<SettingHeading title={model.labels.sections.font} section={SETTINGS_SECTION["appearance-font"]} className="mb-3" />
+			<div className="mb-10">
+				<SettingHeading title={model.labels.sections.font} section={SETTINGS_SECTION["appearance-font"]} className="mb-4" />
 				<FontSelectRow
 					role="global"
 					label={model.labels.fontFamily}
@@ -581,9 +581,9 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 			</div>
 
 			{model.showUiTheme && (
-				<div className="mb-6">
-					<SettingHeading title={model.labels.sections.uiTheme} section={SETTINGS_SECTION["appearance-ui-theme"]} className="mb-3" />
-					<div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3">
+				<div className="mb-10">
+					<SettingHeading title={model.labels.sections.uiTheme} section={SETTINGS_SECTION["appearance-ui-theme"]} className="mb-4" />
+					<div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
 						{model.uiThemes.map((theme) => (
 							<UiThemeCard key={theme.id} {...theme} onSelect={model.actions.selectUiTheme} />
 						))}
@@ -592,8 +592,8 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 			)}
 
 			{model.activeUiThemeId === "default" && (
-				<div className="mb-6">
-					<SettingHeading title={model.labels.sections.theme} section={SETTINGS_SECTION["appearance-theme"]} className="mb-3" />
+				<div className="mb-10">
+					<SettingHeading title={model.labels.sections.theme} section={SETTINGS_SECTION["appearance-theme"]} className="mb-4" />
 					<div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4">
 						{model.themes.map((theme) => (
 							<ThemeCard
@@ -609,7 +609,7 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 
 			{/* 新会话页装饰：装饰件与纹理都只改这一页，连排在一起用户不必逐项猜它们作用在哪。
 			    不套卡片、不加边框——这一页其余分区都是平铺的，单独给它加一层壳反而把它拔高成了别的东西。 */}
-			<div className="mb-6">
+			<div className="mb-10">
 				<div className="mb-4">
 					<h2 className="text-[15px] font-semibold text-foreground">{model.labels.newSessionDecorTitle}</h2>
 					<p className="mt-1 text-[12px] text-muted-foreground">{model.labels.newSessionDecorHint}</p>
@@ -618,7 +618,7 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				{/* 装饰件：输入框上方那块挂饰位 */}
 				<div className="mb-5">
 					<SettingHeading title={model.labels.sections.ornament} section={SETTINGS_SECTION["appearance-ornament"]} className="mb-1 text-[13px]" />
-					<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.ornamentHint}</p>
+					<p className="mb-4 text-[12px] text-muted-foreground">{model.labels.ornamentHint}</p>
 					<div className="grid grid-cols-4 gap-3">
 						{model.ornamentOptions.map((option) => (
 							<OrnamentCard key={option.id} {...option} onSelect={model.actions.setOrnament} />
@@ -629,7 +629,7 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				{/* 纹理：整页背后的底衬 */}
 				<div>
 					<SettingHeading title={model.labels.sections.texture} section={SETTINGS_SECTION["appearance-texture"]} className="mb-1 text-[13px]" />
-					<p className="mb-3 text-[12px] text-muted-foreground">{model.labels.textureHint}</p>
+					<p className="mb-4 text-[12px] text-muted-foreground">{model.labels.textureHint}</p>
 					<div className="grid grid-cols-4 gap-3">
 						{model.textureOptions.map((option) => (
 							<TextureCard key={option.id} {...option} onSelect={model.actions.setTexture} />
@@ -638,8 +638,8 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				</div>
 			</div>
 
-			<div className="mb-6">
-				<SettingHeading title={model.labels.sections.sidebar} section={SETTINGS_SECTION["appearance-sidebar"]} className="mb-3" />
+			<div className="mb-10">
+				<SettingHeading title={model.labels.sections.sidebar} section={SETTINGS_SECTION["appearance-sidebar"]} className="mb-4" />
 				<div className="grid grid-cols-2 gap-3">
 					{model.sidebarStyleOptions.map((option) => (
 						<SidebarStyleCard key={option.id} {...option} onSelect={model.actions.setSidebarStyle} />
@@ -648,8 +648,8 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 			</div>
 
 			{/* 鼠标指针：两列卡片，排在本页最末 */}
-			<div className="mb-6">
-				<SettingHeading title={model.labels.sections.cursor} section={SETTINGS_SECTION["appearance-cursor"]} className="mb-3" />
+			<div className="mb-10">
+				<SettingHeading title={model.labels.sections.cursor} section={SETTINGS_SECTION["appearance-cursor"]} className="mb-4" />
 				<div className="grid grid-cols-2 gap-3">
 					{model.cursorOptions.map((option) => (
 						<CursorStyleCard
