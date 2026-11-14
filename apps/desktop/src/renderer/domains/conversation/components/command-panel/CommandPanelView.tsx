@@ -1,3 +1,4 @@
+import { ButtonGroup, ButtonGroupItem } from "@astravia-org/ui/button-group";
 import { ThemeSurface } from "@astravia-org/theme-ui/appearance/ThemeSurface";
 import { ContextRingView } from "@astravia-org/theme-ui/chat/ContextRingView";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -155,26 +156,24 @@ export function CommandPanelView({
 						</FadingScrollArea>
 
 						{actions.length > 0 && (
-							<div className="no-scrollbar flex shrink-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-3 pb-1 pt-1">
-								{actions.map((action) => (
-									<button
-										key={action.id}
-										type="button"
-										onClick={action.onToggle}
-										title={action.label}
-										className={[
-											"flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-0.5 text-[12px] font-medium transition-colors",
-											action.active
-												? "bg-primary/10 text-primary"
-												: "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
-										].join(" ")}
-									>
-										{action.icon ? (
-											<span className="flex h-3.5 w-3.5 items-center justify-center">{action.icon}</span>
-										) : null}
-										{action.label}
-									</button>
-								))}
+							<div className="no-scrollbar flex shrink-0 items-center overflow-x-auto px-3 pb-2 pt-1">
+								{/* 方形按钮组：与输入卡片同一套玻璃质感，不再是一排各自成形的独立小按钮。 */}
+								<ButtonGroup blur={false} shape="square">
+									{actions.map((action) => (
+										<ButtonGroupItem
+											key={action.id}
+											active={action.active}
+											onClick={action.onToggle}
+											title={action.label}
+											icon={
+												action.icon ? (
+													<span className="flex h-4 w-4 items-center justify-center">{action.icon}</span>
+												) : undefined
+											}
+											label={action.label}
+										/>
+									))}
+								</ButtonGroup>
 							</div>
 						)}
 					</div>

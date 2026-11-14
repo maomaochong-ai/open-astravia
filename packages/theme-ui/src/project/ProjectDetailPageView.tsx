@@ -1,3 +1,4 @@
+import { ButtonGroup, ButtonGroupItem } from "@astravia-org/ui/button-group";
 import { Button, cn } from "@astravia-org/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type JSX, type ReactNode, type RefObject } from "react";
@@ -173,53 +174,37 @@ export function ProjectDetailPageView({
 									</button>
 								</div>
 
-								<div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-									<Button
-										type="button"
-										variant="ghost"
-										size="icon-sm"
-										onClick={onShowInFolder}
+								{/* 三个操作合成一颗胶囊：详情页右上角与顶栏按钮组同一套外观。 */}
+								<ButtonGroup className="shrink-0">
+									<ButtonGroupItem
+										icon={<span className="icon-[solar--folder-open-linear] h-4 w-4" />}
 										title={labels.showInFolderTitle}
 										aria-label={labels.showInFolder}
-									>
-										<span className="icon-[solar--folder-open-linear] h-3.5 w-3.5" />
-									</Button>
-									{exportable && (
-										<Button
-											type="button"
-											variant="outline"
-											size="icon-sm"
-											onClick={onExport}
+										onClick={onShowInFolder}
+									/>
+									{exportable ? (
+										<ButtonGroupItem
+											icon={<span className="icon-[solar--export-linear] h-4 w-4" />}
 											title={labels.exportTitle}
 											aria-label={labels.export}
-										>
-											<span className="icon-[solar--export-linear] h-3.5 w-3.5" />
-										</Button>
-									)}
-									<Button
-										type="button"
-										variant="primary"
-										size="sm"
-										onClick={onNewSession}
+											onClick={onExport}
+										/>
+									) : null}
+									<ButtonGroupItem
+										icon={<span className="icon-[solar--add-linear] h-4 w-4" />}
+										label={labels.newSession}
 										title={labels.newSession}
 										aria-label={labels.newSession}
-									>
-										<span className="icon-[solar--add-circle-linear] h-4 w-4" />
-										<span className="hidden text-[12px] font-medium @min-[22rem]:inline">
-											{labels.newSession}
-										</span>
-									</Button>
-									<Button
-										type="button"
-										variant={activityOpen ? "secondary" : "ghost"}
-										size="icon-sm"
+										onClick={onNewSession}
+									/>
+									<ButtonGroupItem
+										icon={<span className="icon-[solar--sidebar-minimalistic-linear] h-4 w-4 -scale-x-100" />}
 										title={activityOpen ? labels.closeActivityPanel : labels.openActivityPanel}
+										aria-label={activityOpen ? labels.closeActivityPanel : labels.openActivityPanel}
+										active={activityOpen}
 										onClick={onToggleActivity}
-										aria-pressed={activityOpen}
-									>
-										<span className="icon-[solar--sidebar-minimalistic-linear] -scale-x-100 text-[14px]" />
-									</Button>
-								</div>
+									/>
+								</ButtonGroup>
 							</div>
 
 							{metrics.length > 0 && (

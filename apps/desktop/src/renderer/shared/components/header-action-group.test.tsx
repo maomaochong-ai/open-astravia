@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HeaderActionGroup, resolveVisibleCount, type HeaderActionItem } from "@astravia-org/theme-ui/chat/HeaderActionGroupView";
+import {
+	HeaderActionGroup,
+	orderByKeepPriority,
+	resolveVisibleCount,
+	type HeaderActionItem,
+} from "@astravia-org/theme-ui/chat/HeaderActionGroupView";
 
 afterEach(cleanup);
 
@@ -56,4 +61,49 @@ describe("顶栏动作组的收纳", () => {
 		expect(list[1]?.onClick).toHaveBeenCalledOnce();
 		expect(list[0]?.onClick).not.toHaveBeenCalled();
 	});
+
+	it("按优先级决定谁先让位，但渲染顺序不变", () => {
+		const list: HeaderActionItem[] = [
+			{ id: "export", title: "导出", icon: "", onClick: vi.fn(), priority: 3 },
+			{ id: "pin", title: "置顶", icon: "", onClick: vi.fn(), priority: 1 },
+			{ id: "panel", title: "面板", icon: "", onClick: vi.fn(), priority: 5 },
+		];
+		// 只有两个名额时，优先级最低的「置顶」被收起。
+		expect(orderByKeepPriority(list).map((item) => item.id)).toEqual(["panel", "export", "pin"]);
+		expect(orderByKeepPriority(list).slice(0, 2).map((item) => item.id)).not.toContain("pin");
+	});
+
+	it("优先级相同时保持原顺序（不会随机重排）", () => {
+		const list: HeaderActionItem[] = [
+			{ id: "a", title: "a", icon: "", onClick: vi.fn() },
+			{ id: "b", title: "b", icon: "", onClick: vi.fn() },
+			{ id: "c", title: "c", icon: "", onClick: vi.fn() },
+		];
+		expect(orderByKeepPriority(list).map((item) => item.id)).toEqual(["a", "b", "c"]);
+	});
+
+	it("窄窗下被收起的是低优先级那个，可见项保持原顺序", () => {
+		const { container } = render(
+			<HeaderActionGroup
+				items={[
+					{ id: "export", title: "导出", icon: "icon-a", onClick: vi.fn(), priority: 3 },
+					{ id: "pin", title: "置顶", icon: "icon-b", onClick: vi.fn(), priority: 1 },
+					{ id: "panel", title: "面板", icon: "icon-c", onClick: vi.fn(), priority: 5 },
+				]}
+				labels={labels}
+				// 74 - 4 = 70：一个按钮(32)+「更多」(32)=64 放得下，两个按钮(64)+更多=96 放不下。
+				availableWidth={74}
+			/>,
+		);
+
+		// 只剩一个名额：给优先级最高的「面板」，其余两项进菜单。
+		const groupButtons = [...container.querySelectorAll('[role="group"] button')].map(
+			(node) => node.getAttribute("aria-label") ?? "",
+		);
+		expect(groupButtons).toEqual(["面板", "更多操作"]);
+		// 「更多」确实是一个菜单触发器（菜单内容由 Radix 在展开时才挂载，
+		// jsdom 里无法稳定展开，这里只断言触发器形态）。
+		expect(screen.getByRole("button", { name: "更多操作" }).getAttribute("aria-haspopup")).toBe("menu");
+	});
+
 });

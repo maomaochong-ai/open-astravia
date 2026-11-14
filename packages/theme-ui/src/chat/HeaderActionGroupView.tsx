@@ -21,6 +21,13 @@ export interface HeaderActionItem {
 	readonly active?: boolean;
 	readonly disabled?: boolean;
 	readonly onClick: () => void;
+	/**
+	 * 收纳优先级：数值越大越晚被收进「更多」。不传按 0 计。
+	 *
+	 * 用途是保护「用户此刻最可能点的那几个」：面板开关与导出比置顶、终端更常用，
+	 * 窗口变窄时应当先收起后者。顺序仍按数组顺序渲染，priority 只决定谁先让位。
+	 */
+	readonly priority?: number;
 }
 
 export interface HeaderActionGroupLabels {
@@ -66,6 +73,20 @@ export function resolveVisibleCount(total: number, availableWidth: number, width
 	return visible;
 }
 
+/**
+ * 按收纳优先级排序：priority 大的排前面，相同则保持原顺序。
+ * 结果用于「谁能留下」的判定，渲染顺序仍用调用方给的原顺序。
+ */
+export function orderByKeepPriority<T extends { readonly priority?: number }>(items: readonly T[]): T[] {
+	return items
+		.map((item, index) => ({ item, index }))
+		.sort((left, right) => {
+			const diff = (right.item.priority ?? 0) - (left.item.priority ?? 0);
+			return diff !== 0 ? diff : left.index - right.index;
+		})
+		.map((entry) => entry.item);
+}
+
 export function HeaderActionGroup({ items, labels, availableWidth }: HeaderActionGroupProps): JSX.Element | null {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [measuredWidth, setMeasuredWidth] = useState(0);
@@ -85,8 +106,11 @@ export function HeaderActionGroup({ items, labels, availableWidth }: HeaderActio
 	// 兜底：父容器没有可用宽度（首次渲染或隐藏）时全部显示，宁可不收纳也不要凭空少了按钮。
 	const width = availableWidth ?? measuredWidth;
 	const visibleCount = width > 0 ? resolveVisibleCount(items.length, width) : items.length;
-	const visible = items.slice(0, visibleCount);
-	const overflow = items.slice(visibleCount);
+	// 先按「谁更该留下」决定名额，再按原始顺序渲染：被收起的总是优先级最低的那几个，
+	// 而可见项在屏幕上的相对位置不会因为窗口变窄而重排。
+	const keepSet = new Set(orderByKeepPriority(items).slice(0, visibleCount).map((item) => item.id));
+	const visible = items.filter((item) => keepSet.has(item.id));
+	const overflow = items.filter((item) => !keepSet.has(item.id));
 
 	const menuItems: readonly SessionTopMenuItem[] = overflow.map((item) => ({
 		id: item.id,
