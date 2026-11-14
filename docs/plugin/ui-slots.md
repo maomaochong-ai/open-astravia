@@ -689,6 +689,146 @@ interface PluginNewSessionContext {
 
 团队会话与单智能体会话一样会把**工作区**与**轮次开始**报给插件，因此本区里挂的东西（附件、插入的文本）在团队会话里同样有去处。
 
+## 外部应用 ctx.shell
+
+把本机路径交给本机的编辑器、文件管理器或终端。权限 `shell.open-external-app`，要求 Plugin API `^2.10.0`。
+
+```ts
+interface PluginShellApi {
+  /** 列出能打开该路径的应用；传 null 只列本机装了哪些。 */
+  listExternalApplications(targetPath: string | null): Promise<PluginExternalApplication[]>;
+  openPathWithApplication(targetPath: string | null, appId: string, kind: PluginExternalApplicationKind): Promise<void>;
+  openPathWithDefaultApplication(targetPath: string): Promise<void>;
+}
+
+interface PluginExternalApplication {
+  id: string;             // 平台内稳定标识，原样回传给 openPathWithApplication
+  name: string;           // 菜单里显示的名字
+  kind: "editor" | "file-manager" | "terminal" | "other";
+  iconUrl?: string;       // 应用自己的图标（PNG data URL），拿不到时省略
+  isDefault: boolean;     // 系统对目录的默认处理程序
+}
+```
+
+平台差异全部由宿主处理，插件不要自己拼命令：
+
+| 平台 | 探测 | 启动 |
+| --- | --- | --- |
+| macOS | 标准应用目录 + LaunchServices | `open`（文件管理器直接打开目录本身） |
+| Windows | 注册表 App Paths / `HKCR\Applications` / 安装目录扫描 | 直接启动 exe；`explorer.exe`、`wt.exe`、控制台程序各有对应处理 |
+| Linux | `.desktop`（声明 `inode/directory`） | 执行 `.desktop` 里的 Exec |
+
+`targetPath` 传 `null` 时只启动应用、不打开目录（例如「先开编辑器」）。SSH 远程项目的目录不在本机，插件应自行判断并返回 `null` 的顶栏声明，而不是把 `ssh://…` 交给宿主。
+
+官方示例见 `packages/plugins/presets/open-in-app`。
+
+## 会话页顶栏动作 registerHeaderAction
+
+在会话页顶栏右侧的**宿主统一按钮组**里加一格，例如「用外部应用打开」。
+
+- 权限：`ui.slot.header-action`（缺权限 = warn + noop）
+- 需要 Plugin API `^2.9.0`
+- 当前只出现在会话页顶栏
+
+### 它是声明式的：你只决定「是什么」，不决定「长什么样」
+
+顶栏右侧是**一个**按钮组，内置按钮（导出 / 置顶 / 终端 / 底部面板）和所有插件动作排在同一组里。外观、间距、弹层皮肤全部由宿主渲染，插件**不能**传 `className` / `style`，也不能替换按钮本身，更不能在顶栏里画自己的控件。你能给的只有：
+
+| 字段 | 说明 |
+| --- | --- |
+| `title`（必填） | 悬浮提示与无障碍名称。**按钮上没有文字**，用户靠图标 + 这条提示认出它；最长 40 字，超出截断 |
+| `icon`（必填） | 图标节点。宿主放进 16px 固定方框、忽略指针事件，建议用 iconify：`<span className="icon-[solar--folder-linear]" />` |
+| `badge` | 数字（≥ 1，超过 99 显示 `99+`）或 `true`（红点）；其它值被忽略 |
+| `active` / `disabled` | 选中态 / 禁用态 |
+| `onClick` / `menuItems` / `popover` | **三选一**的点击行为，见下 |
+
+三种点击行为按 `menuItems` > `popover` > `onClick` 取第一个存在的；一个都没有，这个动作不显示并在控制台打一条 warn。
+
+- `menuItems`：下拉菜单，最多 20 项，`{ id, label, icon?, onSelect, disabled?, destructive?, separatorBefore? }`，`id` 在菜单内唯一，非法项被丢弃；
+- `popover`：一个 React 组件（props `{ close }`），**这是唯一允许自定义内容的地方**。气泡的背景、圆角、投影由宿主固定，宽高随内容自适应（最大约 32rem，超出滚动）；
+- `onClick`：点击直接执行。
+
+### 注册：`useAction` 是一个 hook
+
+```ts
+interface PluginHeaderActionContribution {
+  id: string;        // 本插件内唯一，≤ 64 字符；用户布局按 `${pluginId}:${id}` 记忆，别随意改名
+  order?: number;    // 只决定「用户没调整过时」的初始位置，小的靠左
+  useAction: () => PluginHeaderActionState | null; // 返回 null = 此刻不适用，不显示、不占名额
+}
+```
+
+宿主在会话页顶栏挂载期间一直调用 `useAction`，所以里面可以用任意 hook（`useActiveConversation()`、`useTranslation()`、你自己的 store），数据变化就自然重新声明：
+
+```tsx
+import { useActiveConversation, useTranslation } from "@astravia-org/plugin-sdk";
+
+function useOpenInApp() {
+  const { t } = useTranslation();
+  const { cwd } = useActiveConversation();
+  if (!cwd) return null; // 没有项目目录：不显示
+  return {
+    title: t("action.title"),
+    icon: <span className="icon-[solar--square-arrow-right-up-linear]" />,
+    menuItems: [
+      { id: "finder", label: "Finder", onSelect: () => openIn("Finder", cwd) },
+      { id: "vscode", label: "VS Code", onSelect: () => openIn("Visual Studio Code", cwd) },
+    ],
+  };
+}
+
+// activate 里注册
+ctx.ui.registerHeaderAction({ id: "open-in-app", order: 100, useAction: useOpenInApp });
+```
+
+带气泡的例子：
+
+```tsx
+function useHistory() {
+  const unread = useUnreadCount();
+  return {
+    title: "历史",
+    icon: <span className="icon-[solar--history-linear]" />,
+    badge: unread,
+    popover: ({ close }: { close: () => void }) => <HistoryList onPick={close} />,
+  };
+}
+```
+
+`useAction` 的约束（违反时只会让**你这一项**消失，不会影响别的动作）：
+
+- 渲染期必须是纯计算：不要在里面发请求、起定时器，这类副作用放 `useEffect`；
+- 抛错由宿主错误边界吞掉，该项消失并在控制台记录；
+- 每次渲染可以返回新对象，宿主不依赖引用相等，也不要求你 `useMemo`；
+- `onClick` / `onSelect` 抛错或返回的 Promise 被拒绝，宿主只记日志；
+- 声明不合法（缺 `title` / `icon`、没有任何点击行为）：该项不显示，控制台 warn 一次。
+
+### 宿主怎么摆放：你不能假定自己在顶栏上
+
+- 顶栏最多显示 **7 格**（不含最右侧固定的「活动面板」开关），**内置与插件共用**这 7 个名额；
+- 超出的、以及用户主动收起的动作进入**收纳**：鼠标悬浮在按钮组上时，组下方出现一条小白条，点开是收纳托盘。托盘里只有图标，点一下直接使用；
+- 打开托盘即进入编辑状态：按钮组里没被占用的席位显示为虚线方框；把托盘里的图标拖进按钮组就上栏，把按钮组里的按钮拖进托盘就收纳，组内也能拖动换序。这份布局按 `${pluginId}:${id}` 记在本机；
+- **默认布局**：用户从没调整过时，顶栏只显示「终端」、「底部面板」、「导出」，按这个顺序，**其余动作（包括你的插件）默认都在收纳里**，需要用户自己拖到顶栏。所以不要指望用户一装上就在顶栏看到你的按钮；
+- 用户调整过之后以他存下来的布局为准。此后新装插件的动作：顶栏还有空位就按 `order` 排进去，没有空位进收纳，**不会挤走用户已有的布局**；
+- 被收纳的动作带角标时，宿主会把小白条变红，角标不会被藏起来；
+- 被收纳的菜单 / 气泡动作点击后在托盘旁弹出，内容与在顶栏时一致。
+
+所以：不要依赖自己在顶栏上的位置，不要依赖相邻的是谁，也不要在文案里写「左边的按钮」。
+
+### 工程上的限制一览
+
+| 项 | 限制 |
+| --- | --- |
+| 贡献 id | 本插件内唯一，≤ 64 字符，重复注册抛错 |
+| `title` | 必填，≤ 40 字 |
+| `icon` | 必填，16px 固定方框，忽略指针事件 |
+| `menuItems` | ≤ 20 项，id 不重复，`label` ≤ 40 字 |
+| `badge` | 数字 ≥ 1 或 `true` |
+| 点击行为 | `menuItems` / `popover` / `onClick` 三选一 |
+| 样式 | 不可自定义（仅 `popover` 组件内部自由） |
+| 顶栏名额 | 7 格，内置与插件共用 |
+| 出现位置 | 仅会话页 |
+
 ## 工具行内渲染 registerToolCallSlot
 
 按 **toolName** 替换宿主默认的工具调用行内 UI（transcript 内嵌渲染）。**首个注册胜**。

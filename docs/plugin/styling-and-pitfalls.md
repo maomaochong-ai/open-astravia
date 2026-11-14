@@ -195,6 +195,72 @@ astraviaPluginFederation({
 打进插件 bundle。不要为了消除构建警告给未使用该入口的插件增加依赖；也不要把
 `@astravia-org/theme-ui` 的其它业务入口当作插件公共 API。
 
+### 可用组件速查
+
+先把可用的东西列清楚，免得又去自绘一套：
+
+| 入口 | 导出 | 用途 |
+| --- | --- | --- |
+| `@astravia-org/ui` | `Button` | `variant`: `default` / `primary` / `outline` / `field`（设置项行内按钮，无边框底色）/ `secondary` / `ghost` / `destructive` / `link`；`size`: `default` / `xs` / `sm` / `lg` / `icon` / `icon-xs` / `icon-sm` / `icon-lg` |
+| `@astravia-org/ui` | `ButtonGroup` / `ButtonGroupItem` | 宿主顶栏/页头那颗胶囊。`shape` 为 `pill`（默认）或 `square`，`blur` 控制背景模糊；`ButtonGroupItem` 用 `icon` / `label` / `badge` / `active`，纯图标时**必须**给 `title` 或 `aria-label` |
+| `@astravia-org/ui` | `DropdownMenu` `DropdownMenuTrigger` `DropdownMenuContent` `DropdownMenuItem` `DropdownMenuLabel` `DropdownMenuSeparator` `DropdownMenuRadioGroup` `DropdownMenuRadioItem` `DropdownMenuSub` `DropdownMenuSubTrigger` `DropdownMenuSubContent` | 右键菜单 / 行尾菜单（Radix 语义） |
+| `@astravia-org/ui` | `Select` `SelectTrigger` `SelectValue` `SelectContent` `SelectItem` `SelectGroup` `SelectLabel` `SelectSeparator` `SelectScrollUpButton` `SelectScrollDownButton` | 表单式下拉（需要 `SelectValue` 回填文案时），默认皮肤与设置页一致 |
+| `@astravia-org/ui` | `Popover` `PopoverTrigger` `PopoverContent` `PopoverHeader` … / `Dialog` `DialogTrigger` `DialogContent` `DialogHeader` `DialogTitle` `DialogDescription` `DialogFooter` | 浮层与对话框 |
+| `@astravia-org/theme-ui/plugin-ui` | `MotionSelect`（`MotionSelectOption` / `MotionSelectProps`） | 设置页那颗无边框底色下拉；用 `Popover` + 显式 label 实现，不依赖已挂载的 Item |
+| `@astravia-org/theme-ui/plugin-ui` | `SettingSection` / `SettingRow` / `SettingHeading`（`SettingSectionMeta`） | 设置页的分区、设置项行（41px 行高）与小标题 |
+
+> 这些组件随**宿主**发布，不在你的 bundle 里。旧宿主可能没有某个导出（例如设置页
+> 那四个是后来才开放的），所以 `pluginApiVersion` 要与你实际使用的组件对齐：用到
+> `MotionSelect` / `SettingSection` / `SettingRow` / `SettingHeading` 的插件，就写那个
+> 已包含它们的宿主版本下限，而不是随手写个很低的值——旧宿主只会拿这个字段给你一条
+> 明确的版本错误，不会帮你把缺失的导出变出来。
+
+## 设置页同款组件的用法
+
+插件设置面板不要自己画「分区 + 行 + 下拉」——自绘版与宿主设置页的间距、行高只会
+差几像素，长期看就是两套皮肤。直接用这四个：
+
+| 组件 | props 要点 |
+| --- | --- |
+| `SettingSection` | `section` 必须有 `id`（用作锚点与高亮目标），可选 `title` / `titleKey`；`title` / `description` 可直接给节点或字符串，不传则回落到 `section` 上的文案；`t` 可用于把 `titleKey` 翻译成当前语言 |
+| `SettingRow` | `title`（必填）、可选 `description`（最长两行后截断）、`border`（默认 `true`，最后一行传 `false`）；`children` 是右侧控件，宽度上限 24rem |
+| `SettingHeading` | 只有标题、没有卡片容器，用于把设置页分段；props 同 `SettingSection` 的 `section` / `title` / `className` / `t` |
+| `MotionSelect` | `value` + `onValueChange` + `options: MotionSelectOption[]`（`{ value, label, disabled?, title? }`）；`placeholder` 在无选中时显示，`triggerClassName` 调宽高，`aria-label` 在触发器没有可见文字时必填 |
+
+它们都是**纯展示**：值、选项与写回全由插件自己持有（存哪、什么时候提交是你的语义）。
+
+```tsx
+import {
+  MotionSelect, SettingRow, SettingSection,
+} from "@astravia-org/theme-ui/plugin-ui";
+import { useState } from "react";
+
+function PluginSettings({ t }: { t: (key: string) => string }) {
+  const [mode, setMode] = useState("fast");
+  return (
+    <SettingSection section={{ id: "my-plugin", title: t("settings.title") }}>
+      <SettingRow title={t("settings.mode")} description={t("settings.modeHint")} border={false}>
+        <MotionSelect
+          value={mode}
+          onValueChange={(next) => {
+            setMode(next);
+            void saveMode(next); // 写回是你自己的事，组件不管持久化
+          }}
+          options={[
+            { value: "fast", label: t("settings.mode.fast") },
+            { value: "thorough", label: t("settings.mode.thorough") },
+          ]}
+          aria-label={t("settings.mode")}
+        />
+      </SettingRow>
+    </SettingSection>
+  );
+}
+```
+
+**不**开放的：`AppearanceSettingsView` 这类带具体数据源与写回逻辑的业务视图——那是
+宿主功能，不是可复用形态。`plugin-ui` 的出口集合由守卫测试锁定，想加得先改清单。
+
 ## 缓存刷新
 
 插件 bundle 经 `astravia-plugin://` 协议加载，**Chromium 会缓存 `remoteEntry.js`**——你改了代码重装，**重启 App 也未必清掉旧缓存**，表现为「改动不生效」。

@@ -6,6 +6,10 @@
 两个 UI 原语，以及会话页顶栏改用它们；**第二步** 是插件顶栏动作从命令式改为声明式
 贡献点，属插件合同变更，单独评审。
 
+> **修订（后续批次）**：两步均已落地。第二步的声明式贡献点随本轮对齐实现，插件 API 推到
+> `2.9.0`；同时把「收纳」从按优先级计算的单胶囊改回参照实现的「顶栏 + 收纳托盘 + 调整」
+> 双区结构，并补上页头挤窄时整体收成下拉菜单的行为。逐项落地情况见文末「落实修订」。
+
 ## 背景
 
 会话页右上角现在是一排各自实现的操作：活动面板开关、终端、导出、窗口置顶、插件注入
@@ -96,3 +100,72 @@ ctx.ui.registerHeaderAction({
   「声明一组动作 + 由宿主决定收纳」，改动的调用点比单纯调样式多。
 - 已知限制：第一步只覆盖会话页顶栏。项目详情页、命令面板底部动作条等其它「按钮成组」
   的位置按后续批次逐个迁移，不在本次一次改完。
+
+## 落实修订（与参照实现逐项对齐）
+
+本记录原先的第一版实现只做到「按钮组 + 按优先级裁掉尾部」，与参照实现的形态有四处
+实质差异，本轮按参照实现补齐：
+
+| 方面 | 原实现 | 现在 |
+| --- | --- | --- |
+| 收纳形态 | 放不下的动作按 `priority` 从尾部裁掉，收进组内的「更多」下拉 | 顶栏 `top` 与收纳托盘 `tray` 两个区，顶部最多 7 格；托盘是按钮组正下方的第二个胶囊，悬浮按钮组时出现小白条，点开即托盘 |
+| 调整 | 组内整体进入抖动 + 点击切换隐藏 | 托盘打开即编辑态：虚线空席位、把图标从一个区拖到另一个区、区内外拖动换序、右上角 ±/✓ 角标按钮作为拖动的键盘备选；「调整」按钮独立在胶囊右侧，编辑中用主色底打勾 |
+| 布局来源 | 本地键存「顺序 + 隐藏 id」，缺省即全部上栏 | 本地键存 `{ top, tray }` 两个数组；用户没调整过时只显示「终端 / 底部面板 / 导出」，其余（含插件）都在托盘里；新动作有空位就进顶栏、没有就进托盘，绝不挤走已有布局；停用插件的 key 保留在存储里，装回来位置还在 |
+| 挤窄 | 无 | 页头实测左右两簇是否相撞（进入 12px / 退出 28px 双阈值），撞上时除「窗口置顶」与「活动面板」开关外整体收成一个下拉菜单，角标汇总到下拉入口上 |
+
+同时落地的还有本记录第 3 节原本推迟的第二步：
+
+- 插件 SDK 新增 `PluginHeaderActionState` 与声明式 `registerHeaderAction({ id, order, useAction })`，
+  `useAction` 是宿主每帧调用的 hook，返回 `null` 表示此刻不适用；
+- 宿主侧 `normalize.ts` 负责校验、截断与签名去重（声明没变就不通知按钮组，插件重渲染不带动整排按钮重渲），
+  回调经 ref 始终指向最新声明，由错误边界与 `guarded()` 隔离；
+- 插件 API 版本 `2.9.0`，权限 `ui.slot.header-action`，文档见 `docs/plugin/ui-slots.md`；
+- 旧的命令式合同（`{ id, order, component }`）直接替换而非并存：本仓尚无插件使用该接口，
+  不存在需要过渡的既有插件，保留兼容层只会让两套渲染路径长期并存。
+
+实现位置：`packages/theme-ui/src/chat/HeaderActionBarView.tsx`、`HeaderActionOverflowMenu.tsx`、
+`header-action-narrow.ts`、`packages/theme-ui/src/app-shell/header-crowding.tsx`（测量）、
+`apps/desktop/src/renderer/domains/header-actions/`（布局、存储、规范化、探针）。
+
+## 第三步：系统插件「从外部应用打开」（跨平台）
+
+### 背景
+
+「把当前项目目录交给外部应用打开」原先有两套互不相干的实现：宿主主进程里一套完整的
+跨平台探测与启动（macOS 走 LaunchServices + 标准应用目录，Windows 走注册表
+`App Paths` / `HKCR\Applications` / 目录扫描，Linux 走 `.desktop`），渲染层一个自绘的
+`OpenWorkspaceWithAppButton` 下拉，并分别登记到会话页与文件树的顶栏工具位。参照实现则把它
+做成随应用发布的系统插件，并作为声明式顶栏动作的官方示例——但它只认 macOS：探测靠
+`open -Ra`，启动靠 `open -a`，图标靠 `.icns`。
+
+两条线的差别不只是代码位置：宿主那套已经解决了 Windows/Linux，插件那套解决了
+「外观与收纳归宿主、插件只声明」的合同。二者都需要，不能二选一。
+
+### 决策
+
+1. **UI 归插件，平台知识归宿主。** 新建 `packages/plugins/presets/open-in-app`，用
+   `registerHeaderAction` 声明一格 + 下拉菜单，与参照实现的插件同形；但探测与启动**不**由插件
+   拼命令行，而是走宿主新增的 `ctx.shell` API。
+2. **`ctx.shell`（新插件合同，权限 `shell.open-external-app`）**：
+   - `listExternalApplications(targetPath | null)` 返回本机可用的应用（含 `kind` 与图标 data URL），
+     `targetPath` 为 `null` 时只列已安装应用；
+   - `openPathWithApplication(targetPath | null, appId, kind)` 与 `openPathWithDefaultApplication(targetPath)`。
+   形状与宿主既有的 `window.astravia.shell` 一致，实现继续复用 `main/external-apps.ts`——
+   三平台差异（注册表、`.desktop`、`open -a` / `explorer` / `xdg-open`）只存在这一处。
+3. **跨平台图标**：`ExternalApplication` 增加 `iconUrl`。macOS 沿用 ADR-0157 登记过的
+   `.icns` 读取（`app.getFileIcon` 在 macOS 上会让主进程崩溃，不用）；Windows/Linux 用
+   `app.getFileIcon` 取可执行文件图标。结果按路径缓存，取不到时插件退回按 `kind` 的通用图标。
+4. **删除宿主侧旧实现**：`OpenWorkspaceWithAppButton`、它在会话页与文件树的两处工具位登记、
+   对应 i18n 文案一并移除。保留的只有主进程能力、preload 接口（仍是宿主内部合同）与插件预设，
+   不保留并行渲染路径。
+5. **插件侧保持平台无关**：`apps.ts` 只保留纯逻辑（远程目录判定、菜单分组与排序、图标兜底），
+   不再出现 `open` / `-a` / `.app` 这类平台细节。
+
+### 后果
+
+- 正面：一套平台探测逻辑、一个入口、一处 UI；插件形态与参照实现一致，用户能在顶栏收纳里
+  与其他动作一起排列；Windows/Linux 从第一天就可用，而不是复制参照实现的 macOS 限制。
+- 代价：插件 SDK 增加 `ctx.shell` 与一个权限（Plugin API 推到 `2.10.0`），需要版本说明与文档；
+  插件不再能像参照实现那样直接用 `ctx.command.run("open", …)`，平台差异全部由宿主吸收。
+- 已知限制：`ctx.shell` 只返回应用清单与启动方法，不提供「按扩展名找默认应用」这类通用
+  Shell 能力；需要时再按真实需求扩，不提前预留。

@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>0.5.94 对齐进度报告 · 迭代前后</title>
+<style>
+	:root {
+		--bg: #0f1115;
+		--panel: #171a21;
+		--line: #262b35;
+		--text: #e7e9ee;
+		--dim: #98a0b0;
+		--ok: #4bc08a;
+		--warn: #e0b34c;
+		--bad: #e06a6a;
+		--info: #6aa8e0;
+	}
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		padding: 40px 24px 72px;
+		background: var(--bg);
+		color: var(--text);
+		font: 14px/1.7 -apple-system, "PingFang SC", "Segoe UI", sans-serif;
+	}
+	.wrap { max-width: 1040px; margin: 0 auto; }
+	h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
+	.sub { color: var(--dim); margin: 0 0 32px; }
+	h2 { font-size: 16px; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+	h3 { font-size: 14px; margin: 20px 0 8px; color: var(--dim); font-weight: 600; }
+	table { width: 100%; border-collapse: collapse; font-size: 13px; }
+	th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+	th { color: var(--dim); font-weight: 600; font-size: 12px; }
+	td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+	.tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; border: 1px solid; }
+	.t-ok { color: var(--ok); border-color: #2c5f47; background: #14251d; }
+	.t-warn { color: var(--warn); border-color: #5c4a1e; background: #241f12; }
+	.t-bad { color: var(--bad); border-color: #5c2c2c; background: #241717; }
+	.t-info { color: var(--info); border-color: #2b4763; background: #141d26; }
+	.t-dim { color: var(--dim); border-color: var(--line); background: #14171c; }
+	.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+	.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+	.card .k { color: var(--dim); font-size: 12px; }
+	.card .v { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+	.card .d { font-size: 12px; color: var(--dim); }
+	.bars { display: grid; gap: 10px; margin-top: 8px; }
+	.bar-row { display: grid; grid-template-columns: 128px 1fr 48px; gap: 12px; align-items: center; font-size: 13px; }
+	.track { height: 12px; background: #1b1f27; border-radius: 999px; overflow: hidden; }
+	.fill { height: 100%; border-radius: 999px; }
+	.f-ok { background: linear-gradient(90deg, #2f7d5c, #4bc08a); }
+	.f-warn { background: linear-gradient(90deg, #7a6224, #e0b34c); }
+	.f-bad { background: linear-gradient(90deg, #7a3232, #e06a6a); }
+	.f-info { background: linear-gradient(90deg, #2f5473, #6aa8e0); }
+	.f-dim { background: #39404d; }
+	ul { padding-left: 20px; }
+	li { margin: 4px 0; }
+	.note { background: #1b1a12; border: 1px solid #4a3f1c; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #e6d7a8; }
+	code { background: #1b1f27; padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+	.foot { color: var(--dim); font-size: 12px; margin-top: 40px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+	<h1>0.5.94 对齐进度报告</h1>
+	<p class="sub">参照实现 0.5.72–0.5.81 全量对齐 · 本轮迭代前后对照 · 2026-11-14</p>
+
+	<div class="cards">
+		<div class="card">
+			<div class="k">登记表条目</div>
+			<div class="v">213</div>
+			<div class="d">产生可观察行为的提交，逐条入表</div>
+		</div>
+		<div class="card">
+			<div class="k">已对齐</div>
+			<div class="v" style="color:var(--ok)">184</div>
+			<div class="d">占 86.4%</div>
+		</div>
+		<div class="card">
+			<div class="k">悬置待决策</div>
+			<div class="v" style="color:var(--bad)">13 → 0</div>
+			<div class="d">品牌身份条目已全部采纳</div>
+		</div>
+		<div class="card">
+			<div class="k">开发壳启动</div>
+			<div class="v" style="color:var(--ok)">正常</div>
+			<div class="d">编译无错、首屏绘制 9.1s</div>
+		</div>
+	</div>
+
+	<h2>一、登记表状态分布（本轮结束后）</h2>
+	<div class="bars">
+		<div class="bar-row"><span>已对齐</span><span class="track"><span class="fill f-ok" style="width:86.4%"></span></span><span class="num">184</span></div>
+		<div class="bar-row"><span>待对齐</span><span class="track"><span class="fill f-bad" style="width:8.0%"></span></span><span class="num">17</span></div>
+		<div class="bar-row"><span>部分对齐</span><span class="track"><span class="fill f-warn" style="width:3.3%"></span></span><span class="num">7</span></div>
+		<div class="bar-row"><span>不适用 / 不采纳</span><span class="track"><span class="fill f-dim" style="width:1.4%"></span></span><span class="num">3</span></div>
+		<div class="bar-row"><span>等价实现</span><span class="track"><span class="fill f-info" style="width:0.9%"></span></span><span class="num">1</span></div>
+	</div>
+	<p class="sub" style="margin-top:10px">17 条「待对齐」里 11 条是本轮刚采纳的品牌身份（B14，尚无实现），其余 6 条是真实代码缺口：B10 模型选择器 5 条、MCP 安装层级 1 条（另一条 skill 被它阻塞）。三批都已有 ADR 与验收口径。</p>
+
+	<h2>二、迭代前后对照</h2>
+	<table>
+		<tr><th style="width:26%">维度</th><th style="width:37%">迭代前</th><th style="width:37%">迭代后</th></tr>
+		<tr>
+			<td>开发壳能否启动</td>
+			<td>未验证；此前一轮曾因「清除已结束」从错误模块入口导入而在主进程装载阶段直接抛错、窗口打不开</td>
+			<td><span class="tag t-ok">已验证</span> 从零构建 26 个包 + 主进程/预加载/渲染层全部通过，窗口 <code>did-finish-load</code>、首屏 <code>painted</code>，无编译错误</td>
+		</tr>
+		<tr>
+			<td>ADR-0157 状态列可信度</td>
+			<td>按提交标题判定，出现「文档落后于实现」与「按标题当作未做」两类误记</td>
+			<td><span class="tag t-ok">已回写</span> 7 条状态按源码复核修正；并同步修正 ADR-0165 的相反表述与「下一步」的错指</td>
+		</tr>
+		<tr>
+			<td>品牌身份 13 条</td>
+			<td>记「需产品决策」，默认不采纳，长期悬置</td>
+			<td><span class="tag t-info">已决策</span> 采纳，写入 ADR-0172，登记表改为「待对齐（B14）」，不再是悬而未决</td>
+		</tr>
+		<tr>
+			<td>open-in-app 插件</td>
+			<td>整目录未纳入版本控制，构建产物与 <code>.astraviapkg</code> 混在源码树</td>
+			<td><span class="tag t-warn">收口中</span> 补齐 <code>.gitignore</code>／<code>test/setup.ts</code>，与上游结构同构，跨平台只走宿主 <code>ctx.shell</code></td>
+		</tr>
+		<tr>
+			<td>dev 构建告警</td>
+			<td>渲染层每次启动刷 4 条 <code>Invalid icon name: a/b/c/d</code></td>
+			<td><span class="tag t-ok">已清</span> 测试夹具改用真实图标类名，用例同步断言（9 条通过）</td>
+		</tr>
+		<tr>
+			<td>类型检查</td>
+			<td>从未跑完过：<code>tsc</code> 在本机 40 分钟后被 V8 abort（内存不足），所以「没通过」还是「没跑」一直说不清</td>
+			<td><span class="tag t-ok">0 条错误</span> 首测 56 条 / 25 个文件（此前 <code>tsc</code> 一直被内存 abort，从未跑完）。清零后由我独立复跑确认 <code>tsgo</code> exit 0；同时核对未改 tsconfig、未加 <code>any</code> / <code>@ts-ignore</code>（全仓 0 处）、未排除文件。其中 4 条其实是<b>用户可见缺陷</b>——缺 i18n 键会让界面直接渲染出原始键名，已按缺陷修</td>
+		</tr>
+		<tr>
+			<td>提交 / 发布</td>
+			<td>工作区堆积 330 个未提交文件</td>
+			<td><span class="tag t-bad">未完成</span> 需先做审查分批，见第五节</td>
+		</tr>
+	</table>
+
+	<h2>三、本轮实际做了什么</h2>
+	<h3>决策与文档</h3>
+	<ul>
+		<li>新增 <strong>ADR-0172</strong>：把本机代理、应用图标与 Dock 图标、Splash 引导面板三类品牌身份一次采纳，并按「侵入面不同」拆成三个实施步（预置服务商三件套 → 图标资源与设置入口 → Splash 外壳收口）。</li>
+		<li>ADR-0157 回写 7 条状态：<code>vld7</code>、<code>44o7</code>、<code>hhe6</code> 改为已对齐（沉浸式页头与顶部留白早已在树里）；<code>ro8e</code> 改为已对齐；<code>2ux7</code>、<code>egco</code> 改为部分对齐并写明剩余项；<code>jhbp</code> 记为等价实现。</li>
+		<li>ADR-0157 新增 §15「复核修订」，把证据文档与实施规格接进来，并把「下一步」从错指的 ADR-0166 改为 ADR-0168 / ADR-0171。ADR-0165 的相反表述同步修正。</li>
+		<li>13 条品牌条目从「需产品决策」改为「待对齐（B14）」，收尾小节从「已确认不做的两类」改为「一类 + 一类已改为采纳」。</li>
+		<li>新增 <strong>ADR-0173</strong>：MCP 安装位置（全局 / 项目层）作为显式合同，把原本「只装全局」的一句话诉求拆成 <code>scope</code> / <code>cwd</code>、位置判定纯函数、项目层密钥只允许 <code>${VAR}</code>、审批卡显示落点五步。这条此前挂着「待立 ADR」，是 17 条待对齐里最后一块无人认领的决策空白。</li>
+		<li>新增 <strong>ADR-0174</strong>：输入栏工具栏里一段注释被当成字面文本渲染、模型名被按钮压住，属会话域可见缺陷；该记录原编号 0172，与品牌身份记录撞号，已改号。</li>
+	</ul>
+	<h3>代码与验证</h3>
+	<ul>
+		<li>排查并清掉 dev 渲染层的图标类名告警来源（测试夹具里的 <code>icon-[a]</code> 之类被 Tailwind 的 iconify 插件当作真实图标解析）。</li>
+		<li>受影响用例实跑：<code>bun run test:impact -- …ExtensionsSettingsView.test.tsx</code> 9 passed；<code>SettingsSidebar.test.tsx</code> 6 passed。</li>
+		<li>启动开发壳并采集启动链路：<code>boot-frame-visible 3581ms</code>、<code>content-frame-visible 9051ms</code>、<code>session initialization 5808ms</code>（其中 <code>prompt-runtime 4389ms</code>）。</li>
+		<li>类型检查从「从未跑完」推进到 0：<code>tsgo --noEmit -p apps/desktop</code> 首测 56 条 / 25 个文件，清零后我独立复跑为 exit 0；核对无 tsconfig 放宽、无 <code>any</code>、无抑制指令、无文件排除。期间 D1–D6 六条审计缺陷的用例我也逐条独立复跑过（10 + 3 + 2 + 8 条全绿）。</li>
+	</ul>
+
+	<h2>四、启动链路上发现的两处真实问题</h2>
+	<table>
+		<tr><th>现象</th><th>证据</th><th>判断</th></tr>
+		<tr>
+			<td>重启后继续已有会话，弹出「本次回复中断了」</td>
+			<td>该文案是错误分类的兜底分支（<code>classifyChatError</code> 返回 <code>unknown</code>），说明真实异常没有被任何一类识别</td>
+			<td><span class="tag t-bad">待诊断</span> 不是对齐项，是本仓自身问题；需用 <code>conversation.continue</code> 调试动作复现取原始错误</td>
+		</tr>
+		<tr>
+			<td>启动时主线程两次卡顿</td>
+			<td><code>main loop blocked { lagMs: 366 }</code>、<code>{ lagMs: 708 }</code>，均出现在窗口 show 与运行时初始化之间</td>
+			<td><span class="tag t-warn">已知</span> 探针已能留证；本轮未改，属 B7 性能批次的延续</td>
+		</tr>
+		<tr>
+			<td>im-gateway sidecar 起不来</td>
+			<td><code>im-gateway sidecar binary not found … Run 'make cross-build'</code></td>
+			<td><span class="tag t-dim">环境</span> 开发态未构建 Go 产物，非代码缺陷</td>
+		</tr>
+	</table>
+
+	<h2>五、未完成项与原因</h2>
+	<table>
+		<tr><th style="width:24%">事项</th><th style="width:14%">状态</th><th>原因 / 下一步</th></tr>
+		<tr><td>B10 宿主模型选择器（ADR-0168）</td><td><span class="tag t-bad">未实施</span></td><td>复核确认该 ADR 只有决策、没有任何实现（<code>plugin-sdk</code> 仍 0.3.11，无 <code>model-picker.ts</code>，无 <code>useModelPickerModel</code>）。实施规格已写好（1318 行，含逐段上游源码与本仓差异），按 129g → pan7 → r81i → 三个插件迁移 的顺序执行。</td></tr>
+		<tr><td>B14 品牌身份（ADR-0172）</td><td><span class="tag t-warn">已决策未实施</span></td><td>需要拷入约 20 个图标资源并改主进程换图标路径，另加预置服务商的三个通用能力。</td></tr>
+		<tr><td>MCP 层级 / skill 两条</td><td><span class="tag t-bad">未实施</span></td><td><code>dqpd</code> 未实现，<code>4b7x</code>、<code>6d2h</code> 依赖它；需先立 ADR 定「安装层级 + 审批落点」。</td></tr>
+		<tr><td>原子提交与推送</td><td><span class="tag t-bad">未完成</span></td><td>工作区有 330 个未提交文件（248 改 / 82 新增），包含 ADR-0160～0171 与其对应代码。ADR 与代码必须同批提交，否则仓库会自相矛盾；需要一轮逐域审查后按域切分。</td></tr>
+		<tr><td>跨平台构建 / R2 / 官网</td><td><span class="tag t-bad">未开始</span></td><td>由 <code>desktop-release</code>、<code>upload-release-to-r2</code>、<code>deploy-website</code> 三条流水线在 tag 上触发；前置是提交与版本定版，不能在未提交的工作区上打 tag。</td></tr>
+	</table>
+
+	<div class="note">
+		<strong>发布记录整合（已完成）</strong>：v0.5.94 原有 57 条条目，其中会话读写优化写了五条、顶栏按钮组写了四条、滑块加高写了两条、外部应用打开写了两条——同一件事被拆成多条，读起来像十个不同改动。已合并为 50 条（新增 3 / 改进 36 / 修复 5 / 其他 6），并把「管理会话面板」「添加项目分步面板」两条真正的新功能从「改进」移到「新增」。
+	</div>
+
+	<h2>六、审计结果与自我纠错</h2>
+	<p class="sub" style="margin:0 0 12px">独立审计抽验了本报告的结论，结论是<strong>不通过</strong>：上一轮的状态回写有 2 条判反了，另有 6 条代码缺陷被当成了已完成。六条已全部修完，下面每一条的用例都由我独立复跑过（10 + 3 + 10 条全部通过）。</p>
+	<table>
+		<tr><th style="width:16%">编号</th><th style="width:40%">问题</th><th style="width:44%">处理</th></tr>
+		<tr><td>D1</td><td>模型菜单「打开对齐当前模型」写了已对齐，但 <code>modelListRef</code> 从未挂到 DOM，<code>scrollIntoView</code> 与搜索框 <code>↓</code> 键恒不执行</td><td><span class="tag t-ok">已修</span> 面板改收 <code>revealModelKey</code> 按行高×下标算滚动，删掉从未挂载的死 ref；用例锁住第 80 行可见</td></tr>
+		<tr><td>D2</td><td><code>theme-ui</code> 的「管理会话」组件用例仍 import 未安装的 testing-library，收集阶段就失败</td><td><span class="tag t-ok">已修</span> 用例迁入 <code>apps/desktop</code>，5 条通过（实测复跑）</td></tr>
+		<tr><td>D3</td><td><code>useManageSessionsModel.test.tsx</code> 两条稳定红</td><td><span class="tag t-ok">已修</span> 桩件改为就地删除、标签页改用「对话」档并补反向断言，5 条通过（实测复跑）</td></tr>
+		<tr><td>D4</td><td>能力页横幅仍随安装进度重洗牌并跳回第一张</td><td><span class="tag t-ok">已修</span> 横幅图标改签名缓存，进度 tick 不再重洗牌，2 条通过（实测复跑）</td></tr>
+		<tr><td>D5</td><td>管理会话列表视口高度写死 420，矮窗口下选中行会滚出可视区</td><td><span class="tag t-ok">已修</span> 用 ResizeObserver 实测容器高度，矮窗口用例锁住 13 行</td></tr>
+		<tr><td>D6</td><td>「清空默认模型」只写不删，设置页显示未设置但新会话仍按旧模型发</td><td><span class="tag t-ok">已修</span> 清空时删记忆键，8 条通过（实测复跑）</td></tr>
+		<tr><td>2ux7 / egco</td><td>已落地的两条被判成「部分对齐」——依据的是 21:45 的旧快照，而代码在 22:26 已改</td><td><span class="tag t-ok">已纠</span> 两条均改回「已对齐」并写明证据行号</td></tr>
+		<tr><td>qnwo / warf</td><td>「全列 + 未装置灰」记成已对齐（与 ADR-0171 明确结论冲突）；<code>SplashPanel</code> 同文写「已对齐」又在 §13 写「未做」</td><td><span class="tag t-ok">已纠</span> 改为「形态差异」与「部分对齐」；⌘K 面板确实未迁移</td></tr>
+		<tr><td>文档一致性</td><td><code>hhe6</code> 引用了不存在的符号；B8–B14 在本文无定义；ADR-0160 引用不存在的条目 ID；ADR-0168 状态读起来像已完成</td><td><span class="tag t-ok">已纠</span> 符号改为真实实现、补批次对照表、删悬空引用、0168 改「已接受，未实施」</td></tr>
+	</table>
+	<p class="sub" style="margin-top:12px">教训已写进 ADR-0157 §16：状态列的「已对齐」不能以文档自证，每次回写必须重取 file:line 证据；取证时间早于最后一次代码改动时，结论作废重查。</p>
+
+	<h2>七、建议的下一批顺序</h2>
+	<ul>
+		<li><strong>B10</strong>（ADR-0168）：一次把「模型选择」收敛成单一事实源，同时补齐 <code>plugin-sdk</code> 版本与清单权限合同测试。</li>
+		<li><strong>B12</strong>（ADR-0173）：先落服务层的 <code>scope</code> / <code>cwd</code> 与位置判定纯函数，再透传 IPC、扩 schema、改审批卡，最后才动技能（否则技能会教模型传被 schema 拒绝的字段）。</li>
+		<li><strong>B14</strong>（ADR-0172）：预置服务商三件套优先——它是三者里唯一带功能语义的，图标是纯资源，Splash 是纯样式。</li>
+		<li><strong>重启续聊缺陷</strong>：与 B10 并行诊断，因为它挡的是「重启后能不能继续干活」这条主路径。</li>
+		<li><strong>提交与发布</strong>：审查分批 → 逐域提交 → 打 tag → 三条流水线 → 回填发布说明。</li>
+	</ul>
+
+
+	<h2>八、本轮新增的两项实际修复</h2>
+	<table>
+		<tr><th style="width:24%">修复</th><th style="width:36%">问题本质</th><th style="width:40%">验证</th></tr>
+		<tr><td>仓库根 <code>.mcp.json</code> 从未生效</td><td>底层库支持读它，但桌面端构造 MCP 配置源时漏传兼容路径——「库对齐 ≠ 产品对齐」的典型漏点，只有库层单测是绿的</td><td>抽出可测的配置源工厂，新增 4 条桌面级用例：能读到、同名以项目配置为准、坏文件只报诊断、dynamicOnly 不读；4 passed</td></tr>
+		<tr><td>open-in-app 插件首次入库</td><td>该 preset 只存在于工作区、从未纳入版本控制，构建产物也无就地忽略规则</td><td>提交 <code>1eb4b454d</code>：仅源码/清单/文案/测试入库，<code>dist/</code> 与 <code>release/</code> 排除；插件用例 15 passed</td></tr>
+	</table>
+
+	<p class="foot">数据来源：<code>docs/adr/0157-reference-alignment-0.5.72-0.5.81.md</code> 全量登记表（213 行）、<code>docs/dev/alignment-evidence-b8-b13.md</code>、开发壳启动日志（2026-11-14 22:52 会话）。状态分布由登记表机械统计得出。</p>
+
+</div>
+</body>
+</html>
