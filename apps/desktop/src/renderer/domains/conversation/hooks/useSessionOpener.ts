@@ -313,8 +313,14 @@ export function useSessionOpener(): SessionOpenerController {
 							revision: tailRevision,
 						});
 						markSessionSwitch("session-preview-tail-committed");
-						// 让这一帧真的画出来，用户才会在完整历史到达前看到内容。
-						await waitForCommittedPaint();
+						// 只记录「片段是否真的画出来了」，**不在这里等**：这个屏障在窗口被遮挡
+						// 或 rAF 被节流时会等到 10 秒超时，而完整历史是并发读取的，
+						// 在这里 await 会把它的提交一起拖后（实测量到过 delta≈10s 的超时路径）。
+						void waitForCommittedPaint().then((result) => {
+							if (myOpenToken === getOpenSessionToken()) {
+								markSessionSwitch(`session-preview-tail-${result}`);
+							}
+						});
 					},
 					onFull: async (history) => {
 						markSessionSwitch("session-preview-history-loaded");

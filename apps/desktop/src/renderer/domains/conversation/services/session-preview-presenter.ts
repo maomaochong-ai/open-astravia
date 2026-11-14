@@ -25,13 +25,19 @@ export async function presentSessionPreview(stages: SessionPreviewStages): Promi
 	const tail = await stages.readTail().catch(() => null);
 	const stillCurrent = (): boolean => stages.isCurrent?.() ?? true;
 
+	// 完整历史的读取在这里就发起，**不等片段提交完**。
+	// 片段提交里通常含一次「等这一帧真的画出来」的屏障；那个屏障在窗口被遮挡或 rAF
+	// 被节流时会一直等到超时（实测量到过 10 s），把它放在完整读取之前，等于让用户
+	// 先看十秒半截内容、再等一两秒解析——正是「黑屏一会儿才出来」的形态。
+	const fullPromise = stages.readFull();
+
 	// 片段本身没有价值（读不到、或就是整份文件）时不做第二次渲染：
 	// 否则会先画一遍、再画一遍同样的内容。
 	if (tail?.truncated && tail.history.length > 0 && stillCurrent()) {
 		await stages.onTail(tail.history);
 	}
 
-	const full = await stages.readFull();
+	const full = await fullPromise;
 	if (!stillCurrent()) return;
 	await stages.onFull(full.history);
 }

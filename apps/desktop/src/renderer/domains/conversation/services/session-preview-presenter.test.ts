@@ -14,8 +14,8 @@ function entry(text: string): HistoryEntry {
 }
 
 /**
- * 两段式首屏的三个判定：片段先出、片段无用时不要多画一遍、被取代后不再提交。
- * 任何一条错了，这个优化要么白做，要么把已切换的会话又写回旧内容。
+ * 两段式首屏的判定：片段先出、完整历史并发读、片段无用时不要多画一遍、被取代后不再提交。
+ * 其中「并发读」是硬要求——片段提交里含一次等绘制的屏障，串行会让完整历史被它拖后。
  */
 describe("会话首屏的两段式编排", () => {
 	it("尾部片段先提交，完整历史随后覆盖", async () => {
@@ -37,7 +37,33 @@ describe("会话首屏的两段式编排", () => {
 			},
 		});
 
-		expect(order).toEqual(["readTail", "tail:1", "readFull", "full:2"]);
+		// readFull 在 tail 提交之前就发起（并发），提交顺序仍是 tail → full。
+		expect(order).toEqual(["readTail", "readFull", "tail:1", "full:2"]);
+	});
+
+	it("片段提交慢（例如等绘制屏障）不会推迟完整历史的读取", async () => {
+		const readFull = vi.fn(async () => ({ history: [entry("full")] }));
+		let releaseTail: (() => void) | undefined;
+		const tailCommitted = new Promise<void>((resolve) => {
+			releaseTail = resolve;
+		});
+
+		const run = presentSessionPreview({
+			readTail: async () => ({ history: [entry("tail")], truncated: true }),
+			readFull,
+			onTail: async () => {
+				await tailCommitted;
+			},
+			onFull: vi.fn(),
+		});
+
+		// 片段还卡在提交里，完整读取必须已经开始。
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(readFull).toHaveBeenCalledTimes(1);
+
+		releaseTail?.();
+		await run;
 	});
 
 	it("片段就是整份文件时不重复渲染（truncated=false）", async () => {
