@@ -123,7 +123,7 @@ export function ProjectRowView({
 						badge ? "hidden group-hover:flex" : "opacity-0 group-hover:opacity-100",
 					)}
 				>
-					<span className="icon-[solar--add-circle-linear] h-3 w-3" />
+					<span className="icon-[solar--add-linear] h-3 w-3" />
 				</button>
 			</div>
 		</div>

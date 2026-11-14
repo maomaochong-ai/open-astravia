@@ -55,7 +55,7 @@ export function SettingSection({
 		renderedTitle !== false &&
 		!(typeof renderedTitle === "string" && renderedTitle.trim() === "");
 	return (
-		<div className="mb-6 p-1.5" data-setting-section-highlight-target={section.id}>
+		<div className="mb-6 py-1.5" data-setting-section-highlight-target={section.id}>
 			{hasTitle &&
 				(typeof renderedTitle === "string" ? (
 					<h2

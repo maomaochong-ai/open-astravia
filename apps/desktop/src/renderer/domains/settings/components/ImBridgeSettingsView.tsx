@@ -216,7 +216,7 @@ export function ImBridgeSettingsView({ model }: { model: ImBridgeSettingsModel }
 			</SettingSection>
 
 			{/* 消息渠道：同时只有一个活动渠道，其余为待用配置 */}
-			<div className="mb-6 p-1.5" data-setting-section-highlight-target={SETTINGS_SECTION["imbridge-channels"].id}>
+			<div className="mb-6 py-1.5" data-setting-section-highlight-target={SETTINGS_SECTION["imbridge-channels"].id}>
 				<div className="mb-3 flex items-baseline gap-2">
 					<SettingHeading
 						section={SETTINGS_SECTION["imbridge-channels"]}

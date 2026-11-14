@@ -63,7 +63,7 @@ export function DefaultConversationSectionView({
 							onClick={onNewSession}
 							className={actionButtonClass}
 						>
-							<span className="icon-[solar--add-square-outline] h-4 w-4" />
+							<span className="icon-[solar--add-linear] h-4 w-4" />
 						</button>
 					)}
 				</div>

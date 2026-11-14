@@ -95,13 +95,13 @@ export function Slider({
 				setScrubbing(false);
 			}}
 			className={cn(
-				"relative flex h-5 w-full cursor-pointer touch-none select-none items-center data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
+				"relative flex h-6 w-full cursor-pointer touch-none select-none items-center data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
 				className,
 			)}
 		>
 			<div
 				data-slot="slider-track"
-				className="absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 overflow-hidden rounded-full bg-muted-foreground/20"
+				className="absolute left-0 right-0 top-1/2 h-2.5 -translate-y-1/2 overflow-hidden rounded-full bg-muted-foreground/20"
 			>
 				<div
 					data-slot="slider-range"
@@ -117,11 +117,11 @@ export function Slider({
 			<div
 				data-slot="slider-thumb"
 				className={cn(
-					"pointer-events-none absolute top-1/2 block w-1 shrink-0 rounded-full bg-primary outline-none ring-2 ring-background before:absolute before:-inset-x-2 before:inset-y-0 before:content-['']",
+					"pointer-events-none absolute top-1/2 block w-1.5 shrink-0 rounded-full bg-primary outline-none ring-2 ring-background before:absolute before:-inset-x-2 before:inset-y-0 before:content-['']",
 					animateValue && !scrubbing
 						? "transition-[left,box-shadow,height] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
 						: "transition-[box-shadow,height]",
-					dragging ? "h-5 ring-4" : "h-4",
+					dragging ? "h-6 ring-4" : "h-5",
 					focused && !dragging ? "ring-[3px]" : undefined,
 				)}
 				style={{ left: `${percent}%`, transform: "translate(-50%, -50%)" }}

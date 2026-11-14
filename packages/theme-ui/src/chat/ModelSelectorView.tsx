@@ -223,6 +223,8 @@ export function ModelSelectorView({
 						asChild
 						portalContainer={portalContainer}
 						align="start"
+						// 菜单贴窗口右缘时会被推到边上：留出边距让它整体往左收。
+						collisionPadding={16}
 						className={cn(
 							// 底色跟搜索框走同一个变量：搜索行去掉底色后要和面板融成一块
 							"w-[min(16rem,calc(100vw-2rem))] min-w-[180px] max-w-[16rem] overflow-visible bg-background p-0",
@@ -250,6 +252,7 @@ export function ModelSelectorView({
 												aria-hidden="true"
 												className="icon-[solar--magnifer-linear] pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground"
 											/>
+											{/* type=search 在 WebKit 里自带清除按钮，会与下面自绘的那个同时出现 */}
 											<input
 												ref={searchInputRef}
 												type="search"
@@ -258,7 +261,7 @@ export function ModelSelectorView({
 												onClick={handleSearchClick}
 												placeholder={labels.searchPlaceholder}
 												aria-label={labels.searchPlaceholder}
-												className="h-7 w-full rounded-md pl-7 pr-7 text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
+												className="h-7 w-full rounded-md pl-7 pr-7 text-[11px] text-foreground outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
 											/>
 											{searchQuery && (
 												<button
