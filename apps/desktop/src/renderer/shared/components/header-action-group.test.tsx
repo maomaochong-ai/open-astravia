@@ -106,4 +106,59 @@ describe("顶栏动作组的收纳", () => {
 		expect(screen.getByRole("button", { name: "更多操作" }).getAttribute("aria-haspopup")).toBe("menu");
 	});
 
+
+	it("调整模式下全部动作都显示（不收纳），拖动上报新顺序", () => {
+		const onReorder = vi.fn();
+		const { container } = render(
+			<HeaderActionGroup
+				items={[
+					{ id: "export", title: "导出", icon: "a", onClick: vi.fn() },
+					{ id: "pin", title: "置顶", icon: "b", onClick: vi.fn() },
+					{ id: "panel", title: "面板", icon: "c", onClick: vi.fn() },
+				]}
+				labels={labels}
+				// 窄到放不下两个，但调整模式仍全部显示。
+				availableWidth={74}
+				editing
+				onReorder={onReorder}
+			/>,
+		);
+
+		expect(container.querySelectorAll("[data-header-action-id]")).toHaveLength(3);
+		expect(screen.queryByRole("button", { name: "更多操作" })).toBeNull();
+
+		// 把「面板」拖到「导出」的位置：新顺序应为 [panel, export, pin]。
+		const dataTransfer = {
+			store: new Map<string, string>(),
+			setData(type: string, value: string) {
+				this.store.set(type, value);
+			},
+			getData(type: string) {
+				return this.store.get(type) ?? "";
+			},
+			effectAllowed: "move",
+		};
+		const handles = [...container.querySelectorAll("[data-header-action-id]")];
+		fireEvent.dragStart(handles[2]!, { dataTransfer });
+		fireEvent.drop(handles[0]!, { dataTransfer });
+		expect(onReorder).toHaveBeenCalledWith(["panel", "export", "pin"]);
+	});
+
+	it("调整模式下点击某项切换显示状态，而不是执行动作", () => {
+		const onClick = vi.fn();
+		const onToggleVisibility = vi.fn();
+		render(
+			<HeaderActionGroup
+				items={[{ id: "pin", title: "置顶", icon: "b", onClick }]}
+				labels={labels}
+				editing
+				hiddenIds={["pin"]}
+				onToggleVisibility={onToggleVisibility}
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: "置顶" }));
+		expect(onToggleVisibility).toHaveBeenCalledWith("pin");
+		expect(onClick).not.toHaveBeenCalled();
+	});
 });

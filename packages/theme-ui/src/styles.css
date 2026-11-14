@@ -91,3 +91,17 @@ textarea::placeholder {
 	--color-secondary: var(--secondary);
 	--color-secondary-foreground: var(--secondary-foreground);
 }
+
+/*
+ * 顶栏动作的「调整」模式：按钮轻微左右抖动，表示可以拖动排序。
+ * 幅度很小（±1.5deg）：这是提示「这里可以动」，不是装饰动画。
+ */
+@keyframes header-action-wiggle {
+	0%,
+	100% {
+		transform: rotate(-1.5deg);
+	}
+	50% {
+		transform: rotate(1.5deg);
+	}
+}

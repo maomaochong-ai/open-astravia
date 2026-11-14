@@ -49,6 +49,22 @@ export interface HeaderActionGroupProps {
 	readonly labels: HeaderActionGroupLabels;
 	/** 可用宽度（像素）。不传则由容器实测。仅测试用。 */
 	readonly availableWidth?: number;
+	/**
+	 * 调整模式：全部动作都显示（不收纳），按钮轻微抖动表示可拖动，
+	 * 拖动改顺序、点击切换是否进胶囊。
+	 */
+	readonly editing?: boolean;
+	/** 拖动结束后上报新的顺序（完整 id 列表）。 */
+	readonly onReorder?: (order: readonly string[]) => void;
+	/** 调整模式下点某项：切换它是否进胶囊。 */
+	readonly onToggleVisibility?: (id: string) => void;
+	/** 被用户隐藏的动作 id：调整模式下它们仍在列表里，但带上「已隐藏」标记。 */
+	readonly hiddenIds?: readonly string[];
+	/**
+	 * 元操作（如「调整」开关）：永远排在组尾、不参与收纳、也不进顺序偏好。
+	 * 它们不是顶栏的常规动作，是操作顶栏本身的东西。
+	 */
+	readonly extraActions?: readonly HeaderActionItem[];
 }
 
 /** 计算放得下几个动作：返回可见数量。 */
@@ -87,7 +103,16 @@ export function orderByKeepPriority<T extends { readonly priority?: number }>(it
 		.map((entry) => entry.item);
 }
 
-export function HeaderActionGroup({ items, labels, availableWidth }: HeaderActionGroupProps): JSX.Element | null {
+export function HeaderActionGroup({
+	items,
+	labels,
+	availableWidth,
+	editing = false,
+	onReorder,
+	onToggleVisibility,
+	hiddenIds,
+	extraActions,
+}: HeaderActionGroupProps): JSX.Element | null {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [measuredWidth, setMeasuredWidth] = useState(0);
 
@@ -103,9 +128,10 @@ export function HeaderActionGroup({ items, labels, availableWidth }: HeaderActio
 		return () => observer.disconnect();
 	}, []);
 
+	// 调整模式下不收纳：要拖动排序，就得看得见全部。
 	// 兜底：父容器没有可用宽度（首次渲染或隐藏）时全部显示，宁可不收纳也不要凭空少了按钮。
 	const width = availableWidth ?? measuredWidth;
-	const visibleCount = width > 0 ? resolveVisibleCount(items.length, width) : items.length;
+	const visibleCount = editing ? items.length : width > 0 ? resolveVisibleCount(items.length, width) : items.length;
 	// 先按「谁更该留下」决定名额，再按原始顺序渲染：被收起的总是优先级最低的那几个，
 	// 而可见项在屏幕上的相对位置不会因为窗口变窄而重排。
 	const keepSet = new Set(orderByKeepPriority(items).slice(0, visibleCount).map((item) => item.id));
@@ -126,6 +152,56 @@ export function HeaderActionGroup({ items, labels, availableWidth }: HeaderActio
 	}, []);
 
 	if (items.length === 0) return null;
+
+	if (editing) {
+		// 拖动排序用原生 HTML5 drag：桌面端（含 Electron）稳定，且不需要额外的指针捕获逻辑。
+		return (
+			<div ref={containerRef} className="flex min-w-0 items-center">
+				<ButtonGroup>
+					{items.map((item) => {
+						const hidden = hiddenIds?.includes(item.id) === true;
+						return (
+							<span
+								key={item.id}
+								draggable
+								data-header-action-id={item.id}
+								data-hidden={hidden || undefined}
+								onDragStart={(event) => {
+									event.dataTransfer?.setData("text/plain", item.id);
+									if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+								}}
+								onDragOver={(event) => {
+									// 必须阻止默认行为，否则 drop 不会触发。
+									event.preventDefault();
+								}}
+								onDrop={(event) => {
+									event.preventDefault();
+									const fromId = event.dataTransfer?.getData("text/plain") ?? "";
+									if (!fromId || fromId === item.id) return;
+									const ids = items.map((entry) => entry.id);
+									const fromIndex = ids.indexOf(fromId);
+									const toIndex = ids.indexOf(item.id);
+									if (fromIndex < 0 || toIndex < 0) return;
+									ids.splice(fromIndex, 1);
+									ids.splice(toIndex, 0, fromId);
+									onReorder?.(ids);
+								}}
+								className="animate-[header-action-wiggle_0.35s_ease-in-out_infinite]"
+							>
+								<SessionTopItem
+									icon={<span className={item.icon} aria-hidden="true" />}
+									title={hidden ? `${item.title}（已隐藏）` : item.title}
+									aria-label={item.title}
+									active={hidden ? false : item.active === true}
+									onClick={() => onToggleVisibility?.(item.id)}
+								/>
+							</span>
+						);
+					})}
+				</ButtonGroup>
+			</div>
+		);
+	}
 
 	return (
 		<div ref={containerRef} className="flex min-w-0 items-center">
@@ -149,6 +225,17 @@ export function HeaderActionGroup({ items, labels, availableWidth }: HeaderActio
 						menuItems={menuItems}
 					/>
 				)}
+				{(extraActions ?? []).map((item) => (
+					<SessionTopItem
+						key={item.id}
+						icon={<span className={item.icon} aria-hidden="true" />}
+						title={item.title}
+						aria-label={item.title}
+						active={item.active === true}
+						disabled={item.disabled}
+						onClick={item.onClick}
+					/>
+				))}
 			</ButtonGroup>
 		</div>
 	);

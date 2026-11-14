@@ -2,7 +2,7 @@ export type {
 	AutomationDetailPaneViewProps,
 	AutomationDetailStatusTone,
 } from "./AutomationDetailPaneView";
-export { AutomationDetailPaneView, AutomationPaneIconButton } from "./AutomationDetailPaneView";
+export { AutomationDetailPaneView } from "./AutomationDetailPaneView";
 export type {
 	AutomationFilterTab,
 	AutomationPageViewLabels,

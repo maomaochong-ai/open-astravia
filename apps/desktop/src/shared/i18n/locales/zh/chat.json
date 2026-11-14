@@ -434,7 +434,8 @@
 	},
 	"chatView": {
 		"headerActions": {
-			"more": "更多操作"
+			"more": "更多操作",
+			"edit": "调整"
 		},
 		"defaultSessionTitle": "Astravia 会话",
 		"bottomPanelButton": {

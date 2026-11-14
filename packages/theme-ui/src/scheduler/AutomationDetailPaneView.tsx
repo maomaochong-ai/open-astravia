@@ -69,27 +69,3 @@ export function AutomationDetailPaneView({
 }
 
 /** 顶栏里的图标按钮，与关闭按钮同一套尺寸。 */
-export function AutomationPaneIconButton({
-	icon,
-	label,
-	disabled,
-	onClick,
-}: {
-	readonly icon: string;
-	readonly label: string;
-	readonly disabled?: boolean;
-	readonly onClick: () => void;
-}): JSX.Element {
-	return (
-		<button
-			type="button"
-			title={label}
-			aria-label={label}
-			disabled={disabled}
-			onClick={onClick}
-			className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
-		>
-			<span className={cn(icon, "h-4 w-4")} />
-		</button>
-	);
-}

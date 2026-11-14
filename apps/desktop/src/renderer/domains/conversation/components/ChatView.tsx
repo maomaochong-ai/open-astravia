@@ -12,6 +12,8 @@ import { useWindowPinAction } from "../hooks/useWindowPinAction";
 import { useBottomPanelToggle } from "@domains/bottom-panel/hooks/useBottomPanelToggle";
 import { useOpenTerminal } from "@domains/bottom-panel/hooks/useOpenTerminal";
 import { HeaderActionGroup } from "@astravia-org/theme-ui/chat/HeaderActionGroupView";
+import { type HeaderActionItem } from "@astravia-org/theme-ui/chat/HeaderActionGroupView";
+import { useHeaderActionPreference } from "../hooks/useHeaderActionPreference";
 import { BackgroundTasksBadge } from "./BackgroundTasksBadge";
 import { SandboxGrantsBadge } from "./SandboxGrantsBadge";
 import { OpenWorkspaceWithAppButton } from "@domains/file-explorer/components/OpenWorkspaceWithAppButton";
@@ -58,65 +60,90 @@ export function ChatView(props: ChatViewProps): JSX.Element {
 		() => createConversationActivityWorkspace(model.cwd, model.sessionId, runtimeIds),
 		[model.cwd, model.sessionId, runtimeIds],
 	);
+	// 顶栏动作：顺序与显示交给用户（本地保存），「调整」模式可拖动排序、点击隐藏。
+	const headerActionItems = useMemo<readonly HeaderActionItem[]>(
+		() => [
+			{
+				id: "export",
+				title: model.header.exportTitle,
+				icon: "icon-[solar--square-share-line-linear]",
+				disabled: model.header.exportDisabled,
+				onClick: actions.openExport,
+				priority: 3,
+			},
+			{
+				id: "pin",
+				title: pin.pinned ? t("chatView.pinButton.pinned") : t("chatView.pinButton.unpinned"),
+				icon: "icon-[solar--pin-linear]",
+				active: pin.pinned,
+				onClick: pin.toggle,
+				priority: 1,
+			},
+			{
+				id: "terminal",
+				title: !terminal.available
+					? t("chatView.terminalButton.unavailable")
+					: terminal.focused
+						? t("chatView.terminalButton.focused")
+						: t("chatView.terminalButton.open"),
+				icon: "icon-[solar--programming-linear]",
+				active: terminal.focused,
+				disabled: !terminal.available,
+				onClick: terminal.open,
+				priority: 2,
+			},
+			{
+				id: "bottom-panel",
+				title: bottomPanel.open
+					? t("chatView.bottomPanelButton.open")
+					: t("chatView.bottomPanelButton.closed"),
+				icon: "icon-[solar--window-frame-linear]",
+				active: bottomPanel.open,
+				onClick: bottomPanel.toggle,
+				priority: 2,
+			},
+			{
+				id: "activity-panel",
+				title: model.header.panelTitle,
+				icon: "icon-[solar--sidebar-minimalistic-linear]",
+				active: model.header.panelOpen,
+				onClick: actions.togglePanel,
+				priority: 5,
+			},
+		],
+		[actions, bottomPanel, model.header, pin, t, terminal],
+	);
+	const headerPreference = useHeaderActionPreference(headerActionItems);
+
 	const headerActions = useMemo(
 		() => (
 			<>
 				<BackgroundTasksBadge runtimeIds={runtimeIds} activityWorkspaceId={workspace.id} />
 				<SandboxGrantsBadge runtimeIds={runtimeIds} />
 				{/*
-				 * 五个动作收进一个按钮组：窗口变窄时由 HeaderActionGroup 决定放得下几个，
-				 * 其余收进「更多」菜单，而不是让它们溢出或被裁掉。
+				 * 动作收进一个按钮组：窗口变窄时由 HeaderActionGroup 决定放得下几个，
+				 * 其余收进「更多」菜单；「调整」模式可拖动排序并按需隐藏。
 				 */}
 				<HeaderActionGroup
-					labels={{ more: t("chatView.headerActions.more") }}
-					items={[
+					labels={{ more: t("chatView.headerActions.more"), edit: t("chatView.headerActions.edit") }}
+					items={headerPreference.items}
+					editing={headerPreference.editing}
+					hiddenIds={headerPreference.hiddenIds}
+					onReorder={headerPreference.reorder}
+					onToggleVisibility={headerPreference.toggleVisibility}
+					extraActions={[
 						{
-							id: "export",
-							title: model.header.exportTitle,
-							icon: "icon-[solar--square-share-line-linear]",
-							disabled: model.header.exportDisabled,
-							onClick: actions.openExport,
-						},
-						{
-							id: "pin",
-							title: pin.pinned ? t("chatView.pinButton.pinned") : t("chatView.pinButton.unpinned"),
-							icon: "icon-[solar--pin-linear]",
-							active: pin.pinned,
-							onClick: pin.toggle,
-						},
-						{
-							id: "terminal",
-							title: !terminal.available
-								? t("chatView.terminalButton.unavailable")
-								: terminal.focused
-									? t("chatView.terminalButton.focused")
-									: t("chatView.terminalButton.open"),
-							icon: "icon-[solar--programming-linear]",
-							active: terminal.focused,
-							disabled: !terminal.available,
-							onClick: terminal.open,
-						},
-						{
-							id: "bottom-panel",
-							title: bottomPanel.open
-								? t("chatView.bottomPanelButton.open")
-								: t("chatView.bottomPanelButton.closed"),
-							icon: "icon-[solar--window-frame-linear]",
-							active: bottomPanel.open,
-							onClick: bottomPanel.toggle,
-						},
-						{
-							id: "activity-panel",
-							title: model.header.panelTitle,
-							icon: "icon-[solar--sidebar-minimalistic-linear]",
-							active: model.header.panelOpen,
-							onClick: actions.togglePanel,
+							id: "__adjust",
+							title: t("chatView.headerActions.edit"),
+							icon: "icon-[solar--sort-from-top-to-bottom-linear]",
+							active: headerPreference.editing,
+							onClick: () => headerPreference.setEditing(!headerPreference.editing),
 						},
 					]}
 				/>
 			</>
 		),
-		[actions, bottomPanel, model.header, pin, runtimeIds, t, terminal, workspace.id],
+		[actions, bottomPanel, headerPreference, model.header, pin, runtimeIds, t, terminal, workspace.id],
 	);
 	const onAbort = useCallback(() => {
 		void props.onAbort();

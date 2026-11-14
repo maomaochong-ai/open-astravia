@@ -434,7 +434,8 @@
 	},
 	"chatView": {
 		"headerActions": {
-			"more": "More actions"
+			"more": "More actions",
+			"edit": "Adjust"
 		},
 		"defaultSessionTitle": "Astravia Session",
 		"bottomPanelButton": {

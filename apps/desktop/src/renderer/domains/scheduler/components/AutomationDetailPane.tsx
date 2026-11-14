@@ -1,4 +1,5 @@
-import { AutomationDetailPaneView, AutomationPaneIconButton } from "@astravia-org/theme-ui/scheduler";
+import { ButtonGroup, ButtonGroupItem } from "@astravia-org/ui/button-group";
+import { AutomationDetailPaneView } from "@astravia-org/theme-ui/scheduler";
 import {
 	Button,
 	DropdownMenu,
@@ -34,35 +35,41 @@ export function AutomationDetailPane({ pane, onClose, onCreated }: AutomationDet
 			headerActions={
 				editing ? (
 					<>
-						<AutomationPaneIconButton
-							icon="icon-[mdi--play-outline]"
-							label={t("detail.runNow")}
-							disabled={model.running}
-							onClick={model.onRunNow}
-						/>
-						<AutomationPaneIconButton
-							icon={model.enabled ? "icon-[mdi--pause-circle-outline]" : "icon-[mdi--play-circle-outline]"}
-							label={model.enabled ? t("detail.pause") : t("detail.enable")}
-							onClick={model.onToggleEnabled}
-						/>
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<button
-									type="button"
-									title={t("detail.more")}
-									aria-label={t("detail.more")}
-									className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-								>
-									<span className="icon-[mdi--dots-horizontal] h-4 w-4" />
-								</button>
-							</DropdownMenuTrigger>
+						{/* 三个操作合成一颗胶囊：与顶栏、详情页同一套外观。 */}
+						<ButtonGroup>
+							<ButtonGroupItem
+								icon={<span className="icon-[mdi--play-outline] h-4 w-4" />}
+								title={t("detail.runNow")}
+								aria-label={t("detail.runNow")}
+								disabled={model.running}
+								onClick={model.onRunNow}
+							/>
+							<ButtonGroupItem
+								icon={
+									<span
+										className={`${model.enabled ? "icon-[mdi--pause-circle-outline]" : "icon-[mdi--play-circle-outline]"} h-4 w-4`}
+									/>
+								}
+								title={model.enabled ? t("detail.pause") : t("detail.enable")}
+								aria-label={model.enabled ? t("detail.pause") : t("detail.enable")}
+								onClick={model.onToggleEnabled}
+							/>
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<ButtonGroupItem
+										icon={<span className="icon-[mdi--dots-horizontal] h-4 w-4" />}
+										title={t("detail.more")}
+										aria-label={t("detail.more")}
+									/>
+								</DropdownMenuTrigger>
 							<DropdownMenuContent align="end">
 								<DropdownMenuItem onSelect={model.onDelete} className="text-destructive">
 									<span className="icon-[mdi--delete-outline] h-4 w-4" />
 									{t("detail.delete")}
 								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						</ButtonGroup>
 					</>
 				) : null
 			}
