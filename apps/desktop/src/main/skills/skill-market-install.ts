@@ -12,6 +12,7 @@ import { getCloudBridge } from "../cloud-bridge.js";
 import { DEFAULT_SERVER_URL } from "../constants.js";
 import { readSettings } from "../ipc/settings.js";
 import { getAppLogger } from "../logger.js";
+import { fetchWithRetry } from "../net/fetch-with-retry.js";
 import { verifySha256 } from "../utils/integrity.js";
 import {
 	ensureDirWritable,
@@ -66,7 +67,10 @@ async function fetchWithOptionalAuth(path: string, accept: string): Promise<Resp
 	const doFetch = async (token?: string): Promise<Response> => {
 		const headers: Record<string, string> = { Accept: accept };
 		if (token) headers.Authorization = `Bearer ${token}`;
-		return fetch(url, { headers });
+		// 元数据与归档共用这条通道：单次 30 秒、失败退避重试两次。
+		// 裸 fetch 的默认超时是 300 秒，国内网络下半开连接会挂到用户以为卡死。
+		const { response } = await fetchWithRetry(url, { headers }, { attemptTimeoutMs: 30_000, maxAttempts: 3 });
+		return response;
 	};
 
 	let token = currentToken();

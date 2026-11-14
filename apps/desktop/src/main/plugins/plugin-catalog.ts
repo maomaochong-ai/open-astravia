@@ -19,6 +19,7 @@ import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/abi
 import { logAbilityRuntimeLoaded } from "../abilities/ability-lifecycle-log.js";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getAppLogger } from "../logger.js";
+import { fetchWithRetry } from "../net/fetch-with-retry.js";
 import { verifySha256 } from "../utils/integrity.js";
 import { DesktopPluginAgentHandlerRegistry } from "./coding-agent-handler-registry.js";
 import { desktopPluginHookRegistry } from "./coding-agent-hook-registry.js";
@@ -269,11 +270,18 @@ export async function installPluginFromUrl(url: string, options?: PluginInstallO
 	if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
 		throw new Error("Plugin URL must use http or https");
 	}
-	const response = await fetch(parsed);
+	// 归档可能几十 MB：单次尝试给足时间，但失败要重试（国内网络下常见半开连接与瞬时 RST）。
+	// 重试只解决传输层抖动，不换地址、不走镜像。
+	const { response, attempts } = await fetchWithRetry(
+		parsed.toString(),
+		{},
+		{ attemptTimeoutMs: 120_000, maxAttempts: 3 },
+	);
 	if (!response.ok) {
 		throw new Error(`Failed to download plugin: ${response.status}`);
 	}
 	const buffer = Buffer.from(await response.arrayBuffer());
+	if (attempts > 1) pluginLog.info("plugin download retried", { attempts, host: parsed.host });
 	return installPluginFromArchive(buffer, { ...options, source: "remote" });
 }
 

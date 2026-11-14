@@ -6,6 +6,7 @@ import type {
 	CodingAgentRuntimeToolRegistration,
 } from "@astravia/coding-agent/runtime";
 import type { SessionConfig } from "@astravia/runtime-core";
+import type { DesktopConfig } from "../config/desktop-config-store.js";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
 import { type DesktopAgentMode, LEGACY_SESSION_AGENT_MODE, readSessionAgentMode } from "./session-agent-mode-store.js";
 import {
@@ -69,6 +70,12 @@ export async function resolveDesktopSessionConfig(
 	config: DesktopCodingAgentSessionConfig | undefined,
 	kind: DesktopSessionKind,
 	source: DesktopConversationSource,
+	/**
+	 * 调用方已经读过的桌面配置。会话创建链路上它至少会被读两次
+	 * （沙箱检查一次、这里一次），而每次读取都要走「读文件 + 迁移 + 读 SSH 主机 + 解析」
+	 * 并且串行排在同一条队列上，重复读只会拖慢创建。已在别处读过时传进来即可。
+	 */
+	preloadedDesktopConfig?: DesktopConfig,
 ): Promise<ResolvedDesktopSessionConfig> {
 	const requestedCwd = config?.cwd ?? process.cwd();
 	allowProjectRoot(requestedCwd);
@@ -82,7 +89,7 @@ export async function resolveDesktopSessionConfig(
 
 	const isConversation = kind === "conversation";
 	const scenario: ConversationScenario = config?.scenario ?? (isConversation ? "conversation" : "project");
-	const desktopConfig = await readDesktopConfig();
+	const desktopConfig = preloadedDesktopConfig ?? (await readDesktopConfig());
 	const enableBackgroundTasks = source === "interactive" && scenario !== "batch";
 	const includeAgentSkills = config?.includeAgentSkills ?? desktopConfig.experimental?.agentSkills !== false;
 	const appendSystemPrompt =

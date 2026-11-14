@@ -217,11 +217,11 @@ export class DesktopConversationService {
 			// 「本机沙箱不可用」挡住，或者带着一套不存在的沙箱工具集进入会话。
 			const executionMode = resolveProjectExecutionMode(config?.cwd, config?.executionMode);
 			if (config && executionMode !== config.executionMode) config = { ...config, executionMode };
+			// 桌面配置读一次就够：沙箱检查要用默认执行模式，随后的配置解析也要用它。
+			// 每次都读要走「读文件 + 迁移 + 读 SSH 主机 + 解析」并且串行排队，重复读只会拖慢创建。
+			const desktopConfig = await trace.measure("read-desktop-config", () => readDesktopConfig());
 			await trace.measure("sandbox-check", () =>
-				assertSandboxAvailableForMode(config?.executionMode, async () => {
-					const desktopConfig = await readDesktopConfig();
-					return desktopConfig.defaultExecutionMode;
-				}),
+				assertSandboxAvailableForMode(config?.executionMode, async () => desktopConfig.defaultExecutionMode),
 			);
 			// 绑定的 Agent：新建取渲染层传入的身份，恢复取会话目录旁挂的记录。
 			// 能力白名单在这里由主进程查表折算，渲染层始终只经手身份。
@@ -237,6 +237,7 @@ export class DesktopConversationService {
 						: config,
 					kind,
 					source,
+					desktopConfig,
 				),
 			);
 			const result = await trace.measure("runtime-create", () => this.runtime.createSession(resolvedConfig.config));

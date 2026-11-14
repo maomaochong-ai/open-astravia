@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 export type DesktopSessionCreationStage =
 	| "precheck"
+	| "read-desktop-config"
 	| "sandbox-check"
 	| "resolve-agent-profile"
 	| "resolve-config"
