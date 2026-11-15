@@ -1,4 +1,5 @@
 import type { ModelDefinition } from "../model-settings-service.js";
+import { parseProviderModels } from "../parse-provider-models.js";
 import type { PresetProviderDef } from "./catalog.js";
 import { type PresetError, PresetFetchError, toPresetError } from "./errors.js";
 
@@ -160,6 +161,11 @@ async function fetchAnthropicModels(
 // ─── OpenAI 兼容: GET {baseUrl}/models,Bearer 鉴权 ───
 // OpenAI / DeepSeek / Z.ai 只给 id;Kimi 额外给 context_length / supports_* 能力位。
 
+/**
+ * 本函数认识的字段（Kimi 等给的那一套）。聚合网关的其它写法
+ * （`reasoning_levels` / `modalities` / `max_output_tokens`）不在这里列举，
+ * 由统一的模型解析器处理，避免两处各维护一份字段表。
+ */
 interface OpenAICompatibleModel {
 	id?: string;
 	display_name?: string;
@@ -167,18 +173,26 @@ interface OpenAICompatibleModel {
 	max_context_length?: number;
 	supports_image_in?: boolean;
 	supports_reasoning?: boolean;
+	[key: string]: unknown;
 }
 
 export function parseOpenAICompatibleModel(raw: OpenAICompatibleModel | string): ModelDefinition | null {
 	if (typeof raw === "string") return raw ? { id: raw } : null;
 	if (!raw.id) return null;
-	const contextWindow = raw.context_length ?? raw.max_context_length;
+	// 聚合网关（Kimi、各类 proxy）用 reasoning_levels / modalities / max_tokens 这类写法，
+	// 这里复用统一的模型解析器拿到它们；本函数认识的旧字段优先，其余回落。
+	const rich = parseProviderModels({ data: [raw] })[0];
+	const contextWindow = raw.context_length ?? raw.max_context_length ?? rich?.contextWindow;
+	const reasoning = raw.supports_reasoning ?? rich?.reasoning;
+	const vision = raw.supports_image_in ?? rich?.vision;
 	return {
 		id: raw.id,
-		...(raw.display_name ? { name: raw.display_name } : {}),
-		...(raw.supports_reasoning === undefined ? {} : { reasoning: raw.supports_reasoning }),
-		...(raw.supports_image_in === undefined ? {} : { input: raw.supports_image_in ? ["text", "image"] : ["text"] }),
+		...(raw.display_name ? { name: raw.display_name } : rich?.name ? { name: rich.name } : {}),
+		...(reasoning === undefined ? {} : { reasoning }),
+		...(vision === undefined ? {} : { input: vision ? ["text", "image"] : ["text"] }),
 		...(contextWindow ? { contextWindow } : {}),
+		...(rich?.maxTokens === undefined ? {} : { maxTokens: rich.maxTokens }),
+		...(rich?.reasoningLevels === undefined ? {} : { reasoningLevels: rich.reasoningLevels }),
 	};
 }
 

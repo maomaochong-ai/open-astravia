@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getPresetProvider } from "./catalog.js";
-import { type FetchImpl, fetchPresetModels } from "./fetch.js";
+import { type FetchImpl, fetchPresetModels, parseOpenAICompatibleModel } from "./fetch.js";
 
 function jsonResponse(body: unknown, init?: { ok?: boolean; status?: number }): Response {
 	return {
@@ -176,5 +176,35 @@ describe("fetchPresetModels", () => {
 
 		expect(result.models).toEqual([]);
 		expect(result.error).toEqual({ code: "empty-models" });
+	});
+});
+
+describe("预设拉取复用统一模型解析", () => {
+	it("聚合网关用 reasoning_levels / modalities 写法时，档位与模态不再被丢弃", () => {
+		const parsed = parseOpenAICompatibleModel({
+			id: "gw/model-a",
+			reasoning_levels: ["low", "medium", "high"],
+			modalities: { input: ["text", "image"] },
+			max_output_tokens: 8192,
+			context_length: 200000,
+		});
+
+		expect(parsed).toMatchObject({
+			id: "gw/model-a",
+			contextWindow: 200000,
+			reasoningLevels: ["low", "medium", "high"],
+			input: ["text", "image"],
+			maxTokens: 8192,
+		});
+	});
+
+	it("旧字段优先：显式 supports_reasoning=false 不被网关写法覆盖", () => {
+		const parsed = parseOpenAICompatibleModel({
+			id: "gw/model-b",
+			supports_reasoning: false,
+			reasoning_levels: ["low", "high"],
+		});
+
+		expect(parsed?.reasoning).toBe(false);
 	});
 });
