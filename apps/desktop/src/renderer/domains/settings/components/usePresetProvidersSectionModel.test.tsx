@@ -52,7 +52,7 @@ beforeEach(() => {
 
 describe("usePresetProvidersSectionModel 启用 Magpie", () => {
 	it("用 defaultApiKey 作为 apiKey，而不是落成空串", async () => {
-		const saveConfig = vi.fn(async () => undefined);
+		const saveConfig = vi.fn<(config: ModelsConfigData) => Promise<void>>(async () => undefined);
 		const config: ModelsConfigData = { providers: {} };
 
 		const { result } = renderHook(() => usePresetProvidersSectionModel({ config, saveConfig }));
@@ -66,8 +66,9 @@ describe("usePresetProvidersSectionModel 启用 Magpie", () => {
 		});
 
 		expect(saveConfig).toHaveBeenCalledTimes(1);
-		const saved = saveConfig.mock.calls[0]?.[0] as ModelsConfigData;
-		expect(saved.providers.magpie?.apiKey).toBe("magpie");
+		const saved = saveConfig.mock.calls[0]?.[0];
+		expect(saved).toBeDefined();
+		expect(saved?.providers.magpie?.apiKey).toBe("magpie");
 		// 拉模型用的也是默认密钥，而不是空串。
 		expect(refreshPresetModels).toHaveBeenCalledWith("magpie", "magpie");
 	});
