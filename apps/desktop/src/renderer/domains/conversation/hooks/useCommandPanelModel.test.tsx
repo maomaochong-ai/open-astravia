@@ -87,8 +87,8 @@ describe("useCommandPanelModel context compaction", () => {
 			}),
 		);
 
-		// 回归：默认分类是技能，且没有高亮项；此时 Enter 不该做任何事。
-		expect(result.current.viewProps.tab).toBe("skills");
+		// 回归：默认分类是「全部」，且没有高亮项；此时 Enter 不该做任何事。
+		expect(result.current.viewProps.tab).toBe("all");
 		expect(result.current.viewProps.activeKey).toBeNull();
 		act(() => result.current.viewProps.onPanelKeyDown(keyEvent("Enter")));
 		expect(queueContextCompaction).not.toHaveBeenCalled();

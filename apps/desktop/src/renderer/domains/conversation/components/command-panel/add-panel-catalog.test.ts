@@ -1,38 +1,45 @@
 import { describe, expect, it } from "vitest";
-import type { AddPanelEntry } from "./add-panel-catalog";
 import {
 	ADD_PANEL_CATEGORY_ORDER,
+	type AddPanelEntry,
 	buildAddPanelCatalog,
 	buildAddPanelRows,
 	buildFavoritesSections,
 	flattenAddPanelSections,
 	searchAddPanelSections,
 	sectionOf,
+	splitIcon,
 } from "./add-panel-catalog";
 
-const skill = (name: string, source: string) => ({
-	name,
-	description: `${name} 说明`,
-	source,
-	type: "skill" as const,
-});
+/** 构造一个已投影好的条目（分类模块只接受这种输入，见 `AddPanelCatalogInput` 注释）。 */
+function entry(
+	category: AddPanelEntry["category"],
+	id: string,
+	label: string,
+	overrides: Partial<AddPanelEntry> = {},
+): AddPanelEntry {
+	return {
+		category,
+		id,
+		key: `${category}:${id}`,
+		label,
+		groupId: category === "plugins" ? "installed" : "mine",
+		searchable: category !== "files",
+		fallbackIcon: "icon-[solar--magic-stick-3-linear]",
+		...overrides,
+	};
+}
 
-const baseInput = {
-	files: [{ id: "addFile", label: "添加文件", icon: "icon-[solar--paperclip-linear]" }],
-	skills: [
-		skill("code-review", "builtin"),
-		skill("weekly", "user"),
-		skill("lark-doc", "plugin"),
-		skill("figma-ui", "market"),
-		skill("repo-rule", "project"),
-	],
-	connectors: [{ name: "feishu", label: "飞书", iconUrl: "https://example.test/feishu.png" }],
-	plugins: [{ id: "lark", label: "飞书套件" }],
-	apps: [{ id: "board", label: "灵感看板", status: "published" as const }],
-};
+const ENTRIES: AddPanelEntry[] = [
+	entry("skills", "skill:code-review", "代码审阅", { groupId: "builtin" }),
+	entry("skills", "skill:weekly", "周报生成"),
+	entry("skills", "skill:xlsx", "Spreadsheet Toolkit", { groupId: "market" }),
+	entry("connectors", "mcp:feishu", "飞书", { groupId: "connected" }),
+	entry("plugins", "plugin:lark", "飞书套件"),
+	entry("plugins", "plugin:system", "系统插件", { groupId: "builtin" }),
+];
 
-const entriesOf = (sections: ReturnType<typeof buildAddPanelCatalog>, category: string): AddPanelEntry[] =>
-	flattenAddPanelSections(sections.filter((section) => section.category === category));
+const catalog = (entries: readonly AddPanelEntry[] = ENTRIES) => buildAddPanelCatalog({ entries });
 
 describe("buildAddPanelCatalog", () => {
 	it("五个分类按固定顺序返回，空分类也保留轨道位置", () => {
@@ -41,140 +48,105 @@ describe("buildAddPanelCatalog", () => {
 		expect(sections.every((section) => section.groups.length === 0)).toBe(true);
 	});
 
-	it("技能按来源分组；未知来源单独归「其他」，不冒充「我的」", () => {
-		const sections = buildAddPanelCatalog({
-			skills: [skill("code-review", "builtin"), skill("weekly", "user"), skill("mystery", "unknown-source")],
-		});
-		const groups = sectionOf(sections, "skills")?.groups ?? [];
-		expect(groups.map((group) => group.id)).toEqual(["builtin", "mine", "other"]);
-		expect(groups[1]?.entries.map((entry) => entry.label)).toEqual(["weekly"]);
-		expect(groups[2]?.entries.map((entry) => entry.label)).toEqual(["mystery"]);
+	it("文件动作总是直接动作、不参与搜索", () => {
+		const sections = buildAddPanelCatalog({ files: [{ id: "addFile", label: "添加文件" }] });
+		const files = flattenAddPanelSections(sections.filter((section) => section.category === "files"));
+		expect(files).toHaveLength(1);
+		expect(files[0]?.searchable).toBe(false);
+		expect(files[0]?.groupId).toBe("actions");
 	});
 
-	it("市场安装（source=market）与自定义安装（source=custom）各自归位", () => {
-		const sections = buildAddPanelCatalog({
-			skills: [skill("xlsx", "market"), skill("my-own", "custom")],
-		});
-		const groups = sectionOf(sections, "skills")?.groups ?? [];
-		// 回归：市场装的技能曾被算进「我的」，因为主进程把扫描器的目录类型当成了来源。
-		expect(groups.map((group) => group.id)).toEqual(["market", "mine"]);
+	it("条目只按分类落位，分类模块不重排、不再推断来源", () => {
+		const sections = catalog();
+		expect(sectionOf(sections, "skills")?.groups.map((group) => group.id)).toEqual(["builtin", "mine", "market"]);
+		expect(sectionOf(sections, "connectors")?.groups.map((group) => group.id)).toEqual(["connected"]);
+		expect(sectionOf(sections, "apps")).toBeDefined();
+		expect(sectionOf(sections, "apps")?.groups).toHaveLength(0);
 	});
 
-	it("能力市场新来源只要 source 有映射就归到位，不需要改面板代码", () => {
-		const sections = buildAddPanelCatalog({ skills: [skill("x", "plugin"), skill("figma-ui", "market")] });
-		const groups = sectionOf(sections, "skills")?.groups ?? [];
-		// 分组顺序跟随条目出现顺序，但每个来源都落到自己的组里。
-		expect(groups.map((group) => group.id)).toEqual(["plugin", "market"]);
+	it("分组标题按 groupId 解析：同一分类里的「内置」与「已安装」不会都标成已安装", () => {
+		const plugins = sectionOf(catalog(), "plugins")?.groups ?? [];
+		expect(plugins.map((group) => group.titleKey)).toEqual([
+			"slashPanel.groups.installed",
+			"slashPanel.groups.builtin",
+		]);
 	});
 
-	it("文件动作不参与搜索，其余分类参与", () => {
-		const sections = buildAddPanelCatalog(baseInput);
-		expect(entriesOf(sections, "files")[0]?.searchable).toBe(false);
-		expect(entriesOf(sections, "skills").every((entry) => entry.searchable)).toBe(true);
-		expect(entriesOf(sections, "connectors")[0]?.searchable).toBe(true);
+	it("未知分组落到该分类的默认标题", () => {
+		const sections = buildAddPanelCatalog({ entries: [entry("skills", "s", "x", { groupId: "who-knows" })] });
+		expect(sectionOf(sections, "skills")?.groups[0]?.titleKey).toBe("slashPanel.groups.other");
 	});
+});
 
-	it("条目键全局唯一：分类前缀加条目 id", () => {
-		const sections = buildAddPanelCatalog(baseInput);
-		const keys = flattenAddPanelSections(sections).map((entry) => entry.key);
-		expect(new Set(keys).size).toBe(keys.length);
-		expect(keys).toContain("skills:skill:code-review");
-		expect(keys).toContain("connectors:feishu");
-	});
-
-	it("优先用结构化 provenance 归类，source 字符串只是回退", () => {
-		const sections = buildAddPanelCatalog({
-			skills: [
-				// source 说 market，provenance 说是插件提供 → 以 provenance 为准
-				{
-					...skill("from-plugin", "market"),
-					provenance: { kind: "provided", providerType: "plugin", providerId: "lark" },
-				},
-				// 原生目录、项目级 scope → 项目
-				{ ...skill("repo-rule", "builtin"), provenance: { kind: "native", scope: "project" } },
-				// 原生目录、用户级 scope → 我的
-				{ ...skill("mine", "builtin"), provenance: { kind: "native", scope: "user" } },
-				// 内置提供方 → 内置
-				{ ...skill("builtin-one", "market"), provenance: { kind: "builtin", providerId: "preset" } },
-			],
-		});
-		const groups = sectionOf(sections, "skills")?.groups ?? [];
-		// 分组顺序 = 条目首次出现的顺序（面板不重排，避免两次打开之间换组）。
-		expect(groups.map((group) => group.id)).toEqual(["plugin", "project", "mine", "builtin"]);
-	});
-
-	it("技能图标走调用方解析，缺省时留空", () => {
-		const sections = buildAddPanelCatalog({
-			skills: [skill("code-review", "builtin")],
-			resolveSkillIcon: (candidate) => `icon-for-${candidate.name}`,
-		});
-		expect(entriesOf(sections, "skills")[0]?.icon).toBe("icon-for-code-review");
+describe("splitIcon", () => {
+	it("区分图片 URL 与 iconify 名称", () => {
+		expect(splitIcon("astravia-file://local/a.png")).toEqual({ iconUrl: "astravia-file://local/a.png" });
+		expect(splitIcon("https://x/y.svg")).toEqual({ iconUrl: "https://x/y.svg" });
+		expect(splitIcon("./skills/a.png")).toEqual({ iconUrl: "./skills/a.png" });
+		// `solar:` 是 iconify **名称**，不是 URL——当成 URL 塞进 <img> 会落成灰块。
+		expect(splitIcon("solar:magic-stick-3-bold")).toEqual({ icon: "solar:magic-stick-3-bold" });
+		expect(splitIcon("icon-[solar--x]")).toEqual({ icon: "icon-[solar--x]" });
+		expect(splitIcon(undefined)).toEqual({});
 	});
 });
 
 describe("searchAddPanelSections", () => {
-	const sections = buildAddPanelCatalog(baseInput);
-
 	it("跨分类命中，按分类顺序分组", () => {
-		const result = searchAddPanelSections(sections, "飞书");
+		const result = searchAddPanelSections(catalog(), "飞书");
 		expect(result.map((section) => section.category)).toEqual(["connectors", "plugins"]);
 	});
 
 	it("文件动作不出现在搜索结果里", () => {
-		const result = searchAddPanelSections(sections, "添加");
-		expect(result).toHaveLength(0);
-	});
-
-	it("命中描述也算命中", () => {
-		const result = searchAddPanelSections(sections, "说明");
-		expect(result.map((section) => section.category)).toEqual(["skills"]);
+		const sections = buildAddPanelCatalog({ files: [{ id: "addFile", label: "添加文件" }], entries: ENTRIES });
+		expect(searchAddPanelSections(sections, "添加")).toHaveLength(0);
 	});
 
 	it("空搜索词返回原目录", () => {
+		const sections = catalog();
 		expect(searchAddPanelSections(sections, "   ")).toEqual(sections);
 	});
 });
 
 describe("buildFavoritesSections", () => {
-	const sections = buildAddPanelCatalog(baseInput);
-
 	it("跨分类按分类顺序重新分组，丢掉目录里已不存在的键", () => {
-		const favorites = ["plugins:lark", "skills:skill:weekly", "skills:gone"];
-		const result = buildFavoritesSections(sections, favorites);
+		const result = buildFavoritesSections(catalog(), ["plugins:plugin:lark", "skills:skill:weekly", "skills:gone"]);
 		expect(result.map((section) => section.category)).toEqual(["skills", "plugins"]);
-		expect(flattenAddPanelSections(result).map((entry) => entry.key)).toEqual([
+		expect(flattenAddPanelSections(result).map((item) => item.key)).toEqual([
 			"skills:skill:weekly",
-			"plugins:lark",
+			"plugins:plugin:lark",
 		]);
 	});
 
 	it("没有收藏时返回空数组（由视图渲染空态）", () => {
-		expect(buildFavoritesSections(sections, [])).toEqual([]);
+		expect(buildFavoritesSections(catalog(), [])).toEqual([]);
 	});
 });
 
 describe("buildAddPanelRows", () => {
-	const sections = buildAddPanelCatalog(baseInput);
 	const labels = { categoryLabel: (category: string) => category, groupLabel: (key: string) => key };
 
-	it("分类视图：来源多于一个才出分组头，空分类不产生行", () => {
-		const skillsOnly = sections.filter((section) => section.category === "skills");
-		const rows = buildAddPanelRows(skillsOnly, { searching: false, ...labels });
-		expect(rows.filter((row) => row.kind === "header").length).toBeGreaterThan(0);
-		expect(rows.filter((row) => row.kind === "entry")).toHaveLength(5);
+	it("分类视图：来源多于一个才出分组头", () => {
+		const skills = catalog().filter((section) => section.category === "skills");
+		const rows = buildAddPanelRows(skills, { searching: false, ...labels });
+		expect(rows.filter((row) => row.kind === "header")).toHaveLength(3);
+		expect(rows.filter((row) => row.kind === "entry")).toHaveLength(3);
 	});
 
 	it("单个来源分组时不出分组头", () => {
-		const single = buildAddPanelCatalog({ skills: [skill("code-review", "builtin")] }).filter(
-			(section) => section.category === "skills",
+		const sections = buildAddPanelCatalog({ entries: [entry("skills", "only", "唯一", { groupId: "builtin" })] });
+		const rows = buildAddPanelRows(
+			sections.filter((section) => section.category === "skills"),
+			{
+				searching: false,
+				...labels,
+			},
 		);
-		const rows = buildAddPanelRows(single, { searching: false, ...labels });
 		expect(rows).toHaveLength(1);
 		expect(rows[0]?.kind).toBe("entry");
 	});
 
-	it("搜索态按分类分组：标题是分类名", () => {
-		const rows = buildAddPanelRows(sections, { searching: true, ...labels });
+	it("搜索 / 全部视图按分类分组：标题是分类名", () => {
+		const rows = buildAddPanelRows(catalog(), { searching: true, ...labels });
 		const headers = rows
 			.filter((row) => row.kind === "header")
 			.map((row) => (row.kind === "header" ? row.label : ""));

@@ -1,19 +1,17 @@
-import type { SkillInfo } from "@preload/api";
-import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
+import { isRenderableImageIcon } from "@domains/abilities/lib/ability-presentation";
 
 /**
- * 「添加面板」的能力目录：把五类可添加到当前消息的条目投影成
- * 「分类 → 分组 → 条目」，供两栏面板（分类轨道 + 列表）渲染。
+ * 「添加面板」的目录模型：把能力条目投影成「分类 → 分组 → 条目」，供两栏面板渲染。
  *
- * 这里只做投影与排序，不碰任何一类的存储、权限与安装路径——技能来自 `SkillInfo[]`、
- * 连接器来自 `ConnectorGridItem[]`、插件/应用来自能力注册表、文件来自工具行的附件动作。
+ * 这里只做**结构投影与分组**，不判断条目该属于哪一类、也不判断它该不该出现——
+ * 那些都由能力页同一套组装结果决定（见 `useAddPanelAbilityEntries` 与 ADR-0177）。
  * 命名刻意不叫 `Capability*`：本仓 `Capability` 是授权契约（`docs/capabilities/`），
  * 与「能往消息里加什么」是两件事；术语见 CONTEXT.md「添加面板」词条。
  */
 export type AddPanelCategory = "files" | "skills" | "connectors" | "plugins" | "apps";
 
-/** 左栏的一格：收藏 + 五个分类。 */
-export type AddPanelTab = "favorites" | "operations" | AddPanelCategory;
+/** 左栏的一格：收藏 / 全部 / 五个分类 / 操作。 */
+export type AddPanelTab = "favorites" | "all" | "operations" | AddPanelCategory;
 
 /**
  * 分类顺序固定：最常用的在前，最不常用的在后。
@@ -31,9 +29,9 @@ export const ADD_PANEL_CATEGORY_ORDER: readonly AddPanelCategory[] = [
 /**
  * 轨道上始终按 {@link ADD_PANEL_CATEGORY_ORDER} 显示五类。
  *
- * `plugins` 与 `apps` 目前拿不到条目（能力注册表没有暴露「已安装插件 / 我的应用」的
- * 读取接口）——它们仍然留在轨道上，内容区显示分类空态。分类位置固定比「只显示有内容的
- * 那几类」更重要：后者会让同一类在两次打开之间换位置，用户每次都要重新找。
+ * `apps` 目前没有任何条目来源（本仓没有「应用」这种能力条目，`bundle` 也不是应用），
+ * 它留在轨道上、内容区显示空态。分类位置固定比「只显示有内容的那几类」更重要：
+ * 后者会让同一类在两次打开之间换位置，用户每次都要重新找。
  */
 
 /**
@@ -42,33 +40,19 @@ export const ADD_PANEL_CATEGORY_ORDER: readonly AddPanelCategory[] = [
  * 挑图标时的硬约束：形状不能撞。`code-scan` / `widget` / `widget-2` 在 16px 下都是
  * 四宫格，一排看过去像三个相同的格子——那等于没有分类。
  */
-export const ADD_PANEL_OPERATION_ICON = "icon-[solar--bolt-linear]";
-
 export const ADD_PANEL_CATEGORY_ICONS: Record<AddPanelCategory, string> = {
 	files: "icon-[solar--paperclip-linear]",
-	skills: "icon-[solar--magic-stick-3-linear]",
+	skills: "icon-[solar--code-linear]",
 	connectors: "icon-[solar--plug-circle-linear]",
 	plugins: "icon-[solar--box-linear]",
 	apps: "icon-[solar--widget-linear]",
 };
 
-/**
- * 条目的图标可能是**两种东西**：iconify class（`icon-[solar--x]`）或图片路径/URL
- * （技能市场里那张 png、连接器预置图）。以前只有在连接器上区分了图片，技能带回来的
- * png 被当成 class 塞进 `<span>`，整列技能因此显示空白——实测就是这个表现。
- *
- * 在投影时就拆开，视图只认 `icon`（class）与 `iconUrl`（图片），不再靠字符串格式猜。
- */
-export function splitIcon(raw: string | undefined): { icon?: string; iconUrl?: string } {
-	if (!raw) return {};
-	// 判定要宽一点：技能的图标可能是 `./skills/x.png`、`https://…`、
-	// `astravia-media://…`、插件资源 URL，也可能带查询串（`?v=1.2&reload=…`）。
-	const isScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) && !raw.startsWith("icon-");
-	const isPath = raw.startsWith("./") || raw.startsWith("/") || raw.includes("/skills/");
-	const isImageExt = /\.(png|jpe?g|svg|webp|gif|avif)(\?|#|$)/i.test(raw);
-	const isImage = isScheme || isPath || isImageExt;
-	return isImage ? { iconUrl: raw } : { icon: raw };
-}
+/** 「操作」格（压缩上下文等会话操作）：与分类同档图标。 */
+export const ADD_PANEL_OPERATION_ICON = "icon-[solar--bolt-linear]";
+
+/** 「全部」格：跨分类列出能力页有的全部条目。 */
+export const ADD_PANEL_ALL_ICON = "icon-[solar--magic-stick-3-linear]";
 
 /** 分类标题的 i18n key（与 `chat.json` 的 `slashPanel.sections.*` 对齐）。 */
 export const ADD_PANEL_CATEGORY_TITLE_KEYS: Record<AddPanelCategory, string> = {
@@ -79,6 +63,18 @@ export const ADD_PANEL_CATEGORY_TITLE_KEYS: Record<AddPanelCategory, string> = {
 	apps: "slashPanel.sections.apps",
 };
 
+/**
+ * 条目的图标可能是**两种东西**：iconify 名称（`solar:xxx`）或图片 URL / 包内相对路径。
+ *
+ * 判定直接复用能力页的 `isRenderableImageIcon`，两处不可能再分叉：早期这里用「看起来
+ * 像 scheme 就是图片」的宽判定，把 `solar:magic-stick-3-bold` 当 URL 塞进 `<img>`，
+ * 加载失败后落成灰色占位——面板里那片灰块就是这么来的。
+ */
+export function splitIcon(raw: string | undefined): { icon?: string; iconUrl?: string } {
+	if (!raw) return {};
+	return isRenderableImageIcon(raw) ? { iconUrl: raw } : { icon: raw };
+}
+
 /** 面板里的一行。字段足够渲染行与预览，不回传任何一类的私有数据。 */
 export interface AddPanelEntry {
 	readonly category: AddPanelCategory;
@@ -88,18 +84,20 @@ export interface AddPanelEntry {
 	readonly key: string;
 	readonly label: string;
 	readonly description?: string;
-	/** iconify class（技能 / 文件动作）。 */
+	/** iconify 名称（`solar:xxx`）或 iconify class（`icon-[solar--x]`）。 */
 	readonly icon?: string;
-	/** 图片图标（连接器预置图、市场里那张 png）。 */
+	/** 图片图标（市场技能 png、连接器预置图、插件资源 URL）。 */
 	readonly iconUrl?: string;
 	readonly groupId: string;
 	/** 参与搜索与键盘导航；文件动作是直接动作，不参与搜索。 */
 	readonly searchable: boolean;
 	/**
-	 * 行首图标的兜底：条目自己没有图标（技能没声明、连接器没有预置图）时用分类图标。
-	 * 以前这里留空，实测整列技能都没有图标——列表看起来缺了一块。
+	 * 行首图标的兜底：条目自己没有图标时用分类图标。
+	 * 早期这里留空，实测整列技能都没有图标——列表看起来缺了一块。
 	 */
 	readonly fallbackIcon: string;
+	/** 条目类型：图标兜底时用来区分「技能默认图」与「分类图」。 */
+	readonly kind?: "skill" | "mcp" | "plugin" | "bundle" | "file";
 }
 
 export interface AddPanelGroup {
@@ -114,22 +112,6 @@ export interface AddPanelSection {
 	readonly groups: readonly AddPanelGroup[];
 }
 
-export interface AddPanelPluginEntry {
-	readonly id: string;
-	readonly label: string;
-	readonly description?: string;
-	readonly icon?: string;
-}
-
-export interface AddPanelAppEntry {
-	readonly id: string;
-	readonly label: string;
-	readonly description?: string;
-	readonly icon?: string;
-	/** 已下线 / 未发布的应用仍然列出来，但要标明状态。 */
-	readonly status?: "published" | "unpublished" | "never";
-}
-
 export interface AddPanelFileActionInput {
 	readonly id: string;
 	readonly label: string;
@@ -137,73 +119,59 @@ export interface AddPanelFileActionInput {
 	readonly icon?: string;
 }
 
+/**
+ * 目录的输入。
+ *
+ * **只有两个来源**：文件动作（面板自己持有，不由能力页管理）与已经投影好的能力条目
+ * （`useAddPanelAbilityEntries` 复用能力页的 `build*Abilities()` 产出）。这里刻意不再
+ * 接受「原始技能 / 连接器 / 插件 / 应用列表」——那条旧路径会让面板重新实现一遍来源判定，
+ * 正是「面板与能力页不一致」的历史来源。
+ */
 export interface AddPanelCatalogInput {
 	readonly files?: readonly AddPanelFileActionInput[];
-	readonly skills?: readonly SkillInfo[];
-	readonly connectors?: readonly ConnectorGridItem[];
-	readonly plugins?: readonly AddPanelPluginEntry[];
-	readonly apps?: readonly AddPanelAppEntry[];
-	/** 技能的展示图标（市场目录图 → Solar 预设 → 默认图由调用方决定）。 */
-	readonly resolveSkillIcon?: (skill: SkillInfo) => string | undefined;
+	readonly entries?: readonly AddPanelEntry[];
 }
 
-/** 技能按来源分组。分组比分类更细，但数量固定，不会随条目增长。 */
-const SKILL_GROUPS: Record<string, { id: string; titleKey: string }> = {
-	builtin: { id: "builtin", titleKey: "slashPanel.groups.builtin" },
-	custom: { id: "mine", titleKey: "slashPanel.groups.mine" },
-	user: { id: "mine", titleKey: "slashPanel.groups.mine" },
-	agentsUser: { id: "mine", titleKey: "slashPanel.groups.mine" },
-	path: { id: "mine", titleKey: "slashPanel.groups.mine" },
-	project: { id: "project", titleKey: "slashPanel.groups.project" },
-	agentsProject: { id: "project", titleKey: "slashPanel.groups.project" },
-	plugin: { id: "plugin", titleKey: "slashPanel.groups.plugin" },
-	market: { id: "market", titleKey: "slashPanel.groups.market" },
-};
+export const ADD_PANEL_FILE_GROUP = "actions";
 
-/**
- * 未知来源单独归「其他」，**不冒充「我的」**。
- *
- * `source` 是技能发现链路给出的字符串。能力市场以后新增来源（新安装渠道、新 provider
- * 类型）时，这里会先落到「其他」——分类可能不够漂亮，但不会像以前那样把别人的技能
- * 说成用户自己的。加新来源时补一条 `SKILL_GROUPS` 映射即可，未补也不会丢条目。
- */
-const UNKNOWN_SKILL_GROUP = { id: "other", titleKey: "slashPanel.groups.other" };
-const FILE_GROUP = { id: "actions", titleKey: "slashPanel.groups.actions" };
-const CONNECTOR_GROUP = { id: "connected", titleKey: "slashPanel.groups.connected" };
-const PLUGIN_GROUP = { id: "installed", titleKey: "slashPanel.groups.installed" };
-const APP_GROUP = { id: "mine", titleKey: "slashPanel.groups.mine" };
-
+/** 分类内全局键：收藏、高亮、详情都按它索引。 */
 export function addPanelEntryKey(category: AddPanelCategory, id: string): string {
 	return `${category}:${id}`;
 }
 
 /**
- * 技能归属：**优先结构化 `provenance`，回退到旧 `source` 字符串**。
+ * 分组标题由 **groupId** 决定，不是由分类决定。
  *
- * `source` 是历史字段，取值随发现链路变化（`agents-user`、`path`、未来还会有新值）；
- * `provenance` 是带上 `kind` 与 `providerType` 的结构化描述，能区分「内置提供方」
- * 「插件提供」「原生目录」。有新字段时不该继续靠字符串猜（ADR-0177 §1/§2）。
+ * 同一分类里可以同时有「内置」与「已安装」两组（系统插件与第三方插件都在 `plugins`
+ * 分类下）。按分类取标题会把内置组也标成「已安装」——条目分对了、标签却错。
+ * 未知 groupId 落到该分类的默认组标题。
  */
-function skillGroupOf(skill: SkillInfo): { id: string; titleKey: string } {
-	const provenance = skill.provenance;
-	if (provenance) {
-		if (provenance.kind === "builtin") return SKILL_GROUPS.builtin ?? UNKNOWN_SKILL_GROUP;
-		if (provenance.kind === "provided") {
-			// 插件提供的技能归「插件」；sdk / runtime 提供方与插件同列——对用户来说都是
-			// 「由某个扩展贡献的能力」，没有区分的必要。
-			return SKILL_GROUPS.plugin ?? UNKNOWN_SKILL_GROUP;
-		}
-		if (provenance.kind === "native") {
-			// 原生目录的 scope 可能是目录类型（`path` / `agents-user`），也可能是安装渠道
-			// （`market` / `custom`，由主进程按清单写入）。**统一走映射表**，
-			// 不要在这里把「非 project」一律折叠成「我的」——那会把市场装的技能吞掉。
-			return SKILL_GROUPS[provenance.scope] ?? UNKNOWN_SKILL_GROUP;
-		}
-	}
-	return SKILL_GROUPS[skill.source] ?? UNKNOWN_SKILL_GROUP;
+const GROUP_TITLE_KEYS: Record<string, string> = {
+	actions: "slashPanel.groups.actions",
+	builtin: "slashPanel.groups.builtin",
+	mine: "slashPanel.groups.mine",
+	project: "slashPanel.groups.project",
+	plugin: "slashPanel.groups.plugin",
+	market: "slashPanel.groups.market",
+	connected: "slashPanel.groups.connected",
+	installed: "slashPanel.groups.installed",
+	other: "slashPanel.groups.other",
+};
+
+const FALLBACK_GROUP_TITLE_KEYS: Record<AddPanelCategory, string> = {
+	files: "slashPanel.groups.actions",
+	skills: "slashPanel.groups.other",
+	connectors: "slashPanel.groups.connected",
+	plugins: "slashPanel.groups.installed",
+	apps: "slashPanel.groups.mine",
+};
+
+function groupTitleKey(category: AddPanelCategory, groupId: string): string {
+	return GROUP_TITLE_KEYS[groupId] ?? FALLBACK_GROUP_TITLE_KEYS[category];
 }
 
-function groupEntries(entries: readonly AddPanelEntry[], titleKeyOf: (groupId: string) => string): AddPanelGroup[] {
+/** 按 groupId 分桶，保持首次出现顺序（面板不重排，避免两次打开之间换组）。 */
+function groupEntries(entries: readonly AddPanelEntry[], category: AddPanelCategory): AddPanelGroup[] {
 	const order: string[] = [];
 	const buckets = new Map<string, AddPanelEntry[]>();
 	for (const entry of entries) {
@@ -217,20 +185,16 @@ function groupEntries(entries: readonly AddPanelEntry[], titleKeyOf: (groupId: s
 	}
 	return order.map((groupId) => ({
 		id: groupId,
-		titleKey: titleKeyOf(groupId),
+		titleKey: groupTitleKey(category, groupId),
 		entries: buckets.get(groupId) ?? [],
 	}));
 }
 
-function buildSection(
-	category: AddPanelCategory,
-	entries: readonly AddPanelEntry[],
-	titleKeyOf: (groupId: string) => string,
-): AddPanelSection {
+function buildSection(category: AddPanelCategory, entries: readonly AddPanelEntry[]): AddPanelSection {
 	return {
 		category,
 		titleKey: ADD_PANEL_CATEGORY_TITLE_KEYS[category],
-		groups: groupEntries(entries, titleKeyOf),
+		groups: groupEntries(entries, category),
 	};
 }
 
@@ -246,83 +210,21 @@ export function buildAddPanelCatalog(input: AddPanelCatalogInput): AddPanelSecti
 		label: action.label,
 		description: action.description,
 		...splitIcon(action.icon),
-		groupId: FILE_GROUP.id,
+		groupId: ADD_PANEL_FILE_GROUP,
 		searchable: false,
 		fallbackIcon: ADD_PANEL_CATEGORY_ICONS.files,
 	}));
 
-	const skills = (input.skills ?? []).map<AddPanelEntry>((skill) => {
-		const group = skillGroupOf(skill);
-		const id = `${skill.type}:${skill.name}`;
-		return {
-			category: "skills",
-			id,
-			key: addPanelEntryKey("skills", id),
-			label: skill.alias || skill.name,
-			description: skill.description,
-			...splitIcon(input.resolveSkillIcon?.(skill) ?? skill.icon),
-			groupId: group.id,
-			searchable: true,
-			fallbackIcon: ADD_PANEL_CATEGORY_ICONS.skills,
-		};
-	});
-
-	const connectors = (input.connectors ?? []).map<AddPanelEntry>((connector) => ({
-		category: "connectors",
-		id: connector.name,
-		key: addPanelEntryKey("connectors", connector.name),
-		label: connector.label,
-		iconUrl: connector.iconUrl,
-		groupId: CONNECTOR_GROUP.id,
-		searchable: true,
-		fallbackIcon: ADD_PANEL_CATEGORY_ICONS.connectors,
-	}));
-
-	const plugins = (input.plugins ?? []).map<AddPanelEntry>((plugin) => ({
-		category: "plugins",
-		id: plugin.id,
-		key: addPanelEntryKey("plugins", plugin.id),
-		label: plugin.label,
-		description: plugin.description,
-		...splitIcon(plugin.icon),
-		groupId: PLUGIN_GROUP.id,
-		searchable: true,
-		fallbackIcon: ADD_PANEL_CATEGORY_ICONS.plugins,
-	}));
-
-	const apps = (input.apps ?? []).map<AddPanelEntry>((app) => ({
-		category: "apps",
-		id: app.id,
-		key: addPanelEntryKey("apps", app.id),
-		label: app.label,
-		description: app.description,
-		...splitIcon(app.icon),
-		groupId: APP_GROUP.id,
-		searchable: true,
-		fallbackIcon: ADD_PANEL_CATEGORY_ICONS.apps,
-	}));
-
-	const titleKeyOf: Record<AddPanelCategory, (groupId: string) => string> = {
-		files: () => FILE_GROUP.titleKey,
-		skills: (groupId) =>
-			[...Object.values(SKILL_GROUPS), UNKNOWN_SKILL_GROUP].find((group) => group.id === groupId)?.titleKey ??
-			UNKNOWN_SKILL_GROUP.titleKey,
-		connectors: () => CONNECTOR_GROUP.titleKey,
-		plugins: () => PLUGIN_GROUP.titleKey,
-		apps: () => APP_GROUP.titleKey,
-	};
-
+	const provided = input.entries ?? [];
 	const byCategory: Record<AddPanelCategory, readonly AddPanelEntry[]> = {
 		files,
-		skills,
-		connectors,
-		plugins,
-		apps,
+		skills: provided.filter((entry) => entry.category === "skills"),
+		connectors: provided.filter((entry) => entry.category === "connectors"),
+		plugins: provided.filter((entry) => entry.category === "plugins"),
+		apps: provided.filter((entry) => entry.category === "apps"),
 	};
 
-	return ADD_PANEL_CATEGORY_ORDER.map((category) =>
-		buildSection(category, byCategory[category], titleKeyOf[category]),
-	);
+	return ADD_PANEL_CATEGORY_ORDER.map((category) => buildSection(category, byCategory[category]));
 }
 
 /** 目录里全部条目（按分类顺序、组内顺序）。 */
@@ -334,7 +236,7 @@ export function flattenAddPanelSections(sections: readonly AddPanelSection[]): A
 	return entries;
 }
 
-/** 某个分类的条目（内部仍按来源分组）；分类不存在时返回空数组。 */
+/** 某个分类的条目（内部仍按来源分组）；分类不存在时返回 undefined。 */
 export function sectionOf(
 	sections: readonly AddPanelSection[],
 	category: AddPanelCategory,
@@ -369,13 +271,10 @@ function normalize(value: string): string {
  * 分组标题保留分类名而不是来源——用户此刻找的是「哪个东西叫这个名字」，
  * 告诉他它在「技能」里比在「我的」里更有用。
  */
-export function searchAddPanelSections(
-	sections: readonly AddPanelSection[],
-	query: string,
-): readonly AddPanelSection[] {
+export function searchAddPanelSections(sections: readonly AddPanelSection[], query: string): AddPanelSection[] {
 	const needle = normalize(query);
-	// 无查询时原样返回同一个引用：调用方据此判断「有没有真的过滤过」。
-	if (!needle) return sections;
+	// 空搜索词返回原目录本身（调用方只在有词时走到这里，但别把 readonly 数组当可变返回）。
+	if (!needle) return [...sections];
 	const result: AddPanelSection[] = [];
 	for (const section of sections) {
 		const entries = section.groups
@@ -403,8 +302,8 @@ export type AddPanelRow =
 /**
  * 把分组拍平成行（分组头 + 条目），供列表按顺序渲染。
  *
- * 分组头规则：搜索态按分类分组（标题是分类名）；分类视图里按来源分组，来源多于一个
- * 才出标题；空分组不出现。
+ * 分组头规则：搜索 / 「全部」视图按分类分组（标题是分类名）；分类视图里按来源分组，
+ * 来源多于一个才出标题；空分组不出现。
  */
 export function buildAddPanelRows(
 	sections: readonly AddPanelSection[],
@@ -434,9 +333,7 @@ export function buildAddPanelRows(
 					label: options.groupLabel(group.titleKey),
 				});
 			}
-			for (const entry of group.entries) {
-				rows.push({ kind: "entry", entry });
-			}
+			for (const entry of group.entries) rows.push({ kind: "entry", entry });
 		}
 	}
 	return rows;

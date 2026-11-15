@@ -1,5 +1,4 @@
 import type { SkillInfo } from "@preload/api";
-import { useShortcutScope, type ShortcutBinding } from "@shared/shortcuts";
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -20,8 +19,8 @@ import type {
 	CommandPanelProps,
 } from "../components/command-panel/types";
 import { type InputActionBarModel, useInputActionBarModel } from "../components/useInputActionBarModel";
+import { useAddPanelAbilityEntries } from "./useAddPanelAbilityEntries";
 import { useAddPanelFavorites } from "./useAddPanelFavorites";
-import { useAddPanelPlugins } from "./useAddPanelPlugins";
 import { COMPACTION_OPERATION_KEY, useCommandPanelCompaction } from "./useCommandPanelCompaction";
 import { type ConnectorGridItem, useConnectorGrid } from "./useConnectorGrid";
 import { skillIconOf, useSkillIconMap } from "./useSkillIconMap";
@@ -50,7 +49,7 @@ export interface CommandPanelModel {
 
 /**
  * 添加面板的连接层：把三类数据源投影成目录，持有分类 / 搜索 / 高亮 / 预览状态，
- * 并把键盘绑定交回 `useShortcutScope`。
+ * 并处理面板内的键盘（`onPanelKeyDown`）。
  *
  * 它不做渲染决策（那些在 `CommandPanelView`），也不管压缩上下文
  * （那一行由 `useCommandPanelCompaction` 自己负责）。
@@ -72,6 +71,13 @@ export function useCommandPanelModel({
 	const normalizedFilter = filter.startsWith("/") ? filter.slice(1) : filter;
 
 	// 预取：面板第一次展开时不必再等扫盘，避免与揭幕动画抢主线程。
+	/**
+	 * 连接器清单只作**查找表**用：面板展示的条目来自能力页，插入时要落回 mcp.json 的
+	 * server 名与图标，所以这里仍读一次配置（不参与分类与是否出现的判断）。
+	 */
+	const { items: connectors } = useConnectorGrid(open, true);
+
+	// 技能清单仍要保留：插入时要拿到原始 SkillInfo（面板只展示标题与图标）。
 	const { items: skills } = useSkillList({
 		open,
 		cwd,
@@ -79,20 +85,22 @@ export function useCommandPanelModel({
 		surface: "commandPalette",
 		prefetch: true,
 	});
-	const { items: connectors } = useConnectorGrid(open, true);
 	const iconMap = useSkillIconMap(open, true);
 	const resolveIcon = useCallback((skill: SkillInfo) => skillIconOf(iconMap, skill), [iconMap]);
 	const favorites = useAddPanelFavorites();
-	// 「插件」分类的数据源：已安装且未禁用（ADR-0177 §4）。应用暂无读取接口，保持空态。
-	const plugins = useAddPanelPlugins(open);
+	/**
+	 * 面板的条目直接来自能力页的同一套组装结果（ADR-0177）：技能 / 连接器 / 插件 / 应用
+	 * 的名称、图标、是否出现都跟能力页一致，面板不再自己扫 `mcp.json` 或猜技能来源。
+	 */
+	const abilityEntries = useAddPanelAbilityEntries(open);
 
 	/**
-	 * 每次打开都停在「技能」。
+	 * 默认停在「全部」：与能力页「有什么就列什么」一致，用户不必先猜东西属于哪一类。
 	 *
-	 * 不做「记住上次分类」：技能清单是异步来的，记住 + 自动纠正会让分类在打开后几百
-	 * 毫秒里跳一次；用户要的是一个每次打开都一样的面板。技能为空时显示分类空态即可。
+	 * 不做「记住上次分类」：清单是异步来的，记住 + 自动纠正会让分类在打开后几百毫秒里
+	 * 跳一次；每次打开都一样更稳。
 	 */
-	const [tab, setTab] = useState<AddPanelTab>("skills");
+	const [tab, setTab] = useState<AddPanelTab>("all");
 	const [query, setQuery] = useState("");
 	/**
 	 * 键盘高亮下标。**初始为 -1（没有高亮项）**：这个列表不是「当前值」，默认给第一行
@@ -115,18 +123,16 @@ export function useCommandPanelModel({
 		() =>
 			buildAddPanelCatalog({
 				files: fileActions?.map((action) => ({ id: action.id, label: action.label, icon: action.icon })),
-				skills,
-				connectors,
-				plugins,
-				resolveSkillIcon: resolveIcon,
+				entries: abilityEntries,
 			}),
-		[connectors, fileActions, plugins, resolveIcon, skills],
+		[abilityEntries, fileActions],
 	);
 
 	const searching = query.trim().length > 0;
 	const sections = useMemo(() => {
 		if (searching) return searchAddPanelSections(catalog, query);
 		if (tab === "favorites") return buildFavoritesSections(catalog, favorites.favorites);
+		if (tab === "all") return catalog;
 		if (tab === "operations") return [];
 		const section = sectionOf(catalog, tab);
 		return section ? [section] : [];
@@ -185,7 +191,12 @@ export function useCommandPanelModel({
 					return;
 				}
 				case "connectors": {
-					const connector = connectors.find((candidate) => candidate.name === entry.id);
+					// 面板里的连接器 id 是能力 id（`<source>:<id>:mcp:<slug>`），要落回 mcp.json 的
+					// server 名才能插入 `@mcp:` 标记。取最后一段 slug，再用已加载的配置确认存在。
+					const slug = entry.id.split(":").pop() ?? entry.id;
+					const connector =
+						connectors.find((candidate) => candidate.name === slug) ??
+						connectors.find((candidate) => candidate.name === entry.label);
 					if (connector) onSelectConnector(connector);
 					return;
 				}
@@ -235,10 +246,11 @@ export function useCommandPanelModel({
 			icon: entry.icon,
 			iconUrl: entry.iconUrl,
 			fallbackIcon: entry.fallbackIcon,
+			kind: entry.kind,
 		} as const;
 
 		if (entry.category === "files") {
-			return { ...base, meta: [], hint: labels.preview.hintFile };
+			return { ...base, meta: [] };
 		}
 		if (entry.category === "skills") {
 			const identifier = entry.id.split(":").slice(1).join(":");
@@ -248,18 +260,16 @@ export function useCommandPanelModel({
 					{ label: labels.preview.sourceLabel, value: groupLabel },
 					{ label: labels.preview.insertLabel, value: `/${identifier}` },
 				],
-				hint: labels.preview.hintSkill,
 			};
 		}
 		if (entry.category === "connectors") {
-			// 进到目录里的连接器都是「已配置且必填密钥齐」的（见 useConnectorGrid），状态恒为已连接。
+			// 进到目录里的连接器都是能力页认定为「已安装且启用」的，状态恒为已连接。
 			return {
 				...base,
 				meta: [{ label: labels.preview.statusLabel, value: labels.preview.statusConnected }],
-				hint: labels.preview.hintConnector,
 			};
 		}
-		return { ...base, meta: [], hint: labels.preview.hintExtension };
+		return { ...base, meta: [] };
 	}, [labels, previewKey, sections, visibleEntries]);
 
 	const handleOpenPreview = useCallback((key: string) => setPreviewKey(key), []);
@@ -319,72 +329,14 @@ export function useCommandPanelModel({
 		},
 		[activeEntry, activeKey, handleSelectTab, onClose, operation, previewKey, tab, total],
 	);
-	const keyBindings = useMemo((): ShortcutBinding[] => {
-		// 预览态下方向键与 Enter 不该再动列表：用户此刻在读内容，Esc / ← 退出。
-		if (previewKey) {
-			return [
-				{ key: "escape", run: () => handleClosePreview() },
-				{ key: "arrowleft", run: () => handleClosePreview() },
-			];
-		}
-		return [
-			{
-				key: "arrowdown",
-				run: () => {
-					if (total === 0) return;
-					setScrollSignal((value) => value + 1);
-					// 没有高亮时第一次按下落在第一项。
-					setActiveIndex((index) => (index < 0 ? 0 : (index + 1) % total));
-				},
-			},
-			{
-				key: "arrowup",
-				run: () => {
-					if (total === 0) return;
-					setScrollSignal((value) => value + 1);
-					setActiveIndex((index) => (index < 0 ? total - 1 : (index - 1 + total) % total));
-				},
-			},
-			{
-				key: "tab",
-				run: () => {
-					const order: AddPanelTab[] = ["favorites", ...ADD_PANEL_CATEGORY_ORDER, "operations"];
-					const at = order.indexOf(tab);
-					handleSelectTab(order[(at + 1) % order.length] ?? "skills");
-				},
-			},
-			{
-				key: "enter",
-				run: () => {
-					if (activeKey === COMPACTION_OPERATION_KEY) {
-						operation?.onSelect();
-						return;
-					}
-					if (activeEntry) activateEntry(activeEntry);
-				},
-			},
-			{ key: "escape", run: () => onClose() },
-		];
-	}, [
-		activeEntry,
-		activateEntry,
-		activeKey,
-		handleClosePreview,
-		handleSelectTab,
-		onClose,
-		operation,
-		previewKey,
-		tab,
-		total,
-	]);
-
-	useShortcutScope({
-		id: "overlay:command-panel",
-		kind: "overlay",
-		active: open,
-		exclusive: false,
-		bindings: keyBindings,
-	});
+	/*
+	 * 键盘只由 `onPanelKeyDown` 一处处理。
+	 *
+	 * 这里曾经同时注册 `useShortcutScope`——两者都挂在 document 的 capture 阶段，
+	 * `stopPropagation()` 拦不住同一元素上的另一个监听器，于是一次 ↓ 会把高亮推进两格。
+	 * 全局快捷键栈在本场景也没有额外价值：面板开着时焦点可能留在编辑器里，
+	 * 而编辑器会在 capture 阶段先 `preventDefault`，栈会直接放弃。
+	 */
 
 	useEffect(() => {
 		if (!open) return;
