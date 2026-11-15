@@ -33,7 +33,6 @@ export function InputBarView({ model, className, classNames, children }: InputBa
 		model.pendingMcpElicitation || model.pendingQuestion || model.pendingPlanReview,
 	);
 	const commands = model.commands;
-	const slashVisible = commands?.slashVisible ?? false;
 	const surface = useThemeSurface("chat.inputBar");
 	const ThemedInputBarBackground = useThemeComponent(
 		"chat.inputBarBackground",
@@ -121,53 +120,47 @@ export function InputBarView({ model, className, classNames, children }: InputBa
 					permissionLabels={model.labels.permission}
 				/>
 
-				<MessageInput.Root
-					focused={model.isFocused}
-					topConnected={slashVisible}
-				>
+				{commands ? (
+					<PerfSendProfiler id="ib:CommandPanel">
+						<CommandPanel
+							inputActions={commands.inputActions}
+							open={commands.slashOpen}
+							onClose={commands.onSlashClose}
+							onSelect={commands.onSlashSelect}
+							onSelectConnector={commands.onConnectorSelect}
+							filter={commands.slashFilter}
+							cwd={model.effectiveCwd || undefined}
+							className={model.isFocused ? "border-primary/20" : undefined}
+							allowCompaction={commands.allowCompaction}
+							fileActions={[
+								{
+									id: "addFile",
+									label: model.labels.toolbar.attachFile,
+									icon: "icon-[solar--paperclip-linear]",
+									onSelect: () => void model.actions.handleSelectFiles(),
+								},
+								{
+									id: "addImage",
+									label: model.labels.toolbar.addImage,
+									icon: "icon-[solar--gallery-linear]",
+									onSelect: () => void model.actions.handleSelectImages(),
+								},
+							]}
+						/>
+					</PerfSendProfiler>
+				) : null}
+
+				<MessageInput.Root focused={model.isFocused}>
 					<MessageInput.Surface
 						asChild
 						className={[surface?.rootClassName, classNames?.card].filter(Boolean).join(" ")}
 					>
 						<MessageInput.DropZone
 							{...model.dropZone}
-							style={{
-								opacity: model.hasSession ? 1 : 0.55,
-								...(slashVisible ? { borderTopColor: "transparent" } : null),
-							}}
+							style={{ opacity: model.hasSession ? 1 : 0.55 }}
 						>
 							<ThemedInputBarBackground />
 							<MessageInput.Content className={classNames?.cardContent}>
-								{commands ? (
-									<PerfSendProfiler id="ib:CommandPanel">
-										<CommandPanel
-											inputActions={commands.inputActions}
-											open={commands.slashOpen}
-											onClose={commands.onSlashClose}
-											onSelect={commands.onSlashSelect}
-											onSelectConnector={commands.onConnectorSelect}
-											filter={commands.slashFilter}
-											cwd={model.effectiveCwd || undefined}
-											className={model.isFocused ? "border-primary/20" : undefined}
-											allowCompaction={commands.allowCompaction}
-											fileActions={[
-												{
-													id: "addFile",
-													label: model.labels.toolbar.attachFile,
-													icon: "icon-[solar--paperclip-linear]",
-													onSelect: () => void model.actions.handleSelectFiles(),
-												},
-												{
-													id: "addImage",
-													label: model.labels.toolbar.addImage,
-													icon: "icon-[solar--gallery-linear]",
-													onSelect: () => void model.actions.handleSelectImages(),
-												},
-											]}
-										/>
-									</PerfSendProfiler>
-								) : null}
-
 								{/*
 								 * 顶部附件区只剩「不是一个词」的东西：重编辑提示、Appshot 复合卡片、
 								 * 插件上下文、场景胶囊。文件 / 图片 / skill 都已进入文本流。

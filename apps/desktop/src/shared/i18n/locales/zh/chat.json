@@ -1144,12 +1144,14 @@
 		"favorites": "收藏",
 		"favoritesEmpty": "还没有收藏",
 		"favoritesEmptyHint": "在任意条目上悬停并点星标，就能把它放进这一格。",
+		"operations": "操作",
 		"categories": "添加分类",
 		"openAbilityPlaza": "能力广场",
 		"favoriteAdd": "收藏",
 		"favoriteRemove": "取消收藏",
 		"details": "详情",
-		"categoryEmpty": "这一类还没有条目",
+		"operationsEmptyHint": "当前会话还没有可用的操作。压缩上下文需要已绑定的会话。",
+		"categoryEmpty": "{{category}}里还没有内容",
 		"groups": {
 			"actions": "直接动作",
 			"builtin": "内置",
@@ -1158,7 +1160,8 @@
 			"plugin": "插件",
 			"market": "市场",
 			"connected": "已接入",
-			"installed": "已安装"
+			"installed": "已安装",
+			"other": "其他"
 		},
 		"preview": {
 			"back": "返回列表",
@@ -1175,7 +1178,11 @@
 			"navigate": "选择",
 			"insert": "插入",
 			"details": "详情",
-			"close": "关闭"
+			"close": "关闭",
+			"scrollToolsLeft": "向左查看更多工具",
+			"scrollToolsRight": "向右查看更多工具",
+			"scrollRailUp": "向上翻更多分类",
+			"scrollRailDown": "向下翻更多分类"
 		},
 		"compaction": {
 			"label": "压缩上下文",

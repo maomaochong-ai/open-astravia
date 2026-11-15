@@ -727,6 +727,8 @@
 			"title": "Questions",
 			"count": "{{count}}",
 			"open": "View questions",
+			"scrollToolsLeft": "Scroll tools left",
+			"scrollToolsRight": "Scroll tools right",
 			"close": "Close question list",
 			"searchLabel": "Search questions",
 			"searchPlaceholder": "Search questions",
@@ -1144,12 +1146,14 @@
 		"favorites": "Favorites",
 		"favoritesEmpty": "No favorites yet",
 		"favoritesEmptyHint": "Hover an entry and click the star to keep it here.",
+		"operations": "Actions",
 		"categories": "Categories",
 		"openAbilityPlaza": "Ability plaza",
 		"favoriteAdd": "Add to favorites",
 		"favoriteRemove": "Remove from favorites",
 		"details": "Details",
-		"categoryEmpty": "Nothing in this category yet",
+		"operationsEmptyHint": "No actions for this session yet. Compacting needs a bound session.",
+		"categoryEmpty": "Nothing in {{category}} yet",
 		"groups": {
 			"actions": "Direct actions",
 			"builtin": "Built-in",
@@ -1158,7 +1162,8 @@
 			"plugin": "Plugins",
 			"market": "Market",
 			"connected": "Connected",
-			"installed": "Installed"
+			"installed": "Installed",
+			"other": "Other"
 		},
 		"preview": {
 			"back": "Back to list",
@@ -1175,7 +1180,9 @@
 			"navigate": "Select",
 			"insert": "Insert",
 			"details": "Details",
-			"close": "Close"
+			"close": "Close",
+			"scrollRailUp": "Scroll categories up",
+			"scrollRailDown": "Scroll categories down"
 		},
 		"compaction": {
 			"label": "Compact context",

@@ -3,8 +3,8 @@ import type { AddPanelEntry } from "./add-panel-catalog";
 import {
 	ADD_PANEL_CATEGORY_ORDER,
 	buildAddPanelCatalog,
+	buildAddPanelRows,
 	buildFavoritesSections,
-	computeAddPanelWindow,
 	flattenAddPanelSections,
 	searchAddPanelSections,
 	sectionOf,
@@ -41,13 +41,30 @@ describe("buildAddPanelCatalog", () => {
 		expect(sections.every((section) => section.groups.length === 0)).toBe(true);
 	});
 
-	it("技能按来源分组，未知来源归到「我的」", () => {
+	it("技能按来源分组；未知来源单独归「其他」，不冒充「我的」", () => {
 		const sections = buildAddPanelCatalog({
 			skills: [skill("code-review", "builtin"), skill("weekly", "user"), skill("mystery", "unknown-source")],
 		});
 		const groups = sectionOf(sections, "skills")?.groups ?? [];
-		expect(groups.map((group) => group.id)).toEqual(["builtin", "mine"]);
-		expect(groups[1]?.entries.map((entry) => entry.label)).toEqual(["weekly", "mystery"]);
+		expect(groups.map((group) => group.id)).toEqual(["builtin", "mine", "other"]);
+		expect(groups[1]?.entries.map((entry) => entry.label)).toEqual(["weekly"]);
+		expect(groups[2]?.entries.map((entry) => entry.label)).toEqual(["mystery"]);
+	});
+
+	it("市场安装（source=market）与自定义安装（source=custom）各自归位", () => {
+		const sections = buildAddPanelCatalog({
+			skills: [skill("xlsx", "market"), skill("my-own", "custom")],
+		});
+		const groups = sectionOf(sections, "skills")?.groups ?? [];
+		// 回归：市场装的技能曾被算进「我的」，因为主进程把扫描器的目录类型当成了来源。
+		expect(groups.map((group) => group.id)).toEqual(["market", "mine"]);
+	});
+
+	it("能力市场新来源只要 source 有映射就归到位，不需要改面板代码", () => {
+		const sections = buildAddPanelCatalog({ skills: [skill("x", "plugin"), skill("figma-ui", "market")] });
+		const groups = sectionOf(sections, "skills")?.groups ?? [];
+		// 分组顺序跟随条目出现顺序，但每个来源都落到自己的组里。
+		expect(groups.map((group) => group.id)).toEqual(["plugin", "market"]);
 	});
 
 	it("文件动作不参与搜索，其余分类参与", () => {
@@ -63,6 +80,27 @@ describe("buildAddPanelCatalog", () => {
 		expect(new Set(keys).size).toBe(keys.length);
 		expect(keys).toContain("skills:skill:code-review");
 		expect(keys).toContain("connectors:feishu");
+	});
+
+	it("优先用结构化 provenance 归类，source 字符串只是回退", () => {
+		const sections = buildAddPanelCatalog({
+			skills: [
+				// source 说 market，provenance 说是插件提供 → 以 provenance 为准
+				{
+					...skill("from-plugin", "market"),
+					provenance: { kind: "provided", providerType: "plugin", providerId: "lark" },
+				},
+				// 原生目录、项目级 scope → 项目
+				{ ...skill("repo-rule", "builtin"), provenance: { kind: "native", scope: "project" } },
+				// 原生目录、用户级 scope → 我的
+				{ ...skill("mine", "builtin"), provenance: { kind: "native", scope: "user" } },
+				// 内置提供方 → 内置
+				{ ...skill("builtin-one", "market"), provenance: { kind: "builtin", providerId: "preset" } },
+			],
+		});
+		const groups = sectionOf(sections, "skills")?.groups ?? [];
+		// 分组顺序 = 条目首次出现的顺序（面板不重排，避免两次打开之间换组）。
+		expect(groups.map((group) => group.id)).toEqual(["plugin", "project", "mine", "builtin"]);
 	});
 
 	it("技能图标走调用方解析，缺省时留空", () => {
@@ -115,40 +153,31 @@ describe("buildFavoritesSections", () => {
 	});
 });
 
-describe("computeAddPanelWindow", () => {
-	const entries = Array.from({ length: 100 }, (_, index) => ({
-		category: "skills" as const,
-		id: `s${index}`,
-		key: `skills:s${index}`,
-		label: `技能 ${index}`,
-		groupId: "builtin",
-		searchable: true,
-	}));
+describe("buildAddPanelRows", () => {
+	const sections = buildAddPanelCatalog(baseInput);
+	const labels = { categoryLabel: (category: string) => category, groupLabel: (key: string) => key };
 
-	it("条目不超过阈值时全量渲染", () => {
-		const window = computeAddPanelWindow({
-			entries: entries.slice(0, 40),
-			rowHeight: 28,
-			viewportHeight: 268,
-			scrollTop: 0,
-		});
-		expect(window.entries).toHaveLength(40);
-		expect(window.paddingTop).toBe(0);
-		expect(window.paddingBottom).toBe(0);
+	it("分类视图：来源多于一个才出分组头，空分类不产生行", () => {
+		const skillsOnly = sections.filter((section) => section.category === "skills");
+		const rows = buildAddPanelRows(skillsOnly, { searching: false, ...labels });
+		expect(rows.filter((row) => row.kind === "header").length).toBeGreaterThan(0);
+		expect(rows.filter((row) => row.kind === "entry")).toHaveLength(5);
 	});
 
-	it("超过阈值时只渲染可视窗口，并用空白占位撑住总高度", () => {
-		const window = computeAddPanelWindow({ entries, rowHeight: 28, viewportHeight: 268, scrollTop: 0 });
-		expect(window.entries.length).toBeLessThan(100);
-		expect(window.paddingTop).toBe(0);
-		expect(window.paddingBottom).toBeGreaterThan(0);
-		expect(window.entries.length * 28 + window.paddingTop + window.paddingBottom).toBe(100 * 28);
+	it("单个来源分组时不出分组头", () => {
+		const single = buildAddPanelCatalog({ skills: [skill("code-review", "builtin")] }).filter(
+			(section) => section.category === "skills",
+		);
+		const rows = buildAddPanelRows(single, { searching: false, ...labels });
+		expect(rows).toHaveLength(1);
+		expect(rows[0]?.kind).toBe("entry");
 	});
 
-	it("滚到中间时上下都有占位，窗口跟着滚动量移动", () => {
-		const window = computeAddPanelWindow({ entries, rowHeight: 28, viewportHeight: 268, scrollTop: 1400 });
-		expect(window.paddingTop).toBeGreaterThan(0);
-		expect(window.paddingBottom).toBeGreaterThan(0);
-		expect(window.entries[0]?.id).not.toBe("s0");
+	it("搜索态按分类分组：标题是分类名", () => {
+		const rows = buildAddPanelRows(sections, { searching: true, ...labels });
+		const headers = rows
+			.filter((row) => row.kind === "header")
+			.map((row) => (row.kind === "header" ? row.label : ""));
+		expect(headers).toEqual(["files", "skills", "connectors", "plugins", "apps"]);
 	});
 });

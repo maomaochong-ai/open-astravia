@@ -3,7 +3,7 @@ import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 
 /**
  * 「添加面板」的能力目录：把五类可添加到当前消息的条目投影成
- * 「分类 → 分组 → 条目」，供三栏面板渲染。
+ * 「分类 → 分组 → 条目」，供两栏面板（分类轨道 + 列表）渲染。
  *
  * 这里只做投影与排序，不碰任何一类的存储、权限与安装路径——技能来自 `SkillInfo[]`、
  * 连接器来自 `ConnectorGridItem[]`、插件/应用来自能力注册表、文件来自工具行的附件动作。
@@ -13,7 +13,7 @@ import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 export type AddPanelCategory = "files" | "skills" | "connectors" | "plugins" | "apps";
 
 /** 左栏的一格：收藏 + 五个分类。 */
-export type AddPanelTab = "favorites" | AddPanelCategory;
+export type AddPanelTab = "favorites" | "operations" | AddPanelCategory;
 
 /**
  * 分类顺序固定：最常用的在前，最不常用的在后。
@@ -29,14 +29,12 @@ export const ADD_PANEL_CATEGORY_ORDER: readonly AddPanelCategory[] = [
 ];
 
 /**
- * 当前**真有数据源**的分类。
+ * 轨道上始终按 {@link ADD_PANEL_CATEGORY_ORDER} 显示五类。
  *
- * `plugins` 与 `apps` 还拿不到条目：能力注册表没有暴露「已安装插件 / 我的应用」的
- * 读取接口，因此这两格此前永远是空的——轨道上多两个点不动的图标，用户点进去只看到
- * 空态，等于在教他「这里有东西」却永远没有。分类是否出现由数据决定，
- * {@link visibleCategories} 从目录实际内容推导，不在这里写死。
+ * `plugins` 与 `apps` 目前拿不到条目（能力注册表没有暴露「已安装插件 / 我的应用」的
+ * 读取接口）——它们仍然留在轨道上，内容区显示分类空态。分类位置固定比「只显示有内容的
+ * 那几类」更重要：后者会让同一类在两次打开之间换位置，用户每次都要重新找。
  */
-export const ADD_PANEL_DATA_CATEGORIES: readonly AddPanelCategory[] = ["files", "skills", "connectors"];
 
 /**
  * 分类图标（16px 下必须彼此可辨）。
@@ -44,6 +42,8 @@ export const ADD_PANEL_DATA_CATEGORIES: readonly AddPanelCategory[] = ["files", 
  * 挑图标时的硬约束：形状不能撞。`code-scan` / `widget` / `widget-2` 在 16px 下都是
  * 四宫格，一排看过去像三个相同的格子——那等于没有分类。
  */
+export const ADD_PANEL_OPERATION_ICON = "icon-[solar--bolt-linear]";
+
 export const ADD_PANEL_CATEGORY_ICONS: Record<AddPanelCategory, string> = {
 	files: "icon-[solar--paperclip-linear]",
 	skills: "icon-[solar--magic-stick-3-linear]",
@@ -52,14 +52,22 @@ export const ADD_PANEL_CATEGORY_ICONS: Record<AddPanelCategory, string> = {
 	apps: "icon-[solar--widget-linear]",
 };
 
-/** 某分类里有条目时才让它出现在轨道上；顺序仍按 {@link ADD_PANEL_CATEGORY_ORDER}。 */
-export function visibleCategories(sections: readonly AddPanelSection[]): AddPanelCategory[] {
-	const withEntries = new Set(
-		sections
-			.filter((section) => section.groups.some((group) => group.entries.length > 0))
-			.map((section) => section.category),
-	);
-	return ADD_PANEL_CATEGORY_ORDER.filter((category) => withEntries.has(category));
+/**
+ * 条目的图标可能是**两种东西**：iconify class（`icon-[solar--x]`）或图片路径/URL
+ * （技能市场里那张 png、连接器预置图）。以前只有在连接器上区分了图片，技能带回来的
+ * png 被当成 class 塞进 `<span>`，整列技能因此显示空白——实测就是这个表现。
+ *
+ * 在投影时就拆开，视图只认 `icon`（class）与 `iconUrl`（图片），不再靠字符串格式猜。
+ */
+export function splitIcon(raw: string | undefined): { icon?: string; iconUrl?: string } {
+	if (!raw) return {};
+	// 判定要宽一点：技能的图标可能是 `./skills/x.png`、`https://…`、
+	// `astravia-media://…`、插件资源 URL，也可能带查询串（`?v=1.2&reload=…`）。
+	const isScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) && !raw.startsWith("icon-");
+	const isPath = raw.startsWith("./") || raw.startsWith("/") || raw.includes("/skills/");
+	const isImageExt = /\.(png|jpe?g|svg|webp|gif|avif)(\?|#|$)/i.test(raw);
+	const isImage = isScheme || isPath || isImageExt;
+	return isImage ? { iconUrl: raw } : { icon: raw };
 }
 
 /** 分类标题的 i18n key（与 `chat.json` 的 `slashPanel.sections.*` 对齐）。 */
@@ -71,7 +79,7 @@ export const ADD_PANEL_CATEGORY_TITLE_KEYS: Record<AddPanelCategory, string> = {
 	apps: "slashPanel.sections.apps",
 };
 
-/** 面板里的一行。字段足够渲染行与详情，不回传任何一类的私有数据。 */
+/** 面板里的一行。字段足够渲染行与预览，不回传任何一类的私有数据。 */
 export interface AddPanelEntry {
 	readonly category: AddPanelCategory;
 	/** 分类内唯一且跨刷新稳定：技能取 `type:name`，连接器取 mcp key，其余取各自的 id。 */
@@ -82,7 +90,7 @@ export interface AddPanelEntry {
 	readonly description?: string;
 	/** iconify class（技能 / 文件动作）。 */
 	readonly icon?: string;
-	/** 图片图标（连接器预置图）。 */
+	/** 图片图标（连接器预置图、市场里那张 png）。 */
 	readonly iconUrl?: string;
 	readonly groupId: string;
 	/** 参与搜索与键盘导航；文件动作是直接动作，不参与搜索。 */
@@ -139,14 +147,10 @@ export interface AddPanelCatalogInput {
 	readonly resolveSkillIcon?: (skill: SkillInfo) => string | undefined;
 }
 
-/**
- * 技能按来源分组。分组比分类更细，但数量固定，不会随条目增长。
- *
- * 来源字符串来自 `SkillInfo.source`（旧字段，仍然是最全的判别依据）；未知来源归到
- * 「我的」而不是新开一组——凭空多出一组比归错一组更难理解。
- */
+/** 技能按来源分组。分组比分类更细，但数量固定，不会随条目增长。 */
 const SKILL_GROUPS: Record<string, { id: string; titleKey: string }> = {
 	builtin: { id: "builtin", titleKey: "slashPanel.groups.builtin" },
+	custom: { id: "mine", titleKey: "slashPanel.groups.mine" },
 	user: { id: "mine", titleKey: "slashPanel.groups.mine" },
 	agentsUser: { id: "mine", titleKey: "slashPanel.groups.mine" },
 	path: { id: "mine", titleKey: "slashPanel.groups.mine" },
@@ -156,19 +160,47 @@ const SKILL_GROUPS: Record<string, { id: string; titleKey: string }> = {
 	market: { id: "market", titleKey: "slashPanel.groups.market" },
 };
 
-const FALLBACK_SKILL_GROUP = SKILL_GROUPS.user;
+/**
+ * 未知来源单独归「其他」，**不冒充「我的」**。
+ *
+ * `source` 是技能发现链路给出的字符串。能力市场以后新增来源（新安装渠道、新 provider
+ * 类型）时，这里会先落到「其他」——分类可能不够漂亮，但不会像以前那样把别人的技能
+ * 说成用户自己的。加新来源时补一条 `SKILL_GROUPS` 映射即可，未补也不会丢条目。
+ */
+const UNKNOWN_SKILL_GROUP = { id: "other", titleKey: "slashPanel.groups.other" };
 const FILE_GROUP = { id: "actions", titleKey: "slashPanel.groups.actions" };
 const CONNECTOR_GROUP = { id: "connected", titleKey: "slashPanel.groups.connected" };
 const PLUGIN_GROUP = { id: "installed", titleKey: "slashPanel.groups.installed" };
 const APP_GROUP = { id: "mine", titleKey: "slashPanel.groups.mine" };
 
-/** 分类内全局键：收藏、高亮、详情都按它索引。 */
 export function addPanelEntryKey(category: AddPanelCategory, id: string): string {
 	return `${category}:${id}`;
 }
 
+/**
+ * 技能归属：**优先结构化 `provenance`，回退到旧 `source` 字符串**。
+ *
+ * `source` 是历史字段，取值随发现链路变化（`agents-user`、`path`、未来还会有新值）；
+ * `provenance` 是带上 `kind` 与 `providerType` 的结构化描述，能区分「内置提供方」
+ * 「插件提供」「原生目录」。有新字段时不该继续靠字符串猜（ADR-0177 §1/§2）。
+ */
 function skillGroupOf(skill: SkillInfo): { id: string; titleKey: string } {
-	return SKILL_GROUPS[skill.source] ?? FALLBACK_SKILL_GROUP;
+	const provenance = skill.provenance;
+	if (provenance) {
+		if (provenance.kind === "builtin") return SKILL_GROUPS.builtin ?? UNKNOWN_SKILL_GROUP;
+		if (provenance.kind === "provided") {
+			// 插件提供的技能归「插件」；sdk / runtime 提供方与插件同列——对用户来说都是
+			// 「由某个扩展贡献的能力」，没有区分的必要。
+			return SKILL_GROUPS.plugin ?? UNKNOWN_SKILL_GROUP;
+		}
+		if (provenance.kind === "native") {
+			// 原生目录的 scope 可能是目录类型（`path` / `agents-user`），也可能是安装渠道
+			// （`market` / `custom`，由主进程按清单写入）。**统一走映射表**，
+			// 不要在这里把「非 project」一律折叠成「我的」——那会把市场装的技能吞掉。
+			return SKILL_GROUPS[provenance.scope] ?? UNKNOWN_SKILL_GROUP;
+		}
+	}
+	return SKILL_GROUPS[skill.source] ?? UNKNOWN_SKILL_GROUP;
 }
 
 function groupEntries(entries: readonly AddPanelEntry[], titleKeyOf: (groupId: string) => string): AddPanelGroup[] {
@@ -213,7 +245,7 @@ export function buildAddPanelCatalog(input: AddPanelCatalogInput): AddPanelSecti
 		key: addPanelEntryKey("files", action.id),
 		label: action.label,
 		description: action.description,
-		icon: action.icon,
+		...splitIcon(action.icon),
 		groupId: FILE_GROUP.id,
 		searchable: false,
 		fallbackIcon: ADD_PANEL_CATEGORY_ICONS.files,
@@ -228,7 +260,7 @@ export function buildAddPanelCatalog(input: AddPanelCatalogInput): AddPanelSecti
 			key: addPanelEntryKey("skills", id),
 			label: skill.alias || skill.name,
 			description: skill.description,
-			icon: input.resolveSkillIcon?.(skill),
+			...splitIcon(input.resolveSkillIcon?.(skill) ?? skill.icon),
 			groupId: group.id,
 			searchable: true,
 			fallbackIcon: ADD_PANEL_CATEGORY_ICONS.skills,
@@ -252,7 +284,7 @@ export function buildAddPanelCatalog(input: AddPanelCatalogInput): AddPanelSecti
 		key: addPanelEntryKey("plugins", plugin.id),
 		label: plugin.label,
 		description: plugin.description,
-		icon: plugin.icon,
+		...splitIcon(plugin.icon),
 		groupId: PLUGIN_GROUP.id,
 		searchable: true,
 		fallbackIcon: ADD_PANEL_CATEGORY_ICONS.plugins,
@@ -264,7 +296,7 @@ export function buildAddPanelCatalog(input: AddPanelCatalogInput): AddPanelSecti
 		key: addPanelEntryKey("apps", app.id),
 		label: app.label,
 		description: app.description,
-		icon: app.icon,
+		...splitIcon(app.icon),
 		groupId: APP_GROUP.id,
 		searchable: true,
 		fallbackIcon: ADD_PANEL_CATEGORY_ICONS.apps,
@@ -273,7 +305,8 @@ export function buildAddPanelCatalog(input: AddPanelCatalogInput): AddPanelSecti
 	const titleKeyOf: Record<AddPanelCategory, (groupId: string) => string> = {
 		files: () => FILE_GROUP.titleKey,
 		skills: (groupId) =>
-			Object.values(SKILL_GROUPS).find((group) => group.id === groupId)?.titleKey ?? FALLBACK_SKILL_GROUP.titleKey,
+			[...Object.values(SKILL_GROUPS), UNKNOWN_SKILL_GROUP].find((group) => group.id === groupId)?.titleKey ??
+			UNKNOWN_SKILL_GROUP.titleKey,
 		connectors: () => CONNECTOR_GROUP.titleKey,
 		plugins: () => PLUGIN_GROUP.titleKey,
 		apps: () => APP_GROUP.titleKey,
@@ -362,40 +395,49 @@ export function searchAddPanelSections(
 	return result;
 }
 
-export interface AddPanelWindow {
-	readonly entries: readonly AddPanelEntry[];
-	readonly paddingTop: number;
-	readonly paddingBottom: number;
-}
+/** 列表里的一行：分组头或条目。 */
+export type AddPanelRow =
+	| { readonly kind: "header"; readonly id: string; readonly label: string }
+	| { readonly kind: "entry"; readonly entry: AddPanelEntry };
 
 /**
- * 列表窗口化：条目多时只渲染可视区那几十行。
+ * 把分组拍平成行（分组头 + 条目），供列表按顺序渲染。
  *
- * 阈值 40 而不是「一律窗口化」：几十行时窗口化带来的焦点与滚动锚点问题大于收益
- * （与模型选择器同一条理由：行高固定才能按下标算窗口）。
+ * 分组头规则：搜索态按分类分组（标题是分类名）；分类视图里按来源分组，来源多于一个
+ * 才出标题；空分组不出现。
  */
-export function computeAddPanelWindow(input: {
-	readonly entries: readonly AddPanelEntry[];
-	readonly rowHeight: number;
-	readonly viewportHeight: number;
-	readonly scrollTop: number;
-	readonly overscan?: number;
-	readonly threshold?: number;
-}): AddPanelWindow {
-	const { entries, rowHeight, viewportHeight, scrollTop } = input;
-	const overscan = input.overscan ?? 6;
-	const threshold = input.threshold ?? 40;
-	const count = entries.length;
-	if (rowHeight <= 0 || count <= threshold) {
-		return { entries, paddingTop: 0, paddingBottom: 0 };
+export function buildAddPanelRows(
+	sections: readonly AddPanelSection[],
+	options: {
+		readonly searching: boolean;
+		readonly categoryLabel: (category: AddPanelCategory) => string;
+		readonly groupLabel: (titleKey: string) => string;
+	},
+): AddPanelRow[] {
+	const rows: AddPanelRow[] = [];
+	for (const section of sections) {
+		const showCategoryHeader = options.searching;
+		const showGroupHeaders = !options.searching && section.groups.length > 1;
+		if (showCategoryHeader) {
+			rows.push({
+				kind: "header",
+				id: `category:${section.category}`,
+				label: options.categoryLabel(section.category),
+			});
+		}
+		for (const group of section.groups) {
+			if (group.entries.length === 0) continue;
+			if (showGroupHeaders) {
+				rows.push({
+					kind: "header",
+					id: `group:${section.category}:${group.id}`,
+					label: options.groupLabel(group.titleKey),
+				});
+			}
+			for (const entry of group.entries) {
+				rows.push({ kind: "entry", entry });
+			}
+		}
 	}
-	const firstVisible = Math.floor(Math.max(0, scrollTop) / rowHeight);
-	const visibleRows = Math.ceil(viewportHeight / rowHeight) + 1;
-	const start = Math.max(0, firstVisible - overscan);
-	const end = Math.min(count, firstVisible + visibleRows + overscan);
-	return {
-		entries: entries.slice(start, end),
-		paddingTop: start * rowHeight,
-		paddingBottom: Math.max(0, (count - end) * rowHeight),
-	};
+	return rows;
 }

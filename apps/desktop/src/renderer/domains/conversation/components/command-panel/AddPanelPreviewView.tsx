@@ -1,4 +1,4 @@
-import { cn } from "@astravia-org/ui/utils";
+import { AddPanelIcon } from "./AddPanelIcon";
 import type { CommandPanelLabels, CommandPanelPreviewModel } from "./types";
 
 /**
@@ -9,7 +9,7 @@ import type { CommandPanelLabels, CommandPanelPreviewModel } from "./types";
  * 实心主色按钮，在半透明表面上非常扎眼。
  *
  * 现在预览只回答「它是什么」：图标、名称、来源、状态、插入方式、一句后果说明。
- * 没有动作按钮——要插入就点列表里的那一行。
+ * 没有动作按钮——要插入就点列表里的那一行（ADR-0175 §2）。
  */
 export function AddPanelPreviewView({
 	preview,
@@ -37,16 +37,13 @@ export function AddPanelPreviewView({
 
 			<div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
 				<div className="flex items-center gap-2.5 pt-1">
-					<span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/40 bg-foreground/5">
-						{preview.iconUrl ? (
-							<img src={preview.iconUrl} alt="" className="size-5 object-contain" draggable={false} />
-						) : (
-							<span
-								aria-hidden="true"
-								className={cn(preview.icon ?? preview.fallbackIcon, "size-4 text-foreground/80")}
-							/>
-						)}
-					</span>
+					<AddPanelIcon
+						icon={preview.icon}
+						iconUrl={preview.iconUrl}
+						fallbackIcon={preview.fallbackIcon}
+						boxClassName="size-9 rounded-lg border border-border/40 bg-foreground/5"
+						className="size-4"
+					/>
 					<span className="min-w-0">
 						<span className="block break-words text-[13px] font-semibold leading-snug text-foreground">
 							{preview.label}
@@ -73,7 +70,7 @@ export function AddPanelPreviewView({
 				)}
 
 				{preview.hint && (
-					<p className="mt-3 border-t border-border/40 pt-2.5 text-[10.5px] leading-relaxed text-muted-foreground/80">
+					<p className="mt-3 rounded-lg bg-foreground/4 px-2.5 py-2 text-[10.5px] leading-relaxed text-muted-foreground/80">
 						{preview.hint}
 					</p>
 				)}
