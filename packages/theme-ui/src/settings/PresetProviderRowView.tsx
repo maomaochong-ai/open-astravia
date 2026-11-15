@@ -1,16 +1,16 @@
-import { useRef, useState, type JSX, type ReactNode } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { Button, cn, Switch } from "@astravia-org/ui";
+import { useState, type JSX, type ReactNode } from "react";
+import {
+	Button,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	Switch,
+	cn,
+} from "@astravia-org/ui";
 import { InputField } from "./SettingsFormFields";
-import { shouldCloseEmptyApiKeyEditor } from "./shouldCloseEmptyApiKeyEditor";
-
-/**
- * 右侧切换体感慢的主因是 AnimatePresence mode="wait" 串行：
- * exit + enter 叠时长；exit 若落到 motion 默认 tween（0.3s）再加 enter ≈ 400ms+。
- * 策略：旧内容瞬时卸掉（duration 0），新内容 100ms 仅 opacity 渐现；总感知 ≈ 100ms。
- */
-const FADE_IN = { duration: 0.1, ease: "easeOut" as const };
-const FADE_OUT = { duration: 0 };
 
 export interface PresetProviderRowModelView {
 	readonly displayName: string;
@@ -27,10 +27,11 @@ export interface PresetProviderRowModelView {
 	readonly modelsError: string | null;
 	/** 服务商地址；本机代理从这里取当前端口。 */
 	readonly baseUrl?: string;
-	/** 本机回环代理：编辑区只开放端口。 */
-	readonly localProxy?: boolean;
-	/** 已内置密钥默认值：空草稿即可启用。 */
-	readonly hasDefaultApiKey?: boolean;
+	/**
+	 * 内置密钥（本机代理）：地址与密钥都由产品给定，用户只能改端口。
+	 * 与参照实现同名同义——密钥按钮看 `!autoKey`，端口按钮看 `autoKey`。
+	 */
+	readonly autoKey?: boolean;
 }
 
 export interface PresetProviderRowViewLabels {
@@ -39,19 +40,21 @@ export interface PresetProviderRowViewLabels {
 	readonly enabled: string;
 	readonly deprecated: string;
 	readonly modelsCount: (count: number) => string;
-	readonly collapse: string;
 	readonly cancel: string;
 	readonly changeKey: string;
 	readonly remove: string;
 	readonly enable: string;
 	readonly apiKeyDirect: (name: string) => string;
+	readonly apiKeyLabel: string;
 	readonly port: string;
+	readonly portLabel: string;
 	readonly apiKeyPlaceholder: string;
 	readonly encryptedApiKeyPlaceholder: string;
 	readonly save: string;
 	readonly refreshModels: string;
 	readonly refreshingModels: string;
 	readonly copyApiKey: string;
+	readonly toggleProvider: (name: string) => string;
 }
 
 export interface PresetProviderRowViewProps {
@@ -66,7 +69,6 @@ export interface PresetProviderRowViewProps {
 	readonly onRemove: () => void;
 	readonly onToggleEnabled: (enabled: boolean) => void;
 	readonly onSetPort: (port: string) => void;
-	readonly toggleLabel: string;
 	readonly onRefreshModels: () => void;
 	readonly onCopyApiKey: () => void;
 	readonly icon: ReactNode;
@@ -77,13 +79,29 @@ export interface PresetProviderRowViewProps {
 function portOf(baseUrl: string | undefined): string {
 	if (!baseUrl) return "";
 	try {
-		const port = new URL(baseUrl).port;
-		return port || "";
+		return new URL(baseUrl).port || "";
 	} catch {
 		return "";
 	}
 }
 
+/** 端口输入框左侧的固定前缀，如 `http://127.0.0.1:`。 */
+function hostPrefix(baseUrl: string | undefined): string {
+	if (!baseUrl) return "";
+	try {
+		const url = new URL(baseUrl);
+		return `${url.protocol}//${url.hostname}:`;
+	} catch {
+		return "";
+	}
+}
+
+/**
+ * 预置服务商一行：左侧是可展开的模型列表入口，右侧是行内动作，行尾固定一颗启用开关。
+ *
+ * 编辑一律走弹窗——行内输入框在窄屏上会把左侧服务商名挤没，而弹窗可以放下标题、
+ * 说明、错误与「保存 / 取消」，与设置页其它对话框同一套外壳。
+ */
 export function PresetProviderRowView({
 	row,
 	draftKey,
@@ -96,58 +114,30 @@ export function PresetProviderRowView({
 	onRemove,
 	onToggleEnabled,
 	onSetPort,
-	toggleLabel,
 	onRefreshModels,
 	onCopyApiKey,
 	icon,
 	modelsList,
 }: PresetProviderRowViewProps): JSX.Element {
-	// 已下线的旧条目不在内置目录里,给不了 key 也拉不到模型。
-	const canEditKey = !row.offline;
-	const editing = canEditKey && row.isOpen;
-	const editorRef = useRef<HTMLDivElement>(null);
-	// 本机代理只改端口：草稿从当前地址里取，避免用户重新输一遍。
-	const [portDraft, setPortDraft] = useState(() => portOf(row.baseUrl));
-	// blur 后 microtask 再读,避免闭包拿到过期 draft/saving。
-	const draftKeyRef = useRef(draftKey);
-	const savingRef = useRef(saving);
-	draftKeyRef.current = draftKey;
-	savingRef.current = saving;
+	// 两件事同时决定「能不能改密钥」：已下线的旧条目不在内置目录里给不了 key；
+	// 内置密钥的预设（本机代理）根本不需要 key，给一颗修改按钮只会让人以为必须填。
+	const canEditKey = !row.offline && !row.autoKey;
+	const keyDialogOpen = canEditKey && row.isOpen;
+	// 本机代理不填 key，只改端口；端口草稿从当前地址里取，避免用户重新输一遍。
+	const [portDraft, setPortDraft] = useState<string | null>(null);
+	// 内置密钥的服务不填 key，但地址（端口）要能改——与参照实现同一个判据。
+	const canEditUrl = Boolean(row.autoKey) && !row.offline;
+	const portDialogOpen = canEditUrl && portDraft !== null;
+	const portValid = portDraft !== null && /^\d{1,5}$/.test(portDraft) && Number(portDraft) >= 1 && Number(portDraft) <= 65535;
 
-	const tryAdopt = (): void => {
-		if (saving) return;
-		if (row.localProxy) {
-			onSetPort(portDraft);
-			return;
-		}
-		// 内置密钥默认值的预设：空草稿就是「用默认」，不必逼用户造一个 key。
-		if (draftKey.trim() || row.hasDefaultApiKey) onAdopt();
-	};
-
-	/**
-	 * 空内容失焦收起。relatedTarget 在点按钮时经常为 null，
-	 * 因此推迟到 microtask 再用 activeElement 做 contains 判定。
-	 */
-	const handleEditorBlur = (relatedTarget: EventTarget | null): void => {
-		queueMicrotask(() => {
-			if (
-				!shouldCloseEmptyApiKeyEditor({
-					draftKey: draftKeyRef.current,
-					saving: savingRef.current,
-					editorRoot: editorRef.current,
-					relatedTarget: relatedTarget instanceof Object ? relatedTarget : null,
-					activeElement: document.activeElement,
-				})
-			) {
-				return;
-			}
-			onToggleEditor();
-		});
+	const submitPort = (): void => {
+		if (!portValid || saving) return;
+		onSetPort(portDraft ?? "");
+		setPortDraft(null);
 	};
 
 	return (
 		<div className="border-b border-border last:border-b-0">
-			{/* 固定行高 + 稳定左右栅格；右侧只做内容替换，不动画宽度。 */}
 			<div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-3">
 				<button
 					type="button"
@@ -176,195 +166,178 @@ export function PresetProviderRowView({
 								</span>
 							)}
 						</div>
-						{/* 只保留模型数；编辑态也保持可见。 */}
 						<div className="mt-0.5 truncate text-[11px] text-muted-foreground">
 							{labels.modelsCount(row.models.length)}
+							{canEditUrl && row.baseUrl ? ` · ${row.baseUrl}` : ""}
 						</div>
 					</div>
 				</button>
 
-				{/* 宽度瞬时切换；mode=wait 防双内容叠宽，但 exit 时长必须为 0。 */}
-				<div
-					className={cn(
-						"flex h-8 items-center justify-end",
-						editing ? "w-[18.5rem]" : "w-auto",
+				<div className="flex h-8 items-center justify-end gap-1.5">
+					{row.adopted && !row.offline && (
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							onClick={onRefreshModels}
+							disabled={row.refreshing}
+							title={row.refreshing ? labels.refreshingModels : labels.refreshModels}
+							className="text-muted-foreground hover:text-foreground"
+						>
+							<span className={cn("icon-[mdi--refresh] h-3.5 w-3.5", row.refreshing && "animate-spin")} />
+						</Button>
 					)}
-				>
-					<AnimatePresence mode="wait" initial={false}>
-						{editing ? (
-							<motion.div
-								key="api-key-editor"
-								ref={editorRef}
-								className="flex min-w-0 w-full items-center gap-1.5"
-								initial={{ opacity: 0 }}
-								animate={{ opacity: 1, transition: FADE_IN }}
-								exit={{ opacity: 0, transition: FADE_OUT }}
-							>
-								<div className="min-w-0 flex-1">
-									{row.localProxy ? (
-										<InputField
-											value={portDraft}
-											onChange={setPortDraft}
-											placeholder={labels.port}
-											type="text"
-											disabled={saving}
-											autoFocus
-											aria-label={labels.port}
-											className="h-8 rounded-md px-2 text-[12px]"
-											onBlur={(event) => handleEditorBlur(event.relatedTarget)}
-											onKeyDown={(event) => {
-												if (event.key === "Enter") {
-													event.preventDefault();
-													onSetPort(portDraft);
-													return;
-												}
-												if (event.key === "Escape") {
-													event.preventDefault();
-													if (!saving) onToggleEditor();
-												}
-											}}
-										/>
-									) : (
-									<InputField
-										value={draftKey}
-										onChange={onDraftKeyChange}
-										placeholder={
-											row.hasApiKey ? labels.encryptedApiKeyPlaceholder : labels.apiKeyPlaceholder
-										}
-										type="password"
-										disabled={saving}
-										autoFocus
-										aria-label={labels.apiKeyDirect(row.displayName)}
-										className="h-8 rounded-md px-2 text-[12px]"
-										onBlur={(event) => handleEditorBlur(event.relatedTarget)}
-										onKeyDown={(event) => {
-											if (event.key === "Enter") {
-												event.preventDefault();
-												tryAdopt();
-												return;
-											}
-											if (event.key === "Escape") {
-												event.preventDefault();
-												if (!saving) onToggleEditor();
-											}
-										}}
-									/>
-									)}
-								</div>
-								{row.hasApiKey && !row.localProxy && (
-									<Button
-										variant="ghost"
-										size="icon-sm"
-										onClick={onCopyApiKey}
-										title={labels.copyApiKey}
-										aria-label={labels.copyApiKey}
-										className="shrink-0 text-muted-foreground hover:text-foreground"
-									>
-										<span className="icon-[mdi--content-copy] h-3.5 w-3.5" />
-									</Button>
-								)}
-								<Button
-									variant="primary"
-									size="sm"
-									onClick={tryAdopt}
-									disabled={!draftKey.trim() || saving}
-									className="h-8 shrink-0 px-2.5 text-[12px]"
-								>
-									{row.adopted ? labels.save : labels.enable}
-								</Button>
-								<Button
-									variant="ghost"
-									size="icon-sm"
-									onClick={onToggleEditor}
-									disabled={saving}
-									title={labels.cancel}
-									aria-label={labels.cancel}
-									className="shrink-0 text-muted-foreground hover:text-foreground"
-								>
-									<span className="icon-[mdi--close] h-3.5 w-3.5" />
-								</Button>
-							</motion.div>
-						) : (
-							<motion.div
-								key="api-key-actions"
-								className="flex items-center gap-1.5"
-								initial={{ opacity: 0 }}
-								animate={{ opacity: 1, transition: FADE_IN }}
-								exit={{ opacity: 0, transition: FADE_OUT }}
-							>
-								{row.adopted && !row.offline && (
-									<Button
-										variant="ghost"
-										size="icon-sm"
-										onClick={onRefreshModels}
-										disabled={row.refreshing}
-										title={row.refreshing ? labels.refreshingModels : labels.refreshModels}
-										className="text-muted-foreground hover:text-foreground"
-									>
-										<span
-											className={cn(
-												"icon-[mdi--refresh] h-3.5 w-3.5",
-												row.refreshing && "animate-spin",
-											)}
-										/>
-									</Button>
-								)}
-								{canEditKey && (
-									<Button
-										variant="ghost"
-										size="icon-sm"
-										onClick={onToggleEditor}
-										title={row.adopted ? labels.changeKey : labels.enable}
-										aria-label={row.adopted ? labels.changeKey : labels.enable}
-										className={cn(
-											"text-muted-foreground hover:text-foreground",
-											!row.adopted && "hover:text-primary",
-										)}
-									>
-										<span
-											className={cn(
-												"h-3.5 w-3.5",
-												row.adopted ? "icon-[mdi--key-outline]" : "icon-[mdi--key-plus]",
-											)}
-										/>
-									</Button>
-								)}
-								{row.adopted && (
-									<Switch
-										size="sm"
-										checked={row.enabled}
-										onCheckedChange={onToggleEnabled}
-										title={toggleLabel}
-										aria-label={toggleLabel}
-									/>
-								)}
-								{row.adopted && (
-									<Button
-										variant="ghost"
-										size="icon-sm"
-										onClick={onRemove}
-										title={labels.remove}
-										aria-label={labels.remove}
-										className="text-muted-foreground hover:text-destructive"
-									>
-										<span className="icon-[mdi--delete-outline] h-3.5 w-3.5" />
-									</Button>
-								)}
-								{row.offline && !row.adopted && (
-									<span className="text-[11px] text-muted-foreground">{labels.deprecated}</span>
-								)}
-							</motion.div>
-						)}
-					</AnimatePresence>
+					{canEditKey && (
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							onClick={onToggleEditor}
+							title={row.adopted ? labels.changeKey : labels.enable}
+							aria-label={row.adopted ? labels.changeKey : labels.enable}
+							className={cn("text-muted-foreground hover:text-foreground", !row.adopted && "hover:text-primary")}
+						>
+							<span className={cn("h-3.5 w-3.5", row.adopted ? "icon-[mdi--key-outline]" : "icon-[mdi--key-plus]")} />
+						</Button>
+					)}
+					{canEditUrl && (
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							onClick={() => setPortDraft(portOf(row.baseUrl))}
+							title={labels.portLabel}
+							aria-label={labels.portLabel}
+							className="text-muted-foreground hover:text-foreground"
+						>
+							<span className="icon-[mdi--link-variant] h-3.5 w-3.5" />
+						</Button>
+					)}
+					{/* 内置服务不可删除：删掉之后也装不回来（它不在用户可添加的目录里）。 */}
+					{row.adopted && !row.autoKey && (
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							onClick={onRemove}
+							title={labels.remove}
+							aria-label={labels.remove}
+							className="text-muted-foreground hover:text-destructive"
+						>
+							<span className="icon-[mdi--delete-outline] h-3.5 w-3.5" />
+						</Button>
+					)}
+					{/* 开关与上游一致：只要服务商没下线就常驻，未采纳时是「关」，拨开等于启用。 */}
+					{!row.offline && (
+						<Switch
+							size="sm"
+							checked={row.enabled}
+							disabled={saving}
+							onCheckedChange={onToggleEnabled}
+							aria-label={labels.toggleProvider(row.displayName)}
+						/>
+					)}
+					{row.offline && !row.adopted && (
+						<span className="text-[11px] text-muted-foreground">{labels.deprecated}</span>
+					)}
 				</div>
 			</div>
 
-			{/* 错误行独立展示,编辑态也能看到校验失败原因。 */}
-			{row.modelsError && (
-				<div className="truncate px-5 pb-2.5 text-[11px] text-amber-400">{row.modelsError}</div>
-			)}
+			{/* 错误行独立展示,弹窗关着时也能看到校验失败原因。 */}
+			{row.modelsError && <div className="truncate px-5 pb-2.5 text-[11px] text-amber-400">{row.modelsError}</div>}
 
 			{row.isExpanded && modelsList}
+
+			<Dialog open={keyDialogOpen} onOpenChange={(next) => !next && !saving && onToggleEditor()}>
+				<DialogContent className="sm:max-w-[420px]">
+					<DialogHeader>
+						<DialogTitle>{row.displayName}</DialogTitle>
+						<DialogDescription>{labels.apiKeyDirect(row.displayName)}</DialogDescription>
+					</DialogHeader>
+					<div className="flex flex-col gap-2">
+						<span className="text-[14px] font-medium text-foreground">{labels.apiKeyLabel}</span>
+						<div className="flex items-center gap-1.5">
+							<div className="min-w-0 flex-1">
+								<InputField
+									value={draftKey}
+									onChange={onDraftKeyChange}
+									placeholder={row.hasApiKey ? labels.encryptedApiKeyPlaceholder : labels.apiKeyPlaceholder}
+									type="password"
+									disabled={saving}
+									autoFocus
+									aria-label={labels.apiKeyDirect(row.displayName)}
+									className="h-10 rounded-xl px-3.5 text-[15px] md:text-[15px]"
+									onKeyDown={(event) => {
+										if (event.key !== "Enter") return;
+										event.preventDefault();
+										if (saving) return;
+										if (draftKey.trim()) onAdopt();
+									}}
+								/>
+							</div>
+							{row.hasApiKey && (
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									onClick={onCopyApiKey}
+									title={labels.copyApiKey}
+									aria-label={labels.copyApiKey}
+									className="shrink-0 text-muted-foreground hover:text-foreground"
+								>
+									<span className="icon-[mdi--content-copy] h-3.5 w-3.5" />
+								</Button>
+							)}
+						</div>
+					</div>
+					<DialogFooter>
+						<Button variant="ghost" size="sm" onClick={onToggleEditor} disabled={saving}>
+							{labels.cancel}
+						</Button>
+						{/* 内置密钥默认值的预设：空草稿就是「用默认」，不必逼用户造一个 key。 */}
+						<Button
+							variant="primary"
+							size="sm"
+							onClick={onAdopt}
+							disabled={saving || !draftKey.trim()}
+						>
+							{row.adopted ? labels.save : labels.enable}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			<Dialog open={portDialogOpen} onOpenChange={(next) => !next && !saving && setPortDraft(null)}>
+				<DialogContent className="sm:max-w-[420px]">
+					<DialogHeader>
+						<DialogTitle>{row.displayName}</DialogTitle>
+						<DialogDescription>{labels.portLabel}</DialogDescription>
+					</DialogHeader>
+					<div className="flex flex-col gap-2">
+						<span className="text-[14px] font-medium text-foreground">{labels.port}</span>
+						<div className="flex items-center gap-2">
+							<span className="shrink-0 text-[14px] text-muted-foreground">{hostPrefix(row.baseUrl)}</span>
+							<InputField
+								value={portDraft ?? ""}
+								onChange={(value) => setPortDraft(value.replace(/\D/g, "").slice(0, 5))}
+								placeholder={labels.port}
+								disabled={saving}
+								autoFocus
+								aria-label={labels.portLabel}
+								className="h-10 w-28 rounded-xl px-3.5 text-[15px] md:text-[15px]"
+								onKeyDown={(event) => {
+									if (event.key !== "Enter") return;
+									event.preventDefault();
+									submitPort();
+								}}
+							/>
+						</div>
+					</div>
+					<DialogFooter>
+						<Button variant="ghost" size="sm" onClick={() => setPortDraft(null)} disabled={saving}>
+							{labels.cancel}
+						</Button>
+						<Button variant="primary" size="sm" onClick={submitPort} disabled={!portValid || saving}>
+							{labels.save}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

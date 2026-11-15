@@ -34,10 +34,10 @@ export interface PresetProviderRow {
 	adopted: boolean;
 	/** 已采纳且未被暂停；徽标与开关都看这一个值。 */
 	enabled: boolean;
-	/** 本机回环代理：编辑区只开放端口。 */
-	localProxy?: boolean;
-	/** 已内置密钥默认值：空草稿即可启用。 */
-	hasDefaultApiKey?: boolean;
+	/** 预填密钥（本机代理类预置）：草稿为空时也能启用。 */
+	defaultApiKey?: string;
+	/** 内置密钥（本机代理）：只给开关与端口，不给密钥按钮。派生自 `defaultApiKey`。 */
+	autoKey: boolean;
 	isOpen: boolean;
 	isExpanded: boolean;
 	refreshing: boolean;
@@ -68,6 +68,10 @@ export interface PresetProvidersSectionLabels {
 	testModel: (model: string) => string;
 	testOk: string;
 	testFailed: string;
+	/** API Key 弹窗里的字段名。 */
+	apiKeyLabel: string;
+	/** 本机代理改端口的按钮名与弹窗说明。 */
+	portLabel: string;
 	apiKeyDirect: (provider: string) => string;
 	apiKeyPlaceholder: string;
 	encryptedApiKeyPlaceholder: string;
@@ -186,8 +190,7 @@ export function usePresetProvidersSectionModel({
 			// 已启用的用账号实际可用的 /models 结果,未启用的展示 models.dev 公共目录。
 			models: config.providers[preset.id]?.models ?? preset.catalogModels,
 			offline: false,
-			...(preset.localProxy ? { localProxy: true } : {}),
-			...(preset.hasDefaultApiKey ? { hasDefaultApiKey: true } : {}),
+			...(preset.defaultApiKey ? { defaultApiKey: preset.defaultApiKey } : {}),
 		}));
 
 		return [...presetRows, ...orphaned].map((row) => {
@@ -197,6 +200,8 @@ export function usePresetProvidersSectionModel({
 				...row,
 				modelRows: row.models.map((model) => toModelRow(model, t)),
 				adopted,
+				// 内置密钥由目录数据派生，与上游同一处推导：只有本机代理类预置带 defaultApiKey。
+				autoKey: Boolean(row.defaultApiKey),
 				enabled: adopted && !providerConfig?.disabled,
 				isOpen: openId === row.id,
 				isExpanded: expandedId === row.id,
@@ -246,7 +251,7 @@ export function usePresetProvidersSectionModel({
 		async (row: PresetProviderRow, overrides?: { baseUrl?: string }): Promise<void> => {
 			const key = (draftKeys[row.id] ?? "").trim();
 			// 内置了密钥默认值的预设（本机代理）不必先让用户造一个 key。
-			if (!key && !row.hasDefaultApiKey) return;
+			if (!key && !row.autoKey) return;
 			setSaving(true);
 			try {
 				// 填 key 即校验:拉不到模型一律不落盘、不启用。
@@ -417,8 +422,17 @@ export function usePresetProvidersSectionModel({
 	const toggleEnabled = useCallback(
 		async (row: PresetProviderRow, enabled: boolean): Promise<void> => {
 			const provider = config.providers[row.id];
-			// 未采纳的走「启用」流程（填 key）；只有已采纳的才有暂停语义。
-			if (provider?.source !== "template") return;
+			// 未采纳时开关是「关」，拨开等于启用：有内置密钥直接采纳，否则打开填 key 的弹窗。
+			// 只关闭是空操作——没启用过的东西没有「暂停」可言。
+			if (!row.adopted || provider?.source !== "template") {
+				if (!enabled) return;
+				if (row.autoKey) {
+					await adoptPreset(row);
+					return;
+				}
+				handleToggleEditor(row);
+				return;
+			}
 			const providers = {
 				...config.providers,
 				[row.id]: { ...provider, disabled: enabled ? undefined : true },
@@ -428,7 +442,7 @@ export function usePresetProvidersSectionModel({
 				!enabled && config.defaultModel?.startsWith(`${row.id}/`) ? undefined : config.defaultModel;
 			await saveConfig({ ...config, defaultModel, providers });
 		},
-		[config, saveConfig],
+		[adoptPreset, config, handleToggleEditor, saveConfig],
 	);
 
 	const remove = useCallback(
@@ -468,6 +482,8 @@ export function usePresetProvidersSectionModel({
 			remove: t("remove"),
 			enable: t("enable"),
 			port: t("port"),
+			portLabel: t("portLabel"),
+			apiKeyLabel: t("apiKeyLabel"),
 			testModel: (model: string) => t("testModel", { model }),
 			testOk: t("testOk"),
 			testFailed: t("testFailed"),
@@ -527,10 +543,8 @@ interface BaseRow {
 	icon?: string;
 	models: NonNullable<ProviderEntry["models"]>;
 	offline: boolean;
-	/** 本机回环代理：地址只开放端口修改。 */
-	localProxy?: boolean;
-	/** 已内置密钥默认值：一键启用时不必先让用户填 key。 */
-	hasDefaultApiKey?: boolean;
+	/** 预填密钥（本机代理类预置）。 */
+	defaultApiKey?: string;
 }
 
 async function refreshModels(
