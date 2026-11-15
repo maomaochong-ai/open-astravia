@@ -23,6 +23,7 @@ export type {
 	ModelSelectorLabels,
 	ModelSelectorOptionView,
 	ModelSelectorProviderGroup,
+	ModelSelectorTriggerVariant,
 	ModelSelectorViewProps,
 } from "../chat/ModelSelectorView";
 export { ModelSelectorView } from "../chat/ModelSelectorView";

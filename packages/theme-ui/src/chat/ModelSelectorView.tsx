@@ -20,7 +20,9 @@ import {
 	toggleModelFavorite,
 } from "./model-selector-columns";
 import { ModelSelectorMenuPanel, type ModelSelectorMenuPanelHandle } from "./ModelSelectorMenuPanel";
-import { ModelSelectorTrigger } from "./ModelSelectorTrigger";
+import { ModelSelectorTrigger, type ModelSelectorTriggerVariant } from "./ModelSelectorTrigger";
+
+export type { ModelSelectorTriggerVariant } from "./ModelSelectorTrigger";
 
 /**
  * 模型选择器的视图层：搜索、按 provider 分组、推理档位子菜单、云端/默认/视觉徽章。
@@ -104,6 +106,8 @@ export interface ModelSelectorViewProps {
 	labels: ModelSelectorLabels;
 	ariaLabel?: string;
 	disabled?: boolean;
+	/** 触发器形态：输入栏胶囊（默认）或表单选择框。 */
+	triggerVariant?: ModelSelectorTriggerVariant;
 	/** 可选的空值项，例如“不固定模型”或“跟随会话默认”。 */
 	emptyOption?: {
 		readonly label: string;
@@ -145,6 +149,7 @@ export function ModelSelectorView({
 	labels,
 	ariaLabel,
 	disabled = false,
+	triggerVariant = "inline",
 	emptyOption,
 	footerStart,
 	footerEnd,
@@ -266,6 +271,7 @@ export function ModelSelectorView({
 					ref={triggerRef}
 					aria-label={ariaLabel}
 					disabled={disabled}
+					variant={triggerVariant}
 					label={selectedOption?.displayName ?? labels.placeholder}
 					icon={
 						selectedOption ? groups.find((group) => group.provider === selectedOption.provider)?.icon : undefined
