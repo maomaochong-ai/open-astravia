@@ -2,13 +2,13 @@
 
 ## 状态
 
-已接受，**尚未实施**（2026-11-14 审计确认零实现）。
+已接受、**已实施**（2026-11-15）。`129g`、`pan7`、`r81i`、`v01k`、`qzkn` 五条落到了代码，
+实施位置与逐条验证见文末「实施记录」；`jhbp` 是批次编号本身，不是可实施条目。
 
-本文只定方向与合同，代码一条也未落地：`useModelPickerModel` 不存在、`ModelSelect` 仍是
-自绘下拉、`plugin-sdk` 无 `model-picker.ts` 且版本仍 `0.3.11`、三个插件仍各自实现。
-实施规格见 [`docs/dev/alignment-spec-b10-model-picker.md`](../dev/alignment-spec-b10-model-picker.md)，
-验收用本文字末的「验证」一节。对应 ADR-0157 登记表的 `129g`、`pan7`、`r81i`、`v01k`、
-`qzkn`、`jhbp`（批次编号见表 B10）。
+实施前的事实：`useModelPickerModel` 不存在、`ModelSelect` 是 385 行自绘下拉、`plugin-sdk`
+无 `model-picker.ts` 且版本停在 `0.3.11`、插件各自实现。实施规格见
+[`docs/dev/alignment-spec-b10-model-picker.md`](../dev/alignment-spec-b10-model-picker.md)，
+对应 ADR-0157 登记表的 `129g`、`pan7`、`r81i`、`v01k`、`qzkn`、`jhbp`（批次编号见表 B10）。
 
 ## 背景
 
@@ -107,3 +107,30 @@ API 不匹配」在插件构建期就失败。
   权限合同测试。
 - 三个插件各自的 `vitest`，以及在宿主内加载的冒烟（活动面板打开、选择、写回）。
 - `bun run check:quick` / `bun run test:impact` 覆盖改动文件。
+
+## 实施记录
+
+| 条目 | 决策 | 落实位置 | 会红的用例（旧实现下失败） |
+| --- | --- | --- | --- |
+| `129g` 宿主同源 | §1 | 新增 `ModelSelect/useModelPickerModel.ts`（目录、默认模型、推理档位、触发器文案与倍率口径）；`ModelSelect` 从 385 行自绘下拉重写为「装配 → 渲染 `ModelSelectorView`」；`ModelSelectorTrigger` 增加 `inline` / `field` 两套形态并贯穿 `ModelSelectorView.triggerVariant`；`useModelSelectorModel` 收敛为「值写到哪」；`TeamMemberModelSelector` 改走 `ModelSelect`；`useModelOptions.iconFor` 记忆化 | `ModelSelect.test.tsx`：断言打开后是输入栏那套三栏面板（服务商栏 + 推理档位列）。旧实现是 `DropdownMenu`，没有这两个 `group`，三条全红 |
+| `pan7` SDK `ModelPicker` | §2 | 新增 `plugin-sdk/src/model-picker.ts`（宿主渲染，不读清单、不需要权限）；`PluginHostBridge` 增 `ModelPicker` 字段；SDK 导出；宿主 `PluginModelPicker` 做合同到 `ModelSelect` 的映射并装进 `pluginHostBridge`；主进程 `plugin-protocol.ts` 透传，插件运行时才拿得到 | `plugin-sdk/test/model-picker.test.ts`：props 原样透传、`menuClassName` 随合同透传、旧宿主明确报错。旧实现无此文件，套件加载即失败 |
+| `r81i` `menuClassName` | §2 与 §3.7 | 合同字段 → `ModelSelect.menuClassName` → `classNames.content`（Popover 内容），`className` 落 `classNames.trigger` | `PluginModelPicker.test.tsx`：`menuClassName` 必须出现在弹出面板上。把映射写成「className 当菜单类名」时红 |
+| `v01k` content-creation | §4 | 删 `usePromptOptimizationModels`（自带清单拉取与过滤）与自绘 `Select`；新增 `usePromptOptimization` 只记选中的 key；`PromptOptimizationControl` 改用 `ModelPicker`（`autoSelectDefault` + `menuClassName="z-[110]"`）；`plugin.json` 去掉 `ai.models.list`；删两条随之作废的文案键 | `test/prompt-optimization-model-picker.dom.test.tsx`：面板里出现宿主选择器、选中回调带 key、`autoSelectDefault` 与浮层层级。旧实现渲染 `@astravia-org/ui` 的 `Select`，无 `ModelPicker` 可断言 |
+| `qzkn` chinese-chess | §4 | 删原生 `<select>` 版 `ModelPicker.tsx`；两处调用改用 SDK 组件，「默认」映射成 `emptyOption`；`ChessRuntime` 与 `createChessRuntime` 去掉 `listModels`；`plugin.json` 去掉 `ai.models.list`；测试桩同步 | `test/model-picker.dom.test.tsx`：`emptyOption` / `placeholder` / `ariaLabel` 必须传到宿主选择器，选默认回调 `null`。旧组件不接受这些字段，断言必红 |
+
+SDK 版本：`0.3.11 → 0.3.13`，`CHANGELOG.md` 把累积的 `[Unreleased]` 一次定版（含
+`registerHeaderAction` 与本条的 `ModelPicker`），`bun.lock` 的 workspace 版本同步。
+插件文档同步：`docs/plugin/ai.md` 增「让用户选模型：`ModelPicker`」一节并把「展示选择器
+就要 `ai.models.list`」改成上游口径；`docs/plugin/styling-and-pitfalls.md` 在 `plugin-ui`
+一节加「只是选一个模型时不要自己拼 `ModelSelectorView`」。
+
+### 与本 ADR 原决策的偏差（已核实，非漏做）
+
+1. **`kanban` 不在本次范围**：它仍在树内（`packages/plugins/externals/kanban`），
+   `src/components/ModelPicker.tsx`（118 行，自拼 `ModelSelectorView` + `INHERIT_KEY` 哨兵）
+   也还在。本次只做了任务指定的五条，`kanban` 属 §4 的第三条（`efa5addf4`），
+   留待单独一批；迁移时按「`INHERIT_KEY` → `emptyOption`、空串 ↔ `null` 往返」执行。
+2. **`InlineModelPicker` / `ModelConfigurationPopover`（团队会话输入栏）不在本批**：与原
+   §1 的口径一致（规格 D4 的 ②），仍是独立形态。`TeamMemberModelSelector` 属 ③，已收敛。
+3. **`reasoningModelKeys` 未引入**：本仓视图用 `menuLevels.length === 0` 判断是否关闭菜单，
+   与原决策「不要为对齐新增该 prop」一致。

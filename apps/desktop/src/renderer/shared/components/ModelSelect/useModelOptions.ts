@@ -109,11 +109,15 @@ export function useModelOptions(): UseModelOptionsResult {
 		return groups;
 	}, [options]);
 
-	const iconFor = (provider: string): string | undefined => {
-		const local = config?.providers[provider] as { icon?: string } | undefined;
-		const remote = (remoteProviders as Record<string, { icon?: string }>)[provider];
-		return local?.icon ?? remote?.icon;
-	};
+	// 引用必须稳定：`useModelPickerModel` 的 groups 以它为依赖，每次渲染换新会让分组整表重算。
+	const iconFor = useCallback(
+		(provider: string): string | undefined => {
+			const local = config?.providers[provider] as { icon?: string } | undefined;
+			const remote = (remoteProviders as Record<string, { icon?: string }>)[provider];
+			return local?.icon ?? remote?.icon;
+		},
+		[config, remoteProviders],
+	);
 
 	const labelFor = useCallback(
 		(provider: string): string => {

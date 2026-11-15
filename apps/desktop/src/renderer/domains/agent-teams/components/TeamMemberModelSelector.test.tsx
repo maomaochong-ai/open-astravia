@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TeamMemberModelSelector } from "./TeamMemberModelSelector";
@@ -90,7 +90,8 @@ describe("TeamMemberModelSelector", () => {
 		await waitFor(() => expect(document.querySelector('[data-model-key="provider/vision"]')).not.toBeNull());
 		const visionRow = document.querySelector('[data-model-key="provider/vision"]');
 		const visionModel = visionRow!.querySelectorAll("button")[0]!;
-		expect(within(visionModel).getByLabelText("Vision")).toBeTruthy();
+		// 共享视图把识图这类标识收进行尾的详情浮层，行上只留名字与星标。
+		expect(visionModel.textContent).toContain("Image Model");
 		expect(visionModel.textContent).not.toContain("Vision");
 		await user.click(visionModel);
 		expect(onChange).toHaveBeenCalledWith("provider/vision");

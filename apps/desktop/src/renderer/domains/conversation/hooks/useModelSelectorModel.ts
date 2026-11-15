@@ -1,7 +1,10 @@
 import type { ModelSelectorViewProps } from "@astravia-org/theme-ui/chat";
-import { fmtMultiplier } from "@astravia-org/theme-ui/shared/MultiplierTag";
-import { resolveReasoning } from "@shared/components/ModelSelect/resolveReasoning";
-import { type ModelOption, useModelOptions } from "@shared/components/ModelSelect/useModelOptions";
+import {
+	isValidReasoningLevel,
+	type ModelOption,
+	resolveReasoning,
+	useModelPickerModel,
+} from "@shared/components/ModelSelect";
 import {
 	activeSessionAtom,
 	modelSupportsImagesAtom,
@@ -9,10 +12,8 @@ import {
 	SELECTED_MODEL_STORAGE_KEY,
 	selectedModelAtom,
 } from "@shared/store/atoms";
-import { modelCatalog } from "@shared/store/model-catalog";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
-import { useTranslation } from "react-i18next";
 
 export interface ModelSelectorModel {
 	empty: boolean;
@@ -34,24 +35,10 @@ export function persistSelectedModel(key: string): void {
 	}
 }
 
-/** options 尚未加载（如远程 catalog）时，用 modelKey 拼一个最小 option 供触发器展示。 */
-function fallbackOptionFromKey(key: string): ModelOption {
-	const slash = key.indexOf("/");
-	const provider = slash > 0 ? key.slice(0, slash) : key;
-	const modelId = slash > 0 ? key.slice(slash + 1) : key;
-	return {
-		provider,
-		modelId,
-		displayName: modelId,
-		key,
-	};
-}
-
 /**
- * Combined chat model + reasoning-level picker. The primary menu is the model list;
- * a "推理档位" entry at the top opens a hover submenu on the right to pick the level
- * (including "off" to disable thinking). Reasoning is per-model: each model remembers
- * its last-chosen level (reasoningByModelAtom) and the value rides the prompt.
+ * 输入栏的模型 + 推理档位选择器。数据与文案全部来自 `useModelPickerModel`（与设置页、
+ * 团队成员、插件用的是同一个连接层），这里只负责「选中的值写到哪」：
+ * 全局新会话偏好、当前会话的 settings、以及按模型记住的档位。
  */
 export function useModelSelectorModel({
 	updateActiveSession = true,
@@ -60,86 +47,19 @@ export function useModelSelectorModel({
 	readonly updateActiveSession?: boolean;
 	readonly scope?: ModelSelectorScope;
 } = {}): ModelSelectorModel {
-	const { t } = useTranslation("common");
 	const [globalSelectedModel, setSelectedModel] = useAtom(selectedModelAtom);
 	const [reasoningByModel, setReasoningByModel] = useAtom(reasoningByModelAtom);
 	const selectedModel = scope ? scope.modelKey : globalSelectedModel;
 	const activeSession = useAtomValue(activeSessionAtom);
 	const setModelSupportsImages = useSetAtom(modelSupportsImagesAtom);
-	const { options, grouped, defaultKey, iconFor, labelFor } = useModelOptions();
 
-	const catalogOption = useMemo(() => options.find((m) => m.key === selectedModel) ?? null, [options, selectedModel]);
-	// 有 key 但 catalog 未就绪时仍展示 modelId，避免闪「选择模型」。
-	const selectedOption = useMemo(() => {
-		if (catalogOption) return catalogOption;
-		if (selectedModel) return fallbackOptionFromKey(selectedModel);
-		return null;
-	}, [catalogOption, selectedModel]);
-	// 推理档位只认 catalog 中的真实配置，fallback option 不参与 resolve。
-	const resolved = useMemo(() => resolveReasoning(catalogOption), [catalogOption]);
-
-	// "off" (disable thinking) is always offered for reasoning-capable models, on top of
-	// the model's configured/preset levels. When the model explicitly includes "none",
-	// it replaces "off" so they never appear together in the dropdown.
-	const menuLevels = useMemo(() => {
-		if (!resolved) return [];
-		if (resolved.levels.includes("none")) {
-			return ["none", ...resolved.levels.filter((l) => l !== "none" && l !== "off")];
-		}
-		return ["off", ...resolved.levels.filter((l) => l !== "off")];
-	}, [resolved]);
-	const isValidLevel = useCallback(
-		(v: string) => v === "off" || v === "none" || (resolved?.levels.includes(v) ?? false),
-		[resolved],
-	);
-
-	const currentLevel = useMemo(() => {
-		if (!selectedModel || !resolved) return undefined;
-		const remembered = scope ? scope.reasoning : reasoningByModel[selectedModel];
-		return remembered && isValidLevel(remembered) ? remembered : resolved.default;
-	}, [selectedModel, resolved, reasoningByModel, isValidLevel, scope]);
-
-	const levelLabel = useCallback(
-		(value: string) => t(`modelSelect.reasoningLevel.${value}`, { defaultValue: value }),
-		[t],
-	);
-
-	// Auto-apply the configured default model when nothing is selected yet.
-	useEffect(() => {
-		if (!selectedModel && defaultKey) {
-			if (scope) {
-				const defaultReasoning = resolveReasoning(options.find((option) => option.key === defaultKey))?.default;
-				scope.onModelSelect(defaultKey, defaultReasoning);
-			} else {
-				setSelectedModel(defaultKey);
-				persistSelectedModel(defaultKey);
-			}
-		}
-	}, [selectedModel, defaultKey, setSelectedModel, scope, options]);
-
-	// Keep image-support flag in sync with the resolved catalog selection only.
-	useEffect(() => {
-		if (options.length === 0) return;
-		setModelSupportsImages(catalogOption?.supportsImage ?? false);
-	}, [options.length, catalogOption, setModelSupportsImages]);
-
-	// Persist the effective default level for the selected model when none is remembered,
-	// so the prompt sender always has a value to send (per-model memory seeded with default).
-	useEffect(() => {
-		if (scope || !selectedModel || !resolved) return;
-		const remembered = reasoningByModel[selectedModel];
-		if (!remembered || !isValidLevel(remembered)) {
-			setReasoningByModel({ ...reasoningByModel, [selectedModel]: resolved.default });
-		}
-	}, [selectedModel, resolved, reasoningByModel, setReasoningByModel, isValidLevel, scope]);
+	const rememberedLevel = selectedModel ? (scope ? scope.reasoning : reasoningByModel[selectedModel]) : undefined;
 
 	const handleModelSelect = useCallback(
-		(key: string) => {
-			if (scope) {
-				const defaultReasoning = resolveReasoning(options.find((option) => option.key === key))?.default;
-				scope.onModelSelect(key, defaultReasoning);
-			}
-			// 用户手动选择的就是“上次使用的模型”，无论在哪个输入框选的都记为全局新会话偏好；
+		(key: string | null, option: ModelOption | null) => {
+			if (!key) return;
+			if (scope) scope.onModelSelect(key, resolveReasoning(option)?.default);
+			// 用户手动选择的就是「上次使用的模型」，无论在哪个输入框选的都记为全局新会话偏好；
 			// 否则 scoped 选择不落全局，刷新后普通输入框会回到一个早已不可用的旧模型。
 			// 已有会话另写 session settings。
 			setSelectedModel(key);
@@ -148,84 +68,52 @@ export function useModelSelectorModel({
 				void window.astravia.session.updateSettings(activeSession.runtimeId, { modelKey: key });
 			}
 		},
-		[setSelectedModel, activeSession, updateActiveSession, scope, options],
+		[setSelectedModel, activeSession, updateActiveSession, scope],
 	);
-
-	/**
-	 * 计费倍率标的文案。视图只负责渲染，倍率口径与「免费」措辞留在宿主——
-	 * 插件复用同一个视图时不会连带继承宿主的计费文案。
-	 */
-	const multiplierLabelFor = useCallback(
-		(option: { key: string }): string | undefined => {
-			const multiplier = options.find((candidate) => candidate.key === option.key)?.multiplier;
-			if (!multiplier) return undefined;
-			return multiplier.input === 0 && multiplier.output === 0
-				? t("modelSelect.free")
-				: t("modelSelect.multiplier", { value: fmtMultiplier(multiplier.input) });
-		},
-		[options, t],
-	);
-
-	// 打开模型菜单时按 TTL 后台重校验目录，服务端增删模型无需重启即可看到。
-	const handleOpenChange = useCallback((open: boolean) => {
-		if (open) void modelCatalog.revalidate();
-	}, []);
 
 	const handleReasoningSelect = useCallback(
-		(value: string) => {
+		(level: string) => {
 			if (!selectedModel) return;
-			if (scope) scope.onReasoningSelect(value);
-			else setReasoningByModel({ ...reasoningByModel, [selectedModel]: value });
+			if (scope) scope.onReasoningSelect(level);
+			else setReasoningByModel({ ...reasoningByModel, [selectedModel]: level });
 		},
 		[selectedModel, reasoningByModel, setReasoningByModel, scope],
 	);
 
-	return {
-		// 已有选中 key 时即使 options 还在加载也展示触发器，避免空白/占位闪烁。
-		empty: options.length === 0 && !selectedModel,
-		viewProps: {
-			currentLevel,
-			defaultKey,
-			groups: [...grouped.entries()].map(([provider, models]) => ({
-				icon: iconFor(provider),
-				label: labelFor(provider),
-				models,
-				provider,
-			})),
-			labels: {
-				clearSearch: t("modelSelect.clearSearch"),
-				multiplierLabel: multiplierLabelFor,
-				cloudOnly: t("modelSelect.cloudOnly"),
-				favoritesHeader: t("modelSelect.favoritesHeader"),
-				favorite: t("modelSelect.favorite"),
-				unfavorite: t("modelSelect.unfavorite"),
-				searchResultsHeader: t("modelSelect.searchResultsHeader"),
-				defaultBadge: t("modelSelect.defaultBadge"),
-				levelLabel,
-				modelHeader: t("modelSelect.modelHeader"),
-				providerHeader: t("modelSelect.providerHeader"),
-				noResults: t("modelSelect.noResults"),
-				noResultsHint: t("modelSelect.noResultsHint"),
-				placeholder: t("modelSelect.placeholder"),
-				reasoningHeader: t("modelSelect.reasoningHeader"),
-				searchPlaceholder: t("modelSelect.searchPlaceholder"),
-				visionBadge: t("modelSelect.visionBadge"),
-				infoButton: t("modelSelect.info.button"),
-				infoProvider: t("modelSelect.info.provider"),
-				infoId: t("modelSelect.info.id"),
-				infoVision: t("modelSelect.info.vision"),
-				infoMultiplier: t("modelSelect.info.multiplier"),
-				infoDefault: t("modelSelect.info.default"),
-				infoYes: t("modelSelect.info.yes"),
-				infoNo: t("modelSelect.info.no"),
-				fewerProviders: t("modelSelect.fewerProviders"),
-			},
-			menuLevels,
-			onModelSelect: handleModelSelect,
-			onOpenChange: handleOpenChange,
-			onReasoningSelect: handleReasoningSelect,
-			selectedModel: selectedModel ?? undefined,
-			selectedOption,
-		},
-	};
+	const reasoning = useMemo(
+		() => ({ value: rememberedLevel, onChange: handleReasoningSelect }),
+		[rememberedLevel, handleReasoningSelect],
+	);
+
+	const picker = useModelPickerModel({ value: selectedModel, onChange: handleModelSelect, reasoning });
+	const { options, globalDefaultKey, catalogOption, resolvedReasoning } = picker;
+
+	// 还没选过模型时补上配置的默认模型：scoped 输入框走 scope 回调，普通输入框直接落全局。
+	useEffect(() => {
+		if (selectedModel || !globalDefaultKey) return;
+		if (scope) {
+			const fallback = resolveReasoning(options.find((option) => option.key === globalDefaultKey) ?? null);
+			scope.onModelSelect(globalDefaultKey, fallback?.default);
+			return;
+		}
+		setSelectedModel(globalDefaultKey);
+		persistSelectedModel(globalDefaultKey);
+	}, [selectedModel, globalDefaultKey, options, scope, setSelectedModel]);
+
+	// 图片能力标记跟随目录里的真实选中项；目录未就绪时不改，避免把已有标记清掉。
+	useEffect(() => {
+		if (options.length === 0) return;
+		setModelSupportsImages(catalogOption?.supportsImage ?? false);
+	}, [options.length, catalogOption, setModelSupportsImages]);
+
+	// 没有记住过档位时用模型默认档位播种，保证发送 prompt 时总有一个值。
+	useEffect(() => {
+		if (scope || !selectedModel || !resolvedReasoning) return;
+		const remembered = reasoningByModel[selectedModel];
+		if (!remembered || !isValidReasoningLevel(remembered, resolvedReasoning)) {
+			setReasoningByModel({ ...reasoningByModel, [selectedModel]: resolvedReasoning.default });
+		}
+	}, [selectedModel, resolvedReasoning, reasoningByModel, setReasoningByModel, scope]);
+
+	return { empty: picker.empty, viewProps: picker.viewProps };
 }
