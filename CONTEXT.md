@@ -696,6 +696,22 @@ _Avoid_: 把工作流称作「后台任务」（那是 background-tasks 标签�
 
 中文正式叫法为**「授权契约」**，把「能力」这个中文词让给 [[Ability（能力）]]，避免 desktop 市场条目与授权层同名不可分辨。
 
+### 添加面板（add panel）
+
+输入卡片左侧第一个按钮展开的**可添加入口**：把「能往这条消息里加的东西」按 `files /
+skills / connectors / plugins / apps` 五类列出，供用户挑选后插入、执行或配置。
+
+它列的不是 [[Ability（能力）]]：文件动作与连接器都不是可分发扩展单元，内置技能也不在
+能力广场里。也不涉及 [[Capability（授权契约）]]——面板本身不做任何授权判定，它展示的
+条目只是各自域现有数据源的**投影**。
+
+代码侧统一用 `AddPanel*` 前缀（`AddPanelCategory` / `AddPanelEntry` / `AddPanelCatalog`
+/ `AddPanelFavorites`），**不用 `Capability*`**——后者归授权契约。命名历史：
+ADR-0156 曾用 `CapabilityKind` / `CapabilityEntry`，由 ADR-0175 改为 `AddPanel*`。
+
+_Avoid_: 把它叫「能力面板」（会与 [[Ability（能力）]] 混淆）；把连接器/文件动作说成
+「能力」（它们不可分发、也不可安装）。
+
 ### bundle（能力套装）
 
 `type = bundle` 的 [[Ability（能力）]]：一组**各自独立可用**的能力的松散组合。自身**永远无产物**（`artifact_key` 恒空），安装 = 逐成员走各自既有安装轨道，不引入任何新的打包/解包机制。
