@@ -40,9 +40,9 @@ describe("ensureMacosAdHocSignature", () => {
 	it("does nothing on platforms without macOS code signing", async () => {
 		const { calls, exec } = recordingExec();
 
-		await expect(
-			ensureMacosAdHocSignature("C:/dev/astravia-cli-app.exe", { platform: "win32", exec }),
-		).resolves.toBe(false);
+		await expect(ensureMacosAdHocSignature("C:/dev/astravia-cli-app.exe", { platform: "win32", exec })).resolves.toBe(
+			false,
+		);
 		await expect(ensureMacosAdHocSignature("/dev/astravia-cli-app", { platform: "linux", exec })).resolves.toBe(
 			false,
 		);

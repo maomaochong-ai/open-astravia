@@ -5,7 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import type { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { McpClientInfo } from "../protocol/index.js";
-import { type McpHttpSdkTransportKind, createMcpSdkTransport } from "../transports/http/sdk-session-adapter.js";
+import { createMcpSdkTransport, type McpHttpSdkTransportKind } from "../transports/http/sdk-session-adapter.js";
 
 export interface McpBrowserOAuthSdkSessionOptions {
 	readonly url: URL;

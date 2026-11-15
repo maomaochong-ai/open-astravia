@@ -3,7 +3,6 @@ import deepseekIcon from "@lobehub/icons-static-svg/icons/deepseek-color.svg?url
 import geminiIcon from "@lobehub/icons-static-svg/icons/gemini-color.svg?url";
 import grokIcon from "@lobehub/icons-static-svg/icons/grok.svg?url";
 import kimiIcon from "@lobehub/icons-static-svg/icons/kimi.svg?url";
-import magpieIcon from "./magpie.svg?url";
 import minimaxIcon from "@lobehub/icons-static-svg/icons/minimax-color.svg?url";
 import nvidiaIcon from "@lobehub/icons-static-svg/icons/nvidia-color.svg?url";
 import ollamaIcon from "@lobehub/icons-static-svg/icons/ollama.svg?url";
@@ -13,6 +12,7 @@ import qwenIcon from "@lobehub/icons-static-svg/icons/qwen-color.svg?url";
 import xiaomiMimoIcon from "@lobehub/icons-static-svg/icons/xiaomimimo.svg?url";
 import zaiIcon from "@lobehub/icons-static-svg/icons/zai.svg?url";
 import zhipuIcon from "@lobehub/icons-static-svg/icons/zhipu-color.svg?url";
+import magpieIcon from "./magpie.svg?url";
 
 type ProviderIconAppearance = "color" | "monochrome";
 
