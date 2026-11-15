@@ -8,7 +8,7 @@
 import { join } from "node:path";
 import { app, BrowserWindow, type NativeImage, nativeImage } from "electron";
 import { APP_ICON_DEFAULT, type AppIconId, normalizeAppIconId } from "../../shared/app-icon.js";
-import { readConfigSync, updateDesktopConfig } from "../config/desktop-config-store.js";
+import { readAppIconIdSync, updateDesktopConfig } from "../config/desktop-config-store.js";
 
 export const APP_ICON_CHANGED_CHANNEL = "astravia:app-icon:changed";
 
@@ -17,7 +17,7 @@ const buildDir = app.isPackaged ? join(process.resourcesPath, "build") : join(pr
 let currentId: AppIconId | undefined;
 
 export function getAppIconId(): AppIconId {
-	currentId ??= normalizeAppIconId(readConfigSync().appIconId);
+	currentId ??= normalizeAppIconId(readAppIconIdSync());
 	return currentId;
 }
 

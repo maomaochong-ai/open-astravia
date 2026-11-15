@@ -332,6 +332,19 @@ export function isDebugModeEnabled(): boolean {
 	return value;
 }
 
+/**
+ * 只读回 `appIconId` 一个字段。启动期套用图标不该顺带做整份迁移与 SSH 主机读取——
+ * 那些是给完整配置用的，放在这条路径上会拖慢应用就绪，且结果只有一个字符串。
+ */
+export function readAppIconIdSync(): unknown {
+	try {
+		const raw: unknown = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
+		return raw && typeof raw === "object" ? (raw as Record<string, unknown>).appIconId : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 export function readConfigSync(): DesktopConfig {
 	try {
 		const raw = readFileSync(CONFIG_PATH, "utf8");
