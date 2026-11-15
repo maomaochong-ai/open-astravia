@@ -25,11 +25,3 @@ export const PANEL_REVEAL_TRANSITION = {
 	duration: PANEL_REVEAL_DURATION,
 	ease: PANEL_REVEAL_EASE,
 } as const;
-
-/**
- * 揭幕期间 skill 列表先渲染的行数。
- *
- * 面板最高 320px、行高 32px，可视区本来就放不下更多；剩下的行等揭幕结束再补，
- * 免得「展开那一刻一次性布局上百行 + 上百个内联 SVG」全砸在动画首帧。
- */
-export const PANEL_REVEAL_ROWS = 12;

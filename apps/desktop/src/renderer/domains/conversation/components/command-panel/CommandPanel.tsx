@@ -1,4 +1,5 @@
 import type { SkillInfo } from "@preload/api";
+import { useNavigate } from "@tanstack/react-router";
 import { useThemeComponent } from "@astravia-org/theme-sdk";
 import { useCommandPanelModel } from "../../hooks/useCommandPanelModel";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
@@ -36,11 +37,20 @@ export interface CommandPanelProps {
  * 批量任务 / 自动化 dialog 用的是精简版 SkillPickerPanel，两者共用 SkillList。
  */
 export function CommandPanel(props: CommandPanelProps): JSX.Element {
+	const navigate = useNavigate();
 	const model = useCommandPanelModel({
 		...props,
+		// 能力广场只有一个全局出口与一个上下文出口（ADR-0175 §5.1）：前者去首页，
+		// 后者带 `detail` 参数直接打开这一条的抽屉。条目在广场里没有页面时，模型不会
+		// 渲染上下文按钮，所以这里不必再判断一遍。
+		onOpenAbilityPlaza: props.onOpenAbilityPlaza ?? (() => void navigate({ to: "/abilities" })),
 		onOpenEntryInPlaza:
 			props.onOpenEntryInPlaza === undefined
-				? undefined
+				? (entry) => {
+						if (entry.category !== "skills") return;
+						const slug = entry.id.split(":").slice(1).join(":");
+						void navigate({ to: "/abilities", search: { detail: `skill:${slug}` } });
+					}
 				: (entry) => props.onOpenEntryInPlaza?.({ category: entry.category, id: entry.id }),
 	});
 	const ThemedCommandPanelView = useThemeComponent("chat.commandPanelView", CommandPanelView);

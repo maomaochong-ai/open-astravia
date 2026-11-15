@@ -58,7 +58,7 @@ export function AddPanelRail({
 	return (
 		<div
 			role="tablist"
-			aria-label={labels.categoryLabel("skills")}
+			aria-label={labels.categories}
 			className="no-scrollbar flex w-11 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-border/40 py-1.5"
 		>
 			{button("favorites", "icon-[solar--star-linear]", labels.favorites, { favorite: true })}

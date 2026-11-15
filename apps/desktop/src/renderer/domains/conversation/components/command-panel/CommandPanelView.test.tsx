@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { QueueCardView } from "@astravia-org/theme-ui/chat";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AddPanelSection } from "./add-panel-catalog";
 import { CommandPanelView } from "./CommandPanelView";
 import type { CommandPanelDetailModel, CommandPanelLabels } from "./types";
@@ -14,6 +14,9 @@ class ResizeObserverStub {
 }
 
 vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+
+// 这个环境没有开 Testing Library 的自动清理，同一文件里的多次 render 会互相污染。
+afterEach(cleanup);
 
 function makeLabels(): CommandPanelLabels {
 	const detail = {
@@ -47,6 +50,7 @@ function makeLabels(): CommandPanelLabels {
 		favorites: "收藏",
 		favoritesEmpty: "还没有收藏",
 		favoritesEmptyHint: "在任意条目上悬停并点星标",
+		categories: "添加分类",
 		openAbilityPlaza: "能力广场",
 		categoryLabel: (tab) => {
 			if (tab === "favorites") return "收藏";

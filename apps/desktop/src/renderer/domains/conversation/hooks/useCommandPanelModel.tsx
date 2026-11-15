@@ -227,6 +227,7 @@ export function useCommandPanelModel({
 			favorites: t("slashPanel.favorites"),
 			favoritesEmpty: t("slashPanel.favoritesEmpty"),
 			favoritesEmptyHint: t("slashPanel.favoritesEmptyHint"),
+			categories: t("slashPanel.categories"),
 			openAbilityPlaza: t("slashPanel.openAbilityPlaza"),
 			categoryLabel,
 			// 键来自关闭的分组表（内置/我的/项目/插件…），不是任意输入；
@@ -354,6 +355,9 @@ export function useCommandPanelModel({
 		}
 		if (activeEntry.category === "skills") {
 			const identifier = activeEntry.id.split(":").slice(1).join(":");
+			// 只有市场里的技能在能力广场有页面；内置技能与项目/用户目录里的技能没有，
+			// 给了入口点进去就是空结果。
+			const plazaCapable = activeEntry.groupId === "market" && onOpenEntryInPlaza !== undefined;
 			return {
 				...base,
 				meta: [
@@ -362,7 +366,7 @@ export function useCommandPanelModel({
 				],
 				hint: labels.detail.hintSkill,
 				primaryLabel: labels.detail.insert,
-				secondaryLabel: onOpenEntryInPlaza ? labels.detail.viewInPlaza : undefined,
+				secondaryLabel: plazaCapable ? labels.detail.viewInPlaza : undefined,
 			};
 		}
 		if (activeEntry.category === "connectors") {

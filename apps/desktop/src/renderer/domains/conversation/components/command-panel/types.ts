@@ -38,6 +38,8 @@ export interface CommandPanelLabels extends SkillListLabels {
 	favorites: string;
 	favoritesEmpty: string;
 	favoritesEmptyHint: string;
+	/** 左栏分类轨道的无障碍名称。 */
+	categories: string;
 	/** 左栏底部「能力广场」入口。 */
 	openAbilityPlaza: string;
 	/** 左栏各分类的显示名（`title` 提示与无障碍名称）。 */
