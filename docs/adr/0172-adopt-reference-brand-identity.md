@@ -2,7 +2,8 @@
 
 ## 状态
 
-已接受，尚未实施。对应 ADR-0157 登记表里 11 条「需产品决策」条目（§14）。
+已接受。应用图标一组（`izqa`、`e7nz` 默认部分 + 外观页图标选择器）**已实施**；
+本机代理与引导面板两组仍待实施。对应 ADR-0157 登记表里 13 条品牌条目（§14）。
 
 产品方在本轮明确：**这 11 条采纳，按参照实现对齐**。此前它们被单列的理由是「采纳即
 采用对方的品牌与产品身份」——这个判断本身没有错，只是结论变了：本项目既然定位是参照
@@ -88,6 +89,22 @@ ADR-0157 最初把三类条目从「功能对齐」里摘出来：本机代理�
   迁移后原有命令面板用例全绿。
 - 打包：`bun run build:presets` 与 electron-builder 资源清单包含新图标；macOS 上人工
   核对 Dock 图标边距（仅在用户明确要求时跑 `verify:ui:*`）。
+
+## 实施记录（应用图标）
+
+按上游最终形态落地，资源直接用官方图标集（20 张打包图 + 11 张设置页预览图）：
+
+| 层 | 落地位置 | 说明 |
+| --- | --- | --- |
+| 共享 id | `apps/desktop/src/shared/app-icon.ts` | 11 个 id 的单一事实源，未知值回落默认 |
+| 持久化 | `desktop-config.appIconId` | 与界面缩放同级；缺省即出厂图标 |
+| 主进程 | `main/app-icon/app-icon-service.ts` | macOS 换 `app.dock.setIcon`（`-mac` 变体），Windows/Linux 换窗口图标；启动时套用一次 |
+| 通道 | `main/ipc/app-icon.ts`、`preload/apis/app-icon.ts` | `astravia:app-icon:get/set/changed` |
+| 渲染 | `renderer/shared/hooks/useAppIcon.ts`、`AppearanceSettingsView` | 单个入口 + popover，超椭圆裁切 |
+| 打包 | `scripts/build-resource-filters.mjs` | `app-icons/**/*` 随 `build/` 进 resources |
+
+外观页同时按参照实现收敛：语言行与界面大小行不再带说明文字，应用图标作为同一张卡片的
+第四行紧跟界面大小之后（该行 `border={false}` 收尾）。字体行也去掉了多余的副标题。
 
 ## 实施顺序
 

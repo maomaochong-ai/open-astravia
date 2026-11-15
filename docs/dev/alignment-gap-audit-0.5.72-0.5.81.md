@@ -489,37 +489,35 @@ kanban 额外一例：选"跟随默认"回吐空串。构建侧确认插件 bund
 | `apps/desktop/src/renderer/domains/settings/assets/app-icons/` | 设置页预览图（`default` + 10 款） | 11 |
 | `apps/desktop/build/icon-dock.png` | 默认 Dock 图标，1024 边距版（919KB，本仓现为 18KB 的 256 满铺版） | 1 |
 
-**这些图标是上游的品牌吉祥物**（像素风白鼬，各带职业配件）。本仓现在用的是自有紫色轨道图标
-（`apps/desktop/build/icon.png`），与上游完全不同的品牌。
+**这些图标是上游的品牌吉祥物**（像素风白鼬，各带职业配件）。
+
+> **本节已被专项审计修正**：20 张场景图标 + 11 张预览图实际上**已经引入本仓工作区**
+> （`apps/desktop/build/app-icons/`、`.../settings/assets/app-icons/`，均为未跟踪文件），
+> 外观页的图标行与主进程服务也已存在，剩余缺口只有打包白名单。
+> 详见 [三处专项对齐审计](./alignment-audit-model-selector-appearance-image-service.md) §2.1；
+> 两份文档冲突时以专项审计为准。
 
 **逐条判定**：
 
 | 条目 | 依赖 | 能否用本仓自有素材完成 |
 | --- | --- | --- |
-| `fdho` 外观设置新增「应用图标」，可切 10 款 | 20 张场景图标 | ✘ 需决议 |
-| `btmv` 单个入口 + popover + 超椭圆 | `fdho` | ✘ 同上 |
-| `d1vl` 放到新会话页装饰之上、左右排列 | `fdho` | ✘ 同上 |
-| `dl89` 图标四周加内边距 | `fdho` | ✘ 同上 |
-| `dtza` 并入语言/外观/大小那一组 | `fdho` | ✘ 同上 |
-| `e7nz` Dock 图标自带超椭圆遮罩与标准边距 | `-mac` 变体；默认图标 | **部分**：默认图标可用本仓图标重导出 |
-| `izqa` Dock 默认图标改 824 本体与边距 | 仅默认图标 | ✔ **可以立刻做**：用本仓 `icon.png` 重导出 1024 画布 + 824 本体 + 投影，替换 `build/icon-dock.png` |
+| `fdho` 外观设置新增「应用图标」，可切 10 款 | 20 张场景图标 | ✔ 已实现（工作区未跟踪） |
+| `btmv` 单个入口 + popover + 超椭圆 | `fdho` | ✔ 已实现（`AppIconPicker` + `SquircleIcon` n=5） |
+| `d1vl` 放到新会话页装饰之上、左右排列 | `fdho` | ✔ 已实现（最终并入语言/模式/大小那一组） |
+| `dl89` 图标四周加内边距 | `fdho` | ✔ 已实现（素材自带边距） |
+| `dtza` 并入语言/外观/大小那一组 | `fdho` | ✔ 已实现（第四行，`border={false}`） |
+| `e7nz` Dock 图标自带超椭圆遮罩与标准边距 | `-mac` 变体；默认图标 | ✔ 已实现（20 张含 `-mac`） |
+| `izqa` Dock 默认图标改 824 本体与边距 | 仅默认图标 | ✔ 已完成（`build/icon-dock.png` 1024×1024 / 919KB，已入库） |
 
-**建议**：`izqa` + `e7nz` 的默认图标部分**现在就做**（纯画质修正、与品牌无关，且 Dock 图标
-现在满铺偏大是真实缺陷）；其余 5 条等"是否采用上游吉祥物"的决议。
-若不采用，可用本仓轨道图标派生一套同尺寸变体把 `fdho` 的功能做出来（图标内容是自己的），
-这样"可切换应用图标"这个功能仍然对齐，只是素材不同。
+**唯一剩余缺口是打包白名单**：`build-resource-filters.mjs` 未放行 `app-icons/*.png`，
+打包后切图标静默失效。具体改法见专项审计 §2.1。
 
-**施工要点**（无论用哪套素材）：
+**已完成的接线（不需要重做）**：`DesktopConfig.appIconId` + `normalizeAppIconId` 回落、
+`main/app-icon/` 服务与 `ipc/app-icon.ts` 注册、`preload` 三个通道、外观页第四行与
+`AppIconPicker`、中英各 11 条图标名——均已就在工作区。
 
-- 持久化：`DesktopConfig` 加可选 `appIconId?: AppIconId`（`main/config/desktop-config-store.ts:42` 的
-  接口）。本仓配置是版本化的（ADR-0140），但这是**新增可选字段**且未知值回落默认，
-  不需要 schema 升级；解析处补 `normalizeAppIconId` 回落。
-- 主进程服务：`main/app-icon/` 服务 + IPC 通道（本仓统一 `astravia:` 前缀，不要沿用上游的通道名）；
-  启动时套用一次，运行期 `app.dock.setIcon` / `win.setIcon`。
-- 打包白名单：`apps/desktop/scripts/build-resource-filters.mjs:6` 已放 `icon-dock.png`，
-  需再加 `app-icons`（含 `*-mac.png`），并补 `build-resource-filters.node-test.mjs` 断言。
-- 设置页：`AppearanceSettingsView` 增分组（按 ADR-0161 的 `SettingSection`/`SettingRow` 形态）；
-  i18n 中英各 11 个图标名 + 一句说明。
+**待做**：`apps/desktop/scripts/build-resource-filters.mjs` 加 `app-icons/*.png`，
+并补 `build-resource-filters.node-test.mjs` 断言。
 
 ### 4.3 需给决策方的三个问题（一次问清，别反复打断）
 
