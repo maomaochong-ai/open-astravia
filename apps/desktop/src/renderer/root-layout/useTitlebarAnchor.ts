@@ -7,7 +7,7 @@ import { measureTitlebarCenter } from "./titlebar-anchor";
  * 2. 实测页头图标中线并上报主进程；布局任何变化（侧边栏开合、沉浸式页头、窗口缩放）都会重新量。
  * `layoutKey` 变化代表页头形态可能变了，需要重新量一次。
  */
-export function useTitlebarAnchor(layoutKey: string): void {
+export function useTitlebarAnchor(layoutKey: string, fallbackCenter?: number): void {
 	const { factor } = useUiZoom();
 
 	useEffect(() => {
@@ -21,7 +21,8 @@ export function useTitlebarAnchor(layoutKey: string): void {
 		let last: number | undefined;
 		const report = (): void => {
 			frame = null;
-			const center = measureTitlebarCenter(document);
+			// 铺满态没有页头锚点可量，用调用方给的兜底中线，让红绿灯回到默认位置而不是停在旧值。
+			const center = measureTitlebarCenter(document) ?? fallbackCenter;
 			if (center === undefined || center === last) return;
 			last = center;
 			window.astravia.uiZoom.reportTitlebarCenter(center);
@@ -38,5 +39,5 @@ export function useTitlebarAnchor(layoutKey: string): void {
 			window.removeEventListener("resize", schedule);
 			if (frame !== null) cancelAnimationFrame(frame);
 		};
-	}, [factor, layoutKey]);
+	}, [factor, fallbackCenter, layoutKey]);
 }

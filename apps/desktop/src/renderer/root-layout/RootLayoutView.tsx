@@ -23,6 +23,7 @@ import { SidebarTour } from "../shared/tour";
 import { AppBackground } from "./app-background/AppBackground";
 import { RootGlobalOverlays } from "./RootGlobalOverlays";
 import { useTitlebarAnchor } from "./useTitlebarAnchor";
+import { TITLEBAR_CENTER_FALLBACK } from "@/shared/ui-zoom";
 import type { RootLayoutModel } from "./types";
 
 /**
@@ -76,7 +77,14 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 		sidebarWidth,
 	} = model;
 	const showSidebar = pageLayout !== "app" && !activityFocus;
-	// macOS 红绿灯按页头图标的实测中线摆放；页头形态（布局、窄窗、侧栏、沉浸式）变了就重新量。
+	// 铺满态：页头与侧边栏都消失，红绿灯没有锚点可量，用默认中线；layoutKey 纳入 activityFocus
+	// 让铺满/退出铺满都会重新测一次（此前漏了它，红绿灯会停在「还有页头」时测的旧位置上）。
+	const titlebarFallbackCenter = activityFocus ? TITLEBAR_CENTER_FALLBACK : undefined;
+	// macOS 红绿灯按页头图标的实测中线摆放；页头形态（布局、窄窗、侧栏、铺满、沉浸式）变了就重新量。
+	useTitlebarAnchor(
+		`${pageLayout}:${narrow}:${sidebarCollapsed}:${activityFocus}:${workspaceViewHeader?.immersive === true || pageImmersive}`,
+		titlebarFallbackCenter,
+	);
 	useTitlebarAnchor(
 		`${pageLayout}:${narrow}:${sidebarCollapsed}:${workspaceViewHeader?.immersive === true || pageImmersive}`,
 	);
