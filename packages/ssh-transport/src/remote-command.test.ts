@@ -312,6 +312,27 @@ describe("文件树操作（在真实 shell 上执行）", () => {
 		expect(run(command).stdout.trim().split("\n").sort()).toEqual(["./README.md", "./src/deep/a b.ts"]);
 	});
 
+	it("要求目录时与文件一起列出，忽略目录仍然生效", () => {
+		const dir = mkdtempSync(join(tmpdir(), "astravia-walk-"));
+		mkdirSync(join(dir, "src/deep"), { recursive: true });
+		mkdirSync(join(dir, "node_modules/pkg"), { recursive: true });
+		writeFileSync(join(dir, "README.md"), "");
+		writeFileSync(join(dir, "src/deep/a.ts"), "");
+
+		const command = buildListFilesRecursiveCommand(dir, {
+			ignoredDirectoryNames: ["node_modules"],
+			limit: 100,
+			includeDirectories: true,
+		});
+
+		expect(run(command).stdout.trim().split("\n").sort()).toEqual([
+			"./README.md",
+			"./src",
+			"./src/deep",
+			"./src/deep/a.ts",
+		]);
+	});
+
 	it("递归列举到达上限就停", () => {
 		const dir = mkdtempSync(join(tmpdir(), "astravia-walk-"));
 		for (let index = 0; index < 5; index++) writeFileSync(join(dir, `f${index}.txt`), "");

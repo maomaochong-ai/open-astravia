@@ -515,6 +515,7 @@ export async function listFilesystemFilesRecursive(
 			ignoredDirectoryNames: [...ignoredDirectories],
 			limit: MAX_RECURSIVE_FILES,
 			names: wantedNames ? [...wantedNames] : undefined,
+			includeDirectories,
 		});
 	}
 	assertFilesystemPathWithinProject(rootPath);

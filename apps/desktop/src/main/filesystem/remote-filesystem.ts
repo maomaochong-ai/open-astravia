@@ -244,15 +244,18 @@ export async function listRemoteFilesRecursive(
 		readonly ignoredDirectoryNames: readonly string[];
 		readonly limit: number;
 		readonly names?: readonly string[];
+		/** 连目录一起返回；目录项带 `isDirectory`，调用方据此区分。 */
+		readonly includeDirectories?: boolean;
 	},
 ): Promise<FsFileRef[]> {
 	assertRemotePathWithinProject(rootUri);
 	const { hostId, remotePath } = split(rootUri);
-	const relativePaths = await getSshConnection(hostId).listFilesRecursive(remotePath, options);
-	return relativePaths.map((relPath) => ({
-		name: posix.basename(relPath),
-		path: formatSshProjectUri(hostId, posix.join(remotePath, relPath)),
-		relPath,
+	const entries = await getSshConnection(hostId).listRecursiveEntries(remotePath, options);
+	return entries.map((entry) => ({
+		name: posix.basename(entry.relPath),
+		path: formatSshProjectUri(hostId, posix.join(remotePath, entry.relPath)),
+		relPath: entry.relPath,
+		...(entry.isDirectory ? { isDirectory: true } : {}),
 	}));
 }
 

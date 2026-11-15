@@ -347,6 +347,10 @@ type listRecursiveParams struct {
 	// than on the client matters in large monorepos: the limit applies to the
 	// matches, so a manifest scan is not truncated by unrelated source files.
 	Names []string `json:"names"`
+	// IncludeDirectories also returns directory paths. Only the @-panel's
+	// "reference a folder" flow needs them; the default stays files-only so
+	// existing callers keep their exact result set.
+	IncludeDirectories bool `json:"includeDirectories"`
 }
 
 // fsListRecursive walks the tree on the machine that owns it. Doing this from
@@ -371,6 +375,7 @@ func fsListRecursive(p listRecursiveParams) (any, *protocol.Error) {
 		}
 	}
 	files := make([]string, 0, 256)
+	directories := make([]string, 0, 32)
 	truncated := false
 	err := filepath.WalkDir(p.Path, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -387,6 +392,11 @@ func fsListRecursive(p listRecursiveParams) (any, *protocol.Error) {
 		if entry.IsDir() {
 			if _, skip := ignored[name]; skip || hidden {
 				return filepath.SkipDir
+			}
+			if p.IncludeDirectories && !hidden {
+				if relative, relErr := filepath.Rel(p.Path, path); relErr == nil {
+					directories = append(directories, filepath.ToSlash(relative))
+				}
 			}
 			return nil
 		}
@@ -413,5 +423,9 @@ func fsListRecursive(p listRecursiveParams) (any, *protocol.Error) {
 		return nil, mapFsError(err)
 	}
 	sort.Strings(files)
+	if p.IncludeDirectories {
+		sort.Strings(directories)
+		return map[string]any{"files": files, "directories": directories, "truncated": truncated}, nil
+	}
 	return map[string]any{"files": files, "truncated": truncated}, nil
 }

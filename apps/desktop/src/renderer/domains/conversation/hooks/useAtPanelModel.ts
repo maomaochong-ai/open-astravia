@@ -222,7 +222,7 @@ export function useAtPanelModel({
 			const score = fuzzyScore(q, f.relPath, f.name);
 			if (score !== null) {
 				scored.push({
-					item: { path: f.path, name: f.name, isDirectory: f.isDirectory === true, relPath: f.relPath },
+					item: { path: f.path, name: f.name, isDirectory: f.isDirectory ?? false, relPath: f.relPath },
 					// 同名时目录排在前面：引用目录比它的同名文件更常用（整个模块 vs 一个文件）。
 					score: f.isDirectory === true ? score + 0.5 : score,
 				});

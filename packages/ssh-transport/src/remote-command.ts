@@ -246,6 +246,11 @@ export interface ListFilesRecursiveOptions {
 	 * 先截断再筛会把排在后面的清单漏掉。
 	 */
 	readonly names?: readonly string[];
+	/**
+	 * 连目录一起列出。只有「引用一个目录」那种流程需要；默认仍只列文件，
+	 * 让既有调用方的结果集完全不变。
+	 */
+	readonly includeDirectories?: boolean;
 }
 
 /**
@@ -260,9 +265,11 @@ export function buildListFilesRecursiveCommand(remotePath: string, options: List
 	const names = options.names?.length
 		? ` \\( ${options.names.map((name) => `-name ${quoteShellArgument(name)}`).join(" -o ")} \\)`
 		: "";
+	// 目录用 -type d 单独打印并在客户端按首字母标记区分；命名过滤只作用于文件。
+	const kind = options.includeDirectories ? "\\( -type f -o -type d \\)" : "-type f";
 	const script = [
 		`cd ${quoteShellArgument(remotePath)} || exit 1`,
-		`find . -mindepth 1 \\( ${pruned.join(" -o ")} \\) -prune -o -type f${names} -print | head -n ${limit}`,
+		`find . -mindepth 1 \\( ${pruned.join(" -o ")} \\) -prune -o ${kind}${names} -print | head -n ${limit}`,
 	].join("\n");
 	return `/bin/sh -c ${quoteShellArgument(script)}`;
 }

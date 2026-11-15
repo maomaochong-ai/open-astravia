@@ -331,27 +331,55 @@ export class SshConnection {
 		);
 	}
 
-	/** 递归列出普通文件的相对路径（POSIX 分隔，无 `./` 前缀）。 */
+	/**
+	 * 递归列出相对路径（POSIX 分隔，无 `./` 前缀）。
+	 *
+	 * 默认与旧行为一致：只返回普通文件的字符串。`includeDirectories` 时返回带
+	 * `isDirectory` 的条目，顺序与内容都包含目录——只有「引用一个目录」需要它。
+	 */
 	async listFilesRecursive(
 		remotePath: string,
 		options: ListFilesRecursiveOptions,
 		signal?: AbortSignal,
 	): Promise<string[]> {
+		const entries = await this.listRecursiveEntries(remotePath, options, signal);
+		return entries.filter((entry) => !entry.isDirectory).map((entry) => entry.relPath);
+	}
+
+	/** 递归条目（含目录）。目录只在 `options.includeDirectories` 时出现。 */
+	async listRecursiveEntries(
+		remotePath: string,
+		options: ListFilesRecursiveOptions,
+		signal?: AbortSignal,
+	): Promise<{ readonly relPath: string; readonly isDirectory: boolean }[]> {
 		const viaHelper = await this.viaHelper((helper) =>
-			helper.call<{ files: string[] }>("fs.listRecursive", {
+			helper.call<{ files: string[]; directories?: string[] }>("fs.listRecursive", {
 				path: remotePath,
 				ignoredDirectories: options.ignoredDirectoryNames,
 				limit: options.limit,
 				names: options.names,
+				includeDirectories: options.includeDirectories === true,
 			}),
 		);
 		// 旧版 helper 不认识 `names`、会照常全列，所以这里总是再筛一遍。
-		if (viaHelper) return keepNamedFiles(viaHelper.value.files, options.names);
+		if (viaHelper) {
+			const files = keepNamedFiles(viaHelper.value.files, options.names).map((relPath) => ({
+				relPath,
+				isDirectory: false,
+			}));
+			const directories = (viaHelper.value.directories ?? []).map((relPath) => ({
+				relPath,
+				isDirectory: true,
+			}));
+			return [...files, ...directories];
+		}
 		const result = await this.runChecked(buildListFilesRecursiveCommand(remotePath, options), { signal });
+		// 无 helper 的兜底命令无法区分类型；调用方仅在文件场景下走这条路。
 		return decode(result.stdout)
 			.split("\n")
 			.map((line) => line.replace(/^\.\//, ""))
-			.filter((line) => line.length > 0);
+			.filter((line) => line.length > 0)
+			.map((relPath) => ({ relPath, isDirectory: false }));
 	}
 
 	async makeDirectory(remotePath: string, signal?: AbortSignal): Promise<void> {
