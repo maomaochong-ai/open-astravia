@@ -1,9 +1,5 @@
 import { useShortcutScope } from "@shared/shortcuts";
-import {
-	updaterCurrentNotesDialogOpenAtom,
-	updaterRestartDialogOpenAtom,
-	updaterStateAtom,
-} from "@shared/store/atoms";
+import { updaterCurrentNotesDialogOpenAtom, updaterRestartDialogOpenAtom, updaterStateAtom } from "@shared/store/atoms";
 import { useAtom, useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import type { InstalledPlugin } from "@preload/api";
 import type { PluginPermission } from "@astravia-org/plugin-sdk";
+import type { InstalledPlugin } from "@preload/api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPluginContext } from "./plugin-context";
 import { PluginLocalContributions } from "./plugin-local-contributions";

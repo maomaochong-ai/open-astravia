@@ -81,15 +81,6 @@ export {
 	ChatHeaderPinAction,
 	ChatHeaderTerminalAction,
 } from "./ChatHeaderActionsView";
-export type {
-	HeaderActionBarItem,
-	HeaderActionBarLabels,
-	HeaderActionBarViewProps,
-	HeaderActionBehavior,
-	HeaderActionPopoverApi,
-	HeaderActionZone,
-} from "./HeaderActionBarView";
-export { HeaderActionBarView } from "./HeaderActionBarView";
 export type { CompactionStepViewProps } from "./CompactionStepView";
 export { CompactionStepView } from "./CompactionStepView";
 export type { ContextRingViewProps } from "./ContextRingView";
@@ -128,6 +119,15 @@ export type {
 	GuideBadgeViewItem,
 } from "./GuideBadgeSwiperView";
 export { GuideBadgeSwiperView } from "./GuideBadgeSwiperView";
+export type {
+	HeaderActionBarItem,
+	HeaderActionBarLabels,
+	HeaderActionBarViewProps,
+	HeaderActionBehavior,
+	HeaderActionPopoverApi,
+	HeaderActionZone,
+} from "./HeaderActionBarView";
+export { HeaderActionBarView } from "./HeaderActionBarView";
 export { InlineModelPicker } from "./InlineModelPicker";
 export type { InlineTokenChipProps } from "./InlineTokenChip";
 export { InlineTokenChip } from "./InlineTokenChip";

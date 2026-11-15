@@ -20,6 +20,7 @@ export { DetailDrawerEnter } from "./DetailDrawerEnter";
 export { shouldCloseDetailDrawer } from "./detail-drawer-guard";
 export type { KnowledgeDropOverlayViewProps } from "./KnowledgeDropOverlayView";
 export { KnowledgeDropOverlayView } from "./KnowledgeDropOverlayView";
+export { ReleaseNoteMarkdown } from "./ReleaseNoteMarkdown";
 export type {
 	RouteErrorPagePreferredAction,
 	RouteErrorPageViewLabels,
@@ -28,6 +29,21 @@ export type {
 export { RouteErrorPageView } from "./RouteErrorPageView";
 export type { ReleaseNoteItem, ReleaseNoteOutline, ReleaseNoteSection } from "./release-note";
 export { normalizeReleaseNote, outlineReleaseNote } from "./release-note";
+export type { SplashOptionRowProps } from "./SplashOptionRow";
+export { SplashOptionRow } from "./SplashOptionRow";
+export type { SplashPanelProps } from "./SplashPanel";
+export { SplashPanel } from "./SplashPanel";
+export type {
+	SplashInputHeaderProps,
+	SplashTitleHeaderProps,
+} from "./SplashParts";
+export {
+	SplashFooter,
+	SplashInputHeader,
+	SplashNotice,
+	SplashStep,
+	SplashTitleHeader,
+} from "./SplashParts";
 export type {
 	ToasterItemView,
 	ToasterVariant,
@@ -46,19 +62,3 @@ export type {
 	UpdateRestartDialogViewProps,
 } from "./UpdateRestartDialogView";
 export { UpdateRestartDialogView } from "./UpdateRestartDialogView";
-export { ReleaseNoteMarkdown } from "./ReleaseNoteMarkdown";
-export type { SplashOptionRowProps } from "./SplashOptionRow";
-export { SplashOptionRow } from "./SplashOptionRow";
-export type { SplashPanelProps } from "./SplashPanel";
-export { SplashPanel } from "./SplashPanel";
-export type {
-	SplashInputHeaderProps,
-	SplashTitleHeaderProps,
-} from "./SplashParts";
-export {
-	SplashFooter,
-	SplashInputHeader,
-	SplashNotice,
-	SplashStep,
-	SplashTitleHeader,
-} from "./SplashParts";

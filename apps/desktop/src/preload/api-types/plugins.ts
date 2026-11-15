@@ -1140,5 +1140,5 @@ export interface PluginOffscreenCaptureResult {
 	probe?: unknown;
 }
 
-import type { ExternalApplication, ExternalApplicationKind } from "./system.js";
 import type { FsEntry, FsFileRef, FsStatResult } from "../fs-types.js";
+import type { ExternalApplication, ExternalApplicationKind } from "./system.js";
