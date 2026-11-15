@@ -225,8 +225,8 @@ const ModelRow = memo(function ModelRowInner({
 				labels={labels}
 			/>
 			{/*
-			 * 星标只在悬停或已收藏时显示：常显会让每行多一个可点区域，
-			 * 误点收藏比找不到收藏更烦。
+			 * 星标常驻：收藏是「我这台机器常用的模型」，和“选中”一样是行的一等状态，
+			 * 不该藏着。已收藏的用实心金星，未收藏的用浅色空星，悬停时加深。
 			 */}
 			<button
 				type="button"
@@ -235,10 +235,8 @@ const ModelRow = memo(function ModelRowInner({
 				aria-label={`${favorited ? labels.unfavorite : labels.favorite}：${model.displayName}`}
 				aria-pressed={favorited}
 				className={cn(
-					"size-5 shrink-0 items-center justify-center rounded hover:bg-muted",
-					favorited
-						? "inline-flex text-amber-500"
-						: "hidden text-muted-foreground group-hover/model:inline-flex group-focus-within/model:inline-flex",
+					"inline-flex size-5 shrink-0 items-center justify-center rounded hover:bg-muted",
+					favorited ? "text-amber-500" : "text-muted-foreground hover:text-foreground",
 				)}
 			>
 				<span
@@ -365,6 +363,13 @@ export const ModelSelectorMenuPanel = forwardRef<ModelSelectorMenuPanelHandle, M
 		row?.querySelector<HTMLButtonElement>("button")?.focus();
 	}, [columns.models, pendingFocusIndex]);
 	const hasLevels = menuLevels.length > 0;
+	// 中栏顶部的小标题：搜索时是「搜索结果」，否则是当前服务商（或收藏）的名字。
+	// 三栏里「第一栏点了哪个」必须能一眼对应到第二栏，否则列与列之间没有关系。
+	const activeColumn = columns.searching
+		? undefined
+		: columns.providers.find((column) => column.id === columns.activeProviderId);
+	const activeColumnLabel =
+		activeColumn === undefined ? null : activeColumn.isFavorites ? labels.favoritesHeader : activeColumn.label;
 
 	// 服务商太多时左栏折叠：几十个服务商时它会占满整个面板的高度。
 	const canFoldProviders = columns.providers.length > MAX_PROVIDER_ROWS + 1;
@@ -443,11 +448,15 @@ export const ModelSelectorMenuPanel = forwardRef<ModelSelectorMenuPanelHandle, M
 					onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
 					className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden [mask-image:linear-gradient(to_bottom,transparent,black_10px,black_calc(100%-10px),transparent)]"
 				>
-					{columns.searching && columns.models.length > 0 && (
+					{columns.searching && columns.models.length > 0 ? (
 						<p className={cn("px-2 pb-0.5 pt-1 text-[10px] text-muted-foreground/60", classNames?.providerHeader)}>
 							{labels.searchResultsHeader}
 						</p>
-					)}
+					) : activeColumnLabel ? (
+						<p className={cn("px-2 pb-0.5 pt-1 text-[10px] text-muted-foreground/60", classNames?.providerHeader)}>
+							{activeColumnLabel}
+						</p>
+					) : null}
 					{emptyOption && !columns.searching && (
 						<button
 							type="button"
@@ -479,13 +488,19 @@ export const ModelSelectorMenuPanel = forwardRef<ModelSelectorMenuPanelHandle, M
 						/>
 					))}
 					{range.paddingBottom > 0 && <div style={{ height: range.paddingBottom }} aria-hidden="true" />}
-					{columns.models.length === 0 && (
-						<div className="flex min-h-24 flex-col items-center justify-center px-4 py-6 text-center">
-							<span aria-hidden="true" className="icon-[solar--magnifer-linear] mb-1.5 size-4 text-muted-foreground" />
-							<p className="text-xs font-medium text-foreground">{labels.noResults}</p>
-							<p className="mt-0.5 text-[11px] text-muted-foreground">{labels.noResultsHint}</p>
-						</div>
-					)}
+					{columns.models.length === 0 &&
+						(columns.activeProviderId === FAVORITES_COLUMN_ID && labels.favoritesEmpty ? (
+							<div className="flex min-h-24 flex-col items-center justify-center px-4 py-6 text-center">
+								<span aria-hidden="true" className="icon-[solar--star-bold] mb-1.5 size-6 text-amber-500/80" />
+								<p className="text-xs font-medium text-foreground">{labels.favoritesEmpty}</p>
+							</div>
+						) : (
+							<div className="flex min-h-24 flex-col items-center justify-center px-4 py-6 text-center">
+								<span aria-hidden="true" className="icon-[solar--magnifer-linear] mb-1.5 size-4 text-muted-foreground" />
+								<p className="text-xs font-medium text-foreground">{labels.noResults}</p>
+								<p className="mt-0.5 text-[11px] text-muted-foreground">{labels.noResultsHint}</p>
+							</div>
+						))}
 				</div>
 			</div>
 

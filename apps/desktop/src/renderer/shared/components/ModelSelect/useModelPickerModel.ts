@@ -185,6 +185,7 @@ export function useModelPickerModel({
 			favoritesHeader: t("modelSelect.favoritesHeader"),
 			favorite: t("modelSelect.favorite"),
 			unfavorite: t("modelSelect.unfavorite"),
+			favoritesEmpty: t("modelSelect.favoritesEmpty"),
 			searchResultsHeader: t("modelSelect.searchResultsHeader"),
 			// 行尾详情浮层（本仓是扁平字段）。
 			infoButton: t("modelSelect.info.button"),

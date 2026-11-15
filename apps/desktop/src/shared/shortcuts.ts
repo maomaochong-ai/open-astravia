@@ -46,6 +46,15 @@ export const SHORTCUT_ACTIONS = [
 		scope: "app",
 	},
 	{
+		id: "open-model-selector",
+		labelKey: "shortcutOpenModelSelectorLabel",
+		descriptionKey: "shortcutOpenModelSelectorDesc",
+		defaultShortcut: "mod+p",
+		// 只在输入框里由 ModelSelector 的 overlay scope 消费；不进 useGlobalShortcuts 的全局注册
+		//（全局 handler 不认识它，塞进 app scope 会让 mod+p 在非输入框区域被吞掉）。
+		scope: "editor",
+	},
+	{
 		id: "save-file",
 		labelKey: "shortcutSaveFileLabel",
 		descriptionKey: "shortcutSaveFileDesc",

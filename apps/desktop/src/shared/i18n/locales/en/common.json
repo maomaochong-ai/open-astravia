@@ -971,6 +971,7 @@
 		}
 	},
 	"modelSelect": {
+		"shortcutHint": "Open or close the model selector panel",
 		"placeholder": "Select model",
 		"searchPlaceholder": "Search models or providers",
 		"clearSearch": "Clear search",
@@ -991,6 +992,7 @@
 		"fewerProviders": "Collapse",
 		"visionBadge": "vision",
 		"favoritesHeader": "Favorites",
+		"favoritesEmpty": "No favorite models yet",
 		"favorite": "Favorite",
 		"unfavorite": "Unfavorite",
 		"searchResultsHeader": "Search results",
