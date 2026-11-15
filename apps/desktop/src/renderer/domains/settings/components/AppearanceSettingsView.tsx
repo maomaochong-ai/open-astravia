@@ -222,37 +222,26 @@ const UiThemeCard = memo(function UiThemeCard({
 	);
 });
 
-function FontSelectRow({
-	role,
-	label,
-	value,
-	options,
-	onValueChange,
-}: {
-	role: "global";
+function FontSelect({ label, value, options, onValueChange }: {
 	label: string;
 	value: UiFontFamily;
 	options: AppearanceFontOption[];
 	onValueChange: (family: UiFontFamily) => void;
 }): JSX.Element {
 	return (
-		<div className="flex items-start justify-between gap-4" data-font-role={role}>
-			<div className="min-w-0">
-				<div className="text-[13px] font-medium text-foreground">{label}</div>
-			</div>
-			<MotionSelect
-				aria-label={label}
-				value={value}
-				onValueChange={(next) => onValueChange(next as UiFontFamily)}
-				// 每个选项用自己的字体栈渲染，展开就能看出字形差，不必再多一排卡片。
-				options={options.map((option) => ({
-					value: option.id,
-					title: option.hint,
-					label: <span style={{ fontFamily: fontStack(option.id) ?? undefined }}>{option.label}</span>,
-				}))}
-				triggerClassName="min-w-[140px] shrink-0"
-			/>
-		</div>
+		<MotionSelect
+			aria-label={label}
+			value={value}
+			onValueChange={(next) => onValueChange(next as UiFontFamily)}
+			// 每个选项用自己的字体栈渲染，展开就能看出字形差，不必再多一排卡片。
+			options={options.map((option) => ({
+				value: option.id,
+				title: option.hint,
+				label: <span style={{ fontFamily: fontStack(option.id) ?? undefined }}>{option.label}</span>,
+			}))}
+			// 字体选项的文案长度差异大（从「系统默认」到「黑体」），给一个下限免得触发器跟着抖。
+			triggerClassName="min-w-[140px] shrink-0"
+		/>
 	);
 }
 
@@ -513,12 +502,20 @@ function UiZoomPopover({ model }: { model: AppearanceSettingsModel }): JSX.Eleme
 }
 
 /** 设置项右侧的下拉式触发器：显示当前选项名，点开 popover 里是方格预览网格；选中后自动收起。 */
-/** 超椭圆裁切：图标本身是方图，用同一套 clip-path 让它看起来像 macOS 的圆角方块。 */
+/**
+ * 超椭圆（n=5）轮廓：图标本身是满铺方图，用 clip-path 裁成与系统应用图标同一形状的圆角方块。
+ *
+ * 早先用的是 `50 + 6·cos(4θ)` 这类极坐标扰动，四角被向内掐出腰线，看着不像应用图标而像一枚
+ * 四瓣花；这里换成真正的超椭圆参数方程，曲线处处单调，四角与直边的过渡与 macOS 一致。
+ */
 const SQUIRCLE_CLIP = `polygon(${Array.from({ length: 72 }, (_, i) => {
-	const angle = (i / 72) * Math.PI * 2;
-	const radius = 50 + 6 * Math.cos(4 * angle);
-	return `${(50 + radius * Math.cos(angle)).toFixed(2)}% ${(50 + radius * Math.sin(angle)).toFixed(2)}%`;
-}).join(",")})`;
+	const t = (i / 72) * Math.PI * 2;
+	const c = Math.cos(t);
+	const s = Math.sin(t);
+	const x = 50 + 50 * Math.sign(c) * Math.abs(c) ** (2 / 5);
+	const y = 50 + 50 * Math.sign(s) * Math.abs(s) ** (2 / 5);
+	return `${x.toFixed(2)}% ${y.toFixed(2)}%`;
+}).join(",")}`;
 
 function SquircleIcon({ className, src }: { className?: string; src: string }): JSX.Element {
 	return (
@@ -680,23 +677,29 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 						id={SETTINGS_SECTION["appearance-app-icon"].id}
 						data-setting-section-id={SETTINGS_SECTION["appearance-app-icon"].id}
 					>
-						<SettingRow title={model.labels.sections.appIcon} border={false}>
+						<SettingRow title={model.labels.sections.appIcon}>
 							<AppIconPicker options={model.appIconOptions} onSelect={model.actions.setAppIcon} />
 						</SettingRow>
 					</div>
+					{/*
+					 * 字体与语言、外观模式、界面大小、应用图标同属一张卡片：它就是对「这个应用长什么样」的
+					 * 同一类偏好，单独起一个分区只会多一层标题。选定后界面控件、会话正文、代码块、diff 与终端一起换。
+					 */}
+					<div
+						id={SETTINGS_SECTION["appearance-font"].id}
+						data-setting-section-id={SETTINGS_SECTION["appearance-font"].id}
+						data-font-role="global"
+					>
+						<SettingRow title={model.labels.sections.font} border={false}>
+							<FontSelect
+								label={model.labels.sections.font}
+								value={model.font}
+								options={model.fontOptions}
+								onValueChange={model.actions.setFont}
+							/>
+						</SettingRow>
+					</div>
 				</SettingSection>
-			</div>
-
-			{/* 字体只占一行：选定后界面控件、会话正文、代码块、diff 与终端一起换。 */}
-			<div className="mb-10">
-				<SettingHeading title={model.labels.sections.font} section={SETTINGS_SECTION["appearance-font"]} className="mb-4" />
-				<FontSelectRow
-					role="global"
-					label={model.labels.fontFamily}
-					value={model.font}
-					options={model.fontOptions}
-					onValueChange={model.actions.setFont}
-				/>
 			</div>
 
 			{model.showUiTheme && (

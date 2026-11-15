@@ -509,18 +509,19 @@
     },
     "packages/plugins/externals/kanban": {
       "name": "@astravia/plugin-kanban",
-      "version": "0.4.0",
+      "version": "0.4.2",
       "devDependencies": {
         "@astravia-org/plugin-sdk": "workspace:*",
         "@astravia-org/plugin-vite": "workspace:*",
-        "@astravia-org/theme-ui": "workspace:*",
         "@astravia-org/ui": "workspace:*",
         "@iconify-json/solar": "^1.2.5",
         "@iconify/tailwind4": "^1.0.6",
         "@tailwindcss/vite": "^4.1.12",
+        "@testing-library/react": "16.3.2",
         "@types/node": "^22.10.5",
         "@types/react": "^19.1.1",
         "@types/react-dom": "^19.1.1",
+        "jsdom": "26.1.0",
         "react": "19.1.1",
         "react-dom": "19.1.1",
         "tailwindcss": "^4.1.12",
@@ -5505,6 +5506,8 @@
     "@astravia/plugin-image-gen/react": ["react@19.1.1", "https://registry.npmmirror.com/react/-/react-19.1.1.tgz", {}, "sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ=="],
 
     "@astravia/plugin-image-gen/react-dom": ["react-dom@19.1.1", "https://registry.npmmirror.com/react-dom/-/react-dom-19.1.1.tgz", { "dependencies": { "scheduler": "^0.26.0" }, "peerDependencies": { "react": "^19.1.1" } }, "sha512-Dlq/5LAZgF0Gaz6yiqZCf6VCcZs1ghAJyrsu84Q/GT0gV+mCxbfmKNoGRKBYMJ8IEdGPqu49YWXD02GCknEDkw=="],
+
+    "@astravia/plugin-kanban/@testing-library/react": ["@testing-library/react@16.3.2", "https://registry.npmmirror.com/@testing-library/react/-/react-16.3.2.tgz", { "dependencies": { "@babel/runtime": "^7.12.5" }, "peerDependencies": { "@testing-library/dom": "^10.0.0", "@types/react": "^18.0.0 || ^19.0.0", "@types/react-dom": "^18.0.0 || ^19.0.0", "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" }, "optionalPeers": ["@types/react", "@types/react-dom"] }, "sha512-XU5/SytQM+ykqMnAnvB2umaJNIOsLF3PVv//1Ew4CTcpz0/BRyy/af40qqrt7SjKpDdT1saBMc42CUok5gaw+g=="],
 
     "@astravia/plugin-kanban/react": ["react@19.1.1", "https://registry.npmmirror.com/react/-/react-19.1.1.tgz", {}, "sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ=="],
 
