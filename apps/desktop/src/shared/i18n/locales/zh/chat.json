@@ -1160,36 +1160,21 @@
 			"connected": "已接入",
 			"installed": "已安装"
 		},
-		"detail": {
-			"insert": "插入到输入框",
-			"execute": "执行",
-			"connect": "连接",
-			"configure": "配置",
-			"disconnect": "断开连接",
-			"viewPermissions": "查看权限",
-			"enable": "启用",
-			"disable": "停用",
-			"viewInPlaza": "在能力广场中查看",
-			"viewDetails": "查看详情",
+		"preview": {
+			"back": "返回列表",
 			"sourceLabel": "来源",
 			"statusLabel": "状态",
-			"insertLabel": "插入",
-			"hintSkill": "插入后输入框里会留下一个提示词标签，可继续追加描述再发送。",
-			"hintConnector": "接入后它提供的工具由 Agent 直接调用，不必先插入文字。",
-			"hintFile": "直接作用于当前消息的附件，不会进入模型上下文。",
-			"hintExtension": "启用后它提供的技能会出现在「技能」分类里。",
 			"statusConnected": "已连接",
-			"statusDisconnected": "未连接",
-			"statusEnabled": "已启用",
-			"statusDisabled": "已停用",
-			"statusPublished": "已发布",
-			"statusDraft": "草稿"
+			"insertLabel": "插入",
+			"hintSkill": "点击这一行即可插入；输入框里会留下一个提示词标签，可继续追加描述再发送。",
+			"hintConnector": "接入后它提供的工具由 Agent 直接调用，不需要先插入文字。",
+			"hintFile": "直接作用于当前消息的附件，不会进入模型上下文。",
+			"hintExtension": "启用后它提供的技能会出现在「技能」分类里。"
 		},
 		"hints": {
 			"navigate": "选择",
-			"select": "插入",
-			"tab": "切换分类",
 			"insert": "插入",
+			"details": "详情",
 			"close": "关闭"
 		},
 		"compaction": {

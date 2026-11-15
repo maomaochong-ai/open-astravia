@@ -144,7 +144,6 @@ export interface AppearanceSettingsModel {
 		};
 		textureHint: string;
 		title: string;
-		fontFamily: string;
 		uiZoomSliderLabel: string;
 		uiZoomReset: string;
 	};
@@ -376,7 +375,6 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 			},
 			textureHint: t("textureHint"),
 			title: t("appearanceTitle"),
-			fontFamily: t("fontFamily"),
 			uiZoomSliderLabel: t("uiZoomSliderLabel"),
 			uiZoomReset: t("uiZoomReset"),
 		}),

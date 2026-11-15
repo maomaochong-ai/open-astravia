@@ -1160,36 +1160,21 @@
 			"connected": "Connected",
 			"installed": "Installed"
 		},
-		"detail": {
-			"insert": "Insert into input",
-			"execute": "Run",
-			"connect": "Connect",
-			"configure": "Configure",
-			"disconnect": "Disconnect",
-			"viewPermissions": "View permissions",
-			"enable": "Enable",
-			"disable": "Disable",
-			"viewInPlaza": "View in ability plaza",
-			"viewDetails": "View details",
+		"preview": {
+			"back": "Back to list",
 			"sourceLabel": "Source",
 			"statusLabel": "Status",
+			"statusConnected": "Connected",
 			"insertLabel": "Insert",
-			"hintSkill": "Inserting leaves a prompt tag in the input; you can keep typing before sending.",
+			"hintSkill": "Clicking the row inserts it; a prompt tag stays in the input so you can keep typing before sending.",
 			"hintConnector": "Once connected, its tools are called by the agent directly.",
 			"hintFile": "Applies to this message's attachments only, not to the model context.",
-			"hintExtension": "Its skills appear under Skills once enabled.",
-			"statusConnected": "Connected",
-			"statusDisconnected": "Not connected",
-			"statusEnabled": "Enabled",
-			"statusDisabled": "Disabled",
-			"statusPublished": "Published",
-			"statusDraft": "Draft"
+			"hintExtension": "Its skills appear under Skills once enabled."
 		},
 		"hints": {
 			"navigate": "Select",
-			"select": "Insert",
-			"tab": "Switch category",
 			"insert": "Insert",
+			"details": "Details",
 			"close": "Close"
 		},
 		"compaction": {

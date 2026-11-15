@@ -12,7 +12,6 @@ import {
 import { type CursorStyle, getStoredCursorStyle } from "../theme/cursor";
 import { getStoredNewSessionTextureId, type NewSessionTextureId } from "../theme/new-session-texture";
 import { getStoredOrnamentId, type OrnamentId } from "../theme/ornament";
-import { getStoredSidebarStyle, type SidebarStyle } from "../theme/sidebar-style";
 import { getStoredFont, type UiFontFamily } from "../theme/ui-font";
 
 // ─── i18n ───
@@ -88,8 +87,6 @@ export const themeNameAtom = atom<string>(
 );
 export type { CursorStyle };
 export const cursorStyleAtom = atom<CursorStyle>(getStoredCursorStyle());
-export type { SidebarStyle };
-export const sidebarStyleAtom = atom<SidebarStyle>(getStoredSidebarStyle());
 export type { UiFontFamily };
 /**
  * 全局字体只有一个档位：界面、消息正文、代码块、diff 与终端共用同一份字体栈。

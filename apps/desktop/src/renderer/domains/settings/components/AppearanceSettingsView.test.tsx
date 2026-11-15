@@ -89,7 +89,6 @@ function model(
 			},
 			textureHint: "textureHint",
 			title: "外观",
-			fontFamily: "fontFamily",
 			uiZoomSliderLabel: "界面大小",
 			uiZoomReset: "恢复默认大小",
 		},
@@ -182,6 +181,11 @@ describe("AppearanceSettingsView 的字体区域", () => {
 
 		const global = view.container.querySelector('[data-font-role="global"]') as HTMLElement;
 		expect(global).not.toBeNull();
+		// 字体与语言 / 外观模式 / 界面大小 / 应用图标同处一张圆角卡片，且是最后一行（不再自带标题与说明）。
+		const card = global.closest("[data-setting-section-id]");
+		expect(card?.getAttribute("data-setting-section-id")).toBe("appearance-language");
+		expect(card?.querySelector('[data-setting-section-id="appearance-app-icon"]')).not.toBeNull();
+		expect(view.queryByRole("heading", { name: "字体" })).toBeNull();
 		// 旧的「界面 / 代码 / 消息正文」三行都不该再出现。
 		for (const role of ["ui", "code", "content"]) {
 			expect(view.container.querySelector(`[data-font-role="${role}"]`)).toBeNull();

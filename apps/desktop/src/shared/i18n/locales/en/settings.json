@@ -1312,7 +1312,6 @@
   "section_appearance-ui-zoom": "Interface size",
   "uiZoomSliderLabel": "Interface size",
   "uiZoomReset": "Reset to default size",
-  "fontFamily": "Font family",
   "uiFontSystemTitle": "System default",
   "uiFontSystemHint": "Follows the OS interface font (SF Pro on macOS, Segoe UI on Windows).",
   "uiFontRoundedTitle": "Rounded",

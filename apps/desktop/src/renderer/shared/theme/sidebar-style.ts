@@ -1,34 +1,13 @@
 /**
- * 侧边栏样式：
- * - classic：贴紧窗口左侧，无圆角与四周边框，仅右侧一条分隔线（默认）
- * - floating：四周留白 + 圆角 + 边框
+ * 侧边栏只有一种形态：贴紧窗口左侧、无圆角与四周边框，仅右侧一条分隔线。
  *
- * 具体表现由 `styles.css` 中 `:root[data-sidebar-style="classic"]` 规则实现。
+ * 早先还有一个「悬浮」可选形态（四周留白 + 圆角 + 边框），设置入口已移除；
+ * 这里保留一个常量标记，是因为 `styles.css` 里贴边、macOS 原生毛玻璃、沉浸式页头
+ * 这几组规则都以 `:root[data-sidebar-style="classic"]` 为开关——属性固定在启动时写上，
+ * 避免旧配置里残留的 `floating` 让侧边栏退回已废弃的形态。
  */
-export type SidebarStyle = "classic" | "floating";
+export const SIDEBAR_STYLE_ATTRIBUTE = "classic";
 
-export const SIDEBAR_STYLE_STORAGE_KEY = "astravia-sidebar-style";
-
-export const DEFAULT_SIDEBAR_STYLE: SidebarStyle = "classic";
-
-export function isSidebarStyle(value: string | null | undefined): value is SidebarStyle {
-	return value === "classic" || value === "floating";
-}
-
-export function getStoredSidebarStyle(): SidebarStyle {
-	const stored = localStorage.getItem(SIDEBAR_STYLE_STORAGE_KEY);
-	return isSidebarStyle(stored) ? stored : DEFAULT_SIDEBAR_STYLE;
-}
-
-export function applySidebarStyle(style: SidebarStyle): void {
-	document.documentElement.dataset.sidebarStyle = style;
-}
-
-export function setStoredSidebarStyle(style: SidebarStyle): void {
-	localStorage.setItem(SIDEBAR_STYLE_STORAGE_KEY, style);
-	applySidebarStyle(style);
-}
-
-export function applyStoredSidebarStyle(): void {
-	applySidebarStyle(getStoredSidebarStyle());
+export function applySidebarStyle(): void {
+	document.documentElement.dataset.sidebarStyle = SIDEBAR_STYLE_ATTRIBUTE;
 }

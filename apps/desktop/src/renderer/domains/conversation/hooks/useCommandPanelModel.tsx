@@ -8,20 +8,23 @@ import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useTranslation } from "react-i18next";
 import {
 	ADD_PANEL_CATEGORY_ORDER,
+	type AddPanelCategory,
 	type AddPanelEntry,
+	type AddPanelSection,
 	type AddPanelTab,
 	buildAddPanelCatalog,
 	buildFavoritesSections,
 	flattenAddPanelSections,
 	searchAddPanelSections,
 	sectionOf,
+	visibleCategories,
 } from "../components/command-panel/add-panel-catalog";
+import { buildCommandPanelLabels } from "../components/command-panel/command-panel-labels";
 import type {
 	CommandPanelActionItem,
-	CommandPanelDetailModel,
 	CommandPanelFileAction,
-	CommandPanelLabels,
 	CommandPanelOperationItem,
+	CommandPanelPreviewModel,
 	CommandPanelProps,
 } from "../components/command-panel/types";
 import { type InputActionBarModel, useInputActionBarModel } from "../components/useInputActionBarModel";
@@ -51,15 +54,10 @@ export interface CommandPanelModelInput {
 	fileActions?: readonly CommandPanelFileAction[];
 	/** 打开能力广场首页（左栏底部入口）。 */
 	onOpenAbilityPlaza?: () => void;
-	/** 打开某个条目在能力广场里的页面（详情栏次要动作）。 */
-	onOpenEntryInPlaza?: (entry: AddPanelEntry) => void;
 }
 
 export interface CommandPanelModel {
-	viewProps: CommandPanelProps & {
-		readonly onOpenAbilityPlaza?: () => void;
-		readonly onOpenEntryInPlaza?: () => void;
-	};
+	viewProps: CommandPanelProps;
 }
 
 export function useCommandPanelModel({
@@ -74,9 +72,8 @@ export function useCommandPanelModel({
 	allowCompaction = true,
 	fileActions,
 	onOpenAbilityPlaza,
-	onOpenEntryInPlaza,
 }: CommandPanelModelInput): CommandPanelModel {
-	const { t, i18n } = useTranslation("chat");
+	const { t } = useTranslation("chat");
 	const normalizedFilter = filter.startsWith("/") ? filter.slice(1) : filter;
 	const activeSession = useAtomValue(activeSessionAtom);
 	const compactionEligibility = useAtomValue(contextCompactionEligibilityAtom);
@@ -108,6 +105,9 @@ export function useCommandPanelModel({
 	const [tab, setTab] = useState<AddPanelTab>("skills");
 	const [query, setQuery] = useState("");
 	const [activeIndex, setActiveIndex] = useState(0);
+	/** 键盘移动序号：只在 `↑`/`↓` 时递增，列表据此决定要不要把高亮行滚进视口。 */
+	const [scrollSignal, setScrollSignal] = useState(0);
+	const [previewKey, setPreviewKey] = useState<string | null>(null);
 	const panelRef = useRef<HTMLDivElement>(null);
 
 	const catalog = useMemo(
@@ -120,6 +120,16 @@ export function useCommandPanelModel({
 			}),
 		[connectors, fileActions, resolveIcon, skills],
 	);
+
+	const categories = useMemo(() => visibleCategories(catalog), [catalog]);
+
+	// 当前分类被数据掏空（例如连接器全被移除）时退回第一个可见分类，不留一个空轨道选中态。
+	useEffect(() => {
+		if (tab === "favorites") return;
+		if (categories.includes(tab)) return;
+		const next = categories[0];
+		if (next) setTab(next);
+	}, [categories, tab]);
 
 	const searching = query.trim().length > 0;
 	const sections = useMemo(() => {
@@ -150,7 +160,7 @@ export function useCommandPanelModel({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: 依赖是「重置时机」而非读取值
 	useEffect(() => {
 		setActiveIndex(0);
-	}, [tab, query, normalizedFilter, searching]);
+	}, [tab, query, normalizedFilter, searching, previewKey]);
 
 	const selectCompaction = useCallback(() => {
 		if (!activeSession || queueingCompaction || queuedCompaction || contextRing?.isCompacting) return;
@@ -218,66 +228,7 @@ export function useCommandPanelModel({
 		operationOffset === 1 && activeIndex === 0 ? null : (visibleEntries[activeIndex - operationOffset] ?? null);
 	const activeKey = operationOffset === 1 && activeIndex === 0 ? OPERATION_KEY : (activeEntry?.key ?? null);
 
-	const labels = useMemo<CommandPanelLabels>(() => {
-		const categoryLabel = (target: AddPanelTab): string =>
-			target === "favorites" ? t("slashPanel.favorites") : t(`slashPanel.sections.${target}`);
-		return {
-			searchPlaceholder: t("slashPanel.searchPlaceholder"),
-			clearSearch: t("slashPanel.clearSearch"),
-			favorites: t("slashPanel.favorites"),
-			favoritesEmpty: t("slashPanel.favoritesEmpty"),
-			favoritesEmptyHint: t("slashPanel.favoritesEmptyHint"),
-			categories: t("slashPanel.categories"),
-			openAbilityPlaza: t("slashPanel.openAbilityPlaza"),
-			categoryLabel,
-			// 键来自关闭的分组表（内置/我的/项目/插件…），不是任意输入；
-			// i18next 的强类型键表认不出运行时拼出的变量，这里只在边界收窄一次。
-			// 键来自关闭的分组表（内置/我的/项目/插件…），不是任意输入；强类型键表
-			// 认不出运行时拼出的变量，这里走不校验键名的接口，缺失时退回键名本身。
-			groupLabel: (titleKey: string) => i18n.t(titleKey, { ns: "chat", defaultValue: titleKey }),
-			categoryEmpty: t("slashPanel.categoryEmpty"),
-			emptyNoMatch: t("slashPanel.emptyNoMatch"),
-			emptyNoMatchHint: t("slashPanel.emptyNoMatchHint"),
-			emptyNoSkills: t("slashPanel.emptyNoSkills"),
-			emptyNoSkillsHint: t("slashPanel.emptyNoSkillsHint"),
-			favoriteAdd: t("slashPanel.favoriteAdd"),
-			favoriteRemove: t("slashPanel.favoriteRemove"),
-			details: t("slashPanel.details"),
-			sourceLabel: (source: string) => t(`slashPanel.sourceLabels.${source}`, { defaultValue: source }),
-			detail: {
-				insert: t("slashPanel.detail.insert"),
-				execute: t("slashPanel.detail.execute"),
-				connect: t("slashPanel.detail.connect"),
-				configure: t("slashPanel.detail.configure"),
-				disconnect: t("slashPanel.detail.disconnect"),
-				viewPermissions: t("slashPanel.detail.viewPermissions"),
-				enable: t("slashPanel.detail.enable"),
-				disable: t("slashPanel.detail.disable"),
-				viewInPlaza: t("slashPanel.detail.viewInPlaza"),
-				viewDetails: t("slashPanel.detail.viewDetails"),
-				sourceLabel: t("slashPanel.detail.sourceLabel"),
-				statusLabel: t("slashPanel.detail.statusLabel"),
-				insertLabel: t("slashPanel.detail.insertLabel"),
-				hintSkill: t("slashPanel.detail.hintSkill"),
-				hintConnector: t("slashPanel.detail.hintConnector"),
-				hintFile: t("slashPanel.detail.hintFile"),
-				hintExtension: t("slashPanel.detail.hintExtension"),
-				statusConnected: t("slashPanel.detail.statusConnected"),
-				statusDisconnected: t("slashPanel.detail.statusDisconnected"),
-				statusEnabled: t("slashPanel.detail.statusEnabled"),
-				statusDisabled: t("slashPanel.detail.statusDisabled"),
-				statusPublished: t("slashPanel.detail.statusPublished"),
-				statusDraft: t("slashPanel.detail.statusDraft"),
-			},
-			hints: {
-				navigate: t("slashPanel.hints.navigate"),
-				select: t("slashPanel.hints.select"),
-				tab: t("slashPanel.hints.tab"),
-				insert: t("slashPanel.hints.insert"),
-				close: t("slashPanel.hints.close"),
-			},
-		};
-	}, [t]);
+	const labels = useMemo(() => buildCommandPanelLabels((key) => t(key)), [t]);
 
 	const activateEntry = useCallback(
 		(entry: AddPanelEntry) => {
@@ -297,7 +248,7 @@ export function useCommandPanelModel({
 					return;
 				}
 				default:
-					// 插件与应用还没有数据源接入：分类常驻轨道，列表为空，走不到这里。
+					// 插件与应用还没有数据源接入，不会出现在目录里。
 					return;
 			}
 		},
@@ -307,6 +258,7 @@ export function useCommandPanelModel({
 	const handleSelectTab = useCallback((next: AddPanelTab) => {
 		setTab(next);
 		setQuery("");
+		setPreviewKey(null);
 	}, []);
 
 	const handleHoverEntry = useCallback(
@@ -333,66 +285,67 @@ export function useCommandPanelModel({
 		[activateEntry, selectCompaction, visibleEntries],
 	);
 
-	const detail = useMemo<CommandPanelDetailModel | null>(() => {
-		if (!activeEntry) return null;
-		const categoryLabel = labels.categoryLabel(activeEntry.category);
+	const preview = useMemo<CommandPanelPreviewModel | null>(() => {
+		if (!previewKey) return null;
+		const entry = visibleEntries.find((candidate) => candidate.key === previewKey);
+		if (!entry) return null;
+		const categoryLabel = labels.categoryLabel(entry.category);
 		const group = sections
 			.flatMap((section) => section.groups)
-			.find((candidate) => candidate.entries.some((entry) => entry.key === activeEntry.key));
+			.find((candidate) => candidate.entries.some((candidate) => candidate.key === entry.key));
 		const groupLabel = group ? labels.groupLabel(group.titleKey) : "";
 		const subtitle = groupLabel ? `${categoryLabel} · ${groupLabel}` : categoryLabel;
 		const base = {
-			key: activeEntry.key,
-			label: activeEntry.label,
+			key: entry.key,
+			label: entry.label,
 			subtitle,
-			description: activeEntry.description,
-			primaryIcon: activeEntry.icon,
-			primaryIconUrl: activeEntry.iconUrl,
+			description: entry.description,
+			icon: entry.icon,
+			iconUrl: entry.iconUrl,
+			fallbackIcon: entry.fallbackIcon,
 		} as const;
 
-		if (activeEntry.category === "files") {
-			return { ...base, meta: [], hint: labels.detail.hintFile, primaryLabel: labels.detail.execute };
+		if (entry.category === "files") {
+			return { ...base, meta: [], hint: labels.preview.hintFile };
 		}
-		if (activeEntry.category === "skills") {
-			const identifier = activeEntry.id.split(":").slice(1).join(":");
-			// 只有市场里的技能在能力广场有页面；内置技能与项目/用户目录里的技能没有，
-			// 给了入口点进去就是空结果。
-			const plazaCapable = activeEntry.groupId === "market" && onOpenEntryInPlaza !== undefined;
+		if (entry.category === "skills") {
+			const identifier = entry.id.split(":").slice(1).join(":");
 			return {
 				...base,
 				meta: [
-					{ label: labels.detail.sourceLabel, value: groupLabel },
-					{ label: labels.detail.insertLabel, value: `/${identifier}` },
+					{ label: labels.preview.sourceLabel, value: groupLabel },
+					{ label: labels.preview.insertLabel, value: `/${identifier}` },
 				],
-				hint: labels.detail.hintSkill,
-				primaryLabel: labels.detail.insert,
-				secondaryLabel: plazaCapable ? labels.detail.viewInPlaza : undefined,
+				hint: labels.preview.hintSkill,
 			};
 		}
-		if (activeEntry.category === "connectors") {
+		if (entry.category === "connectors") {
 			return {
 				...base,
-				meta: [{ label: labels.detail.statusLabel, value: labels.detail.statusConnected }],
-				hint: labels.detail.hintConnector,
-				primaryLabel: labels.detail.configure,
-				secondaryLabel: labels.detail.disconnect,
+				meta: [{ label: labels.preview.statusLabel, value: labels.preview.statusConnected }],
+				hint: labels.preview.hintConnector,
 			};
 		}
-		return {
-			...base,
-			meta: [{ label: labels.detail.statusLabel, value: labels.detail.statusEnabled }],
-			hint: labels.detail.hintExtension,
-			primaryLabel: labels.detail.disable,
-			secondaryLabel: labels.detail.viewDetails,
-		};
-	}, [activeEntry, labels, onOpenEntryInPlaza, sections]);
+		return { ...base, meta: [], hint: labels.preview.hintExtension };
+	}, [labels, previewKey, sections, visibleEntries]);
+
+	const handleOpenPreview = useCallback((key: string) => setPreviewKey(key), []);
+	const handleClosePreview = useCallback(() => setPreviewKey(null), []);
 
 	const keyBindings = useMemo((): ShortcutBinding[] => {
+		// 预览态下方向键与 Enter 不该再去动列表：用户此刻在读内容。
+		if (previewKey) {
+			return [
+				{ key: "escape", run: () => handleClosePreview() },
+				{ key: "arrowleft", run: () => handleClosePreview() },
+			];
+		}
 		return [
 			{
 				key: "arrowdown",
 				run: () => {
 					if (total === 0) return;
+					setScrollSignal((value) => value + 1);
 					setActiveIndex((index) => (index + 1) % total);
 				},
 			},
@@ -400,13 +353,14 @@ export function useCommandPanelModel({
 				key: "arrowup",
 				run: () => {
 					if (total === 0) return;
+					setScrollSignal((value) => value + 1);
 					setActiveIndex((index) => (index - 1 + total) % total);
 				},
 			},
 			{
 				key: "tab",
 				run: () => {
-					const order: AddPanelTab[] = ["favorites", ...ADD_PANEL_CATEGORY_ORDER];
+					const order: AddPanelTab[] = ["favorites", ...categories];
 					const at = order.indexOf(tab);
 					handleSelectTab(order[(at + 1) % order.length] ?? "skills");
 				},
@@ -426,7 +380,19 @@ export function useCommandPanelModel({
 				run: () => onClose(),
 			},
 		];
-	}, [activeEntry, activateEntry, activeKey, handleSelectTab, onClose, selectCompaction, tab, total]);
+	}, [
+		activeEntry,
+		activateEntry,
+		activeKey,
+		categories,
+		handleClosePreview,
+		handleSelectTab,
+		onClose,
+		previewKey,
+		selectCompaction,
+		tab,
+		total,
+	]);
 
 	useShortcutScope({
 		id: "overlay:command-panel",
@@ -460,6 +426,11 @@ export function useCommandPanelModel({
 		};
 	}, [onClose, open]);
 
+	// 关面板时清掉预览，下次打开从列表态开始。
+	useEffect(() => {
+		if (!open) setPreviewKey(null);
+	}, [open]);
+
 	const fallbackActionBar = useInputActionBarModel();
 	const actionBar = inputActions ?? fallbackActionBar;
 	const actions = useMemo<CommandPanelActionItem[]>(
@@ -486,12 +457,13 @@ export function useCommandPanelModel({
 		viewProps: {
 			open,
 			tab,
+			categories: categories as readonly AddPanelCategory[],
 			query,
 			sections,
-			visibleKeys: visibleEntries.map((entry) => entry.key),
 			activeKey,
+			scrollSignal,
 			favorites: favorites.favorites,
-			detail,
+			preview,
 			searching,
 			operation,
 			actions,
@@ -502,9 +474,14 @@ export function useCommandPanelModel({
 			onQueryChange: setQuery,
 			onHoverEntry: handleHoverEntry,
 			onActivateEntry: handleActivateEntry,
+			onOpenPreview: handleOpenPreview,
+			onClosePreview: handleClosePreview,
 			onToggleFavorite: favorites.toggle,
 			onOpenAbilityPlaza,
-			onOpenEntryInPlaza: activeEntry && onOpenEntryInPlaza ? () => onOpenEntryInPlaza(activeEntry) : undefined,
 		},
 	};
 }
+
+/** 供测试与调用方复用的分类顺序常量。 */
+export { ADD_PANEL_CATEGORY_ORDER };
+export type { AddPanelSection };

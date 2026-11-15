@@ -79,4 +79,4 @@ export function handleHorizontalWheel(event: {
  * 直接盖在语音与发送按钮上（窗口 1280px 宽即可复现）。
  */
 export const TOOLBAR_SCROLL_CLASS =
-	"min-w-0 shrink overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+	"no-scrollbar min-w-0 shrink overflow-x-auto overflow-y-hidden overscroll-x-contain";

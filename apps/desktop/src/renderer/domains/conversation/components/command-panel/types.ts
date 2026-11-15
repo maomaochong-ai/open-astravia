@@ -55,61 +55,47 @@ export interface CommandPanelLabels extends SkillListLabels {
 	favoriteAdd: string;
 	favoriteRemove: string;
 	details: string;
-	/** 详情栏的动作文案与提示。 */
-	detail: {
-		insert: string;
-		execute: string;
-		connect: string;
-		configure: string;
-		disconnect: string;
-		viewPermissions: string;
-		enable: string;
-		disable: string;
-		viewInPlaza: string;
-		viewDetails: string;
+	/** 预览页。 */
+	preview: {
+		back: string;
 		sourceLabel: string;
 		statusLabel: string;
+		statusConnected: string;
 		insertLabel: string;
 		hintSkill: string;
 		hintConnector: string;
 		hintFile: string;
 		hintExtension: string;
-		statusConnected: string;
-		statusDisconnected: string;
-		statusEnabled: string;
-		statusDisabled: string;
-		statusPublished: string;
-		statusDraft: string;
 	};
 	/** 底栏快捷键提示。 */
 	hints: {
 		navigate: string;
-		select: string;
-		tab: string;
 		insert: string;
+		details: string;
 		close: string;
 	};
 }
 
-/** 右栏详情：文案与动作都已本地化，视图只负责排版。 */
-export interface CommandPanelDetailModel {
+/**
+ * 预览页的数据。
+ *
+ * 只有展示用的字段，**没有动作**：插入由「点这一行」完成，预览是「看清楚它是什么」。
+ * 三栏时右栏底部那颗「插入到输入框」既与点行重复，又是面板里唯一一颗实心主色按钮，
+ * 在同一块半透明表面上很扎眼（ADR-0176）。
+ */
+export interface CommandPanelPreviewModel {
 	readonly key: string;
 	readonly label: string;
 	/** 「技能 · 内置」这类次级说明。 */
 	readonly subtitle: string;
 	readonly description?: string;
-	readonly primaryIcon?: string;
-	readonly primaryIconUrl?: string;
+	readonly icon?: string;
+	readonly iconUrl?: string;
+	readonly fallbackIcon: string;
 	readonly meta: readonly { readonly label: string; readonly value: string }[];
 	readonly hint?: string;
-	readonly primaryLabel: string;
-	readonly secondaryLabel?: string;
 }
 
-/**
- * 文件区段的一行。它是直接动作（添加文件 / 添加图片 / 引用对话内文件），
- * 不是可搜索条目，因此不进列表的键盘索引。
- */
 export interface CommandPanelFileAction {
 	readonly id: string;
 	readonly label: string;
@@ -140,18 +126,23 @@ export interface CommandPanelProps {
 	open: boolean;
 	/** 左栏当前格。 */
 	tab: AddPanelTab;
+	/** 左栏可用的分类（由目录实际内容推导，空分类不出现）。 */
+	categories: readonly Exclude<AddPanelTab, "favorites">[];
 	/** 面板内搜索词（由 model 持有：键盘导航必须对可见条目工作）。 */
 	query: string;
 	/** 已按 tab + 搜索词过滤并分组的目录。 */
 	sections: readonly AddPanelSection[];
-	/** 可见条目的全局键，按渲染顺序；键盘导航与高亮都按它。 */
-	visibleKeys: readonly string[];
-	/** 当前高亮条目的 key。 */
+	/** 键盘高亮条目的 key；鼠标悬停**不**改它（否则列表会被滚动追着跳）。 */
 	activeKey: string | null;
+	/**
+	 * 键盘移动的序号：每次 `↑`/`↓` 递增，列表只在这个值变化时把高亮行滚进视口。
+	 * 用它而不是 `activeKey`，是因为 hover 也会改高亮，两者无法从 key 本身区分。
+	 */
+	scrollSignal: number;
 	/** 已收藏的全局键。 */
 	favorites: readonly string[];
-	/** 右栏内容；没有高亮项时为 null，整栏不渲染。 */
-	detail: CommandPanelDetailModel | null;
+	/** 预览页内容；null 表示列表态。 */
+	preview: CommandPanelPreviewModel | null;
 	/** 搜索态：分组头显示分类名而不是来源。 */
 	searching: boolean;
 	operation?: CommandPanelOperationItem;
@@ -161,13 +152,16 @@ export interface CommandPanelProps {
 	className?: string;
 	onSelectTab: (tab: AddPanelTab) => void;
 	onQueryChange: (value: string) => void;
+	/** 鼠标悬停：只改高亮，不滚动、不打开预览。 */
 	onHoverEntry: (key: string) => void;
+	/** 点击条目本体 = 插入 / 执行。 */
 	onActivateEntry: (key: string) => void;
+	/** 点击行尾「详情」= 打开整页预览。 */
+	onOpenPreview: (key: string) => void;
+	onClosePreview: () => void;
 	onToggleFavorite: (key: string) => void;
 	/** 打开能力广场首页（左栏底部入口）。 */
 	onOpenAbilityPlaza?: () => void;
-	/** 打开当前条目在能力广场里的页面（详情栏次要动作）。 */
-	onOpenEntryInPlaza?: () => void;
 }
 
 export type { AddPanelEntry, AddPanelSection, AddPanelTab };

@@ -28,6 +28,40 @@ export const ADD_PANEL_CATEGORY_ORDER: readonly AddPanelCategory[] = [
 	"apps",
 ];
 
+/**
+ * 当前**真有数据源**的分类。
+ *
+ * `plugins` 与 `apps` 还拿不到条目：能力注册表没有暴露「已安装插件 / 我的应用」的
+ * 读取接口，因此这两格此前永远是空的——轨道上多两个点不动的图标，用户点进去只看到
+ * 空态，等于在教他「这里有东西」却永远没有。分类是否出现由数据决定，
+ * {@link visibleCategories} 从目录实际内容推导，不在这里写死。
+ */
+export const ADD_PANEL_DATA_CATEGORIES: readonly AddPanelCategory[] = ["files", "skills", "connectors"];
+
+/**
+ * 分类图标（16px 下必须彼此可辨）。
+ *
+ * 挑图标时的硬约束：形状不能撞。`code-scan` / `widget` / `widget-2` 在 16px 下都是
+ * 四宫格，一排看过去像三个相同的格子——那等于没有分类。
+ */
+export const ADD_PANEL_CATEGORY_ICONS: Record<AddPanelCategory, string> = {
+	files: "icon-[solar--paperclip-linear]",
+	skills: "icon-[solar--magic-stick-3-linear]",
+	connectors: "icon-[solar--plug-circle-linear]",
+	plugins: "icon-[solar--box-linear]",
+	apps: "icon-[solar--widget-linear]",
+};
+
+/** 某分类里有条目时才让它出现在轨道上；顺序仍按 {@link ADD_PANEL_CATEGORY_ORDER}。 */
+export function visibleCategories(sections: readonly AddPanelSection[]): AddPanelCategory[] {
+	const withEntries = new Set(
+		sections
+			.filter((section) => section.groups.some((group) => group.entries.length > 0))
+			.map((section) => section.category),
+	);
+	return ADD_PANEL_CATEGORY_ORDER.filter((category) => withEntries.has(category));
+}
+
 /** 分类标题的 i18n key（与 `chat.json` 的 `slashPanel.sections.*` 对齐）。 */
 export const ADD_PANEL_CATEGORY_TITLE_KEYS: Record<AddPanelCategory, string> = {
 	files: "slashPanel.sections.files",
@@ -53,6 +87,11 @@ export interface AddPanelEntry {
 	readonly groupId: string;
 	/** 参与搜索与键盘导航；文件动作是直接动作，不参与搜索。 */
 	readonly searchable: boolean;
+	/**
+	 * 行首图标的兜底：条目自己没有图标（技能没声明、连接器没有预置图）时用分类图标。
+	 * 以前这里留空，实测整列技能都没有图标——列表看起来缺了一块。
+	 */
+	readonly fallbackIcon: string;
 }
 
 export interface AddPanelGroup {
@@ -177,6 +216,7 @@ export function buildAddPanelCatalog(input: AddPanelCatalogInput): AddPanelSecti
 		icon: action.icon,
 		groupId: FILE_GROUP.id,
 		searchable: false,
+		fallbackIcon: ADD_PANEL_CATEGORY_ICONS.files,
 	}));
 
 	const skills = (input.skills ?? []).map<AddPanelEntry>((skill) => {
@@ -191,6 +231,7 @@ export function buildAddPanelCatalog(input: AddPanelCatalogInput): AddPanelSecti
 			icon: input.resolveSkillIcon?.(skill),
 			groupId: group.id,
 			searchable: true,
+			fallbackIcon: ADD_PANEL_CATEGORY_ICONS.skills,
 		};
 	});
 
@@ -202,6 +243,7 @@ export function buildAddPanelCatalog(input: AddPanelCatalogInput): AddPanelSecti
 		iconUrl: connector.iconUrl,
 		groupId: CONNECTOR_GROUP.id,
 		searchable: true,
+		fallbackIcon: ADD_PANEL_CATEGORY_ICONS.connectors,
 	}));
 
 	const plugins = (input.plugins ?? []).map<AddPanelEntry>((plugin) => ({
@@ -213,6 +255,7 @@ export function buildAddPanelCatalog(input: AddPanelCatalogInput): AddPanelSecti
 		icon: plugin.icon,
 		groupId: PLUGIN_GROUP.id,
 		searchable: true,
+		fallbackIcon: ADD_PANEL_CATEGORY_ICONS.plugins,
 	}));
 
 	const apps = (input.apps ?? []).map<AddPanelEntry>((app) => ({
@@ -224,6 +267,7 @@ export function buildAddPanelCatalog(input: AddPanelCatalogInput): AddPanelSecti
 		icon: app.icon,
 		groupId: APP_GROUP.id,
 		searchable: true,
+		fallbackIcon: ADD_PANEL_CATEGORY_ICONS.apps,
 	}));
 
 	const titleKeyOf: Record<AddPanelCategory, (groupId: string) => string> = {

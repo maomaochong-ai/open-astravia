@@ -6,7 +6,7 @@ import { installLiveAnimations } from "./shared/lib/live-animations";
 import { applyPlatformAttribute } from "./shared/lib/platform";
 import { applyInitialTheme } from "./shared/theme/apply";
 import { applyStoredCursorStyle } from "./shared/theme/cursor";
-import { applyStoredSidebarStyle } from "./shared/theme/sidebar-style";
+import { applySidebarStyle } from "./shared/theme/sidebar-style";
 import { applyStoredFont } from "./shared/theme/ui-font";
 import { captureReactError, initializeRendererErrorMonitoring } from "./telemetry/error-monitoring";
 import { initializeViteHmrDiagnostics } from "./telemetry/vite-hmr-diagnostics";
@@ -19,7 +19,7 @@ initializeRendererErrorMonitoring("main");
 applyPlatformAttribute();
 applyInitialTheme();
 applyStoredCursorStyle();
-applyStoredSidebarStyle();
+applySidebarStyle();
 applyStoredFont();
 // 窗口不在前台时停掉无限循环的动画：毛玻璃窗口每出一帧都很贵，没人看的时候不该为它付费。
 installInactiveWindowAnimationPause();

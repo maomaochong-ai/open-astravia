@@ -2,44 +2,43 @@ import { ButtonGroup, ButtonGroupItem } from "@astravia-org/ui/button-group";
 import { ThemeSurface } from "@astravia-org/theme-ui/appearance/ThemeSurface";
 import { ContextRingView } from "@astravia-org/theme-ui/chat/ContextRingView";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
-import { AddPanelDetailView } from "./AddPanelDetailView";
+import { useEffect, useRef } from "react";
 import { AddPanelList } from "./AddPanelList";
+import { AddPanelPreviewView } from "./AddPanelPreviewView";
 import { AddPanelRail } from "./AddPanelRail";
 import { PANEL_REVEAL_TRANSITION } from "./constants";
 import type { CommandPanelProps } from "./types";
 
 /**
- * 面板最大高度：与模型选择器同一量级（`min(340px, 52vh)`）。
- * 三栏布局需要最小宽度，窗口极窄时由容器查询退化（见 `@max-[720px]` 规则）。
+ * 面板高度：与模型选择器同一量级。两栏（轨道 + 列表/预览）比三栏窄，窄窗口更从容。
  */
-const MAX_HEIGHT = "min(340px, 52vh)";
+const MAX_HEIGHT = "min(360px, 56vh)";
 
 /** 揭幕：从上往下裁开。内容不动，因此描边与圆角全程停在终态位置上。 */
 const REVEAL_CLIPPED = { clipPath: "inset(100% 0 0 0)" };
 const REVEAL_SHOWN = { clipPath: "inset(0% 0 0 0)" };
 
 /**
- * 输入卡片的「添加」面板：左栏分类、中栏列表、右栏详情。
+ * 输入卡片的「添加」面板（ADR-0175 + ADR-0176）。
  *
- * 与改造前的两点不同：
+ * 两栏：分类轨道（固定位置）｜内容区。内容区在两种形态间切换——
  *
- * 1. **独立浮层**，不再是与卡片接成一整块的长高形态。毛玻璃必须透出背后的会话内容，
- *    而卡片是不透明的——「同一块面长高」与玻璃互斥，因此改为与卡片留 8px 的浮层，
- *    描边、圆角、投影都独立。
- * 2. **三栏**：分类轨道（固定位置）｜搜索 + 列表｜详情与动作。清单过千时只滚动中间
- *    那一栏，分类永远在同一个位置。
+ * - **列表**：搜索框 + 按来源分组的条目。点条目直接插入 / 执行，点行尾「详情」进预览。
+ * - **预览**：整栏换成这一条的完整信息，带返回。没有动作按钮。
  *
- * 面板仍是输入卡片的子节点、`absolute` 定位、不参与布局——展开不会把消息列表顶上去。
+ * 面板是输入卡片的子节点、`absolute` 定位、与卡片留 8px 间隙：它是浮层而不是与卡片
+ * 接成一整块的长高形态——毛玻璃必须透出背后的会话内容，卡片是不透明的。
  */
 export function CommandPanelView({
 	open,
 	tab,
+	categories,
 	query,
 	sections,
 	activeKey,
+	scrollSignal,
 	favorites,
-	detail,
+	preview,
 	searching,
 	operation,
 	actions,
@@ -50,26 +49,23 @@ export function CommandPanelView({
 	onQueryChange,
 	onHoverEntry,
 	onActivateEntry,
+	onOpenPreview,
+	onClosePreview,
 	onToggleFavorite,
 	onOpenAbilityPlaza,
-	onOpenEntryInPlaza,
 }: CommandPanelProps): JSX.Element {
 	const reduceMotion = useReducedMotion();
 	const transition = reduceMotion ? { duration: 0 } : PANEL_REVEAL_TRANSITION;
-	// 揭幕完成前不挂渐隐 mask：动画期间少一份重绘。
-	const [revealed, setRevealed] = useState(false);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
-		if (!open) setRevealed(false);
-	}, [open]);
-
-	useEffect(() => {
 		if (!open) return;
-		// 打开就把焦点放进搜索框：模型选择器也是这个行为，用户第一反应是打字。
+		// 打开就把焦点放进搜索框（模型选择器同款行为）：用户第一反应是打字。
+		// 预览态不抢焦点，否则返回列表时焦点会跳回搜索框、看着像刚打开。
+		if (preview) return;
 		const frame = requestAnimationFrame(() => searchInputRef.current?.focus());
 		return () => cancelAnimationFrame(frame);
-	}, [open]);
+	}, [open, preview]);
 
 	return (
 		<AnimatePresence initial={false}>
@@ -81,7 +77,6 @@ export function CommandPanelView({
 					animate={REVEAL_SHOWN}
 					exit={REVEAL_CLIPPED}
 					transition={transition}
-					onAnimationComplete={() => setRevealed(true)}
 					style={{ willChange: "clip-path" }}
 					className={[
 						// -inset-x-px：定位父级是卡片内容盒（已被卡片 1px 描边内缩），不外扩这 1px
@@ -97,7 +92,7 @@ export function CommandPanelView({
 						className="relative z-10 flex min-h-0 flex-col"
 						style={{ maxHeight: MAX_HEIGHT }}
 						onKeyDown={(event) => {
-							// 搜索框里的 Escape 交给面板关闭；其余按键不进编辑器。
+							// 搜索框里的按键不进编辑器；Escape 留给面板关闭。
 							if (event.key !== "Escape" && event.key !== "ArrowDown" && event.key !== "ArrowUp") {
 								event.stopPropagation();
 							}
@@ -109,7 +104,7 @@ export function CommandPanelView({
 								disabled={operation.disabled}
 								onMouseEnter={() => onHoverEntry("__operation__")}
 								onClick={operation.onSelect}
-								className="relative flex h-7 shrink-0 items-center gap-2 px-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+								className="relative flex h-7 shrink-0 items-center gap-2 px-3 text-left transition-colors hover:bg-foreground/8 disabled:cursor-not-allowed disabled:opacity-50"
 							>
 								<span className="flex size-4 shrink-0 items-center justify-center">
 									{operation.contextRing ? (
@@ -130,75 +125,76 @@ export function CommandPanelView({
 						<div className="flex min-h-0 flex-1">
 							<AddPanelRail
 								tab={tab}
+								categories={categories}
 								labels={labels}
 								onSelectTab={onSelectTab}
 								onOpenAbilityPlaza={onOpenAbilityPlaza}
 							/>
 
 							<div className="flex min-h-0 min-w-0 flex-1 flex-col">
-								<div className="shrink-0 px-1 pt-1">
-									<div className="relative">
-										<span
-											aria-hidden="true"
-											className="icon-[solar--magnifer-linear] pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground"
-										/>
-										{/* type=search 在 WebKit 里自带清除按钮，隐藏它，只留自绘的那个 */}
-										<input
-											ref={searchInputRef}
-											type="search"
-											value={query}
-											onChange={(event) => onQueryChange(event.target.value)}
-											placeholder={labels.searchPlaceholder}
-											aria-label={labels.searchPlaceholder}
-											className="h-7 w-full rounded-md bg-transparent pl-7 pr-7 text-[11.5px] text-foreground outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
-										/>
-										{query.length > 0 && (
-											<button
-												type="button"
-												aria-label={labels.clearSearch}
-												title={labels.clearSearch}
-												onClick={() => onQueryChange("")}
-												className="absolute right-1 top-1/2 inline-flex size-4 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
-											>
-												<span aria-hidden="true" className="icon-[solar--close-circle-linear] size-3" />
-											</button>
-										)}
-									</div>
-								</div>
-
-								{sections.length === 0 || sections.every((section) => section.groups.length === 0) ? (
-									<EmptyState
-										title={searching ? labels.emptyNoMatch : labels.categoryEmpty}
-										hint={searching ? labels.emptyNoMatchHint : labels.emptyNoSkillsHint}
-									/>
+								{preview ? (
+									<AddPanelPreviewView preview={preview} labels={labels} onBack={onClosePreview} />
 								) : (
-									<AddPanelList
-										sections={sections}
-										activeKey={activeKey}
-										favorites={favorites}
-										labels={labels}
-										searching={searching}
-										onHoverEntry={onHoverEntry}
-										onActivateEntry={onActivateEntry}
-										onToggleFavorite={onToggleFavorite}
-									/>
+									<>
+										<div className="shrink-0 px-1 pt-1">
+											<div className="relative">
+												<span
+													aria-hidden="true"
+													className="icon-[solar--magnifer-linear] pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground"
+												/>
+												{/* type=search 在 WebKit 里自带清除按钮，隐藏它，只留自绘的那个 */}
+												<input
+													ref={searchInputRef}
+													type="search"
+													value={query}
+													onChange={(event) => onQueryChange(event.target.value)}
+													placeholder={labels.searchPlaceholder}
+													aria-label={labels.searchPlaceholder}
+													className="h-7 w-full rounded-md bg-transparent pl-7 pr-7 text-[11.5px] text-foreground outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+												/>
+												{query.length > 0 && (
+													<button
+														type="button"
+														aria-label={labels.clearSearch}
+														title={labels.clearSearch}
+														onClick={() => onQueryChange("")}
+														className="absolute right-1 top-1/2 inline-flex size-4 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
+													>
+														<span aria-hidden="true" className="icon-[solar--close-circle-linear] size-3" />
+													</button>
+												)}
+											</div>
+										</div>
+
+										{sections.length === 0 || sections.every((section) => section.groups.length === 0) ? (
+											<EmptyState
+												title={searching ? labels.emptyNoMatch : labels.categoryEmpty}
+												hint={searching ? labels.emptyNoMatchHint : labels.emptyNoSkillsHint}
+											/>
+										) : (
+											<AddPanelList
+												sections={sections}
+												activeKey={activeKey}
+												scrollSignal={scrollSignal}
+												favorites={favorites}
+												labels={labels}
+												searching={searching}
+												onHoverEntry={onHoverEntry}
+												onActivateEntry={onActivateEntry}
+												onOpenPreview={onOpenPreview}
+												onToggleFavorite={onToggleFavorite}
+											/>
+										)}
+									</>
 								)}
 							</div>
-
-							{detail && (
-								<AddPanelDetailView
-									detail={detail}
-									onActivate={() => onActivateEntry(detail.key)}
-									onSecondary={onOpenEntryInPlaza}
-								/>
-							)}
 						</div>
 
 						<div className="flex h-8 shrink-0 items-center justify-between gap-2 border-t border-border/40 px-2.5 text-[10px] text-muted-foreground/70">
 							<div className="flex min-w-0 items-center gap-2.5">
 								<Hint keys="↑ ↓" label={labels.hints.navigate} />
-								<Hint keys="Tab" label={labels.hints.tab} />
 								<Hint keys="Enter" label={labels.hints.insert} />
+								<Hint keys="ⓘ" label={labels.hints.details} />
 								<Hint keys="esc" label={labels.hints.close} />
 							</div>
 						</div>
