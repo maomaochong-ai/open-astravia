@@ -249,7 +249,10 @@ export function usePresetProvidersSectionModel({
 
 	const adoptPreset = useCallback(
 		async (row: PresetProviderRow, overrides?: { baseUrl?: string }): Promise<void> => {
-			const key = (draftKeys[row.id] ?? "").trim();
+			// 与上游一致：本机代理类预置（Magpie）自带 defaultApiKey，草稿为空时用它作为默认密钥，
+			// 不需要用户手动输入。此前这里漏了 `?? row.defaultApiKey`，导致 Magpie 启用后 apiKey 落成
+			// 空串、实际使用时被要求重新填密钥。
+			const key = (draftKeys[row.id] ?? row.defaultApiKey ?? "").trim();
 			// 内置了密钥默认值的预设（本机代理）不必先让用户造一个 key。
 			if (!key && !row.autoKey) return;
 			setSaving(true);

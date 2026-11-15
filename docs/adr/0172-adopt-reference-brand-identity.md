@@ -48,6 +48,15 @@ ADR-0157 最初把三类条目从「功能对齐」里摘出来：本机代理�
    | 渲染层行 | `PresetProviderRow.autoKey: boolean` | 由 `Boolean(row.defaultApiKey)` 派生 |
    | 视图 | `row.autoKey` | `canEditKey = !offline && !autoKey`；端口编辑 `canEditUrl = autoKey && !offline`；删除 `adopted && !autoKey` |
 
+   **启用时的密钥取值（本轮修正）**：`adoptPreset` 的草稿 key 必须写成
+   `const key = (draftKeys[row.id] ?? row.defaultApiKey ?? "").trim()`——空草稿时回落 `defaultApiKey`，
+   而不是空串。这条规则与 `autoKey` 是同一件事的**两个消费点**：`autoKey` 决定「行内给不给密钥按钮」，
+   `defaultApiKey` fallback 决定「启用时 apiKey 落成什么」。此前只接了前者、漏了后者，于是 Magpie 行内
+   不再要密钥、但启用后 `apiKey` 落成空串，实际使用时又被要求重新填——正是「不需要密钥」这句产品承诺
+   只实现了一半。两处必须同时存在，缺一即为 bug。
+
+   视图的三个判据与参照实现 `PresetProviderRowView` 的写法逐字对应。此前本仓有两个偏差：
+
    视图的三个判据与参照实现 `PresetProviderRowView` 的写法逐字对应。此前本仓有两个偏差：
    把行模型叫成 `hasDefaultApiKey` 且只用它表达「空草稿也能采纳」，于是 Magpie 那一行同时
    出现钥匙按钮与「空草稿可保存」；另有一个参照实现根本没有的 `localProxy` 字段，用它决定
