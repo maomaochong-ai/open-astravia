@@ -17,7 +17,9 @@ import themeLock from "../assets/theme-lock.webp";
 import { SETTINGS_SECTION } from "../registry";
 import { MotionSelect, SettingHeading, SettingRow, SettingSection } from "@astravia-org/theme-ui/settings";
 import { type UiFontFamily, fontStack } from "@shared/theme/ui-font";
+import type { AppIconId } from "@/shared/app-icon";
 import type {
+	AppearanceAppIconOption,
 	AppearanceOrnamentOption,
 	AppearanceFontOption,
 	AppearanceLanguageOption,
@@ -63,7 +65,6 @@ const LanguageSelect = memo(function LanguageSelect({
 			aria-label={ariaLabel}
 			value={language}
 			onValueChange={(next) => onSelect(next as AppearanceLanguageOption["value"])}
-			triggerClassName="w-[260px]"
 			options={languages.map((option) => ({
 				value: option.value,
 				label: languageOptionLabel(option),
@@ -224,14 +225,12 @@ const UiThemeCard = memo(function UiThemeCard({
 function FontSelectRow({
 	role,
 	label,
-	hint,
 	value,
 	options,
 	onValueChange,
 }: {
 	role: "global";
 	label: string;
-	hint: string;
 	value: UiFontFamily;
 	options: AppearanceFontOption[];
 	onValueChange: (family: UiFontFamily) => void;
@@ -240,7 +239,6 @@ function FontSelectRow({
 		<div className="flex items-start justify-between gap-4" data-font-role={role}>
 			<div className="min-w-0">
 				<div className="text-[13px] font-medium text-foreground">{label}</div>
-				<p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hint}</p>
 			</div>
 			<MotionSelect
 				aria-label={label}
@@ -433,7 +431,6 @@ function ModeSelect({
 			value={mode}
 			aria-label={ariaLabel}
 			onValueChange={(next) => onSelect(next as ThemeMode, lastPoint.current)}
-			triggerClassName="w-[180px]"
 			options={options.map((option) => ({
 				value: option.value,
 				label: (
@@ -486,7 +483,7 @@ function UiZoomPopover({ model }: { model: AppearanceSettingsModel }): JSX.Eleme
 					// 与语言 / 外观模式的下拉触发器同一套外观，只是弹出的是滑块而不是选项列表。
 					className={cn(
 						// 与语言 / 外观模式的下拉触发器同源（SELECT_TRIGGER_CLASS），只是弹出的是滑块。
-						"flex h-8 w-[84px] items-center justify-between gap-1.5 rounded-lg px-2.5 text-[12px] font-medium whitespace-nowrap text-foreground outline-none transition-colors",
+						"flex h-8 w-auto min-w-20 max-w-60 items-center justify-between gap-1.5 rounded-lg px-2.5 text-[12px] font-medium whitespace-nowrap text-foreground outline-none transition-colors",
 						SELECT_TRIGGER_CLASS,
 					)}
 				>
@@ -516,6 +513,94 @@ function UiZoomPopover({ model }: { model: AppearanceSettingsModel }): JSX.Eleme
 }
 
 /** 设置项右侧的下拉式触发器：显示当前选项名，点开 popover 里是方格预览网格；选中后自动收起。 */
+/** 超椭圆裁切：图标本身是方图，用同一套 clip-path 让它看起来像 macOS 的圆角方块。 */
+const SQUIRCLE_CLIP = `polygon(${Array.from({ length: 72 }, (_, i) => {
+	const angle = (i / 72) * Math.PI * 2;
+	const radius = 50 + 6 * Math.cos(4 * angle);
+	return `${(50 + radius * Math.cos(angle)).toFixed(2)}% ${(50 + radius * Math.sin(angle)).toFixed(2)}%`;
+}).join(",")})`;
+
+function SquircleIcon({ className, src }: { className?: string; src: string }): JSX.Element {
+	return (
+		<img
+			alt=""
+			className={cn("pointer-events-none select-none object-cover", className)}
+			draggable={false}
+			src={src}
+			style={{ clipPath: SQUIRCLE_CLIP }}
+		/>
+	);
+}
+
+/** 单个入口：显示当前图标与名字，点开 popover 在里面挑。 */
+function AppIconPicker({
+	onSelect,
+	options,
+}: {
+	onSelect: (id: AppIconId) => void;
+	options: AppearanceAppIconOption[];
+}): JSX.Element | null {
+	const [open, setOpen] = useState(false);
+	const current = options.find((option) => option.active) ?? options[0];
+	if (!current) return null;
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					className={cn(
+						"group flex h-10 items-center gap-2 rounded-lg px-2 text-[12px] font-medium outline-none transition-colors",
+						SELECT_TRIGGER_CLASS,
+					)}
+				>
+					<SquircleIcon src={current.preview} className="h-6 w-6 shrink-0" />
+					<span className="min-w-0 flex-1 truncate text-left text-foreground">{current.label}</span>
+					<span className="icon-[mdi--chevron-down] ml-auto h-4 w-4 shrink-0 text-muted-foreground" />
+				</button>
+			</PopoverTrigger>
+			<PopoverContent align="end" className="w-[320px] p-3">
+				<div className="grid grid-cols-4 gap-x-3 gap-y-3">
+					{options.map((option) => (
+						<button
+							key={option.id}
+							type="button"
+							title={option.label}
+							onClick={() => {
+								onSelect(option.id);
+								setOpen(false);
+							}}
+							className="group flex flex-col items-center gap-1.5 outline-none"
+						>
+							<span className="relative">
+								<SquircleIcon
+									src={option.preview}
+									className={cn(
+										"h-14 w-14 transition-transform group-hover:scale-105",
+										option.active ? "" : "opacity-90 group-hover:opacity-100",
+									)}
+								/>
+								{option.active && (
+									<span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary">
+										<span className="icon-[mdi--check] h-3 w-3 text-primary-foreground" />
+									</span>
+								)}
+							</span>
+							<span
+								className={cn(
+									"text-[11px]",
+									option.active ? "font-medium text-foreground" : "text-muted-foreground",
+								)}
+							>
+								{option.label}
+							</span>
+						</button>
+					))}
+				</div>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
 function DecorPicker({
 	active,
 	ariaLabel,
@@ -533,7 +618,7 @@ function DecorPicker({
 					type="button"
 					aria-label={ariaLabel}
 					className={cn(
-						"flex h-8 w-[150px] items-center justify-between gap-1.5 rounded-lg px-2.5 text-[12px] font-medium whitespace-nowrap text-foreground outline-none transition-colors",
+						"flex h-8 w-auto min-w-24 max-w-60 items-center justify-between gap-1.5 rounded-lg px-2.5 text-[12px] font-medium whitespace-nowrap text-foreground outline-none transition-colors",
 						SELECT_TRIGGER_CLASS,
 					)}
 				>
@@ -559,10 +644,10 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				<SettingsAiAssist tabId="appearance" />
 			</div>
 
-			{/* 语言 / 外观模式 / 界面大小：同一张卡片里的三行；后两个分区锚点挂在各自行的包裹层上，供设置搜索定位。 */}
+			{/* 语言 / 外观模式 / 界面大小 / 应用图标：同一张卡片里的四行；后三个分区锚点挂在各自行的包裹层上，供设置搜索定位。 */}
 			<div className="mb-10">
 				<SettingSection title="" section={SETTINGS_SECTION["appearance-language"]}>
-					<SettingRow title={model.labels.sections.language} description={model.labels.languageHint}>
+					<SettingRow title={model.labels.sections.language}>
 						<LanguageSelect
 							language={model.language}
 							languages={model.languages}
@@ -587,12 +672,16 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 						id={SETTINGS_SECTION["appearance-ui-zoom"].id}
 						data-setting-section-id={SETTINGS_SECTION["appearance-ui-zoom"].id}
 					>
-						<SettingRow
-							title={model.labels.sections.uiZoom}
-							description={model.labels.uiZoomHint}
-							border={false}
-						>
+						<SettingRow title={model.labels.sections.uiZoom}>
 							<UiZoomPopover model={model} />
+						</SettingRow>
+					</div>
+					<div
+						id={SETTINGS_SECTION["appearance-app-icon"].id}
+						data-setting-section-id={SETTINGS_SECTION["appearance-app-icon"].id}
+					>
+						<SettingRow title={model.labels.sections.appIcon} border={false}>
+							<AppIconPicker options={model.appIconOptions} onSelect={model.actions.setAppIcon} />
 						</SettingRow>
 					</div>
 				</SettingSection>
@@ -604,7 +693,6 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				<FontSelectRow
 					role="global"
 					label={model.labels.fontFamily}
-					hint={model.labels.fontHint}
 					value={model.font}
 					options={model.fontOptions}
 					onValueChange={model.actions.setFont}

@@ -284,9 +284,9 @@ export function ModelSelectorView({
 						// 菜单贴窗口右缘时会被推到边上：留出边距让它整体往左收。
 						collisionPadding={16}
 						className={cn(
-							// 毛玻璃：半透明底色 + 背景模糊，真正透出面板背后的内容。
-							// 不再叠自绘的高光去「假装」玻璃；深色下靠一圈极淡描边与背景分开。
-							"w-[min(34rem,calc(100vw-2rem))] min-w-[20rem] max-w-[34rem] overflow-visible border border-transparent bg-background/60 p-0 shadow-xl backdrop-blur-2xl backdrop-saturate-150 dark:border-border/60",
+							// 玻璃只由真正的半透明与背景模糊构成：不叠描边、高光或额外投影去「假装」透明。
+							// 深色下的边界交给基础浮层的极淡描边，这里再加一圈会变成两条边。
+							"w-auto min-w-[180px] max-w-[calc(100vw-2rem)] overflow-visible bg-background/40 p-0 backdrop-blur-2xl backdrop-saturate-150",
 							classNames?.content,
 						)}
 						// 开合交给 CSS：三栏面板每次弹出都跑一遍 spring，滚动时看着像卡了一下。

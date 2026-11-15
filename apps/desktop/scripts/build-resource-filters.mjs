@@ -1,5 +1,6 @@
 export function resolveBuildResourceFilters(families) {
-	const filters = new Set(["pet/**/*"]);
+	// 应用图标：设置里选中的场景图标要在运行时从 resources/build/app-icons 读取。
+	const filters = new Set(["pet/**/*", "app-icons/**/*"]);
 	if (families.has("darwin")) {
 		filters.add("icon.icns");
 		filters.add("icon.png");

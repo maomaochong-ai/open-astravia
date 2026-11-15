@@ -1,3 +1,4 @@
+import { useAppIcon } from "@shared/hooks/useAppIcon";
 import { useHeroOrnament } from "@shared/hooks/useHeroOrnament";
 import { useLanguage } from "@shared/hooks/useLanguage";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
@@ -15,11 +16,39 @@ import type { ThemeDef } from "@shared/theme/tokens";
 import type { UiFontFamily } from "@shared/theme/ui-font";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { APP_ICON_IDS, type AppIconId } from "@/shared/app-icon";
 import { isAppearanceUiThemeEnabled } from "@/shared/feature-flags";
 import type { LanguagePreference } from "@/shared/i18n/config";
 import { UI_ZOOM_DEFAULT, UI_ZOOM_STEPS, uiZoomStepIndex } from "@/shared/ui-zoom";
+import appIconPreview_coding from "../assets/app-icons/coding.png";
+import appIconPreview_cook from "../assets/app-icons/cook.png";
+import appIconPreview_default from "../assets/app-icons/default.png";
+import appIconPreview_design from "../assets/app-icons/design.png";
+import appIconPreview_game from "../assets/app-icons/game.png";
+import appIconPreview_read from "../assets/app-icons/read.png";
+import appIconPreview_sleep from "../assets/app-icons/sleep.png";
+import appIconPreview_sport from "../assets/app-icons/sport.png";
+import appIconPreview_study from "../assets/app-icons/study.png";
+import appIconPreview_travel from "../assets/app-icons/travel.png";
+import appIconPreview_work from "../assets/app-icons/work.png";
 import defaultThemePreview from "../assets/default.webp";
 import xianxiaThemePreview from "../assets/xianxia.webp";
+
+/** 设置页预览图：build 下同名 id 才是真正套用的资源，这里只要缩略图。 */
+const APP_ICON_PREVIEWS: Record<AppIconId, string> = {
+	default: appIconPreview_default,
+	coding: appIconPreview_coding,
+	design: appIconPreview_design,
+	work: appIconPreview_work,
+	study: appIconPreview_study,
+	read: appIconPreview_read,
+	game: appIconPreview_game,
+	sport: appIconPreview_sport,
+	cook: appIconPreview_cook,
+	travel: appIconPreview_travel,
+	sleep: appIconPreview_sleep,
+};
+
 import { SETTINGS_SECTION } from "../registry";
 import { recordSettingsUsage } from "./recordSettingsUsage";
 
@@ -67,6 +96,13 @@ export interface AppearanceTextureOption {
 	label: string;
 }
 
+export interface AppearanceAppIconOption {
+	active: boolean;
+	id: AppIconId;
+	label: string;
+	preview: string;
+}
+
 export interface AppearanceFontOption<T extends string = UiFontFamily> {
 	active: boolean;
 	hint: string;
@@ -83,18 +119,20 @@ export interface AppearanceSettingsModel {
 		setTexture: (id: NewSessionTextureId) => void;
 		/** 全局字体：界面、消息正文、代码与终端一起换。 */
 		setFont: (family: UiFontFamily) => void;
+		/** 应用图标：主进程立即换 Dock / 窗口图标并落盘。 */
+		setAppIcon: (id: AppIconId) => void;
 		/** 界面大小：只接受档位表里的值，主进程负责套用到主窗口。 */
 		setUiZoom: (factor: number) => void;
 		resetUiZoom: () => void;
 	};
 	activeUiThemeId: string;
 	labels: {
-		languageHint: string;
 		/** 「新会话页装饰」这块合并区域的说明，点明装饰件与纹理只影响新会话页。 */
 		newSessionDecorHint: string;
 		newSessionDecorTitle: string;
 		ornamentHint: string;
 		sections: {
+			appIcon: string;
 			uiZoom: string;
 			language: string;
 			mode: string;
@@ -106,10 +144,8 @@ export interface AppearanceSettingsModel {
 		};
 		textureHint: string;
 		title: string;
-		fontHint: string;
 		fontFamily: string;
 		uiZoomSliderLabel: string;
-		uiZoomHint: string;
 		uiZoomReset: string;
 	};
 	/** 用户语言偏好（含 system），用于选择器高亮。 */
@@ -118,6 +154,7 @@ export interface AppearanceSettingsModel {
 	mode: ThemeMode;
 	modeOptions: AppearanceModeOption[];
 	narrow: boolean;
+	appIconOptions: AppearanceAppIconOption[];
 	ornamentId: OrnamentId;
 	ornamentOptions: AppearanceOrnamentOption[];
 	fontOptions: AppearanceFontOption[];
@@ -219,6 +256,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	const { mode, themeName, setMode, setThemeName } = useTheme();
 	const { activeThemeId, availableThemes, selectTheme, status: themeRuntimeStatus } = useThemeRuntime();
 	const { languagePreference, setLanguage } = useLanguage();
+	const { iconId: appIconId, setIcon: setAppIcon } = useAppIcon();
 	const { ornamentId, setOrnament } = useHeroOrnament();
 	const { textureId, setTexture } = useNewSessionTexture();
 	const { t } = useTranslation("settings");
@@ -226,6 +264,17 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 
 	const { family: font, setFamily: setFont } = useUiFont();
 	const { factor: uiZoomFactor, setFactor: setUiZoomFactor, reset: resetUiZoomFactor } = useUiZoom();
+	const appIconOptions = useMemo<AppearanceAppIconOption[]>(
+		() =>
+			APP_ICON_IDS.map((id) => ({
+				id,
+				active: appIconId === id,
+				label: t(`appIcon_${id}`),
+				preview: APP_ICON_PREVIEWS[id],
+			})),
+		[appIconId, t],
+	);
+
 	const languages = useMemo<AppearanceLanguageOption[]>(
 		() => [
 			{
@@ -311,12 +360,11 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 
 	const labels = useMemo(
 		() => ({
-			languageHint: t("languageHint"),
-			uiZoomHint: t("uiZoomHint"),
 			newSessionDecorHint: t("newSessionDecorHint"),
 			newSessionDecorTitle: t("newSessionDecorTitle"),
 			ornamentHint: t("ornamentHint"),
 			sections: {
+				appIcon: t(SETTINGS_SECTION["appearance-app-icon"].titleKey),
 				language: t(SETTINGS_SECTION["appearance-language"].titleKey),
 				uiZoom: t(SETTINGS_SECTION["appearance-ui-zoom"].titleKey),
 				mode: t(SETTINGS_SECTION["appearance-mode"].titleKey),
@@ -328,7 +376,6 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 			},
 			textureHint: t("textureHint"),
 			title: t("appearanceTitle"),
-			fontHint: t("fontHint"),
 			fontFamily: t("fontFamily"),
 			uiZoomSliderLabel: t("uiZoomSliderLabel"),
 			uiZoomReset: t("uiZoomReset"),
@@ -361,6 +408,10 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 				setTexture(id);
 				recordSettingsUsage({ tab: "appearance", action: "changed", target: "new-session-texture", value: id });
 			},
+			setAppIcon: (id) => {
+				setAppIcon(id);
+				recordSettingsUsage({ tab: "appearance", action: "changed", target: "app-icon", value: id });
+			},
 			setFont: (family) => {
 				setFont(family);
 				recordSettingsUsage({ tab: "appearance", action: "changed", target: "font", value: family });
@@ -381,6 +432,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		}),
 		[
 			selectTheme,
+			setAppIcon,
 			setLanguage,
 			setMode,
 			setOrnament,
@@ -401,6 +453,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		mode,
 		modeOptions,
 		narrow,
+		appIconOptions,
 		ornamentId,
 		ornamentOptions,
 		showUiTheme: isAppearanceUiThemeEnabled(),
