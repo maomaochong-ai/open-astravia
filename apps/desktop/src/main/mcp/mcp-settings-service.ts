@@ -183,10 +183,7 @@ export class McpSettingsService {
 	 * 项目层文件由调用方给出 cwd 后解析；没有 cwd 又声明 project 直接报错，
 	 * 绝不悄悄退回全局——那正是最难排查的一类问题（用户以为装在项目里）。
 	 */
-	private resolveTarget(
-		name: string,
-		options?: { scope?: McpInstallScope; cwd?: string },
-	): {
+	private resolveTarget(options?: { scope?: McpInstallScope; cwd?: string }): {
 		readonly scope: McpInstallScope;
 		readonly read: () => Promise<McpConfigData>;
 		readonly write: (config: McpConfigData) => Promise<void>;
@@ -238,7 +235,7 @@ export class McpSettingsService {
 		data: McpServerUpsertData,
 		options?: { abilityVersion?: string; scope?: McpInstallScope; cwd?: string },
 	): Promise<McpServerDetail> {
-		const target = this.resolveTarget(name, options);
+		const target = this.resolveTarget(options);
 		return this.runMutation(async () => {
 			const config = await target.read();
 			const existing = config.mcpServers[name];
@@ -280,7 +277,7 @@ export class McpSettingsService {
 		enabled: boolean,
 		options?: { scope?: McpInstallScope; cwd?: string },
 	): Promise<void> {
-		const target = this.resolveTarget(name, options);
+		const target = this.resolveTarget(options);
 		await this.runMutation(async () => {
 			const config = await target.read();
 			const existing = config.mcpServers[name];
@@ -301,7 +298,7 @@ export class McpSettingsService {
 	}
 
 	async remove(name: string, options?: { scope?: McpInstallScope; cwd?: string }): Promise<void> {
-		const target = this.resolveTarget(name, options);
+		const target = this.resolveTarget(options);
 		await this.runMutation(async () => {
 			const config = await target.read();
 			if (!config.mcpServers[name]) throw new Error(`MCP server not found: ${name}`);
