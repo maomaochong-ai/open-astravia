@@ -3,7 +3,7 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ImportedContentReference } from "../generation/types";
 import { CONTENT_PROMPT_NODE_OPTIMIZATION_PROFILE } from "../prompt-optimization/prompt-optimization-service";
 import { serializeContentPromptForOptimization } from "../prompt-optimization/serialize-content-prompt";
-import { usePromptOptimizationModels } from "../prompt-optimization/usePromptOptimizationModels";
+import { usePromptOptimization } from "../prompt-optimization/usePromptOptimization";
 import type {
 	ContentAsset,
 	ContentNodeData,
@@ -47,14 +47,9 @@ export function ContentPromptEditor({
 	const draftRef = useRef(data);
 	const [isOptimizing, setIsOptimizing] = useState(false);
 	const [hasPromptContent, setHasPromptContent] = useState(() => hasOptimizableContent(data));
-	const {
-		models,
-		selectedModelKey,
-		setSelectedModelKey,
-		isLoadingModels,
-		optimizePrompt,
-		reportError,
-	} = usePromptOptimizationModels(data.promptOptimization?.modelKey);
+	const { selectedModelKey, setSelectedModelKey, optimizePrompt, reportError } = usePromptOptimization(
+		data.promptOptimization?.modelKey,
+	);
 	const removeReferenceLabel = t("nodeEditor.reference.remove");
 	const assetById = useMemo(
 		() =>
@@ -186,9 +181,7 @@ export function ContentPromptEditor({
 				onUpload={() => fileInputRef.current?.click()}
 				uploadTitle={t("nodeEditor.prompt.mention.upload")}
 				optimization={{
-					models,
 					selectedModelKey,
-					isLoadingModels,
 					isOptimizing,
 					canOptimize: hasPromptContent,
 					onModelChange: setSelectedModelKey,

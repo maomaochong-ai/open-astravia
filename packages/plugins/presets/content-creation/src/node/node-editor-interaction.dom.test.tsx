@@ -44,12 +44,10 @@ vi.mock("../prompt-optimization/PromptOptimizationControl", () => ({
 	PromptOptimizationControl: () => null,
 }));
 
-vi.mock("../prompt-optimization/usePromptOptimizationModels", () => ({
-	usePromptOptimizationModels: () => ({
-		models: [],
+vi.mock("../prompt-optimization/usePromptOptimization", () => ({
+	usePromptOptimization: () => ({
 		selectedModelKey: "",
 		setSelectedModelKey: () => undefined,
-		isLoadingModels: false,
 	}),
 }));
 

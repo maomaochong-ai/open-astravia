@@ -4,7 +4,7 @@
 	"version": "0.1.3",
 	"icon": "icon.png",
 	"defaultLocale": "zh",
-	"pluginApiVersion": "^2.0.0",
+	"pluginApiVersion": "^2.10.0",
 	"entry": "dist/mf-manifest.json",
 	"moduleFederation": {
 		"remoteName": "content_creation",
@@ -23,7 +23,6 @@
 		"agent.skills.control",
 		"agent.tools.register",
 		"agent.toolHandler.execute",
-		"ai.models.list",
 		"ai.complete",
 		"media.generate",
 		"network.fetch",

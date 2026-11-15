@@ -1,7 +1,4 @@
-import type {
-	PluginAiApi,
-	PluginAiModelListResult,
-} from "@astravia-org/plugin-sdk";
+import type { PluginAiApi } from "@astravia-org/plugin-sdk";
 import type { ContentPromptOptimization } from "../project/types";
 
 const BASE_OPTIMIZATION_SYSTEM_PROMPT = `You improve prompts for AI-assisted content creation.
@@ -27,19 +24,7 @@ interface OptimizeContentPromptOptions {
 }
 
 export class ContentPromptOptimizationService {
-	private modelListPromise: Promise<PluginAiModelListResult> | null = null;
-
 	constructor(private readonly ai: PluginAiApi) {}
-
-	listModels(): Promise<PluginAiModelListResult> {
-		if (!this.modelListPromise) {
-			this.modelListPromise = this.ai.listModels().catch((error: unknown) => {
-				this.modelListPromise = null;
-				throw error;
-			});
-		}
-		return this.modelListPromise;
-	}
 
 	async optimize({
 		source,

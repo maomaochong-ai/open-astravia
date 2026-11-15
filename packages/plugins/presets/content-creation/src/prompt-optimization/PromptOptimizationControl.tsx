@@ -1,21 +1,9 @@
-import { type PluginAiModel, useTranslation } from "@astravia-org/plugin-sdk";
-import {
-	Button,
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@astravia-org/ui";
+import { ModelPicker, useTranslation } from "@astravia-org/plugin-sdk";
+import { Button, Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui";
 import { useState } from "react";
 
 export interface PromptOptimizationControlProps {
-	models: readonly PluginAiModel[];
 	selectedModelKey?: string;
-	isLoadingModels: boolean;
 	isOptimizing: boolean;
 	canOptimize: boolean;
 	disabled?: boolean;
@@ -24,9 +12,7 @@ export interface PromptOptimizationControlProps {
 }
 
 export function PromptOptimizationControl({
-	models,
 	selectedModelKey,
-	isLoadingModels,
 	isOptimizing,
 	canOptimize,
 	disabled = false,
@@ -66,24 +52,18 @@ export function PromptOptimizationControl({
 					<span className="icon-[lucide--wand-sparkles] block size-3.5 text-muted-foreground" aria-hidden="true" />
 					<span>{t("nodeEditor.promptOptimization.title")}</span>
 				</div>
-				<Select value={selectedModelKey} onValueChange={onModelChange} disabled={isLoadingModels}>
-					<SelectTrigger className="w-full" aria-label={t("nodeEditor.promptOptimization.model")}>
-						<SelectValue
-							placeholder={
-								isLoadingModels
-									? t("nodeEditor.promptOptimization.loadingModels")
-									: t("nodeEditor.modelUnavailable")
-							}
-						/>
-					</SelectTrigger>
-					<SelectContent className="z-[110]">
-						{models.map((model) => (
-							<SelectItem key={model.modelKey} value={model.modelKey}>
-								{model.provider} · {model.name}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
+				{/* 宿主的模型选择器，与会话输入栏同一份清单；未选时自动带上用户的默认模型。 */}
+				<ModelPicker
+					value={selectedModelKey ?? null}
+					onChange={(modelKey) => {
+						if (modelKey) onModelChange(modelKey);
+					}}
+					autoSelectDefault
+					placeholder={t("nodeEditor.promptOptimization.model")}
+					ariaLabel={t("nodeEditor.promptOptimization.model")}
+					className="w-full"
+					menuClassName="z-[110]"
+				/>
 				<Button
 					type="button"
 					size="sm"
