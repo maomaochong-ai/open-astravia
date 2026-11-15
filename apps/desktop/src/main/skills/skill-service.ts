@@ -25,7 +25,7 @@ import { readDesktopConfig } from "../config/desktop-config-store.js";
 import { getAppLanguage } from "../i18n/index.js";
 import { getAppLogger } from "../logger.js";
 import { listPlugins, pluginAgentContributionService } from "../plugins/plugin-catalog.js";
-import { shouldListSkill } from "./skill-list-policy.js";
+import { resolveSkillOrigin, shouldListSkill } from "./skill-list-policy.js";
 import { buildPluginSkillSources, findPluginSkillSource, resolvePluginSkillPresentation } from "./skill-provenance.js";
 
 const skillsLog = getAppLogger("skills");
@@ -171,7 +171,10 @@ export class SkillService {
 		const listed = skills
 			.filter((skill) => {
 				if (isBuiltinSkillFile(skill.filePath)) return builtinManifest[skill.name]?.enabled ?? false;
-				return shouldListSkill(skill, manifest[skill.name]);
+				const entry = manifest[skill.name];
+				// 过滤也要看清单里的真实来源：扫描器只报目录类型（通常 `path`），
+				// 拿它判断「市场装的技能是否停用」会漏掉停用状态。
+				return shouldListSkill({ name: skill.name, source: entry?.source ?? skill.source }, entry);
 			})
 			.map((skill): ListedSkill => {
 				const isBuiltin = isBuiltinSkillFile(skill.filePath);
@@ -217,12 +220,14 @@ export class SkillService {
 					description: isBuiltin
 						? (builtinSkillText(skill.name, "description", builtinEntry?.description) ?? skill.description)
 						: (entry?.source === "market" ? entry.marketDescription : entry?.description) || skill.description,
-					source: isBuiltin ? "builtin" : pluginSource ? "plugin" : skill.source,
-					provenance: isBuiltin
-						? { kind: "builtin", providerId: "astravia" }
-						: pluginSource
-							? { kind: "provided", providerType: "plugin", providerId: pluginSource.pluginId }
-							: (skill.provenance ?? { kind: "native", scope: skill.source }),
+					// 来源与 provenance 都按「谁装的」判定（见 resolveSkillOrigin）。
+					...resolveSkillOrigin({
+						builtin: isBuiltin,
+						...(pluginSource ? { pluginId: pluginSource.pluginId } : {}),
+						manifestEntry: entry,
+						scannedSource: skill.source,
+						...(skill.provenance ? { scannedProvenance: skill.provenance } : {}),
+					}),
 					...(presentation ? { presentation } : {}),
 					...(pluginSource ? { sourcePluginId: pluginSource.pluginId } : {}),
 					type: "skill",

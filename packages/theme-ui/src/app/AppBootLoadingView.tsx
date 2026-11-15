@@ -4,7 +4,13 @@ import { isMac } from "../utils/platform";
 export function AppBootLoadingView(): JSX.Element {
 	return (
 		<div className="flex h-screen w-screen overflow-hidden bg-background p-2" aria-busy="true">
-			<div className="flex w-[220px] shrink-0 flex-col rounded-xl border border-border/50 bg-muted/60 p-3">
+			{/*
+			 * 侧边栏骨架与真实侧边栏同形：贴住窗口左/上/下边、无圆角、只有右侧一条分隔线。
+			 * 早先这里用的是「圆角 + 四周边框 + 留白」的悬浮样式，启动时会先看到一版悬浮侧栏、
+			 * 再跳成贴边的经典侧栏——与 styles.css 里 .sidebar-dock 的贴边规则矛盾，属历史残留。
+			 * `-m-2` 抵消 AppFrame 的 8px 内边距，与 .sidebar-dock 的 `-0.5rem` 负 margin 同源。
+			 */}
+			<div className="-ml-2 -mt-2 -mb-2 flex w-[220px] shrink-0 flex-col border-r border-border bg-muted p-3">
 				{/* macOS 用 hiddenInset 标题栏，交通灯就落在窗口左上角（trafficLightPosition x:16 y:20），
 				    这里不画骨架块，只留等高占位——否则脉冲方块正压在红黄绿三个按钮下面。
 				    留占位而非直接删，是为了下方条目不会上移到交通灯区域。 */}

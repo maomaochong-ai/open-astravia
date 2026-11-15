@@ -28,30 +28,19 @@ export interface CommandPanelProps {
 	fileActions?: readonly CommandPanelFileAction[];
 	/** 左栏底部的「能力广场」入口；不传则整格不渲染。 */
 	onOpenAbilityPlaza?: () => void;
-	/** 详情栏的「在能力广场中查看」；不传则按钮不渲染（内置技能没有广场页面）。 */
-	onOpenEntryInPlaza?: (entry: { readonly category: string; readonly id: string }) => void;
 }
 
 /**
- * 聊天输入框的「添加」面板：三栏（分类轨道 ｜ 搜索 + 列表 ｜ 详情）。
+ * 聊天输入框的「添加」面板：两栏（分类轨道 ｜ 列表或预览）。
  * 批量任务 / 自动化 dialog 用的是精简版 SkillPickerPanel，两者共用 SkillList。
  */
 export function CommandPanel(props: CommandPanelProps): JSX.Element {
 	const navigate = useNavigate();
 	const model = useCommandPanelModel({
 		...props,
-		// 能力广场只有一个全局出口与一个上下文出口：前者去首页，
-		// 后者带 `detail` 参数直接打开这一条的抽屉。条目在广场里没有页面时，模型不会
-		// 渲染上下文按钮，所以这里不必再判断一遍。
+		// 能力广场只保留一个全局出口（左栏底部）。条目级的「在广场查看」已删除：
+		// 预览页只回答「它是什么」，多一个跳转入口只会让人犹豫点哪个（ADR-0175 §5.1）。
 		onOpenAbilityPlaza: props.onOpenAbilityPlaza ?? (() => void navigate({ to: "/abilities" })),
-		onOpenEntryInPlaza:
-			props.onOpenEntryInPlaza === undefined
-				? (entry) => {
-						if (entry.category !== "skills") return;
-						const slug = entry.id.split(":").slice(1).join(":");
-						void navigate({ to: "/abilities", search: { detail: `skill:${slug}` } });
-					}
-				: (entry) => props.onOpenEntryInPlaza?.({ category: entry.category, id: entry.id }),
 	});
 	const ThemedCommandPanelView = useThemeComponent("chat.commandPanelView", CommandPanelView);
 	return <ThemedCommandPanelView {...model.viewProps} />;

@@ -64,8 +64,10 @@ function iconFor(app: PluginExternalApplication): ReactElement {
 /**
  * 顶栏动作的声明 hook（`registerHeaderAction({ useAction })`）。
  *
- * 返回 `null` 表示此刻不适用：没有活动目录、目录在远端（SSH 项目）或还没探测完，
- * 宿主据此不渲染、也不占顶栏名额。
+ * 返回 `null` 只表示此刻**不适用**：没有活动目录，或目录在远端（SSH 项目）。
+ * 探测结果没回来时**不**返回 null——那会让按钮在「添加」列表里整格消失，
+ * 而宿主一旦因权限、主进程重启或平台差异把探测卡住，用户就再也找不到这个入口。
+ * 探测未完成时先只给「用系统默认应用打开」，回来后再补上应用清单。
  */
 export function useOpenInAppAction(): PluginHeaderActionState | null {
 	const { t } = useTranslation();
@@ -85,7 +87,7 @@ export function useOpenInAppAction(): PluginHeaderActionState | null {
 	}, [cwd, openable]);
 
 	return useMemo(() => {
-		if (!openable || !cwd || applications === null) return null;
+		if (!openable || !cwd) return null;
 
 		const fail = (error: unknown): void => {
 			notifyApi?.({ message: t("error.failed"), variant: "error", error });
@@ -107,7 +109,7 @@ export function useOpenInAppAction(): PluginHeaderActionState | null {
 
 		// 宿主对 menuItems 的硬上限是 20 项、超出部分直接丢掉，所以应用列表要留一格给末尾的「默认应用」，
 		// 否则刚好探测到 20 个应用时那一项会被默默裁掉。
-		const visible = sortForMenu(applications).slice(0, MAX_MENU_ITEMS - 1);
+		const visible = sortForMenu(applications ?? []).slice(0, MAX_MENU_ITEMS - 1);
 		const menuItems: PluginHeaderActionMenuItem[] = visible.map((app, index) => {
 			const key = labelKeyFor(app);
 			return {

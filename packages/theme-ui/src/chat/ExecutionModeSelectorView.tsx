@@ -18,6 +18,13 @@ export interface ExecutionModeSelectorViewProps {
 	readonly disabled: boolean;
 	readonly selectedOption: ExecutionModeOptionView;
 	readonly options: readonly ExecutionModeOptionView[];
+	/**
+	 * 强制显示当前模式名。缺省沿用「窄容器只留图标」的容器查询——插件与工具栏沿用默认，
+	 * 模型菜单底栏这类已知够宽、且正是靠文字说明「这次怎么跑」的位置才传 true。
+	 */
+	readonly showLabel?: boolean;
+	/** 弹层展开方向。底栏最右一格必须朝左展开，否则会顶出面板右缘。 */
+	readonly contentAlign?: "start" | "end";
 	readonly className?: string;
 	readonly classNames?: {
 		readonly root?: string;
@@ -35,6 +42,8 @@ export function ExecutionModeSelectorView({
 	disabled,
 	selectedOption,
 	options,
+	showLabel = false,
+	contentAlign = "start",
 	className,
 	classNames,
 	onOpenChange,
@@ -58,7 +67,14 @@ export function ExecutionModeSelectorView({
 						)}
 					>
 						<span className={cn(selectedOption.icon, "h-3.5 w-3.5 shrink-0")} />
-						<span className="hidden min-w-0 max-w-[5.5rem] truncate @[22rem]:inline">{selectedOption.label}</span>
+						<span
+							className={cn(
+								"min-w-0 max-w-[5.5rem] truncate",
+								showLabel ? "inline" : "hidden @[22rem]:inline",
+							)}
+						>
+							{selectedOption.label}
+						</span>
 					</button>
 				</PopoverTrigger>
 				<AnimatePresence>
@@ -67,7 +83,7 @@ export function ExecutionModeSelectorView({
 							forceMount
 							asChild
 							side="top"
-							align="start"
+							align={contentAlign}
 							sideOffset={6}
 							className={cn(
 								"w-[148px] gap-0 overflow-visible rounded-lg border border-border p-0",

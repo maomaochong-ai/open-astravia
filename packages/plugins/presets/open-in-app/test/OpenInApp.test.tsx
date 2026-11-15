@@ -60,11 +60,23 @@ afterEach(() => {
 });
 
 describe("useOpenInAppAction", () => {
-	it("declares null until the host answers", async () => {
+	it("keeps the action declared while the host probe is still pending", async () => {
 		const shell = createShell([code]);
-		// 探测永不返回：宿主这一帧拿到 null，按钮既不显示也不占位。
+		// 探测永不返回：按钮仍要出现在顶栏的收纳/添加列表里，只是菜单暂时只有默认入口。
+		// 早先这里返回 null，探测一旦被权限或主进程重启卡住，用户在「添加」里就再也找不到这个入口。
 		shell.listExternalApplications.mockImplementation(() => new Promise(() => {}));
 		setHostApis(shell as never, vi.fn());
+		const state = (await declare()).current;
+		expect(state).not.toBeNull();
+		expect(state?.title).toBe("action.title");
+		expect(state?.menuItems?.map((item) => item.id)).toEqual(["__default"]);
+	});
+
+	it("declares null only when the directory cannot be opened by a local app", async () => {
+		setHostApis(createShell([code]) as never, vi.fn());
+		conversation.cwd = "ssh://host/home/me/project";
+		expect((await declare()).current).toBeNull();
+		conversation.cwd = null;
 		expect((await declare()).current).toBeNull();
 	});
 

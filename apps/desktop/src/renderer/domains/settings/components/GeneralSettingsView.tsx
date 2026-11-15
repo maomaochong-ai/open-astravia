@@ -35,6 +35,9 @@ export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.El
 					checking={updates.checking}
 					labels={updates.labels}
 					onCheck={updates.onCheck}
+					// 「查看版本介绍」是同一行上的第二颗按钮。少了这一行，按钮不会渲染
+					// （视图要求 label 与回调同时给），设置页就只剩「检查更新」。
+					onViewCurrent={updates.onViewCurrent}
 					phase={updates.phase}
 				/>
 			}

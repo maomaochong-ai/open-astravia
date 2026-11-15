@@ -512,34 +512,34 @@ textarea:disabled,
 	z-index: 1;
 }
 
-/* 侧边栏样式「经典」：抵消 AppFrame 的 p-2，让常驻侧边栏贴住窗口左/上/下边，
+/* 侧边栏只有一种形态：抵消 AppFrame 的 p-2，让常驻侧边栏贴住窗口左/上/下边，
    并去掉圆角与四周边框，只保留右侧一条分隔线。窄屏 overlay 侧边栏不受影响。
-   取值见 shared/theme/sidebar-style.ts。 */
-:root[data-sidebar-style="classic"] .sidebar-dock {
+   早先还有一个「悬浮」形态（四周留白 + 圆角 + 边框），设置入口与实现都已删除，
+   选择器不再按形态属性分流——留着属性开关等于给一条不存在的分支留位置。 */
+:root .sidebar-dock {
 	margin: -0.5rem 0 -0.5rem -0.5rem;
 }
 
 /* 收起态：左栏仍是流内的 0 宽盒子（子树不随收起卸载，见 SidebarDock），贴边用的 -8px
    会把主内容多拉 8px 到窗口外，所以跟着宽度一起过渡回 0。 */
-:root[data-sidebar-style="classic"] .sidebar-dock[inert] {
+:root .sidebar-dock[inert] {
 	margin-left: 0;
 }
 
-:root[data-sidebar-style="classic"] .sidebar-dock .sidebar-surface {
+:root .sidebar-dock .sidebar-surface {
 	border-radius: 0;
 	border-width: 0;
 	border-right-width: 1px;
 }
 
-/* 顶栏内容与 macOS 红绿灯对齐。h-11 自身居中：悬浮时顶栏占 8~52、中线 30 偏下；
-   经典下从 y=0 起算、中线 22 偏上。两边各补一侧内边距把中线挪到实测位置
-   （悬浮 28、经典 29）。padding 记在 h-11 元素自身（border-box，总高不变），
-   drag-region 仍覆盖整条顶栏。数值是照实机目测调的，要挪就改这两个。 */
+/* 顶栏内容与 macOS 红绿灯对齐。h-11 自身居中时中线偏上，补一侧内边距把中线挪到实测位置。
+   padding 记在 h-11 元素自身（border-box，总高不变），drag-region 仍覆盖整条顶栏。
+   数值是照实机目测调的，要挪就改这两个。 */
 :root[data-platform="mac"] .sidebar-dock .sidebar-top-bar {
 	padding-bottom: 0.25rem;
 }
 
-:root[data-platform="mac"][data-sidebar-style="classic"]
+:root[data-platform="mac"]
 	.sidebar-dock
 	.sidebar-top-bar {
 	padding-top: 0.875rem;
@@ -550,7 +550,7 @@ textarea:disabled,
    放行的做法是整帧 + 侧边栏都不上底色，再由主内容区自己补回不透明底色：
    ::before 向上/右/下各溢出 8px 盖住 AppFrame 的 p-2 留白，所以布局与非 mac 完全一致，
    只有侧边栏那一条透出桌面。 */
-:root[data-platform="mac"][data-sidebar-style="classic"] .app-frame {
+:root[data-platform="mac"] .app-frame {
 	background-color: transparent;
 }
 
@@ -562,7 +562,7 @@ textarea:disabled,
    底色的明暗关系当场反转，看着就像那半边的选中背景没了。所以在侧边栏子树内把
    --accent 换成半透明叠加色——始终是「在当前合成底色上再压 10% 前景色」，背后黑白
    都成立。导航指示条、项目行/会话行选中与 hover:bg-accent/50 一起生效。 */
-:root[data-platform="mac"][data-sidebar-style="classic"]
+:root[data-platform="mac"]
 	.sidebar-dock
 	.sidebar-surface {
 	background-color: color-mix(
@@ -575,7 +575,7 @@ textarea:disabled,
 }
 
 /* 浅色的 --background 是纯白，同样的浓度压得比深色狠得多，透明感几乎没了，所以单独调淡。 */
-:root[data-platform="mac"][data-sidebar-style="classic"][data-mode="light"]
+:root[data-platform="mac"][data-mode="light"]
 	.sidebar-dock
 	.sidebar-surface {
 	--sidebar-vibrancy-tint: 35%;
@@ -606,14 +606,14 @@ textarea:disabled,
 
 /* 明暗切换期间先遮住原生 vibrancy（它由主进程翻转，动不了也不进 View Transition 快照，
    否则会比页面动画早一步瞬变）；属性移除后按上面的 240ms 淡回半透明。 */
-:root[data-platform="mac"][data-sidebar-style="classic"][data-theme-transition]
+:root[data-platform="mac"][data-theme-transition]
 	.sidebar-dock
 	.sidebar-surface {
 	background-color: var(--background);
 	transition: none;
 }
 
-:root[data-platform="mac"][data-sidebar-style="classic"] .app-main-frame::before {
+:root[data-platform="mac"] .app-main-frame::before {
 	content: "";
 	position: absolute;
 	inset: -0.5rem;
@@ -624,7 +624,7 @@ textarea:disabled,
 /* 侧边栏在位时，左边那 8px 已经被它自己盖住，::before 不能再往左伸——否则会压住毛玻璃右缘。
    收起（或窄屏浮层态）时左栏节点仍在，但带 inert，此规则不命中，::before 就按上面的 inset
    一路铺到窗口左边，不会留下透出桌面的空白条。 */
-:root[data-platform="mac"][data-sidebar-style="classic"]
+:root[data-platform="mac"]
 	.sidebar-dock:not([inert])
 	~ .app-main-frame::before {
 	left: 0;
@@ -1173,7 +1173,7 @@ a {
    壁纸直接参与配色：同一条色在壁纸前可能显得比画布亮，也可能更脏，这些主题
    的身份就没了。它们因此在 mac 上也铺不透明色，深浅两态都与 win/linux 一致；
    未改造的 default / mono / sand 继续用 vibrancy。 */
-:root[data-platform="mac"][data-sidebar-style="classic"]:is(
+:root[data-platform="mac"]:is(
 		[data-theme="forest"],
 		[data-theme="bee"],
 		[data-theme="mint"],

@@ -971,6 +971,7 @@
 		}
 	},
 	"modelSelect": {
+		"shortcutHint": "打开或收起模型选择面板",
 		"placeholder": "选择模型",
 		"searchPlaceholder": "搜索模型或供应商",
 		"clearSearch": "清除搜索",
@@ -991,6 +992,7 @@
 		"fewerProviders": "收起",
 		"visionBadge": "vision",
 		"favoritesHeader": "收藏",
+		"favoritesEmpty": "还没有收藏的模型",
 		"favorite": "收藏",
 		"unfavorite": "取消收藏",
 		"searchResultsHeader": "搜索结果",

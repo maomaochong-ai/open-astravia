@@ -727,6 +727,8 @@
 			"title": "Questions",
 			"count": "{{count}}",
 			"open": "View questions",
+			"scrollToolsLeft": "Scroll tools left",
+			"scrollToolsRight": "Scroll tools right",
 			"close": "Close question list",
 			"searchLabel": "Search questions",
 			"searchPlaceholder": "Search questions",
@@ -1144,12 +1146,15 @@
 		"favorites": "Favorites",
 		"favoritesEmpty": "No favorites yet",
 		"favoritesEmptyHint": "Hover an entry and click the star to keep it here.",
+		"all": "All",
+		"operations": "Actions",
 		"categories": "Categories",
 		"openAbilityPlaza": "Ability plaza",
 		"favoriteAdd": "Add to favorites",
 		"favoriteRemove": "Remove from favorites",
 		"details": "Details",
-		"categoryEmpty": "Nothing in this category yet",
+		"operationsEmptyHint": "No actions for this session yet. Compacting needs a bound session.",
+		"categoryEmpty": "Nothing in {{category}} yet",
 		"groups": {
 			"actions": "Direct actions",
 			"builtin": "Built-in",
@@ -1158,24 +1163,21 @@
 			"plugin": "Plugins",
 			"market": "Market",
 			"connected": "Connected",
-			"installed": "Installed"
+			"installed": "Installed",
+			"other": "Other"
 		},
 		"preview": {
 			"back": "Back to list",
 			"sourceLabel": "Source",
 			"statusLabel": "Status",
 			"statusConnected": "Connected",
-			"insertLabel": "Insert",
-			"hintSkill": "Clicking the row inserts it; a prompt tag stays in the input so you can keep typing before sending.",
-			"hintConnector": "Once connected, its tools are called by the agent directly.",
-			"hintFile": "Applies to this message's attachments only, not to the model context.",
-			"hintExtension": "Its skills appear under Skills once enabled."
+			"insertLabel": "Insert"
 		},
 		"hints": {
-			"navigate": "Select",
-			"insert": "Insert",
-			"details": "Details",
-			"close": "Close"
+			"scrollRailUp": "Scroll categories up",
+			"scrollRailDown": "Scroll categories down",
+			"scrollToolsLeft": "Scroll tools left",
+			"scrollToolsRight": "Scroll tools right"
 		},
 		"compaction": {
 			"label": "Compact context",

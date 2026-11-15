@@ -20,6 +20,14 @@ vi.mock("@shared/shortcuts", () => ({ useShortcutScope: vi.fn() }));
 
 initI18n();
 
+function keyEvent(key: string): React.KeyboardEvent<HTMLElement> {
+	return {
+		key,
+		preventDefault: () => undefined,
+		stopPropagation: () => undefined,
+	} as unknown as React.KeyboardEvent<HTMLElement>;
+}
+
 describe("useCommandPanelModel context compaction", () => {
 	beforeEach(() => {
 		const store = getDefaultStore();
@@ -58,7 +66,7 @@ describe("useCommandPanelModel context compaction", () => {
 		expect(onClose).toHaveBeenCalledOnce();
 	});
 
-	it("输入斜杆后可按 Enter 触发顶部压缩操作", async () => {
+	it("压缩上下文在「操作」分类里：切过去后按 Enter 才触发", async () => {
 		const queueContextCompaction = vi.fn(async () => ({
 			status: "queued" as const,
 			id: "compact-1",
@@ -69,7 +77,7 @@ describe("useCommandPanelModel context compaction", () => {
 			value: { session: { queueContextCompaction } },
 		});
 		const onClose = vi.fn();
-		renderHook(() =>
+		const { result } = renderHook(() =>
 			useCommandPanelModel({
 				open: true,
 				onClose,
@@ -78,11 +86,29 @@ describe("useCommandPanelModel context compaction", () => {
 				filter: "/",
 			}),
 		);
-		const shortcutOptions = vi.mocked(useShortcutScope).mock.calls.at(-1)?.[0];
-		const enter = shortcutOptions?.bindings.find((binding) => binding.key === "enter");
-		if (!enter) throw new Error("enter shortcut was not registered");
 
-		act(() => enter.run(new KeyboardEvent("keydown", { key: "Enter" })));
+		// 回归：默认分类是「全部」，且没有高亮项；此时 Enter 不该做任何事。
+		expect(result.current.viewProps.tab).toBe("all");
+		expect(result.current.viewProps.activeKey).toBeNull();
+		act(() => result.current.viewProps.onPanelKeyDown(keyEvent("Enter")));
+		expect(queueContextCompaction).not.toHaveBeenCalled();
+
+		// 切到「操作」：压缩上下文是这里的唯一一行，按下 Enter 触发。
+		act(() => result.current.viewProps.onSelectTab("operations"));
+		act(() =>
+			result.current.viewProps.onPanelKeyDown({
+				key: "ArrowDown",
+				preventDefault: () => undefined,
+				stopPropagation: () => undefined,
+			} as unknown as React.KeyboardEvent<HTMLElement>),
+		);
+		act(() =>
+			result.current.viewProps.onPanelKeyDown({
+				key: "Enter",
+				preventDefault: () => undefined,
+				stopPropagation: () => undefined,
+			} as unknown as React.KeyboardEvent<HTMLElement>),
+		);
 		await vi.waitFor(() => expect(queueContextCompaction).toHaveBeenCalledWith("session-1"));
 
 		expect(onClose).toHaveBeenCalledOnce();

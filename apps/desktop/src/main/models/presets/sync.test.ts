@@ -85,4 +85,24 @@ describe("preset catalog background refresh", () => {
 		expect(mocks.send).toHaveBeenCalledOnce();
 		expect(mocks.send).toHaveBeenCalledWith("astravia:models:presets-updated");
 	});
+
+	/**
+	 * 本机代理必须在合同里带上预填密钥，渲染层据此派生 `autoKey` 并隐藏「修改密钥」按钮。
+	 *
+	 * 这是跨进程合同的一部分：主进程漏发时渲染层不会报错，只会让那一行多出一颗钥匙按钮
+	 * ——正是这个 bug 的形态（字段名换过一次，旧字段留在主进程时表现完全一致）。
+	 */
+	it("本机代理带上 defaultApiKey，普通预设不带", async () => {
+		const { listPresetProviders } = await import("./sync.js");
+		const { providers } = await listPresetProviders();
+		const magpie = providers.find((provider) => provider.id === "magpie");
+
+		expect(magpie).toMatchObject({ id: "magpie", defaultApiKey: "magpie" });
+		expect(magpie).not.toHaveProperty("localProxy");
+		expect(magpie).not.toHaveProperty("autoKey");
+		// 普通预设不该被误标成内置密钥，否则它们的密钥按钮会跟着消失。
+		for (const provider of providers.filter((entry) => entry.id !== "magpie")) {
+			expect(provider).not.toHaveProperty("defaultApiKey");
+		}
+	});
 });

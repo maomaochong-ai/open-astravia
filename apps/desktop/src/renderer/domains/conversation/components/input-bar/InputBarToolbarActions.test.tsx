@@ -6,6 +6,19 @@ import { ModelMenuFooterContext } from "./model-menu-footer-context";
 import type { InputBarModel } from "./types";
 
 /**
+ * 底栏插槽现在传的是执行模式选择器的**数据**（由模型菜单按自己的几何渲染），
+ * 这里只需要一个「非 null」的值来表达「宿主提供了底栏」。
+ */
+const FOOTER = {
+	disabled: false,
+	onOpenChange: () => undefined,
+	onSelect: () => undefined,
+	open: false,
+	options: [],
+	selectedOption: { disabled: false, label: "沙箱", mode: "sandbox", icon: "icon-[mdi--shield]" },
+} as unknown as React.ComponentProps<typeof ModelMenuFooterContext.Provider>["value"];
+
+/**
  * 工具栏里的竖线用来分隔相邻两组控件。执行模式移进模型菜单后，工具栏里它的位置空了出来，
  * 若仍照旧画线就会在行首留一根悬空短线——这是本次要锁住的行为。
  */
@@ -29,7 +42,7 @@ const dividerCount = (container: HTMLElement): number =>
 describe("输入栏工具栏的竖线", () => {
 	it("执行模式在菜单里时，行首不再留悬空竖线", () => {
 		const { container } = render(
-			<ModelMenuFooterContext.Provider value={<span>权限模式</span>}>
+			<ModelMenuFooterContext.Provider value={FOOTER}>
 				<InputBarLeadingActions model={model()} />
 			</ModelMenuFooterContext.Provider>,
 		);
@@ -41,6 +54,31 @@ describe("输入栏工具栏的竖线", () => {
 		const { container } = render(
 			<ModelMenuFooterContext.Provider value={null}>
 				<InputBarLeadingActions model={model()} />
+			</ModelMenuFooterContext.Provider>,
+		);
+
+		expect(dividerCount(container)).toBe(1);
+	});
+
+	it("面板收起（默认态）时，添加按钮右边不再留一根悬空竖线", () => {
+		const { container } = render(
+			<ModelMenuFooterContext.Provider value={FOOTER}>
+				<InputBarLeadingActions
+					model={model({ commands: { slashOpen: false, onOpen: () => undefined } as never })}
+				/>
+			</ModelMenuFooterContext.Provider>,
+		);
+
+		// 回归：附件按钮此时整组隐藏，分割线若照画就是加号右侧一根孤立竖线。
+		expect(dividerCount(container)).toBe(0);
+	});
+
+	it("面板展开时附件按钮出现，分割线才补上", () => {
+		const { container } = render(
+			<ModelMenuFooterContext.Provider value={FOOTER}>
+				<InputBarLeadingActions
+					model={model({ commands: { slashOpen: true, onOpen: () => undefined } as never })}
+				/>
 			</ModelMenuFooterContext.Provider>,
 		);
 

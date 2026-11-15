@@ -60,14 +60,13 @@ export function UpdateCheckerAction({
 	return (
 		<div className="flex items-center gap-2">
 			{onViewCurrent && labels.viewCurrent && (
-				<Button size="sm" variant="ghost" onClick={onViewCurrent} data-testid="updater-view-current">
+				<Button variant="field" onClick={onViewCurrent} data-testid="updater-view-current">
 					<span className="icon-[mdi--sparkles-outline] h-3.5 w-3.5" />
 					{labels.viewCurrent}
 				</Button>
 			)}
 			<Button
-				size="sm"
-				variant="outline"
+				variant="field"
 				onClick={onCheck}
 				disabled={busy}
 				data-testid="updater-check"
@@ -227,13 +226,13 @@ function ReleaseNotePreview({
 											{itemIndex + 1}
 										</span>
 										<div className="min-w-0 flex-1">
-											{item.title && (
+											{item.title ? (
+												// 每条变更只显摘要（粗体标题），完整细节交给「查看更多」。
+												// 早先这里是「标题 + 正文」两行，一屏塞不下几条，看着像把整篇发布说明搬进了卡片。
 												<div className="text-[12px] leading-snug font-medium text-foreground/90">{item.title}</div>
-											)}
-											{item.body && (
-												<p className={`m-0 text-[11.5px] leading-relaxed${item.title ? " mt-0.5" : ""}`}>
-													{item.body}
-												</p>
+											) : (
+												// 没有粗体标题的纯正文条目（旧格式或第三方 feed），正文本身就是摘要。
+												<p className="m-0 text-[11.5px] leading-relaxed">{item.body}</p>
 											)}
 										</div>
 									</li>

@@ -4,8 +4,8 @@
 
 已接受。输入栏第一个按钮的文案与面板结构据此调整；不改任何能力的存储格式、权限模型或插件契约。
 
-> 面板结构与词汇部分已被 [ADR-0175](./0175-input-bar-add-panel-three-columns.md) 取代：
-> 单列分区改为三栏浮层 + 收藏，`Capability*` 词汇改为 `AddPanel*`。入口文案为「添加」、
+> 面板结构与词汇部分已被 [ADR-0175](./0175-input-bar-add-panel-two-columns-with-preview.md) 取代：
+> 单列分区改为两栏浮层（列表 + 预览）+ 收藏，`Capability*` 词汇改为 `AddPanel*`。入口文案为「添加」、
 > 五类顺序固定、catalog 只做投影这三条继续有效。
 > 注：替换发生在待审核状态，审核通过后再实施。
 

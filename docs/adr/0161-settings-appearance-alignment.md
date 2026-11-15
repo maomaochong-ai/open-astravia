@@ -71,9 +71,11 @@ ADR-0157 把 0.5.72→0.5.81 的每个行为变更逐条登记，B5 批负责「
 两项都从外观页删除，`SETTINGS_SECTION` 里的对应锚点一并删除（否则设置搜索会跳到不存在的区段）。
 
 - **侧边栏样式**：外观页入口与 `SETTINGS_SECTION["appearance-sidebar"]` 锚点删除，设置页不再提供切换。
-  底层 `shared/theme/sidebar-style.ts`、`sidebarStyleAtom` 与 `styles.css` 里的 `[data-sidebar-style]` 规则
-  不在本批可改范围（属侧边栏/项目批次），因此旧版本存下的 `floating` 仍会生效——这是一处**已知的部分对齐**：
-  入口没了，但历史值没被清掉；要点是别在设置页再把它暴露出来。
+  **底层实现已在后续迭代删净**（本轮）：`shared/theme/sidebar-style.ts`、`sidebarStyleAtom`、
+  `useSidebarStyle` 与三组中英文案一起删除，`styles.css` 里 11 条 `[data-sidebar-style]` 选择器
+  改为无条件规则——侧边栏只剩「贴紧窗口左侧 + 右侧一条分隔线」一种形态。
+  删除而不是继续保留开关的理由：设置页已没有切换入口，留着属性开关等于给一条永远走不到的分支
+  留位置，而旧版本存下的 `floating` 仍会让同一份代码在别人机器上呈现另一种形态。
 - **鼠标指针**：外观页不再提供该项。**底层能力暂时保留**：插件 `appearance` 命令与主题变更审批面板
   仍能读取/设置 `cursorStyle`，因为它属于插件对外合同（`packages/plugins`），删除它需要版本推进与
   兼容层，不在本批范围。这是一处刻意的部分对齐，见「后果」。
@@ -123,6 +125,41 @@ ADR-0157 把 0.5.72→0.5.81 的每个行为变更逐条登记，B5 批负责「
     「密码正确但连不上」；
   - 已有 askpass 链路负责取口令：存档的凭据每轮认证只用一次，失败后清除并改为当场询问（原有行为）。
 
+
+### 9. 应用图标与字体：同一张卡片里的两行（本轮修订）
+
+参照实现把「应用图标」放在语言 / 外观模式 / 界面大小那一组的最后一行。本节把本仓的两处偏差收敛掉，
+并记录一条本仓独有的取舍。
+
+**① 应用图标：默认图标用 Astravia 官方图标，不用参照实现的像素形象。**
+
+- `APP_ICON_IDS` 的 `default` 仍是出厂项，但它现在指向本仓自己的 Astravia 图标
+  （`apps/desktop/build/icon.png` 的 824 本体裁切后生成的 `settings/assets/app-icons/default.png`），
+  文案也从「默认」改为「Astravia」。其余 10 个场景图标沿用既有素材。
+- 理由：本项目是 Astravia，不是参照实现。出厂图标是用户第一眼看到的应用身份，把它设成对方的
+  品牌形象会让「这是哪个产品」出现两种答案。ADR-0172 的品牌采纳范围据此收窄为「场景图标与
+  Dock 边距规范」，不含出厂图标。
+- **展开列表的形状**：`SquircleIcon` 的 `clip-path` 从极坐标扰动（`50 + 6·cos(4θ)`，四角内掐，
+  看起来像四瓣花）换成真正的超椭圆（n=5）参数方程，与 macOS 应用图标一致。十一个图标同形状、
+  同裁切，不再出现「有的像方块有的像花」。
+- **打包白名单**：`build-resource-filters.mjs` 的 `app-icons/**/*` 与对应断言早已在位；
+  缺了它打包后运行时读不到图标、切换静默失败，这条断言是防止再次丢失的唯一守卫。
+
+**② 字体：并进同一张卡片，紧跟应用图标之后，且不带副标题与描述。**
+
+- 原来的字体是独立分区：一个 `SettingHeading`「字体」+ 一行「字体系列」。标题与行标题说的是同一件事，
+  还额外多出一条分区间距。
+- 现在它是 `appearance-language` 那张卡片的最后一行（`border={false}` 收尾），锚点仍是
+  `appearance-font`，所以设置搜索照旧能定位；`data-font-role="global"` 也保留，用例靠它找元素。
+- 该行没有 `description`：字体选择器的内容（每个选项用自己的字体栈渲染）已经自解释；
+  `fontFamily` 这个 i18n 键、`labels.fontFamily` 字段与调用点一并删除，避免留下没人读的死文案。
+- 宽度策略沿用第 2 节修订：调用点不再写死 `w-[…]`；字体触发器保留 `min-w-[140px] shrink-0`，
+  因为它的选项文案长度差异最大，给下限是为了不让行内控件跟着抖——这是下限，不是定宽。
+
+**验证**：`AppearanceSettingsView.test.tsx` 的字体用例同时断言三件事——字体行落在
+`appearance-language` 卡片内、同一卡片内能查到 `appearance-app-icon`、页面上不再有「字体」这个
+分区标题；任何一条回退都会让该用例变红。
+
 ## 备选方案
 
 - **保留卡片式外观页，只调间距**：成本最低，但「语言 / 模式 / 大小」仍是三块互不相邻的区域，
@@ -143,14 +180,15 @@ ADR-0157 把 0.5.72→0.5.81 的每个行为变更逐条登记，B5 批负责「
   `SshHost` 多一个 `authMethod` 字段（向后兼容：缺省等同 `key`）。
 - **已知的部分对齐**：
   1. 鼠标指针选项只删了设置页入口，插件合同与审批面板仍保留 `cursorStyle`（见决策 4）；
-  2. 侧边栏样式同样只删入口，底层 `sidebar-style.ts` / `styles.css` 的 `floating` 规则由侧边栏批次处理；
+  2. ~~侧边栏样式同样只删入口，底层规则由侧边栏批次处理~~ —— **已收敛**：本轮连同
+     `sidebar-style.ts` / `sidebarStyleAtom` / `useSidebarStyle` / i18n 文案与 `[data-sidebar-style]`
+     规则一并删除，不再存在第二种侧边栏形态；
   3. 设置页皮肤：共享常量（`SELECT_TRIGGER_CLASS` / `SELECT_PANEL_CLASS` / `INPUT_FILL_CLASS` /
      `TEXTAREA_FILL_CLASS` / `Button variant="field"`）已由 ADR-0163 批次在 `packages/ui` 落地；本批已把它们
      接入到 `MotionSelect`、`SettingsFormFields`（`InputField` / `TextareaField`）、`RuntimeConfigurationSections`
      的数字输入框、外观页的缩放与装饰触发器，以及设置域 30 余处操作按钮。个别仍自写 `border` 的局部控件
      （服务商图标框、开关等）不是本批条目，保留不动；
-  4. 「应用图标」入口（3kko / 76hy / 7esp）未做：图标素材本身是产品决策（fdho / e7nz / izqa / dl89
-     全部列入「需产品决策」），没有素材的图标选择器只会是一个空壳；
+  4. ~~「应用图标」入口（3kko / 76hy / 7esp）未做~~ —— **已落地**，见第 9 节；
   5. 浅色 muted/card 层次、mono accent 等主题色条目属 `theme` 表（ADR-0163），不在本批。
 - 风险：
   1. `uiZoomFactor` 是新的配置字段，旧版本读不到会忽略（`parseDesktopConfig` 只认识已知字段，未知字段原样保留）；

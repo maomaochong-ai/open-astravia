@@ -29,10 +29,11 @@ export interface PresetProviderInfo {
 	api: string;
 	baseUrl: string;
 	icon: string;
-	/** 本机回环代理：只允许改端口，密钥有默认值。 */
-	localProxy?: boolean;
-	/** 该预设已内置密钥默认值，用户不必自备。 */
-	hasDefaultApiKey?: boolean;
+	/**
+	 * 预填的密钥（本机代理类服务商）：用户不必自备，点启用即用。
+	 * 渲染层据此推出 `autoKey`——内置密钥的行没有「修改密钥」入口。
+	 */
+	defaultApiKey?: string;
 	/** 公共目录里该家的模型(免 key 可见)。填 key 后由账号实际可用的 /models 结果取代。 */
 	catalogModels: ModelDefinition[];
 }
@@ -69,8 +70,7 @@ export async function listPresetProviders(): Promise<PresetProvidersResult> {
 			api: def.api,
 			baseUrl: def.baseUrl,
 			icon: def.icon,
-			...(def.localProxy ? { localProxy: true } : {}),
-			...(def.defaultApiKey ? { hasDefaultApiKey: true } : {}),
+			...(def.defaultApiKey ? { defaultApiKey: def.defaultApiKey } : {}),
 			catalogModels: catalogModelsFor(catalog, def),
 		})),
 	};

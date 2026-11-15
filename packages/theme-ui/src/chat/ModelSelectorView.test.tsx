@@ -20,6 +20,7 @@ const LABELS: ModelSelectorLabels = {
 	modelHeader: "模型",
 	cloudOnly: "云端",
 	favoritesHeader: "收藏",
+	favoritesEmpty: "还没有收藏的模型",
 	favorite: "收藏",
 	unfavorite: "取消收藏",
 	searchResultsHeader: "搜索结果",
@@ -54,7 +55,7 @@ const VIEWPORT_HEIGHT = 280;
 let container: HTMLDivElement;
 let root: Root;
 
-function renderView(): void {
+function renderView(extra: Partial<React.ComponentProps<typeof ModelSelectorView>> = {}): void {
 	act(() => {
 		root.render(
 			<ModelSelectorView
@@ -66,6 +67,7 @@ function renderView(): void {
 				labels={LABELS}
 				onModelSelect={() => undefined}
 				onReasoningSelect={() => undefined}
+				{...extra}
 			/>,
 		);
 	});
@@ -149,5 +151,63 @@ describe("模型选择菜单打开时的定位", () => {
 		});
 		// 被 preventDefault 却什么也不发生，比没有快捷键更糟。
 		expect(event.defaultPrevented).toBe(false);
+	});
+});
+
+/**
+ * 面板外观与底栏位置：这两处都曾是「看着像对齐了、实际没有」的地方。
+ *
+ * 圆角那条尤其隐蔽——`PopoverContent` 用 `asChild` 时，Radix 的 Slot 只把 className 拼接到
+ * 内层元素上（不经 tailwind-merge 去重），于是 `rounded-2xl` 与 `rounded-[inherit]` 落在同一个
+ * 元素上，`inherit` 从 portal 容器继承到 0，面板就变成直角。这里锁的是「带底色的那层自己持有
+ * 圆角」，改回 asChild 会立刻变红。
+ */
+describe("模型选择面板的外观与底栏", () => {
+	beforeEach(() => {
+		container = document.createElement("div");
+		document.body.appendChild(container);
+		root = createRoot(container);
+	});
+
+	afterEach(() => {
+		act(() => root.unmount());
+		container.remove();
+		document.body.replaceChildren();
+	});
+
+	it("面板自己持有圆角，玻璃底色与背景模糊都在同一层", () => {
+		renderView();
+
+		const surface = document.querySelector<HTMLElement>("[data-slot='popover-content']");
+		expect(surface).not.toBeNull();
+		expect(surface?.className).toContain("rounded-2xl");
+		expect(surface?.className).toContain("bg-background/40");
+		expect(surface?.className).toContain("backdrop-blur-2xl");
+		// 不自绘描边与硬阴影：深色边界交给基础浮层的极淡描边。
+		expect(surface?.className).not.toContain("shadow-xl");
+		expect(surface?.className).not.toContain("dark:border");
+		// 圆角不能被 inherit 覆盖成 0。
+		expect(surface?.className).not.toContain("rounded-[inherit]");
+	});
+
+	it("底栏左侧放快捷键提示、右侧放权限模式", () => {
+		renderView({
+			footerStart: <span data-testid="hint">⌘P</span>,
+			footerEnd: <button type="button" data-testid="mode">沙箱</button>,
+		});
+
+		const footer = document.querySelector<HTMLElement>("[data-model-selector-footer]");
+		expect(footer).not.toBeNull();
+		const [left, right] = Array.from(footer?.children ?? []);
+		expect(left?.querySelector("[data-testid='hint']")).not.toBeNull();
+		expect(right?.querySelector("[data-testid='mode']")).not.toBeNull();
+		// 权限模式贴在右侧：左格吃掉剩余宽度，右格不缩。
+		expect(left?.className).toContain("min-w-0");
+		expect(right?.className).toContain("shrink-0");
+	});
+
+	it("没有底栏插槽时整条底栏不渲染", () => {
+		renderView();
+		expect(document.querySelector("[data-model-selector-footer]")).toBeNull();
 	});
 });

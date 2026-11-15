@@ -76,6 +76,15 @@ export function buildModelColumns(
 		.filter((entry): entry is { model: ModelSelectorOptionView; providerLabel: string } => entry !== undefined);
 
 	const providerColumns: ModelProviderColumn[] = [];
+	// 收藏列常驻：收藏能力由宿主总是提供（`favoriteKeys` 是必填参数），空收藏也显示星标入口，
+	// 点进去看到专属空态。与参照实现一致——它的 rail 里收藏格只由「是否提供收藏能力」决定，
+	// 不看收藏是否非空。
+	providerColumns.push({
+		id: FAVORITES_COLUMN_ID,
+		label: "",
+		count: favoriteModels.length,
+		isFavorites: true,
+	});
 	if (favoriteModels.length > 0) {
 		providerColumns.push({
 			id: FAVORITES_COLUMN_ID,

@@ -31,7 +31,6 @@ import { useSpeechInput } from "./useSpeechInput";
 import { useSessionDropZoneModel } from "../../hooks/useSessionDropZoneModel";
 import { useInputActionBarModel } from "../useInputActionBarModel";
 import { useDefaultContextRingModel } from "../../hooks/useContextRingModel";
-import { ExecutionModeSelector } from "../ExecutionModeSelector";
 import { useDefaultExecutionModeSelectorModel } from "../../hooks/useExecutionModeSelectorModel";
 import { ModelMenuFooterContext } from "./model-menu-footer-context";
 import { usePlanModeModel } from "../../hooks/usePlanModeModel";
@@ -239,7 +238,7 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 
 	return (
 		// 权限模式挂到模型菜单底栏：低频入口，与「用哪个模型」属于同一次「这次怎么跑」的决策。
-		<ModelMenuFooterContext.Provider value={<ExecutionModeSelector model={executionModeModel} />}>
+		<ModelMenuFooterContext.Provider value={executionModeModel}>
 			<InputBar model={model}>
 				<InputBarToolbar model={model}>
 					<InputBarModelAction visible={!model.commands?.slashOpen} />

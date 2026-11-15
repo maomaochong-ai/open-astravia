@@ -19,6 +19,7 @@ const labels: ModelSelectorLabels = {
 	visionBadge: "支持图片",
 	defaultBadge: "默认",
 	favoritesHeader: "收藏",
+	favoritesEmpty: "还没有收藏的模型",
 	favorite: "收藏",
 	unfavorite: "取消收藏",
 	searchResultsHeader: "搜索结果",
@@ -84,6 +85,39 @@ describe("模型菜单三栏", () => {
 		expect(onSelectModel).toHaveBeenCalledTimes(1);
 	});
 
+	it("收藏列常驻：没有收藏时第一栏仍有星标格，点进去是专属空态", () => {
+		const { container } = setup({ favoriteKeys: [] });
+		const firstCell = container.querySelector('[role="group"] button');
+		expect(firstCell?.getAttribute("aria-label")).toBe("收藏");
+		// 点收藏格进入空收藏：显示专属空态而不是「未找到模型」。
+		fireEvent.click(firstCell!);
+		expect(screen.getByText("还没有收藏的模型")).toBeTruthy();
+		expect(screen.queryByText("没有匹配的模型")).toBeNull();
+	});
+
+	it("星标常驻：每行都有收藏按钮，已收藏的实心金星、未收藏的空星", () => {
+		// 默认会落在收藏栏（只有已收藏那一行）；显式停在 openai 栏才能同时看到已收藏与未收藏两行。
+		const { container } = setup({ favoriteKeys: ["openai/gpt-5"], initialProviderId: "openai" });
+		const rows = container.querySelectorAll("[data-model-key]");
+		// 每一行都有一颗星标按钮，不存在「悬停才出现」的隐藏态。
+		for (const row of rows) {
+			expect(row.querySelector('button[aria-pressed]')).toBeTruthy();
+		}
+		const favorited = container.querySelector('[data-model-key="openai/gpt-5"] button[aria-pressed="true"]');
+		const unfavorited = container.querySelector('[data-model-key="openai/o4"] button[aria-pressed="false"]');
+		expect(favorited?.className).toContain("text-amber-500");
+		expect(unfavorited?.className).not.toContain("hidden");
+	});
+
+	it("中栏顶部显示当前服务商小标题，换服务商跟着变", () => {
+		const { container } = setup();
+		// 默认落在第一个服务商，第二栏顶部的小标题就是它的名字。
+		const list = container.querySelector('[role="listbox"]');
+		expect(list?.querySelector("p")?.textContent).toBe("OpenAI");
+		fireEvent.click(screen.getByRole("button", { name: /Anthropic/ }));
+		expect(list?.querySelector("p")?.textContent).toBe("Anthropic");
+	});
+
 	it("星标点击切换收藏，且不触发选中模型", () => {
 		const { onSelectModel, onToggleFavorite } = setup();
 		fireEvent.click(screen.getByRole("button", { name: "收藏：GPT-5" }));
@@ -93,9 +127,9 @@ describe("模型菜单三栏", () => {
 
 	it("有收藏时服务商栏第一格是收藏，并显示其中的模型", () => {
 		const { container } = setup({ favoriteKeys: ["anthropic/sonnet"] });
-		// 第一栏的第一格是收藏（带星标图标），中间栏此时只列出收藏里的模型。
-		const firstColumn = container.querySelector('[role="group"]');
-		expect(firstColumn?.textContent).toContain("收藏");
+		// 第一栏的第一格是收藏（纯图标星标，名称在 aria-label 里），中间栏只列出收藏里的模型。
+		const firstCell = container.querySelector('[role="group"] button');
+		expect(firstCell?.getAttribute("aria-label")).toBe("收藏");
 		expect(container.querySelectorAll('[data-model-key]')).toHaveLength(1);
 		expect(container.querySelector('[data-model-key="anthropic/sonnet"]')).toBeTruthy();
 	});
@@ -178,8 +212,14 @@ describe("模型菜单三栏", () => {
 		}));
 		const { container } = setup({ groups: many });
 		const firstColumn = container.querySelector('[role="group"]');
-		expect(firstColumn?.textContent).not.toContain("Provider 9");
-		fireEvent.click(screen.getByRole("button", { name: /\+3/ }));
-		expect(container.querySelector('[role="group"]')?.textContent).toContain("Provider 9");
+		// 轨道是纯图标：名字在 aria-label 里。常驻的收藏格占第一格，收起来时是「收藏 + 6 个服务商」+ 一个折叠钮。
+		const providerButtons = (): number =>
+			Array.from(firstColumn?.querySelectorAll("button") ?? []).filter((b) =>
+				/^Provider \d+$/.test(b.getAttribute("aria-label") ?? ""),
+			).length;
+		expect(providerButtons()).toBe(6);
+		expect(screen.getByRole("button", { name: /\+4/ })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: /\+4/ }));
+		expect(providerButtons()).toBe(10);
 	});
 });

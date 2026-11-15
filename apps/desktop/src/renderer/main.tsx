@@ -6,7 +6,6 @@ import { installLiveAnimations } from "./shared/lib/live-animations";
 import { applyPlatformAttribute } from "./shared/lib/platform";
 import { applyInitialTheme } from "./shared/theme/apply";
 import { applyStoredCursorStyle } from "./shared/theme/cursor";
-import { applySidebarStyle } from "./shared/theme/sidebar-style";
 import { applyStoredFont } from "./shared/theme/ui-font";
 import { captureReactError, initializeRendererErrorMonitoring } from "./telemetry/error-monitoring";
 import { initializeViteHmrDiagnostics } from "./telemetry/vite-hmr-diagnostics";
@@ -15,11 +14,10 @@ import "./styles.css";
 initializeViteHmrDiagnostics();
 initializeRendererErrorMonitoring("main");
 
-// 在首个 React 节点挂载前同步恢复持久化主题与光标，保证窗口首次可见时已使用实际设计令牌。
+// 在首个 React 节点挂载前同步恢复持久化主题、光标与字体，保证窗口首次可见时已使用实际设计令牌。
 applyPlatformAttribute();
 applyInitialTheme();
 applyStoredCursorStyle();
-applySidebarStyle();
 applyStoredFont();
 // 窗口不在前台时停掉无限循环的动画：毛玻璃窗口每出一帧都很贵，没人看的时候不该为它付费。
 installInactiveWindowAnimationPause();
@@ -51,7 +49,20 @@ const bootPaintedPromise = new Promise<void>((resolve) => {
 	});
 });
 const renderAppPromise = import("./renderApp");
-if (import.meta.env.DEV) void preloadStartupPage(window.location.hash);
+
+/**
+ * 开发态预热目标页：生产构建已经把路由拆成静态 chunk，无需预热；开发态每个模块都是一次
+ * 请求加一次转换，若与壳层渲染同时发起，会把首屏与随后进入页面一起拖慢（观感上就是进页
+ * 面卡、布局被挤得拉扯）。所以等壳层真的画完、浏览器空闲下来再开始，收益仍在但不再抢带宽。
+ */
+function scheduleDevStartupPrefetch(): void {
+	const run = (): void => void preloadStartupPage(window.location.hash);
+	if (typeof requestIdleCallback === "function") requestIdleCallback(run, { timeout: 2000 });
+	else setTimeout(run, 200);
+}
+if (import.meta.env.DEV) {
+	void bootPaintedPromise.then(scheduleDevStartupPrefetch);
+}
 
 void Promise.all([appReadyPromise, bootPaintedPromise, renderAppPromise])
 	.then(([, , { renderApp }]) => {

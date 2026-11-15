@@ -37,6 +37,32 @@
 - **正文去掉开头的版本标题与状态注释**：`stripReleaseNoteHeader` 同时被主进程（更新源给的
   说明）与渲染进程（随包说明）使用——对话框自己有标题与版本号，正文里再来一次就是重复。
 
+设置页「通用 → 应用 → 当前版本」那一行同样按参照实现对齐：左侧是标题与状态文案，
+右侧是「查看版本介绍」+「检查更新」两颗同皮肤的 `variant="field"` 按钮。
+
+这一行前后修过两次，两次都不是「没做」，而是**接了一半**：
+
+1. 第一次：视图里的按钮是 `ghost` / `outline`（与参照实现的 `variant="field"` 不同），已改。
+2. 第二次（本轮）：`UpdateCheckerAction` 的规则是「`labels.viewCurrent` 与 `onViewCurrent`
+   同时给才渲染按钮」，而宿主适配层只转发了 `checking / labels / onCheck / phase`——
+   文案在、回调缺席，按钮静默消失，用户看到的就是「这一版没有版本介绍」。
+
+第 2 次值得单记一条规则：**当视图用「可选 prop 决定是否渲染」来表达差量时，适配层必须把
+那个可选 prop 一起转发**，否则最糟的结果不是报错，而是功能安静地不见——类型检查也看不出来
+（prop 本来就是可选的）。现在的回归用例从宿主适配层进入（`GeneralSettingsView.updater.test.tsx`），
+只断言「两颗按钮都在、点前者会打开当前版本的说明」，摘掉转发就会红。
+
+「版本介绍」打开的仍是同一个对话框（`useUpdateRestartDialogModel` 的 `notesOpen` 分支，
+正文来自 `readCurrentReleaseNote`：打包后读 `resources/release-notes/v<version>.md`，
+开发态读仓库 `.github/release-notes/v<version>.md`，两者都没有时显示「暂无这个版本的介绍」）。
+
+**卡片里的每条变更只显摘要，不再「标题 + 细节」两行（本轮修订）。** 本仓发布说明每条是
+`- **粗体标题**：细节正文` 的形态，`outlineReleaseNote` 把它拆成 `{ title, body }`。
+早先预览里两条都渲染，一个版本几十条变更，每条占两行、细节动辄一两百字，卡片里铺出来的
+就是整篇发布说明的搬运。现在有 `title` 的条目只显 `title`（摘要），完整细节由卡片下方的
+「查看更多」打开全文 Markdown 预览；只有 `body`（无粗体标题的旧格式或第三方 feed）才把
+`body` 当摘要显示——它没有更短的形态。
+
 GitHub 更新源给的是 Markdown，`ReleaseNoteMarkdown` 负责排版；此前被当成纯文本渲染，
 星号与井号原样显示。跨多个版本时保留各段的小标题（那是区分版本的唯一线索），单版本时去掉。
 

@@ -53,7 +53,6 @@ export function PresetProviderRow({
 			onRemove={() => void onRemove(row)}
 			onToggleEnabled={(enabled) => void onToggleEnabled(row, enabled)}
 			onSetPort={(port) => void onSetPort(row, port)}
-			toggleLabel={labels.toggleProvider(row.displayName)}
 			onRefreshModels={() => void onRefreshModels(row)}
 			onCopyApiKey={() => void onCopyApiKey(row)}
 			icon={<ProviderIcon symbol={row.icon} className="h-7 w-7 shrink-0" />}

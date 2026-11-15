@@ -85,3 +85,38 @@ describe("loadSkillPackagePresentationIcon", () => {
 		expect(() => loadSkillPackagePresentationIcon({ filePath: skill.filePath, baseDir: skill.root })).toThrow();
 	});
 });
+
+describe("loadSkillPackagePresentationIcon", () => {
+	const resolve = (absolutePath: string): string => `asset://${absolutePath}`;
+
+	it("frontmatter 没声明时回退同目录 ability.json 的 icon", async () => {
+		const { root, filePath } = await createSkill("name: xlsx");
+		await mkdir(join(root, "assets"), { recursive: true });
+		await writeFile(join(root, "assets/icon.png"), "png", "utf-8");
+		await writeFile(join(root, "ability.json"), JSON.stringify({ type: "skill", icon: "assets/icon.png" }), "utf-8");
+
+		const icon = loadSkillPackagePresentationIcon({ filePath, baseDir: root, assetUrlResolver: resolve });
+
+		// 回归：市场安装的技能只在 ability.json 里声明图标，缺这条回退时技能清单没有图标，
+		// 添加面板与 `/` 菜单只能显示默认图。
+		expect(icon).toBe(`asset://${root}/assets/icon.png`);
+	});
+
+	it("frontmatter 的 namespaced 声明优先于 ability.json", async () => {
+		const { root, filePath } = await createSkill(
+			"metadata:\n  astravia:\n    presentation:\n      icon: assets/from-md.png",
+		);
+		await mkdir(join(root, "assets"), { recursive: true });
+		await writeFile(join(root, "assets/from-md.png"), "png", "utf-8");
+		await writeFile(join(root, "ability.json"), JSON.stringify({ icon: "assets/from-json.png" }), "utf-8");
+
+		expect(loadSkillPackagePresentationIcon({ filePath, baseDir: root, assetUrlResolver: resolve })).toBe(
+			`asset://${root}/assets/from-md.png`,
+		);
+	});
+
+	it("两处都没有图标时返回 undefined（由视图落默认图）", async () => {
+		const { root, filePath } = await createSkill("name: plain");
+		expect(loadSkillPackagePresentationIcon({ filePath, baseDir: root, assetUrlResolver: resolve })).toBeUndefined();
+	});
+});

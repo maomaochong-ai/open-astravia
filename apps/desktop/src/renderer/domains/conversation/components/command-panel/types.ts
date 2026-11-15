@@ -40,14 +40,20 @@ export interface CommandPanelLabels extends SkillListLabels {
 	favoritesEmptyHint: string;
 	/** 左栏分类轨道的无障碍名称。 */
 	categories: string;
+	/** 左栏「全部」格：跨分类列出能力页有的全部条目。 */
+	all: string;
+	/** 左栏「操作」格（压缩上下文等会话操作）。 */
+	operations: string;
 	/** 左栏底部「能力广场」入口。 */
 	openAbilityPlaza: string;
 	/** 左栏各分类的显示名（`title` 提示与无障碍名称）。 */
 	categoryLabel: (tab: AddPanelTab) => string;
 	/** 分组标题（内置 / 我的 / 项目 / 插件 / 市场 / 已接入 …）。 */
 	groupLabel: (titleKey: string) => string;
-	/** 空态：某一类没有条目。 */
-	categoryEmpty: string;
+	/** 空态：某一类没有条目（带分类名，说明「这一格里现在没有东西」）。 */
+	categoryEmpty: (category: string) => string;
+	/** 空态：当前会话没有可用的操作（压缩上下文需要已绑定会话）。 */
+	operationsEmptyHint: string;
 	/** 空态：搜索没有命中。 */
 	emptyNoMatch: string;
 	emptyNoMatchHint: string;
@@ -62,17 +68,18 @@ export interface CommandPanelLabels extends SkillListLabels {
 		statusLabel: string;
 		statusConnected: string;
 		insertLabel: string;
-		hintSkill: string;
-		hintConnector: string;
-		hintFile: string;
-		hintExtension: string;
 	};
-	/** 底栏快捷键提示。 */
+	/**
+	 * 左栏与工具行的滚动切换按钮文案（无触控板时也要能翻）。
+	 *
+	 * 面板底部原来还有一行键盘快捷键提示，已按用户反馈移除：展开的列表与对话框本就不搭，
+	 * 再压一行提示更显笨重；键位在 `CommandPanelView` 里直接支持，不需要常驻说明。
+	 */
 	hints: {
-		navigate: string;
-		insert: string;
-		details: string;
-		close: string;
+		scrollToolsLeft: string;
+		scrollToolsRight: string;
+		scrollRailUp: string;
+		scrollRailDown: string;
 	};
 }
 
@@ -92,8 +99,8 @@ export interface CommandPanelPreviewModel {
 	readonly icon?: string;
 	readonly iconUrl?: string;
 	readonly fallbackIcon: string;
+	readonly kind?: "skill" | "mcp" | "plugin" | "bundle" | "file";
 	readonly meta: readonly { readonly label: string; readonly value: string }[];
-	readonly hint?: string;
 }
 
 export interface CommandPanelFileAction {
@@ -126,8 +133,6 @@ export interface CommandPanelProps {
 	open: boolean;
 	/** 左栏当前格。 */
 	tab: AddPanelTab;
-	/** 左栏可用的分类（由目录实际内容推导，空分类不出现）。 */
-	categories: readonly Exclude<AddPanelTab, "favorites">[];
 	/** 面板内搜索词（由 model 持有：键盘导航必须对可见条目工作）。 */
 	query: string;
 	/** 已按 tab + 搜索词过滤并分组的目录。 */
@@ -149,11 +154,17 @@ export interface CommandPanelProps {
 	actions: readonly CommandPanelActionItem[];
 	labels: CommandPanelLabels;
 	panelRef: React.RefObject<HTMLDivElement | null>;
+	/**
+	 * 面板内的键盘处理（↑↓ / Enter / Tab / Esc / ←）。
+	 *
+	 * 不走全局快捷键栈：编辑器在 capture 阶段就 `preventDefault`，全局栈看到
+	 * `defaultPrevented` 会直接放弃，快捷键于是「按了没反应」。挂在面板自己的容器上
+	 * 更可靠，也不会和编辑器抢键。
+	 */
+	onPanelKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void;
 	className?: string;
 	onSelectTab: (tab: AddPanelTab) => void;
 	onQueryChange: (value: string) => void;
-	/** 鼠标悬停：只改高亮，不滚动、不打开预览。 */
-	onHoverEntry: (key: string) => void;
 	/** 点击条目本体 = 插入 / 执行。 */
 	onActivateEntry: (key: string) => void;
 	/** 点击行尾「详情」= 打开整页预览。 */

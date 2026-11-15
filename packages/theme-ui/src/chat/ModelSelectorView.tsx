@@ -57,6 +57,8 @@ export interface ModelSelectorLabels {
 	cloudOnly: string;
 	/** 三栏模式：收藏栏标题、星标标题、搜索命中标题。 */
 	favoritesHeader: string;
+	/** 收藏为空时第二栏的提示；不给时回落到搜索空态。 */
+	favoritesEmpty?: string;
 	/**
 	 * 服务商栏的无障碍名称（三栅左栏）。插件自备文案，因此可缺省；
 	 * 缺省时该分组没有名字，与之前行为一致。
@@ -329,9 +331,14 @@ export function ModelSelectorView({
 			</PopoverTrigger>
 			<AnimatePresence>
 				{open && (
+					/*
+					 * 不要 `asChild`：那会把 `FLOATING_SURFACE_CLASS` 的 `rounded-2xl` 一起拼到内层
+					 * `rounded-[inherit]` 所在的同一个元素上（Radix 的 Slot 只是拼接 className，
+					 * 不经 tailwind-merge 去重），`inherit` 于是从 portal 容器继承到 0，面板就变成直角。
+					 * 让 Popover 自己出那层带圆角的面，内层再 `rounded-[inherit]` 才是真正的圆角卡片。
+					 */
 					<PopoverContent
 						forceMount
-						asChild
 						portalContainer={portalContainer}
 						align="start"
 						// 菜单贴窗口右缘时会被推到边上：留出边距让它整体往左收。
@@ -385,7 +392,10 @@ export function ModelSelectorView({
 										onToggleFavorite={handleToggleFavorite}
 									/>
 									{(footerStart || footerEnd) && (
-										<div className="flex h-9 shrink-0 items-center justify-between gap-2 border-t border-border/40 px-2">
+										<div
+											data-model-selector-footer="true"
+											className="flex h-9 shrink-0 items-center justify-between gap-2 border-t border-border/40 px-2"
+										>
 											<div className="flex min-w-0 items-center">{footerStart}</div>
 											<div className="flex min-w-0 shrink-0 items-center">{footerEnd}</div>
 										</div>

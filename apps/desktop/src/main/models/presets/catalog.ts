@@ -11,7 +11,6 @@ export interface PresetProviderDef {
 	readonly baseUrl: string;
 	readonly fetcher: PresetFetcher;
 	/** 本机回环地址上的代理：密钥有默认值，且只允许改端口，不改主机。 */
-	readonly localProxy?: boolean;
 	/**
 	 * 密钥默认值。本机代理不需要用户去申请 key，创建时预填它即可；
 	 * 这不是「免密」，只是省掉一次空填。
@@ -112,7 +111,6 @@ export const PRESET_PROVIDERS: readonly PresetProviderDef[] = [
 		api: "openai-completions",
 		baseUrl: "http://127.0.0.1:3425/v1",
 		fetcher: "openai-compatible",
-		localProxy: true,
 		defaultApiKey: "magpie",
 		isChatModel: (id) => !NON_CHAT.test(id),
 	},

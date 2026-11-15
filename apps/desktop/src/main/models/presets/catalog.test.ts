@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PRESET_PROVIDERS, getPresetProvider } from "./catalog";
+import { getPresetProvider, PRESET_PROVIDERS } from "./catalog";
 
 describe("本机代理预设", () => {
 	it("指向回环地址并带密钥默认值，用户不必自备 key", () => {
@@ -9,7 +9,6 @@ describe("本机代理预设", () => {
 			icon: "magpie",
 			api: "openai-completions",
 			baseUrl: "http://127.0.0.1:3425/v1",
-			localProxy: true,
 			defaultApiKey: "magpie",
 		});
 	});
