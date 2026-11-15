@@ -492,7 +492,7 @@ Splash 标题头部与底栏细节（`8afc059a4` / `709750d8b` / `5f9e51d3d`）�
 | --- | --- | --- | --- |
 | v0.5.74 | feat | 桌面端与 Agent 能力接入 sse 传输 | 已对齐（核实修正）：桌面数据模型 / 表单 / 预设 / OAuth / `mcp.manage` / capability-sdk / plugin-sdk 全链路已在位 |
 | v0.5.74 | feat | 运行时支持旧式 HTTP+SSE 传输 | 已对齐（核实修正）：`schemas.ts` 的 `"http" \| "sse"` 限制 `sse` 仅 `protocolMode: "legacy"`，`http-mcp-client` 按 type 分派 |
-| v0.5.74 | feat | mcp.manage 支持指定装到全局或项目层 | 待对齐 |
+| v0.5.74 | feat | mcp.manage 支持指定装到全局或项目层 | 已对齐：能力合同、插件 schema 与服务层三处都接受 `scope` / `cwd`；位置判定抽成纯函数（缺省 global、项目层要绝对路径、远程项目拒绝），项目层写 `<项目根>/.astravia/mcp.json` |
 | v0.5.74 | feat | 项目层读取时并入根目录 .mcp.json | 已对齐（本批）：库层早已支持，但桌面 supervisor 漏传 `compatProjectConfigPath`，产品里从未生效（“库对齐 ≠ 产品对齐”）。现已接线并补 supervisor 级用例；文档站待同步 |
 
 #### model-select（1 条）
@@ -506,7 +506,7 @@ Splash 标题头部与底栏细节（`8afc059a4` / `709750d8b` / `5f9e51d3d`）�
 | 版本 | 类型 | 变更 | 状态 |
 | --- | --- | --- | --- |
 | v0.5.74 | fix | install-ability 不读配置文件、不主动探测可执行文件 | 已对齐（本批）：`SKILL.md` §1 新增「也禁止直接读这些配置文件，一律用 `mcp.query`（返回值已脱敏）」与「不要自己执行可执行文件验证装没装好」；§4 校验改为「`get` 能返回配置即算装好」，手跑降为排错手段（`ability.json` 1.0.1） |
-| v0.5.74 | feat | install-ability 安装 MCP 前先问清全局还是项目 | 待对齐（阻塞于 `dqpd`：`mcp.manage` 还没有 `scope` / `cwd`，现在写进技能会教模型传一个被 schema 拒绝的字段） |
+| v0.5.74 | feat | install-ability 安装 MCP 前先问清全局还是项目 | 已对齐：`SKILL.md` 新增 §4.1 层级判定（未说明且有项目时先问、项目层密钥只允许 `${VAR}`、报告写明落点、市场安装只能全局）；不再阻塞 |
 
 #### automation（4 条）
 
