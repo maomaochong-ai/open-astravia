@@ -53,9 +53,19 @@ const mcpServerDetailType = Type.Object(
 	{ additionalProperties: false },
 );
 
+/**
+ * 安装位置。缺省 global（保持既有行为）；project 必须同时给出本机项目根绝对路径。
+ * 远程项目一律拒绝：它的配置文件不在这台机器上。
+ */
+const mcpScopeFields = {
+	scope: Type.Optional(Type.Union([Type.Literal("global"), Type.Literal("project")])),
+	cwd: Type.Optional(Type.String({ pattern: "\\S" })),
+};
+
 const mcpServerNameInputType = Type.Object(
 	{
 		name: Type.String({ pattern: "\\S" }),
+		...mcpScopeFields,
 	},
 	{ additionalProperties: false },
 );
@@ -97,6 +107,7 @@ const mcpServerUpsertDataType = Type.Union([mcpHttpServerUpsertDataType, mcpStdi
 const mcpServerUpsertInputType = Type.Object(
 	{
 		name: Type.String({ pattern: "\\S" }),
+		...mcpScopeFields,
 		data: mcpServerUpsertDataType,
 	},
 	{ additionalProperties: false },
@@ -106,6 +117,7 @@ const mcpServerSetEnabledInputType = Type.Object(
 	{
 		name: Type.String({ pattern: "\\S" }),
 		enabled: Type.Boolean(),
+		...mcpScopeFields,
 	},
 	{ additionalProperties: false },
 );

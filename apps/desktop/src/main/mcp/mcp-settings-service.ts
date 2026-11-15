@@ -1,6 +1,7 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { getAstraviaHomePath } from "@astravia/action-rpc";
+import { CONFIG_DIR_NAME } from "@astravia/coding-agent/config";
 import { atomicWriteJSON } from "@astravia/toolkit/atomic-write";
 import type { McpServerDetail, McpServerSummary, McpServerUpsertData } from "@astravia-org/capability-sdk";
 import type { AppMonitorEvent, AppMonitorResourceSource } from "../../preload/api-types/app-monitor.js";
@@ -16,7 +17,17 @@ import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/abi
 import { stopOpenMarketplaceManagedMcpRuntime } from "../abilities/open-marketplace/open-marketplace-mcp-runtime-host.js";
 import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
 import { validateMcpConfig } from "../mcp-config-validation.js";
+import { type McpInstallScope, projectMcpConfigPath, resolveMcpInstallLocation } from "./mcp-install-location.js";
 import { ensureMcpFileMigrations } from "./migrations/index.js";
+
+/** 项目层配置：读不到就是空，坏文件按空处理（下次写入会覆盖成合法内容）。 */
+async function readProjectMcpConfig(path: string): Promise<McpConfigData> {
+	try {
+		return validateMcpConfig(JSON.parse(await readFile(path, "utf8")));
+	} catch {
+		return { mcpServers: {} };
+	}
+}
 
 export interface McpSettingsServiceOptions {
 	readonly readConfig: () => Promise<McpConfigData>;
@@ -166,6 +177,41 @@ export class McpSettingsService {
 		});
 	}
 
+	/**
+	 * 解析这次写入落在哪个文件。
+	 *
+	 * 项目层文件由调用方给出 cwd 后解析；没有 cwd 又声明 project 直接报错，
+	 * 绝不悄悄退回全局——那正是最难排查的一类问题（用户以为装在项目里）。
+	 */
+	private resolveTarget(
+		name: string,
+		options?: { scope?: McpInstallScope; cwd?: string },
+	): {
+		readonly scope: McpInstallScope;
+		readonly read: () => Promise<McpConfigData>;
+		readonly write: (config: McpConfigData) => Promise<void>;
+	} {
+		const location = resolveMcpInstallLocation({
+			scope: options?.scope,
+			cwd: options?.cwd,
+			isRemoteProject: options?.cwd?.startsWith("ssh://") ?? false,
+			configDirName: CONFIG_DIR_NAME,
+		});
+		if (!location.ok) throw new Error(location.error);
+		if (location.scope === "global") {
+			return { scope: "global", read: () => this.options.readConfig(), write: this.options.writeConfig };
+		}
+		const path = projectMcpConfigPath(location.projectDir ?? "", CONFIG_DIR_NAME);
+		return {
+			scope: "project",
+			read: () => readProjectMcpConfig(path),
+			write: async (config) => {
+				await mkdir(dirname(path), { recursive: true });
+				await atomicWriteJSON(path, config);
+			},
+		};
+	}
+
 	async list(): Promise<McpServerSummary[]> {
 		const config = await this.getConfig();
 		return Object.entries(config.mcpServers).map(([name, server]) => ({
@@ -190,10 +236,11 @@ export class McpSettingsService {
 	async upsert(
 		name: string,
 		data: McpServerUpsertData,
-		options?: { abilityVersion?: string },
+		options?: { abilityVersion?: string; scope?: McpInstallScope; cwd?: string },
 	): Promise<McpServerDetail> {
+		const target = this.resolveTarget(name, options);
 		return this.runMutation(async () => {
-			const config = await this.options.readConfig();
+			const config = await target.read();
 			const existing = config.mcpServers[name];
 			let next: McpServerConfigData;
 			if (isRemoteUpsertData(data)) {
@@ -212,28 +259,34 @@ export class McpSettingsService {
 					...(data.autoApprove === undefined ? {} : { autoApprove: [...data.autoApprove] }),
 				} satisfies McpStdioServerConfigData;
 			}
-			await this.options.writeConfig(
+			await target.write(
 				validateMcpConfig({
 					mcpServers: { ...config.mcpServers, [name]: next },
 				}),
 			);
 			if (options?.abilityVersion) recordAbilityInstall("mcp", name, options.abilityVersion);
-			this.recordLifecycle(
-				name,
-				existing ? "updated" : "installed",
-				options?.abilityVersion ? "market" : existing ? undefined : "custom",
-			);
+			if (target.scope === "global")
+				this.recordLifecycle(
+					name,
+					existing ? "updated" : "installed",
+					options?.abilityVersion ? "market" : existing ? undefined : "custom",
+				);
 			return redactServer(name, next);
 		});
 	}
 
-	async setEnabled(name: string, enabled: boolean): Promise<void> {
+	async setEnabled(
+		name: string,
+		enabled: boolean,
+		options?: { scope?: McpInstallScope; cwd?: string },
+	): Promise<void> {
+		const target = this.resolveTarget(name, options);
 		await this.runMutation(async () => {
-			const config = await this.options.readConfig();
+			const config = await target.read();
 			const existing = config.mcpServers[name];
 			if (!existing) throw new Error(`MCP server not found: ${name}`);
 			const wasEnabled = !existing.disabled;
-			await this.options.writeConfig(
+			await target.write(
 				validateMcpConfig({
 					mcpServers: {
 						...config.mcpServers,
@@ -241,19 +294,24 @@ export class McpSettingsService {
 					},
 				}),
 			);
-			if (wasEnabled !== enabled) this.recordLifecycle(name, enabled ? "enabled" : "disabled");
+			if (wasEnabled !== enabled && target.scope === "global") {
+				this.recordLifecycle(name, enabled ? "enabled" : "disabled");
+			}
 		});
 	}
 
-	async remove(name: string): Promise<void> {
+	async remove(name: string, options?: { scope?: McpInstallScope; cwd?: string }): Promise<void> {
+		const target = this.resolveTarget(name, options);
 		await this.runMutation(async () => {
-			const config = await this.options.readConfig();
+			const config = await target.read();
 			if (!config.mcpServers[name]) throw new Error(`MCP server not found: ${name}`);
 			const mcpServers = { ...config.mcpServers };
 			delete mcpServers[name];
-			await this.options.writeConfig({ mcpServers });
-			removeAbilityLedgerEntry("mcp", name);
-			this.recordLifecycle(name, "uninstalled");
+			await target.write({ mcpServers });
+			if (target.scope === "global") {
+				removeAbilityLedgerEntry("mcp", name);
+				this.recordLifecycle(name, "uninstalled");
+			}
 		});
 	}
 

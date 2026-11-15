@@ -31,21 +31,21 @@ export function registerDesktopMcpProviders(registry: CapabilityRegistry): Dispo
 			},
 		}),
 		bindCapability(DOMAIN_MCP_CAPABILITIES.UPSERT_SERVER, {
-			execute: async ({ name, data }, context) => {
+			execute: async ({ name, data, scope, cwd }, context) => {
 				assertNotAborted(context.signal);
-				return mcp.upsert(name, data);
+				return mcp.upsert(name, data, { scope, cwd });
 			},
 		}),
 		bindCapability(DOMAIN_MCP_CAPABILITIES.SET_SERVER_ENABLED, {
-			execute: async ({ name, enabled }, context) => {
+			execute: async ({ name, enabled, scope, cwd }, context) => {
 				assertNotAborted(context.signal);
-				await mcp.setEnabled(name, enabled);
+				await mcp.setEnabled(name, enabled, { scope, cwd });
 			},
 		}),
 		bindCapability(DOMAIN_MCP_CAPABILITIES.REMOVE_SERVER, {
-			execute: async ({ name }, context) => {
+			execute: async ({ name, scope, cwd }, context) => {
 				assertNotAborted(context.signal);
-				await mcp.remove(name);
+				await mcp.remove(name, { scope, cwd });
 			},
 		}),
 	]);

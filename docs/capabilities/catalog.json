@@ -6480,6 +6480,10 @@
                 {
                   "const": "http",
                   "type": "string"
+                },
+                {
+                  "const": "sse",
+                  "type": "string"
                 }
               ]
             },
@@ -6509,6 +6513,22 @@
           "name": {
             "pattern": "\\S",
             "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "const": "global",
+                "type": "string"
+              },
+              {
+                "const": "project",
+                "type": "string"
+              }
+            ]
+          },
+          "cwd": {
+            "pattern": "\\S",
+            "type": "string"
           }
         }
       },
@@ -6534,6 +6554,10 @@
               },
               {
                 "const": "http",
+                "type": "string"
+              },
+              {
+                "const": "sse",
                 "type": "string"
               }
             ]
@@ -6602,6 +6626,22 @@
             "pattern": "\\S",
             "type": "string"
           },
+          "scope": {
+            "anyOf": [
+              {
+                "const": "global",
+                "type": "string"
+              },
+              {
+                "const": "project",
+                "type": "string"
+              }
+            ]
+          },
+          "cwd": {
+            "pattern": "\\S",
+            "type": "string"
+          },
           "data": {
             "anyOf": [
               {
@@ -6612,8 +6652,16 @@
                 ],
                 "properties": {
                   "type": {
-                    "const": "http",
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "const": "http",
+                        "type": "string"
+                      },
+                      {
+                        "const": "sse",
+                        "type": "string"
+                      }
+                    ]
                   },
                   "url": {
                     "type": "string"
@@ -6717,6 +6765,10 @@
               {
                 "const": "http",
                 "type": "string"
+              },
+              {
+                "const": "sse",
+                "type": "string"
               }
             ]
           },
@@ -6786,6 +6838,22 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "const": "global",
+                "type": "string"
+              },
+              {
+                "const": "project",
+                "type": "string"
+              }
+            ]
+          },
+          "cwd": {
+            "pattern": "\\S",
+            "type": "string"
           }
         }
       },
@@ -6804,6 +6872,22 @@
         ],
         "properties": {
           "name": {
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "const": "global",
+                "type": "string"
+              },
+              {
+                "const": "project",
+                "type": "string"
+              }
+            ]
+          },
+          "cwd": {
             "pattern": "\\S",
             "type": "string"
           }
@@ -8759,6 +8843,9 @@
                   "useProxy": {
                     "type": "boolean"
                   },
+                  "disabled": {
+                    "type": "boolean"
+                  },
                   "headers": {
                     "type": "object",
                     "patternProperties": {
@@ -8890,6 +8977,9 @@
             "type": "boolean"
           },
           "useProxy": {
+            "type": "boolean"
+          },
+          "disabled": {
             "type": "boolean"
           },
           "headers": {
@@ -9201,6 +9291,9 @@
           "useProxy": {
             "type": "boolean"
           },
+          "disabled": {
+            "type": "boolean"
+          },
           "headers": {
             "type": "object",
             "patternProperties": {
@@ -9467,6 +9560,9 @@
                     "type": "boolean"
                   },
                   "useProxy": {
+                    "type": "boolean"
+                  },
+                  "disabled": {
                     "type": "boolean"
                   },
                   "headers": {

@@ -39,6 +39,12 @@ const manageSchema: PluginJsonSchema = {
 			properties: {
 				operation: { const: "upsert" },
 				name: { type: "string", minLength: 1 },
+				/**
+				 * 装到哪一层：缺省 global。project 必须带本机项目根的绝对路径 cwd，
+				 * 远程项目会被拒。项目层会进仓库，密钥只允许写成 ${VAR} 引用。
+				 */
+				scope: { enum: ["global", "project"] },
+				cwd: { type: "string", minLength: 1 },
 				data: {
 					oneOf: [
 						{
@@ -82,6 +88,8 @@ const manageSchema: PluginJsonSchema = {
 				operation: { const: "set-enabled" },
 				name: { type: "string", minLength: 1 },
 				enabled: { type: "boolean" },
+				scope: { enum: ["global", "project"] },
+				cwd: { type: "string", minLength: 1 },
 			},
 			required: ["operation", "name", "enabled"],
 			additionalProperties: false,
@@ -90,6 +98,8 @@ const manageSchema: PluginJsonSchema = {
 			properties: {
 				operation: { const: "remove" },
 				name: { type: "string", minLength: 1 },
+				scope: { enum: ["global", "project"] },
+				cwd: { type: "string", minLength: 1 },
 			},
 			required: ["operation", "name"],
 			additionalProperties: false,

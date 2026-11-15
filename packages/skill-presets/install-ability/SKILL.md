@@ -133,6 +133,18 @@ skills.manage {"operation":"uninstall","name":"<name>"}
 
 ## 4. MCP 服务器
 
+### 4.1 先问清装到哪一层
+
+`mcp.manage` 的 `scope` 缺省是 `global`（写进用户家目录的那份），`project` 写进项目自己的
+配置文件 `<项目根>/.astravia/mcp.json`，会进版本库。
+
+- 用户没说、且当前有项目目录时**先问**：只在本机用还是这个仓库里的人也要用。
+- 选项目层必须同时给本机项目根的绝对路径 `cwd`；远程项目（`ssh://`）不能装项目层，直接说明原因。
+- 项目层文件会进仓库，因此 `env` / `headers` 里的值只能写成 `${VAR}` 引用，不要写明文密钥。
+- 报结果时写明落在哪一层，否则用户会以为「装到项目里了」而实际写进了全局。
+- 市场安装的能力目前只能装全局，用户问起就如实说明。
+
+
 ```json
 mcp.manage {"operation":"upsert","name":"filesystem",
   "data":{"command":"npx","args":["-y","@modelcontextprotocol/server-filesystem","/abs/dir"]}}
