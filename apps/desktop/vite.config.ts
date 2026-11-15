@@ -43,6 +43,9 @@ function hostApiAccessTransform(): Plugin {
 			if (!cleanId?.startsWith(`${rendererRoot}/`) || cleanId === hostApiModule || !/\.tsx?$/.test(cleanId)) {
 				return null;
 			}
+			// 只有真的访问了 `window.astravia` 的模块才需要重写。先做一次字符串预筛，
+			// 避免为每个模块都建一次 TypeScript AST——开发态每次请求都会走这个钩子。
+			if (!code.includes("window.astravia")) return null;
 
 			const scriptKind = cleanId.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
 			const sourceFile = ts.createSourceFile(cleanId, code, ts.ScriptTarget.Latest, true, scriptKind);
