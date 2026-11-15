@@ -10,7 +10,7 @@ import {
 	DialogTitle,
 } from "@astravia-org/ui";
 import { useEffect, useRef, useState, type JSX } from "react";
-import { ModelPicker } from "./ModelPicker";
+import { BoardModelPicker } from "./BoardModelPicker";
 import { ProjectPicker } from "./ProjectPicker";
 import { PromptTextarea, type PromptTextareaHandle } from "./PromptTextarea";
 import type { KanbanModelOption, KanbanSkillOption } from "../board/board-controller";
@@ -208,8 +208,7 @@ export function CardEditorDialog({
 							<div className="flex flex-col gap-1">
 								<span className={fieldLabelClass}>{t("editor.model")}</span>
 								{/* 与会话页输入栏同一个选择器；这里选的是「这张卡」的模型 */}
-								<ModelPicker
-									models={models}
+								<BoardModelPicker
 									value={draft.modelKey}
 									onChange={(modelKey) => setDraft((prev) => ({ ...prev, modelKey }))}
 									inheritLabel={
@@ -218,7 +217,8 @@ export function CardEditorDialog({
 											: t("editor.modelDefault")
 									}
 									defaultKey={defaultModelKey || undefined}
-									triggerClassName="h-[34px] w-full max-w-none justify-start rounded-lg border-border bg-background px-2.5 text-[12px]"
+									ariaLabel={t("editor.model")}
+									className="h-[34px] w-full rounded-lg border-border bg-background px-2.5 text-[12px]"
 								/>
 							</div>
 						)}

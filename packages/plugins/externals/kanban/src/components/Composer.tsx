@@ -1,6 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { cn } from "@astravia-org/ui";
-import { ModelPicker } from "./ModelPicker";
+import { BoardModelPicker } from "./BoardModelPicker";
 import { ProjectPicker } from "./ProjectPicker";
 import { PromptTextarea, type PromptTextareaHandle } from "./PromptTextarea";
 import { useCallback, useMemo, useRef, useState, type JSX, type KeyboardEvent } from "react";
@@ -158,8 +158,7 @@ export function Composer({
 							  * 这里选的是「看板默认」，新卡片按当前值固化，单张卡可在编辑弹窗里改。
 							  */}
 							{models.length > 0 && (
-								<ModelPicker
-									models={models}
+								<BoardModelPicker
 									value={modelKey}
 									onChange={onModelKeyChange}
 									inheritLabel={
@@ -168,7 +167,8 @@ export function Composer({
 											: t("composer.defaultModel")
 									}
 									defaultKey={hostDefaultModelKey || undefined}
-									triggerClassName="h-6 max-w-44 rounded-full border-border/60 px-2 text-muted-foreground hover:border-border hover:text-foreground"
+									ariaLabel={t("composer.model")}
+									className="h-6 max-w-44 rounded-full border-border/60 px-2 text-[11px] text-muted-foreground hover:border-border hover:text-foreground"
 								/>
 							)}
 

@@ -2,9 +2,9 @@
 	"id": "kanban",
 	"name": "%plugin.name%",
 	"icon": "icon.png",
-	"version": "0.4.1",
+	"version": "0.4.2",
 	"defaultLocale": "zh",
-	"pluginApiVersion": "^2.0.0",
+	"pluginApiVersion": "^2.10.0",
 	"entry": "dist/mf-manifest.json",
 	"moduleFederation": {
 		"remoteName": "kanban",

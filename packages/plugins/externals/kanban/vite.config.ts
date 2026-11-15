@@ -9,7 +9,6 @@ export default defineConfig({
 			name: "kanban",
 			entry: "./src/index.tsx",
 			hostUi: true,
-			hostThemeUi: true,
 		}),
 	],
 	esbuild: {
