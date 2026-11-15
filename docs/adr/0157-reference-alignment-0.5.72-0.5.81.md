@@ -470,8 +470,8 @@ Splash 标题头部与底栏细节（`8afc059a4` / `709750d8b` / `5f9e51d3d`）�
 
 | 版本 | 类型 | 变更 | 状态 |
 | --- | --- | --- | --- |
-| v0.5.76 | feat | ModelPicker 支持 menuClassName 抬高菜单层级 | 待对齐 |
-| v0.5.76 | feat | 新增宿主渲染的 ModelPicker，插件选模型与输入栏同源 | 待对齐 |
+| v0.5.76 | feat | ModelPicker 支持 menuClassName 抬高菜单层级 | 已对齐：`menuClassName` 落在菜单内容、`className` 落在触发器；宿主映射用例覆盖两者落点 |
+| v0.5.76 | feat | 新增宿主渲染的 ModelPicker，插件选模型与输入栏同源 | 已对齐：`plugin-sdk` 新增 `ModelPicker`（经宿主桥渲染共享视图），旧宿主明确报「需要更新的 Desktop」；4 条桥接用例通过 |
 
 #### open-in-app（2 条）
 
@@ -499,7 +499,7 @@ Splash 标题头部与底栏细节（`8afc059a4` / `709750d8b` / `5f9e51d3d`）�
 
 | 版本 | 类型 | 变更 | 状态 |
 | --- | --- | --- | --- |
-| v0.5.76 | feat | 宿主各处模型选择器与输入栏同源 | 待对齐 |
+| v0.5.76 | feat | 宿主各处模型选择器与输入栏同源 | 已对齐：设置页 / 定时任务 / 知识库 / 批量任务 / 团队成员统一走 `ModelSelect` → 共享三栏视图，形态由触发器 variant 表达；`ModelSelect` 用例 3 条通过 |
 
 #### skill（2 条）
 
@@ -621,13 +621,13 @@ Splash 标题头部与底栏细节（`8afc059a4` / `709750d8b` / `5f9e51d3d`）�
 
 | 版本 | 类型 | 变更 | 状态 |
 | --- | --- | --- | --- |
-| v0.5.76 | refactor | 提示词优化模型改用 plugin-sdk 的宿主 ModelPicker | 待对齐 |
+| v0.5.76 | refactor | 提示词优化模型改用 plugin-sdk 的宿主 ModelPicker | 已对齐：改用宿主选择器，删掉自拉清单与自绘下拉，`ai.models.list` 权限一并去掉 |
 
 #### chinese-chess（1 条）
 
 | 版本 | 类型 | 变更 | 状态 |
 | --- | --- | --- | --- |
-| v0.5.76 | refactor | 对手模型改用 plugin-sdk 的宿主 ModelPicker | 待对齐 |
+| v0.5.76 | refactor | 对手模型改用 plugin-sdk 的宿主 ModelPicker | 已对齐：原生 `select` 换成宿主选择器，「默认」映射成空值项，运行时不再拉清单 |
 
 #### kanban（1 条）
 
