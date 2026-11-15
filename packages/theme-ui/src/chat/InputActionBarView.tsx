@@ -41,7 +41,11 @@ export function InputActionBarView({ className, model }: InputActionBarViewProps
 			transition={{ type: "spring", stiffness: 440, damping: 36, mass: 0.9 }}
 			className={cn(
 				// 单行：窄宽隐藏文案只留图标，避免阶梯区折行
-				"input-ledge relative z-0 mx-auto flex w-[93%] flex-nowrap gap-0.5 overflow-x-auto rounded-b-[14px] bg-input-bar-bg/70 px-3 pt-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+				// 只能横向滚：宽度不足时条目向右溢出就够了，纵向一旦也可滚，
+				// 按钮的 hover / press 缩放会在右侧与底部各顶出一条残影滚动条。
+				// 隐藏滚动条用仓库的 no-scrollbar 标记类——全局 overlay 滚动条规则无 layer，
+				// Tailwind 的 [&::-webkit-scrollbar]:hidden 压不过它。
+				"input-ledge no-scrollbar relative z-0 mx-auto flex w-[93%] flex-nowrap gap-0.5 overflow-x-auto overflow-y-hidden rounded-b-[14px] bg-input-bar-bg/70 px-3 pt-1 pb-1",
 				surface?.rootClassName,
 				className,
 			)}

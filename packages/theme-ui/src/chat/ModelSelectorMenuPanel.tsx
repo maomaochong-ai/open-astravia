@@ -1,6 +1,6 @@
 import { cn } from "@astravia-org/ui/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui/popover";
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { ModelSelectorLabels, ModelSelectorOptionView, ModelSelectorProviderGroup } from "./ModelSelectorView";
 import {
@@ -29,6 +29,8 @@ export interface ModelSelectorMenuPanelProps {
 	readonly labels: ModelSelectorLabels;
 	readonly favoriteKeys: readonly string[];
 	readonly searchQuery: string;
+	/** 搜索框由宿主渲染（它掌握焦点、过滤与键盘联动），面板只负责摆在中栏顶部。 */
+	readonly searchSlot?: ReactNode;
 	/** 菜单打开时默认停在的栏；宿主用它把「当前模型已收藏」的情况默认落在收藏栏。 */
 	readonly initialProviderId?: string | null;
 	/**
@@ -58,10 +60,13 @@ export interface ModelSelectorMenuPanelHandle {
 	focusLastModel: () => boolean;
 }
 
-const PROVIDER_COLUMN_WIDTH = 116;
-const LEVEL_COLUMN_WIDTH = 104;
 /** 服务商栏超过这个行数就折叠，留一格「更多」；几十个服务商时左栏会把模型栏挤没。 */
 const MAX_PROVIDER_ROWS = 7;
+
+/** 服务商没有图标时，第一栏用名称的第一个字符做头像。 */
+function providerInitial(label: string): string {
+	return Array.from(label.trim())[0] ?? "?";
+}
 
 /** 详情浮层里的一行：标签在上、值在下，值可以选中复制。 */
 function InfoRow({ label, children }: { readonly label: string; readonly children: React.ReactNode }): JSX.Element {
@@ -126,9 +131,9 @@ function ModelInfoButton({
 				onPointerDown={(event) => event.stopPropagation()}
 				onPointerMove={(event) => event.stopPropagation()}
 				// 应用默认不可选中文字；详情里的模型 ID 常要复制，整块放开选择。
-				className="w-56 cursor-text select-text border-border/60 bg-background/70 p-2.5 backdrop-blur-xl"
+				className="w-64 cursor-text select-text gap-3 border-border/60 bg-background/70 p-3 backdrop-blur-xl backdrop-saturate-150"
 			>
-				<p className="mb-2 min-w-0 break-words text-[12px] font-medium leading-snug text-foreground">
+				<p className="mb-2 min-w-0 break-words text-[13px] font-medium leading-snug text-foreground">
 					{model.displayName}
 				</p>
 				<dl className="flex flex-col gap-2">
@@ -255,6 +260,7 @@ export const ModelSelectorMenuPanel = forwardRef<ModelSelectorMenuPanelHandle, M
 		labels,
 		favoriteKeys,
 		searchQuery,
+		searchSlot,
 			initialProviderId,
 			revealModelKey,
 		emptyOption,
@@ -269,6 +275,20 @@ export const ModelSelectorMenuPanel = forwardRef<ModelSelectorMenuPanelHandle, M
 	const [scrollTop, setScrollTop] = useState(0);
 	const [providerExpanded, setProviderExpanded] = useState(false);
 	const listRef = useRef<HTMLDivElement>(null);
+	const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
+	// 面板高度固定后，列表的实际可视高度仍取决于搜索框与底栏：实测一次，虚拟窗口才准。
+	// jsdom 里量不到尺寸（恒为 0），沿用宿主给的兜底值。
+	useEffect(() => {
+		const node = listRef.current;
+		if (!node || typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(() => {
+			const next = node.clientHeight;
+			if (next > 0) setMeasuredHeight(next);
+		});
+		observer.observe(node);
+		return () => observer.disconnect();
+	}, []);
+	const effectiveViewportHeight = measuredHeight ?? viewportHeight;
 
 	const columns = useMemo(
 		() => buildModelColumns(groups, { favorites: favoriteKeys, query: searchQuery, activeProviderId }),
@@ -277,14 +297,14 @@ export const ModelSelectorMenuPanel = forwardRef<ModelSelectorMenuPanelHandle, M
 
 	const range = computeVirtualRange({
 		scrollTop,
-		viewportHeight,
+		viewportHeight: effectiveViewportHeight,
 		rowHeight,
 		count: columns.models.length,
 	});
 	const visibleModels = columns.models.slice(range.start, range.end);
 
 	/** 滚动量上限：最后一行贴底时列表不该再往下走。 */
-	const maxScrollTop = Math.max(0, columns.models.length * rowHeight - viewportHeight);
+	const maxScrollTop = Math.max(0, columns.models.length * rowHeight - effectiveViewportHeight);
 
 	/**
 	 * 按行下标直接定位滚动位置。窗口化后目标行不一定已挂载，
@@ -359,137 +379,145 @@ export const ModelSelectorMenuPanel = forwardRef<ModelSelectorMenuPanelHandle, M
 	}, []);
 
 	return (
-		<div className="flex min-h-0 flex-1 overflow-hidden">
-			{/* 第一栏：服务商（含收藏） */}
+		<div className="flex h-[min(340px,60vh)] min-h-0">
+			{/* 第一栏：服务商（含收藏）。图标竖排，宽度固定 44px——名字放不下，悬停与无障碍名称补齐。 */}
 			<div
 				role="group"
 				aria-label={labels.providerHeader}
-				className="no-scrollbar flex shrink-0 flex-col overflow-y-auto border-r border-border/50 p-1"
-				style={{ width: PROVIDER_COLUMN_WIDTH }}
+				className="no-scrollbar flex w-11 shrink-0 flex-col items-center gap-1 overflow-y-auto overflow-x-hidden border-r border-border/40 p-1"
 			>
 				{visibleProviders.map((column) => {
 					const active = !columns.searching && column.id === columns.activeProviderId;
+					const label = column.isFavorites ? labels.favoritesHeader : column.label;
 					return (
 						<button
 							key={column.id}
 							type="button"
+							title={label}
+							aria-label={label}
 							aria-pressed={active}
 							onClick={() => selectProvider(column.id)}
 							className={cn(
-								"flex h-7 items-center gap-1.5 rounded-md px-1.5 text-left text-[11px]",
-								active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-foreground/5",
+								"flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground",
+								active && "bg-accent text-accent-foreground",
 							)}
 						>
 							{column.isFavorites ? (
-								<span className="icon-[solar--star-linear] size-3 shrink-0 text-primary" aria-hidden="true" />
+								<span aria-hidden="true" className="icon-[solar--star-bold] size-4" />
+							) : column.icon ? (
+								<ProviderIcon symbol={column.icon} className="size-4" />
 							) : (
-								<ProviderIcon symbol={column.icon} className="size-3 shrink-0" />
+								<span aria-hidden="true" className="text-[12px] font-semibold uppercase leading-none">
+									{providerInitial(column.label)}
+								</span>
 							)}
-							<span className="min-w-0 flex-1 truncate">
-								{column.isFavorites ? labels.favoritesHeader : column.label}
-							</span>
-							<span className="shrink-0 text-[9px] tabular-nums text-muted-foreground/60">{column.count}</span>
 						</button>
 					);
 				})}
 				{canFoldProviders && (
 					<button
 						type="button"
+						title={providerExpanded ? (labels.fewerProviders ?? "") : `+${hiddenProviderCount}`}
+						aria-label={providerExpanded ? (labels.fewerProviders ?? "") : `+${hiddenProviderCount}`}
 						onClick={() => setProviderExpanded((value) => !value)}
-						className="flex h-7 items-center gap-1.5 rounded-md px-1.5 text-left text-[11px] text-muted-foreground hover:bg-foreground/5"
+						className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-foreground/5"
 					>
-						<span className="icon-[solar--alt-arrow-down-linear] size-3 shrink-0" aria-hidden="true" />
-						<span className="min-w-0 flex-1 truncate tabular-nums">
-							{providerExpanded ? (labels.fewerProviders ?? "") : `+${hiddenProviderCount}`}
-						</span>
-					</button>
-				)}
-				{columns.providers.length === 0 && (
-					<p className="px-1.5 py-2 text-[11px] text-muted-foreground">{labels.noResults}</p>
-				)}
-			</div>
-
-			{/* 第二栏：模型（虚拟滚动） */}
-			<div
-				ref={listRef}
-				role="listbox"
-				aria-label={labels.modelHeader}
-				onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
-				className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto p-1 [mask-image:linear-gradient(to_bottom,transparent,black_10px,black_calc(100%-10px),transparent)]"
-				style={{ maxHeight: viewportHeight }}
-			>
-				{columns.searching && columns.models.length > 0 && (
-					<p className={cn("px-2 pb-0.5 pt-0.5 text-[10px] text-muted-foreground/60", classNames?.providerHeader)}>
-						{labels.searchResultsHeader}
-					</p>
-				)}
-				{emptyOption && !columns.searching && (
-					<button
-						type="button"
-						onClick={emptyOption.onSelect}
-						aria-current={!selectedModel ? "true" : undefined}
-						className={cn(
-							"mb-0.5 flex h-7 w-full items-center rounded-md px-2 text-left text-xs",
-							!selectedModel ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-foreground/5",
+						{providerExpanded ? (
+							<span aria-hidden="true" className="icon-[solar--alt-arrow-up-linear] size-4" />
+						) : (
+							<span aria-hidden="true" className="text-[10px] font-medium tabular-nums">
+								+{hiddenProviderCount}
+							</span>
 						)}
-					>
-						<span className="min-w-0 flex-1 truncate">{emptyOption.label}</span>
-						{!selectedModel && <span className="icon-[solar--check-circle-linear] h-3 w-3 shrink-0" />}
 					</button>
-				)}
-				{range.paddingTop > 0 && <div style={{ height: range.paddingTop }} aria-hidden="true" />}
-				{visibleModels.map((entry) => (
-					<ModelRow
-						key={entry.model.key}
-						model={entry.model}
-						providerLabel={entry.providerLabel}
-						selected={entry.model.key === selectedModel}
-						isDefault={entry.model.key === defaultKey}
-						favorited={favoriteKeys.includes(entry.model.key)}
-						labels={labels}
-						showProvider={columns.searching}
-						className={classNames?.item}
-						onSelect={onSelectModel}
-						onToggleFavorite={onToggleFavorite}
-					/>
-				))}
-				{range.paddingBottom > 0 && <div style={{ height: range.paddingBottom }} aria-hidden="true" />}
-				{columns.models.length === 0 && (
-					<div className="flex min-h-24 flex-col items-center justify-center px-4 py-6 text-center">
-						<span aria-hidden="true" className="icon-[solar--magnifer-linear] mb-1.5 size-4 text-muted-foreground" />
-						<p className="text-xs font-medium text-foreground">{labels.noResults}</p>
-						<p className="mt-0.5 text-[11px] text-muted-foreground">{labels.noResultsHint}</p>
-					</div>
 				)}
 			</div>
 
-			{/* 第三栏：思考强度（没有档位时整栏不渲染） */}
-			{hasLevels && (
+			{/* 第二栏：搜索 + 模型列表。宽度固定 256px，与第一、三栏一起构成不变的面板宽度。 */}
+			<div className="flex w-64 min-w-0 shrink flex-col p-1">
+				{searchSlot && <div className="shrink-0 p-0.5">{searchSlot}</div>}
 				<div
-					role="group"
-					aria-label={labels.reasoningHeader}
-					className="no-scrollbar flex shrink-0 flex-col overflow-y-auto border-l border-border/50 p-1"
-					style={{ width: LEVEL_COLUMN_WIDTH }}
+					ref={listRef}
+					role="listbox"
+					aria-label={labels.modelHeader}
+					onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+					className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden [mask-image:linear-gradient(to_bottom,transparent,black_10px,black_calc(100%-10px),transparent)]"
 				>
-					{menuLevels.map((level) => (
+					{columns.searching && columns.models.length > 0 && (
+						<p className={cn("px-2 pb-0.5 pt-1 text-[10px] text-muted-foreground/60", classNames?.providerHeader)}>
+							{labels.searchResultsHeader}
+						</p>
+					)}
+					{emptyOption && !columns.searching && (
 						<button
-							key={level}
 							type="button"
-							aria-pressed={level === currentLevel}
-							onClick={() => onSelectReasoning(level)}
+							onClick={emptyOption.onSelect}
+							aria-current={!selectedModel ? "true" : undefined}
 							className={cn(
-								"flex h-7 items-center gap-1.5 rounded-md px-1.5 text-left text-[11px]",
-								level === currentLevel
-									? "bg-accent text-accent-foreground"
-									: "text-muted-foreground hover:bg-foreground/5",
+								"mb-0.5 flex h-7 w-full items-center rounded-md px-2 text-left text-xs",
+								!selectedModel ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-foreground/5",
 							)}
 						>
-							<span className="min-w-0 flex-1 truncate">{labels.levelLabel(level)}</span>
-							{level === currentLevel && (
-								<span className="icon-[solar--check-circle-linear] h-3 w-3 shrink-0" />
-							)}
+							<span className="min-w-0 flex-1 truncate">{emptyOption.label}</span>
+							{!selectedModel && <span className="icon-[solar--check-circle-linear] h-3 w-3 shrink-0" />}
 						</button>
+					)}
+					{range.paddingTop > 0 && <div style={{ height: range.paddingTop }} aria-hidden="true" />}
+					{visibleModels.map((entry) => (
+						<ModelRow
+							key={entry.model.key}
+							model={entry.model}
+							providerLabel={entry.providerLabel}
+							selected={entry.model.key === selectedModel}
+							isDefault={entry.model.key === defaultKey}
+							favorited={favoriteKeys.includes(entry.model.key)}
+							labels={labels}
+							showProvider={columns.searching}
+							className={classNames?.item}
+							onSelect={onSelectModel}
+							onToggleFavorite={onToggleFavorite}
+						/>
 					))}
+					{range.paddingBottom > 0 && <div style={{ height: range.paddingBottom }} aria-hidden="true" />}
+					{columns.models.length === 0 && (
+						<div className="flex min-h-24 flex-col items-center justify-center px-4 py-6 text-center">
+							<span aria-hidden="true" className="icon-[solar--magnifer-linear] mb-1.5 size-4 text-muted-foreground" />
+							<p className="text-xs font-medium text-foreground">{labels.noResults}</p>
+							<p className="mt-0.5 text-[11px] text-muted-foreground">{labels.noResultsHint}</p>
+						</div>
+					)}
+				</div>
+			</div>
+
+			{/* 第三栏：思考强度（没有档位时整栏不渲染）。 */}
+			{hasLevels && (
+				<div className="relative flex w-32 shrink-0 flex-col overflow-hidden border-l border-border/40">
+					<div
+						role="group"
+						aria-label={labels.reasoningHeader}
+						className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto p-1"
+					>
+						<p className="px-2 pb-0.5 pt-1 text-[10px] text-muted-foreground/60">{labels.reasoningHeader}</p>
+						{menuLevels.map((level) => (
+							<button
+								key={level}
+								type="button"
+								aria-pressed={level === currentLevel}
+								onClick={() => onSelectReasoning(level)}
+								className={cn(
+									"flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-left text-xs",
+									level === currentLevel
+										? "bg-accent text-accent-foreground"
+										: "text-foreground hover:bg-foreground/5",
+								)}
+							>
+								<span className="min-w-0 flex-1 truncate">{labels.levelLabel(level)}</span>
+								{level === currentLevel && (
+									<span className="icon-[solar--check-circle-linear] h-3 w-3 shrink-0" />
+								)}
+							</button>
+						))}
+					</div>
 				</div>
 			)}
 		</div>

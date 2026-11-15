@@ -46,7 +46,7 @@ export function ChatMembersBarView({
 				<span className="icon-[mdi--account-group-outline] h-3 w-3" />
 				<span>{members.length}</span>
 			</div>
-			<div className="flex min-w-0 flex-1 items-center -space-x-1.5 overflow-x-auto overflow-y-hidden py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+			<div className="no-scrollbar flex min-w-0 flex-1 items-center -space-x-1.5 overflow-x-auto overflow-y-hidden py-1">
 				{members.map((m) => (
 					<button
 						key={m.id}

@@ -270,6 +270,40 @@ export function ModelSelectorView({
 		[menuLevels.length, onModelSelect],
 	);
 
+	/**
+	 * 搜索框：在三栏面板的中栏顶部。宿主掌握焦点、过滤与「↓ 跳进列表」的按键联动，
+	 * 面板只负责把它摆进中栏——搜索与列表同宽，横向层级才对得上。
+	 */
+	const searchField = (
+		<div className="relative" onKeyDown={handleSearchKeyDown}>
+			<span
+				aria-hidden="true"
+				className="icon-[solar--magnifer-linear] pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground"
+			/>
+			{/* type=search 在 WebKit 里自带清除按钮，会与下面自绘的那个同时出现 */}
+			<input
+				ref={searchInputRef}
+				type="search"
+				value={searchQuery}
+				onChange={handleSearchChange}
+				onClick={handleSearchClick}
+				placeholder={labels.searchPlaceholder}
+				aria-label={labels.searchPlaceholder}
+				className="h-7 w-full rounded-md pl-7 pr-7 text-[11px] text-foreground outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+			/>
+			{searchQuery && (
+				<button
+					type="button"
+					onClick={handleClearSearch}
+					aria-label={labels.clearSearch}
+					className="absolute right-1 top-1/2 inline-flex size-4 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+				>
+					<span aria-hidden="true" className="icon-[solar--close-circle-linear] size-3" />
+				</button>
+			)}
+		</div>
+	);
+
 	return (
 		/*
 		 * 容器用 Popover 而不是 DropdownMenu：内容已经是一个三栏面板（服务商列表、
@@ -315,41 +349,13 @@ export function ModelSelectorView({
 								<ThemeSurface slot="chat.modelSelectorMenu" />
 								<div
 									className={cn(
-										"relative z-10 flex max-h-[min(360px,60vh)] flex-col overflow-hidden rounded-[inherit] p-1",
+										"relative z-10 flex flex-col overflow-hidden rounded-[inherit]",
 										classNames?.contentInner,
 									)}
 								>
-									<div className="shrink-0 p-0.5">
-										<div className="relative" onKeyDown={handleSearchKeyDown}>
-											<span
-												aria-hidden="true"
-												className="icon-[solar--magnifer-linear] pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground"
-											/>
-											{/* type=search 在 WebKit 里自带清除按钮，会与下面自绘的那个同时出现 */}
-											<input
-												ref={searchInputRef}
-												type="search"
-												value={searchQuery}
-												onChange={handleSearchChange}
-												onClick={handleSearchClick}
-												placeholder={labels.searchPlaceholder}
-												aria-label={labels.searchPlaceholder}
-												className="h-7 w-full rounded-md pl-7 pr-7 text-[11px] text-foreground outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
-											/>
-											{searchQuery && (
-												<button
-													type="button"
-													onClick={handleClearSearch}
-													aria-label={labels.clearSearch}
-													className="absolute right-1 top-1/2 inline-flex size-4 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-												>
-													<span aria-hidden="true" className="icon-[solar--close-circle-linear] size-3" />
-												</button>
-											)}
-										</div>
-									</div>
 									<ModelSelectorMenuPanel
 										ref={panelRef}
+										searchSlot={searchField}
 										groups={groups}
 										selectedModel={selectedModel}
 										revealModelKey={open ? selectedModel : null}
@@ -379,7 +385,7 @@ export function ModelSelectorView({
 										onToggleFavorite={handleToggleFavorite}
 									/>
 									{(footerStart || footerEnd) && (
-										<div className="flex shrink-0 items-center justify-between gap-2 border-t border-border/40 px-1.5 py-1">
+										<div className="flex h-9 shrink-0 items-center justify-between gap-2 border-t border-border/40 px-2">
 											<div className="flex min-w-0 items-center">{footerStart}</div>
 											<div className="flex min-w-0 shrink-0 items-center">{footerEnd}</div>
 										</div>
