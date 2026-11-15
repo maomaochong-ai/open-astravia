@@ -2410,5 +2410,8 @@
   "appIcon_cook": "烹饪",
   "appIcon_travel": "旅行",
   "appIcon_sleep": "睡眠",
-  "toggleProvider": "启用 {{provider}}"
+  "toggleProvider": "启用 {{provider}}",
+  "invalidPort": "端口无效",
+  "invalidPortHint": "请填 1–65535 之间的整数端口。",
+  "port": "端口"
 }

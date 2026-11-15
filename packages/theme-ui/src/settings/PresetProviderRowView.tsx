@@ -1,4 +1,4 @@
-import { useRef, type JSX, type ReactNode } from "react";
+import { useRef, useState, type JSX, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Button, cn, Switch } from "@astravia-org/ui";
 import { InputField } from "./SettingsFormFields";
@@ -25,6 +25,12 @@ export interface PresetProviderRowModelView {
 	readonly refreshing: boolean;
 	readonly hasApiKey: boolean;
 	readonly modelsError: string | null;
+	/** 服务商地址；本机代理从这里取当前端口。 */
+	readonly baseUrl?: string;
+	/** 本机回环代理：编辑区只开放端口。 */
+	readonly localProxy?: boolean;
+	/** 已内置密钥默认值：空草稿即可启用。 */
+	readonly hasDefaultApiKey?: boolean;
 }
 
 export interface PresetProviderRowViewLabels {
@@ -39,6 +45,7 @@ export interface PresetProviderRowViewLabels {
 	readonly remove: string;
 	readonly enable: string;
 	readonly apiKeyDirect: (name: string) => string;
+	readonly port: string;
 	readonly apiKeyPlaceholder: string;
 	readonly encryptedApiKeyPlaceholder: string;
 	readonly save: string;
@@ -58,11 +65,23 @@ export interface PresetProviderRowViewProps {
 	readonly onAdopt: () => void;
 	readonly onRemove: () => void;
 	readonly onToggleEnabled: (enabled: boolean) => void;
+	readonly onSetPort: (port: string) => void;
 	readonly toggleLabel: string;
 	readonly onRefreshModels: () => void;
 	readonly onCopyApiKey: () => void;
 	readonly icon: ReactNode;
 	readonly modelsList?: ReactNode;
+}
+
+/** 从服务商地址里取出端口；解析不出来时留空，让用户自己填。 */
+function portOf(baseUrl: string | undefined): string {
+	if (!baseUrl) return "";
+	try {
+		const port = new URL(baseUrl).port;
+		return port || "";
+	} catch {
+		return "";
+	}
 }
 
 export function PresetProviderRowView({
@@ -76,6 +95,7 @@ export function PresetProviderRowView({
 	onAdopt,
 	onRemove,
 	onToggleEnabled,
+	onSetPort,
 	toggleLabel,
 	onRefreshModels,
 	onCopyApiKey,
@@ -86,6 +106,8 @@ export function PresetProviderRowView({
 	const canEditKey = !row.offline;
 	const editing = canEditKey && row.isOpen;
 	const editorRef = useRef<HTMLDivElement>(null);
+	// 本机代理只改端口：草稿从当前地址里取，避免用户重新输一遍。
+	const [portDraft, setPortDraft] = useState(() => portOf(row.baseUrl));
 	// blur 后 microtask 再读,避免闭包拿到过期 draft/saving。
 	const draftKeyRef = useRef(draftKey);
 	const savingRef = useRef(saving);
@@ -93,7 +115,13 @@ export function PresetProviderRowView({
 	savingRef.current = saving;
 
 	const tryAdopt = (): void => {
-		if (draftKey.trim() && !saving) onAdopt();
+		if (saving) return;
+		if (row.localProxy) {
+			onSetPort(portDraft);
+			return;
+		}
+		// 内置密钥默认值的预设：空草稿就是「用默认」，不必逼用户造一个 key。
+		if (draftKey.trim() || row.hasDefaultApiKey) onAdopt();
 	};
 
 	/**
@@ -173,6 +201,30 @@ export function PresetProviderRowView({
 								exit={{ opacity: 0, transition: FADE_OUT }}
 							>
 								<div className="min-w-0 flex-1">
+									{row.localProxy ? (
+										<InputField
+											value={portDraft}
+											onChange={setPortDraft}
+											placeholder={labels.port}
+											type="text"
+											disabled={saving}
+											autoFocus
+											aria-label={labels.port}
+											className="h-8 rounded-md px-2 text-[12px]"
+											onBlur={(event) => handleEditorBlur(event.relatedTarget)}
+											onKeyDown={(event) => {
+												if (event.key === "Enter") {
+													event.preventDefault();
+													onSetPort(portDraft);
+													return;
+												}
+												if (event.key === "Escape") {
+													event.preventDefault();
+													if (!saving) onToggleEditor();
+												}
+											}}
+										/>
+									) : (
 									<InputField
 										value={draftKey}
 										onChange={onDraftKeyChange}
@@ -197,8 +249,9 @@ export function PresetProviderRowView({
 											}
 										}}
 									/>
+									)}
 								</div>
-								{row.hasApiKey && (
+								{row.hasApiKey && !row.localProxy && (
 									<Button
 										variant="ghost"
 										size="icon-sm"

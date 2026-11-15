@@ -35,6 +35,7 @@ const labels: PresetProvidersSectionLabels = {
 	refreshCatalog: "Refresh catalog",
 	copyApiKey: "Copy API key",
 	toggleProvider: (provider: string) => `Enable ${provider}`,
+	port: "Port",
 };
 
 const row: PresetProviderRow = {

@@ -32,6 +32,10 @@ export interface PresetProviderRow {
 	adopted: boolean;
 	/** 已采纳且未被暂停；徽标与开关都看这一个值。 */
 	enabled: boolean;
+	/** 本机回环代理：编辑区只开放端口。 */
+	localProxy?: boolean;
+	/** 已内置密钥默认值：空草稿即可启用。 */
+	hasDefaultApiKey?: boolean;
 	isOpen: boolean;
 	isExpanded: boolean;
 	refreshing: boolean;
@@ -56,6 +60,8 @@ export interface PresetProvidersSectionLabels {
 	enable: string;
 	/** 行尾开关的无障碍名称，含服务商名便于区分。 */
 	toggleProvider: (provider: string) => string;
+	/** 本机代理改端口时的输入框名称。 */
+	port: string;
 	apiKeyDirect: (provider: string) => string;
 	apiKeyPlaceholder: string;
 	encryptedApiKeyPlaceholder: string;
@@ -88,6 +94,8 @@ export interface PresetProvidersSectionModel {
 	onRemove: (row: PresetProviderRow) => Promise<void>;
 	/** 暂停 / 恢复一个已采纳的服务商：只翻 disabled，密钥与模型都保留。 */
 	onToggleEnabled: (row: PresetProviderRow, enabled: boolean) => Promise<void>;
+	/** 本机代理：改端口即重新启用，主机固定回环。 */
+	onSetPort: (row: PresetProviderRow, port: string) => Promise<void>;
 	onRefreshModels: (row: PresetProviderRow) => Promise<void>;
 	onCopyApiKey: (row: PresetProviderRow) => Promise<void>;
 	/** 手动重拉公共目录(models.dev)。 */
@@ -169,6 +177,8 @@ export function usePresetProvidersSectionModel({
 			// 已启用的用账号实际可用的 /models 结果,未启用的展示 models.dev 公共目录。
 			models: config.providers[preset.id]?.models ?? preset.catalogModels,
 			offline: false,
+			...(preset.localProxy ? { localProxy: true } : {}),
+			...(preset.hasDefaultApiKey ? { hasDefaultApiKey: true } : {}),
 		}));
 
 		return [...presetRows, ...orphaned].map((row) => {
@@ -223,10 +233,11 @@ export function usePresetProvidersSectionModel({
 		[t],
 	);
 
-	const adopt = useCallback(
-		async (row: PresetProviderRow): Promise<void> => {
+	const adoptPreset = useCallback(
+		async (row: PresetProviderRow, overrides?: { baseUrl?: string }): Promise<void> => {
 			const key = (draftKeys[row.id] ?? "").trim();
-			if (!key) return;
+			// 内置了密钥默认值的预设（本机代理）不必先让用户造一个 key。
+			if (!key && !row.hasDefaultApiKey) return;
 			setSaving(true);
 			try {
 				// 填 key 即校验:拉不到模型一律不落盘、不启用。
@@ -251,7 +262,7 @@ export function usePresetProvidersSectionModel({
 							displayName: row.displayName,
 							icon: row.icon,
 							api: row.api,
-							baseUrl: row.baseUrl,
+							baseUrl: overrides?.baseUrl ?? row.baseUrl,
 							apiKey: key,
 							models: fetched?.models ?? row.models,
 							...(fetched ? { modelsSyncedAt: new Date().toISOString() } : {}),
@@ -269,6 +280,24 @@ export function usePresetProvidersSectionModel({
 			}
 		},
 		[config, draftKeys, saveConfig, t],
+	);
+
+	const adopt = useCallback((row: PresetProviderRow): Promise<void> => adoptPreset(row), [adoptPreset]);
+
+	/**
+	 * 本机代理只开放端口：主机固定回环，端口越界或非数字一律不落盘。
+	 * 复用采纳流程，把它当作「以新地址重新启用」，因此也会重新拉一次模型清单。
+	 */
+	const setPresetPort = useCallback(
+		async (row: PresetProviderRow, rawPort: string): Promise<void> => {
+			const port = Number(rawPort.trim());
+			if (!Number.isInteger(port) || port < 1 || port > 65535) {
+				showToast({ variant: "error", title: t("invalidPort"), message: t("invalidPortHint") });
+				return;
+			}
+			await adoptPreset(row, { baseUrl: `http://127.0.0.1:${port}/v1` });
+		},
+		[adoptPreset, t],
 	);
 
 	const refresh = useCallback(
@@ -363,7 +392,8 @@ export function usePresetProvidersSectionModel({
 				[row.id]: { ...provider, disabled: enabled ? undefined : true },
 			};
 			// 暂停的正是默认模型所属服务商时，默认一并清掉，避免新会话挑一个关掉的提供方。
-			const defaultModel = !enabled && config.defaultModel?.startsWith(`${row.id}/`) ? undefined : config.defaultModel;
+			const defaultModel =
+				!enabled && config.defaultModel?.startsWith(`${row.id}/`) ? undefined : config.defaultModel;
 			await saveConfig({ ...config, defaultModel, providers });
 		},
 		[config, saveConfig],
@@ -405,6 +435,7 @@ export function usePresetProvidersSectionModel({
 			changeKey: t("changeKey"),
 			remove: t("remove"),
 			enable: t("enable"),
+			port: t("port"),
 			toggleProvider: (provider: string) => t("toggleProvider", { provider }),
 			apiKeyDirect: (provider: string) => t("apiKeyDirect", { provider }),
 			apiKeyPlaceholder: t("presetApiKeyPlaceholder"),
@@ -428,6 +459,7 @@ export function usePresetProvidersSectionModel({
 		onAdopt: adopt,
 		onRemove: remove,
 		onToggleEnabled: toggleEnabled,
+		onSetPort: setPresetPort,
 		onRefreshModels: refresh,
 		onCopyApiKey: copyApiKey,
 		refreshingCatalog,
@@ -457,6 +489,10 @@ interface BaseRow {
 	icon?: string;
 	models: NonNullable<ProviderEntry["models"]>;
 	offline: boolean;
+	/** 本机回环代理：地址只开放端口修改。 */
+	localProxy?: boolean;
+	/** 已内置密钥默认值：一键启用时不必先让用户填 key。 */
+	hasDefaultApiKey?: boolean;
 }
 
 async function refreshModels(

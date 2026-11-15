@@ -3,6 +3,7 @@ import deepseekIcon from "@lobehub/icons-static-svg/icons/deepseek-color.svg?url
 import geminiIcon from "@lobehub/icons-static-svg/icons/gemini-color.svg?url";
 import grokIcon from "@lobehub/icons-static-svg/icons/grok.svg?url";
 import kimiIcon from "@lobehub/icons-static-svg/icons/kimi.svg?url";
+import magpieIcon from "./magpie.svg?url";
 import minimaxIcon from "@lobehub/icons-static-svg/icons/minimax-color.svg?url";
 import nvidiaIcon from "@lobehub/icons-static-svg/icons/nvidia-color.svg?url";
 import ollamaIcon from "@lobehub/icons-static-svg/icons/ollama.svg?url";
@@ -22,6 +23,7 @@ interface ProviderIconAsset {
 
 const PROVIDER_ICON_ASSETS = {
 	claude: { src: claudeIcon, appearance: "color" },
+	magpie: { src: magpieIcon, appearance: "monochrome" },
 	openai: { src: openaiIcon, appearance: "monochrome" },
 	gemini: { src: geminiIcon, appearance: "color" },
 	deepseek: { src: deepseekIcon, appearance: "color" },

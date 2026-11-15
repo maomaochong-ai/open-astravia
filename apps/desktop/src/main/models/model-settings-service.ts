@@ -13,6 +13,7 @@ import type {
 	ModelProviderUpsertData,
 } from "@astravia-org/capability-sdk";
 import type { ModelCredentialStore } from "./model-credential-store.js";
+import { getPresetProvider } from "./presets/catalog.js";
 
 export interface ModelsConfig {
 	defaultModel?: string;
@@ -335,6 +336,11 @@ export class ModelSettingsService {
 			if (data.useProxy !== undefined) next.useProxy = data.useProxy;
 			if (data.headers !== undefined) next.headers = { ...data.headers };
 			if (data.models !== undefined) next.models = data.models.map((model) => ({ ...model }));
+			// 内置密钥默认值的预设（如本机代理）不必让用户先造一个假 key：写入时补上。
+			if (next.apiKey === undefined && next.templateId) {
+				const preset = getPresetProvider(next.templateId);
+				if (preset?.defaultApiKey) next.apiKey = preset.defaultApiKey;
+			}
 			const persisted = await this.persist(
 				{ ...config, providers: { ...config.providers, [providerId]: next } },
 				config,

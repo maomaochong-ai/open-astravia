@@ -2411,5 +2411,8 @@
   "appIcon_cook": "Cooking",
   "appIcon_travel": "Travel",
   "appIcon_sleep": "Sleep",
-  "toggleProvider": "Enable {{provider}}"
+  "toggleProvider": "Enable {{provider}}",
+  "invalidPort": "Invalid port",
+  "invalidPortHint": "Enter a whole number between 1 and 65535.",
+  "port": "Port"
 }

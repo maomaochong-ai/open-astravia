@@ -94,6 +94,10 @@ export interface PresetProviderInfo {
 	baseUrl: string;
 	/** 供应商图标 symbol。 */
 	icon: string;
+	/** 本机回环代理：地址只开放端口修改，密钥有默认值。 */
+	localProxy?: boolean;
+	/** 该预设已内置密钥默认值，用户不必自备。 */
+	hasDefaultApiKey?: boolean;
 	/** 公共目录(models.dev)里该家的模型,免 key 可见;填 key 后由账号实际可用的列表取代。 */
 	catalogModels: NonNullable<ModelsConfigData["providers"][string]["models"]>;
 }
