@@ -48,6 +48,7 @@ import type { DesktopTelemetryApi } from "./api-types/telemetry.js";
 import type { DesktopTerminalApi } from "./api-types/terminal.js";
 import type { DesktopThemeApi } from "./api-types/theme.js";
 import type { DesktopThemesApi } from "./api-types/themes.js";
+import type { DesktopAppIconApi } from "./api-types/app-icon.js";
 import type { DesktopUiZoomApi } from "./api-types/ui-zoom.js";
 import type { DesktopUpdaterApi } from "./api-types/updater.js";
 import type { DesktopWebhookApi } from "./api-types/webhook.js";
@@ -149,6 +150,7 @@ export interface DesktopApi {
 	sessionPins: DesktopSessionPinsApi;
 	quickPanel: DesktopQuickPanelApi;
 	uiZoom: DesktopUiZoomApi;
+	appIcon: DesktopAppIconApi;
 	runtimeConfiguration: DesktopRuntimeConfigurationApi;
 	appshot: DesktopAppshotApi;
 }

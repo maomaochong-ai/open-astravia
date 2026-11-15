@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { getAstraviaHomePath } from "@astravia/action-rpc";
 import type { SshHost } from "@astravia/ssh-transport";
 import { atomicWriteJSON, atomicWriteJSONAsync } from "@astravia/toolkit/atomic-write";
+import { normalizeAppIconId } from "../../shared/app-icon.js";
 import { isLanguagePreference, type LanguagePreference } from "../../shared/i18n/config.js";
 import {
 	DEFAULT_NOTIFICATION_PREFERENCES,
@@ -51,7 +52,7 @@ export interface DesktopConfig {
 	notificationsEnabled?: boolean;
 	notificationPreferences: DesktopNotificationPreferences;
 	language?: LanguagePreference;
-	/** 新建会话的默认工作模式（合法值来自 main/agent-modes 模式注册表，ADR-0071）。会话创建时固化进会话，改这里只影响之后新建的会话。 */
+	/** 新建会话的默认工作模式（合法值来自 main/agent-modes 模式注册表）。会话创建时固化进会话，改这里只影响之后新建的会话。 */
 	defaultAgentMode?: string;
 	experimental?: ExperimentalConfig;
 	/** 应用代理（设置 → 通用设置 → 网络代理）。缺省不启用。 */
@@ -63,13 +64,15 @@ export interface DesktopConfig {
 	appshot?: AppshotConfig;
 	/** 主窗口界面缩放比例（设置 → 外观 → 界面大小）。缺省按 100%。 */
 	uiZoomFactor?: number;
+	/** 应用图标 id（设置 → 外观 → 应用图标）；缺省或未知值回落到出厂图标。 */
+	appIconId?: string;
 	/**
-	 * 手机遥控本机的配置（ADR-0128）。设备列表为空时桌面端不开端口、不连中继，
+	 * 手机遥控本机的配置。设备列表为空时桌面端不开端口、不连中继，
 	 * 移动端相关逻辑完全不加载。
 	 */
 	remoteControl?: RemoteControlConfig;
 	/**
-	 * 可作为远程项目宿主的 SSH 主机（ADR-0124）。
+	 * 可作为远程项目宿主的 SSH 主机。
 	 *
 	 * 注意与上面的 `remoteControl` 是两件事：那个是「手机遥控本机」，这个是
 	 * 「本机连到远端主机上开发」，方向相反。
@@ -93,7 +96,7 @@ export interface RemoteControlDeviceRecord {
 	/** 允许这部手机查看并操作电脑屏幕；缺省开启，用户可逐台关闭。 */
 	desktopControl?: boolean;
 	/**
-	 * 这部手机按需订阅画面（ADR-0140）。经中继握手时电脑看不到手机的能力位，
+	 * 这部手机按需订阅画面。经中继握手时电脑看不到手机的能力位，
 	 * 所以一旦从局域网握手或订阅请求得知，就记下来。
 	 */
 	screenOnDemand?: boolean;
@@ -195,7 +198,7 @@ export function normalizeExecutionMode(value: unknown): "sandbox" | "full-access
 }
 
 export function normalizeAgentMode(value: unknown): string {
-	// 合法模式由 main/agent-modes 的 modes/*.md 注册表定义（ADR-0071）；无效值回落 work。
+	// 合法模式由 main/agent-modes 的 modes/*.md 注册表定义；无效值回落 work。
 	return isAgentMode(value) ? value : "work";
 }
 
@@ -354,6 +357,7 @@ function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 			typeof parsed.uiZoomFactor === "number" && Number.isFinite(parsed.uiZoomFactor)
 				? parsed.uiZoomFactor
 				: undefined,
+		appIconId: normalizeAppIconId(parsed.appIconId),
 		projects: migrateProjectEntries(parsed.projects),
 		archivedProjects: migrateProjectEntries(parsed.archivedProjects),
 		workspacePath:

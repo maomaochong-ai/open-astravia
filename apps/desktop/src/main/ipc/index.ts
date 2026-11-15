@@ -43,6 +43,7 @@ import { registerSpeechInputIpc } from "./speech-input.js";
 import { registerSshIpc } from "./ssh.js";
 import { registerTerminalIpc } from "./terminal.js";
 import { registerThemesIpc } from "./themes.js";
+import { registerAppIconIpc } from "./app-icon.js";
 import { registerUiZoomIpc } from "./ui-zoom.js";
 import { registerUpdaterIpc } from "./updater.js";
 import { registerWebhookIpc } from "./webhook.js";
@@ -61,6 +62,7 @@ interface IpcTeardown {
 	teardownSpeechInput: () => void;
 	teardownThemes: () => void;
 	teardownUiZoom: () => void;
+	teardownAppIcon: () => void;
 	teardownDialog: () => void;
 	teardownClipboard: () => void;
 	teardownFs: () => void;
@@ -116,6 +118,7 @@ export function registerAllIpc(
 		teardownSpeechInput: registerSpeechInputIpc(webContents),
 		teardownThemes: registerThemesIpc(),
 		teardownUiZoom: registerUiZoomIpc(),
+		teardownAppIcon: registerAppIconIpc(),
 		teardownDialog: registerDialogIpc(),
 		teardownClipboard: registerClipboardIpc(),
 		teardownFs: registerFsIpc(),

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { URL } from "node:url";
 import { ASTRAVIA_HOME_ENV, getAstraviaHomePath } from "@astravia/action-rpc";
-import { app, type BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, protocol, session, shell } from "electron";
+import { app, type BrowserWindow, dialog, ipcMain, nativeTheme, protocol, session, shell } from "electron";
 import type { ExternalApplicationKind } from "../preload/api-types/system.js";
 import { APP_RUNTIME_NAME } from "../shared/app-identity.js";
 import { isCloudBuildEnabled } from "../shared/feature-flags.js";
@@ -16,6 +16,7 @@ import { APP_ASSET_PROTOCOL_PRIVILEGE, registerAppAssetProtocol } from "./app-as
 import { createAppDebugRuntime } from "./app-debug/index.js";
 import { createDebugRpcRuntime } from "./app-debug/rpc.js";
 import { configureRendererCdp } from "./app-debug/ui/renderer-cdp.js";
+import { applyAppIcon } from "./app-icon/app-icon-service.js";
 import { registerAppLifecycleIpc } from "./app-lifecycle.js";
 import { installApplicationMenu } from "./app-menu.js";
 import { initializeAppMonitor, shutdownAppMonitor } from "./app-monitor/app-monitor-service.js";
@@ -463,7 +464,7 @@ if (!gotSingleLock) {
 		});
 
 		// 在创建任何窗口/托盘菜单之前同步定语言：读 desktop-config.language
-		//（system | zh | en；缺省 = system）。托盘菜单与系统通知据此取文案（ADR-0031）。
+		//（system | zh | en；缺省 = system）。托盘菜单与系统通知据此取文案。
 		initAppLanguage();
 		// 必须在 initAppLanguage 之后：菜单文案在构建期解析。不装配则 mac 会沿用
 		// Electron 默认菜单，打包版把 Reload / DevTools 直接暴露给终端用户。
@@ -488,7 +489,7 @@ if (!gotSingleLock) {
 
 		// 媒体流协议 handler（scheme 已在 ready 前声明特权）
 		registerMediaProtocolHandler();
-		// 静态文件协议 handler（ADR-0027）
+		// 静态文件协议 handler
 		registerFileProtocolHandler();
 
 		// 开发模式每次启动先清空 HTTP 缓存。插件资源的 remoteEntry.js 文件名固定，
@@ -543,10 +544,10 @@ if (!gotSingleLock) {
 			});
 		});
 
-		// 提前发现系统插件（ADR-0024）：填充 id 集合供协议解析，staging 不完整时早告警。
+		// 提前发现系统插件：填充 id 集合供协议解析，staging 不完整时早告警。
 		discoverSystemPlugins();
 
-		// 旧 contributes.settings 值搬进插件私有存储（ADR-0105）；只在首次启动做一次。
+		// 旧 contributes.settings 值搬进插件私有存储；只在首次启动做一次。
 		void migrateLegacyPluginSettings(mainLog);
 
 		const initializeSandbox = async (): Promise<void> => {
@@ -732,9 +733,8 @@ if (!gotSingleLock) {
 			cloudMain = startCloudMain({ receiveProtocolUrl });
 		}
 
-		if (process.platform === "darwin") {
-			app.dock.setIcon(nativeImage.createFromPath(join(buildDir, "icon-dock.png")));
-		}
+		// 启动时套用一次用户选过的应用图标；出厂图标即 icon-dock.png（自带 824 本体与边距）。
+		applyAppIcon();
 
 		// 默认「对话」项目目录：保证一直存在。
 		// 顺带把 in-tree session 目录（<cwd>/.astravia/sessions）也建好，
@@ -744,7 +744,7 @@ if (!gotSingleLock) {
 		} catch (err) {
 			mainLog.error("failed to ensure default conversation dir", err);
 		}
-		// im-gateway 独立 cwd（ADR-0005）：跟桌面「对话」物理分家。先把空目录建好，
+		// im-gateway 独立 cwd：跟桌面「对话」物理分家。先把空目录建好，
 		// 这样 sidecar 启动前 desktop 的 Claw tab 也能正常 listSessions（拿到空列表）。
 		try {
 			await mkdir(join(getAstraviaHomePath(), "im-gateway", "conversation", ".astravia", "sessions"), {
@@ -754,7 +754,7 @@ if (!gotSingleLock) {
 			mainLog.error("failed to ensure im-gateway conversation dir", err);
 		}
 
-		// 托管运行时(ADR-0011):首启从内置 vendor 拷贝 node/python 到 ~/.astravia/runtimes,
+		// 托管运行时:首启从内置 vendor 拷贝 node/python 到 ~/.astravia/runtimes,
 		// 再把它们 + 国内镜像源注入全局 process.env。必须早于 getImHost().bootstrap()——
 		// 快速应用已经存在的托管运行时路径；vendor seed、系统探测和 shim 修复放到
 		// 首帧之后执行，避免这些维护工作阻塞窗口出现。

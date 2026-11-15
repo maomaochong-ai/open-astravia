@@ -31,6 +31,7 @@ import { createSystemApi } from "./apis/system.js";
 import { createTelemetryApi } from "./apis/telemetry.js";
 import { createTerminalApi } from "./apis/terminal.js";
 import { createThemesApi } from "./apis/themes.js";
+import { createAppIconApi } from "./apis/app-icon.js";
 import { createUiZoomApi } from "./apis/ui-zoom.js";
 import { createWebhookApi } from "./apis/webhook.js";
 import { createHostAccessGate } from "./host-access.js";
@@ -62,6 +63,7 @@ const rawApi: Omit<DesktopApi, "hostAccess"> = {
 	...createPluginsApi(ipcRenderer, webUtils),
 	...createThemesApi(ipcRenderer),
 	...createUiZoomApi(ipcRenderer),
+	...createAppIconApi(ipcRenderer),
 	...createPetApi(ipcRenderer),
 	...createConversationTagsApi(ipcRenderer),
 	...createSessionPinsApi(ipcRenderer),
