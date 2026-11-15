@@ -124,9 +124,9 @@ describe("buildCommandMenuGroups", () => {
 	});
 
 	it("carries merged highlight ranges through to the rendered item", () => {
-		const entries = [entry("p1", "projects", "maomaochong-ai")];
+		const entries = [entry("p1", "projects", "openastravia")];
 		const { groups } = buildCommandMenuGroups({ entries, tokens: ["open", "astravia"], labels });
 
-		expect(groups[0].items[0].titleHighlights).toEqual([{ start: 0, end: 9 }]);
+		expect(groups[0].items[0].titleHighlights).toEqual([{ start: 0, end: 12 }]);
 	});
 });

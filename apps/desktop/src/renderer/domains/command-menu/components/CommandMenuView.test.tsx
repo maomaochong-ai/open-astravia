@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { OVERLAY_BACKDROP_CLASS, PANEL_SHADOW_CLASS } from "@astravia-org/ui/utils";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
@@ -49,6 +50,38 @@ function props(overrides: Partial<CommandMenuViewProps> = {}): CommandMenuViewPr
 function group(overrides: Partial<CommandMenuGroupView> = {}): CommandMenuGroupView {
 	return { key: "projects", label: "Projects", items: [item()], ...overrides };
 }
+
+/**
+ * ⌘K 面板的外壳必须与「添加项目」「管理会话」等面板共用同一份 `SplashPanel`：
+ * 遮罩、入场动效、面板圆角与外投影只在那里定义一次。这里断言它确实用的是平台
+ * 统一的那两个样式常量——自己再写一套 `bg-background/70` + `shadow-2xl` 会在这两条上失败。
+ */
+describe("CommandMenuView 外壳", () => {
+	it("用平台统一的遮罩与面板投影，而不是自带一套", () => {
+		render(<CommandMenuView {...props()} />);
+		const dialog = screen.getByRole("dialog", { name: "Command Menu" });
+		const backdrop = dialog.parentElement as HTMLElement;
+
+		for (const token of OVERLAY_BACKDROP_CLASS.split(" ")) {
+			expect(backdrop.className).toContain(token);
+		}
+		for (const token of PANEL_SHADOW_CLASS.split(" ")) {
+			expect(dialog.className).toContain(token);
+		}
+		// 旧外壳自带一层更重的阴影，迁移后不应再出现。
+		expect(dialog.className).not.toContain("shadow-2xl");
+	}, 20_000);
+
+	it("面板宽度与共享外壳一致（640px，窄窗自适应）", () => {
+		render(<CommandMenuView {...props()} />);
+		const dialog = screen.getByRole("dialog", { name: "Command Menu" });
+		// SplashPanel 用行内 width 表达「较窄时让出边距」，类名里不再写死宽度。
+		expect(dialog.style.width).toContain("640px");
+		expect(dialog.style.width).toContain("100vw");
+		// 旧外壳把宽度写死在 class 里，迁移后不再有这一层。
+		expect(dialog.className).not.toContain("w-[min(640px");
+	}, 20_000);
+});
 
 describe("CommandMenuView", () => {
 	it("renders nothing while closed and mounts the dialog once opened", () => {
@@ -140,10 +173,13 @@ describe("CommandMenuView", () => {
 				],
 			}),
 		];
-		const { container } = render(<CommandMenuView {...props({ groups })} />);
+		render(<CommandMenuView {...props({ groups })} />);
 
-		const hits = Array.from(container.querySelectorAll(".text-primary")).map((node) => node.textContent);
-		expect(hits).toContain("astravia");
+		// 面板 portal 到 body：查询要落在 document 上，渲染容器里是空的。
+		const hits = Array.from(document.querySelectorAll(".text-primary")).map((node) => node.textContent);
+		// 区间 4..9 落在 "maomaochong-ai" 上就是这五个字符（原断言写的是 "astravia"，
+		// 与输入对不上，在迁移前就一直是红的）。
+		expect(hits).toEqual(["aocho"]);
 		// 拆成多个 span 后可访问名会被插入空格，故按原始文本断言拼接无损。
 		expect(screen.getByRole("option").textContent).toBe("maomaochong-ai");
 	});
@@ -160,9 +196,9 @@ describe("CommandMenuView", () => {
 				],
 			}),
 		];
-		const { container } = render(<CommandMenuView {...props({ groups })} />);
+		render(<CommandMenuView {...props({ groups })} />);
 
-		const [title, subtitle] = Array.from(container.querySelectorAll("[role='option'] > span > span"));
+		const [title, subtitle] = Array.from(document.querySelectorAll("[role='option'] > span > span"));
 		// 标题不收缩、只受上限约束；副标题吃掉剩余宽度并自己截断。
 		expect(title.className).toContain("shrink-0");
 		expect(title.className).toContain("max-w-[60%]");
