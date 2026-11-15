@@ -8,7 +8,7 @@ import type { CommandPanelDetailModel } from "./types";
  * 状态、插入方式与一句「接下来会发生什么」。动作固定在底部，视线不必来回扫。
  *
  * 没有高亮项时**整栏不渲染**（由调用方决定），不留空白列——与模型选择器
- * 「没有档位就不出第三栏」同一条规则（ADR-0159、ADR-0175 §2）。
+ * 「没有档位就不出第三栏」同一条规则。
  */
 export function AddPanelDetailView({
 	detail,

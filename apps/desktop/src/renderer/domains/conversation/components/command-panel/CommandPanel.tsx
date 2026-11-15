@@ -32,7 +32,7 @@ export interface CommandPanelProps {
 }
 
 /**
- * 聊天输入框的「添加」面板：三栏（分类轨道 ｜ 搜索 + 列表 ｜ 详情），见 ADR-0175。
+ * 聊天输入框的「添加」面板：三栏（分类轨道 ｜ 搜索 + 列表 ｜ 详情）。
  * 批量任务 / 自动化 dialog 用的是精简版 SkillPickerPanel，两者共用 SkillList。
  */
 export function CommandPanel(props: CommandPanelProps): JSX.Element {

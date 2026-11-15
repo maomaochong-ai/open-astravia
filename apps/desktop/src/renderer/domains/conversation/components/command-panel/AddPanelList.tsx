@@ -8,7 +8,7 @@ import {
 } from "./add-panel-catalog";
 import type { CommandPanelLabels } from "./types";
 
-/** 行高与窗口化阈值：与模型选择器同一组取值（ADR-0159 §5、ADR-0175 §8）。 */
+/** 行高与窗口化阈值：与模型选择器同一组取值，行高固定才能按下标算窗口。 */
 const ROW_HEIGHT = 28;
 const HEADER_HEIGHT = 22;
 export const ADD_PANEL_LIST_HEIGHT = 268;

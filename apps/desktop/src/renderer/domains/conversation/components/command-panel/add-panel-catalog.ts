@@ -8,7 +8,7 @@ import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
  * 这里只做投影与排序，不碰任何一类的存储、权限与安装路径——技能来自 `SkillInfo[]`、
  * 连接器来自 `ConnectorGridItem[]`、插件/应用来自能力注册表、文件来自工具行的附件动作。
  * 命名刻意不叫 `Capability*`：本仓 `Capability` 是授权契约（`docs/capabilities/`），
- * 与「能往消息里加什么」是两件事，见 ADR-0175 与 CONTEXT.md「添加面板」词条。
+ * 与「能往消息里加什么」是两件事；术语见 CONTEXT.md「添加面板」词条。
  */
 export type AddPanelCategory = "files" | "skills" | "connectors" | "plugins" | "apps";
 
@@ -328,7 +328,7 @@ export interface AddPanelWindow {
  * 列表窗口化：条目多时只渲染可视区那几十行。
  *
  * 阈值 40 而不是「一律窗口化」：几十行时窗口化带来的焦点与滚动锚点问题大于收益
- * （与模型选择器同一条理由，见 ADR-0159 §5、ADR-0175 §8）。
+ * （与模型选择器同一条理由：行高固定才能按下标算窗口）。
  */
 export function computeAddPanelWindow(input: {
 	readonly entries: readonly AddPanelEntry[];

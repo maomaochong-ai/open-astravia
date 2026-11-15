@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 /**
  * 收藏只存本机：它是「我这台机器常用的那几个条目」，跨设备同步反而会让别人的目录
- * 影响自己的面板。存储不可用时退化为会话内有效（与模型选择器同一口径，见 ADR-0159 §4）。
+ * 影响自己的面板。存储不可用时退化为会话内有效（与模型选择器的收藏同一口径）。
  */
 export const ADD_PANEL_FAVORITES_STORAGE_KEY = "astravia-add-panel-favorites";
 
