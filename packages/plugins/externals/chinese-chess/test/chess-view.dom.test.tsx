@@ -11,27 +11,12 @@ vi.mock("@astravia-org/plugin-sdk", () => ({
 		t: (key: string, values?: Record<string, string | number>) =>
 			values ? `${key}:${JSON.stringify(values)}` : key,
 	}),
+	// 模型选择器由宿主渲染：棋局交互用例不关心它，占位即可。
+	ModelPicker: () => null,
 }));
 
 import { ChessView } from "../src/components/ChessView";
 import { ChessRuntimeProvider } from "../src/runtime-context";
-
-const listModels = async () => ({
-	defaultModel: "openai/gpt-5",
-	models: [
-		{
-			modelKey: "openai/gpt-5",
-			provider: "openai",
-			id: "gpt-5",
-			name: "GPT-5",
-			api: "openai",
-			reasoning: false,
-			input: ["text" as const],
-			contextWindow: 100_000,
-			maxTokens: 8_192,
-		},
-	],
-});
 
 let activeStore: ChessStore | null = null;
 
@@ -39,7 +24,7 @@ let activeStore: ChessStore | null = null;
 function renderView() {
 	if (!activeStore) throw new Error("store not ready");
 	return render(
-		<ChessRuntimeProvider value={{ store: activeStore, listModels }}>
+		<ChessRuntimeProvider value={{ store: activeStore }}>
 			<ChessView />
 		</ChessRuntimeProvider>,
 	);

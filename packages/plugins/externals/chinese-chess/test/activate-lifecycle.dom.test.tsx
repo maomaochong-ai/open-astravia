@@ -11,6 +11,8 @@ vi.mock("@astravia-org/plugin-sdk", async () => {
 		...actual,
 		definePlugin: (definition: unknown) => definition,
 		useTranslation: () => ({ t: (key: string) => key }),
+		// 模型选择器由宿主渲染：单测里不需要它出内容。
+		ModelPicker: () => null,
 	};
 });
 

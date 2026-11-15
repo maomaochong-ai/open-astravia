@@ -15,15 +15,5 @@ export function createChessRuntime(ctx: PluginContext): ChessRuntime {
 		ai: { chat: (request) => ctx.ai.chat(request) },
 		notify: (options) => ctx.ui.notify(options),
 	});
-	return {
-		store,
-		listModels: async () => {
-			try {
-				return await ctx.ai.listModels();
-			} catch {
-				// 未授予 ai.models.list 或没有可用模型：选择器隐藏，不打断对局。
-				return null;
-			}
-		},
-	};
+	return { store };
 }

@@ -1,4 +1,3 @@
-import type { PluginAiModelListResult } from "@astravia-org/plugin-sdk";
 import { createContext, useContext } from "react";
 import type { ChessStore } from "./game/store";
 
@@ -9,8 +8,6 @@ import type { ChessStore } from "./game/store";
  */
 export interface ChessRuntime {
 	store: ChessStore;
-	/** 模型列表；缺权限或没有可用 Provider 时返回 null（选择器随之隐藏）。 */
-	listModels(): Promise<PluginAiModelListResult | null>;
 }
 
 const ChessRuntimeContext = createContext<ChessRuntime | null>(null);

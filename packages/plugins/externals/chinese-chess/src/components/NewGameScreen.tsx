@@ -1,7 +1,6 @@
-import { useTranslation } from "@astravia-org/plugin-sdk";
+import { ModelPicker, useTranslation } from "@astravia-org/plugin-sdk";
 import { type JSX, useState } from "react";
 import type { Side } from "../game/types";
-import { ModelPicker } from "./ModelPicker";
 
 interface NewGameScreenProps {
 	onStart(side: Side, modelKey: string | null): void;
@@ -79,7 +78,14 @@ export function NewGameScreen(props: NewGameScreenProps): JSX.Element {
 			</div>
 			<div className="flex items-center gap-3">
 				<span className="text-xs text-[var(--muted-foreground)]">{t("newGame.model")}</span>
-				<ModelPicker value={modelKey} onChange={setModelKey} />
+				<ModelPicker
+					value={modelKey}
+					onChange={setModelKey}
+					emptyOption={{ label: t("newGame.model.default") }}
+					placeholder={t("newGame.model.default")}
+					ariaLabel={t("model.label")}
+					className="max-w-44"
+				/>
 			</div>
 			<button
 				type="button"
