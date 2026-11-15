@@ -31,6 +31,8 @@ export interface ProviderConfig {
 	source?: "template";
 	templateId?: string;
 	icon?: string;
+	/** 暂停该服务商：配置与密钥都保留，只是不再参与模型列表与默认模型解析。 */
+	disabled?: boolean;
 	/** 预设服务商模型列表最近一次从上游 /models 同步的时间(ISO)。 */
 	modelsSyncedAt?: string;
 	/**
@@ -151,6 +153,7 @@ function redactProvider(provider: ProviderConfig): ModelProviderConfigSnapshot {
 		...(provider.displayName === undefined ? {} : { displayName: provider.displayName }),
 		...(provider.authHeader === undefined ? {} : { authHeader: provider.authHeader }),
 		...(provider.useProxy === undefined ? {} : { useProxy: provider.useProxy }),
+		...(provider.disabled === undefined ? {} : { disabled: provider.disabled }),
 		...(headers === undefined ? {} : { headers }),
 		...(provider.models === undefined ? {} : { models: provider.models.map(copyModel) }),
 	};

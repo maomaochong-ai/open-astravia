@@ -30,6 +30,8 @@ export interface PresetProviderRow {
 	modelRows: PresetProviderModelRow[];
 	offline: boolean;
 	adopted: boolean;
+	/** 已采纳且未被暂停；徽标与开关都看这一个值。 */
+	enabled: boolean;
 	isOpen: boolean;
 	isExpanded: boolean;
 	refreshing: boolean;
@@ -52,6 +54,8 @@ export interface PresetProvidersSectionLabels {
 	changeKey: string;
 	remove: string;
 	enable: string;
+	/** 行尾开关的无障碍名称，含服务商名便于区分。 */
+	toggleProvider: (provider: string) => string;
 	apiKeyDirect: (provider: string) => string;
 	apiKeyPlaceholder: string;
 	encryptedApiKeyPlaceholder: string;
@@ -82,6 +86,8 @@ export interface PresetProvidersSectionModel {
 	onDraftKeyChange: (rowId: string, key: string) => void;
 	onAdopt: (row: PresetProviderRow) => Promise<void>;
 	onRemove: (row: PresetProviderRow) => Promise<void>;
+	/** 暂停 / 恢复一个已采纳的服务商：只翻 disabled，密钥与模型都保留。 */
+	onToggleEnabled: (row: PresetProviderRow, enabled: boolean) => Promise<void>;
 	onRefreshModels: (row: PresetProviderRow) => Promise<void>;
 	onCopyApiKey: (row: PresetProviderRow) => Promise<void>;
 	/** 手动重拉公共目录(models.dev)。 */
@@ -166,11 +172,13 @@ export function usePresetProvidersSectionModel({
 		}));
 
 		return [...presetRows, ...orphaned].map((row) => {
-			const adopted = config.providers[row.id]?.source === "template";
+			const providerConfig = config.providers[row.id];
+			const adopted = providerConfig?.source === "template";
 			return {
 				...row,
 				modelRows: row.models.map((model) => toModelRow(model, t)),
 				adopted,
+				enabled: adopted && !providerConfig?.disabled,
 				isOpen: openId === row.id,
 				isExpanded: expandedId === row.id,
 				refreshing: refreshingId === row.id,
@@ -345,6 +353,22 @@ export function usePresetProvidersSectionModel({
 
 	// 移除会连同本地保存的 Key 和模型配置一起删掉，且无法撤销，所以先二次确认；
 	// 真正执行放在确认回调里，点「取消」什么都不会发生。
+	const toggleEnabled = useCallback(
+		async (row: PresetProviderRow, enabled: boolean): Promise<void> => {
+			const provider = config.providers[row.id];
+			// 未采纳的走「启用」流程（填 key）；只有已采纳的才有暂停语义。
+			if (provider?.source !== "template") return;
+			const providers = {
+				...config.providers,
+				[row.id]: { ...provider, disabled: enabled ? undefined : true },
+			};
+			// 暂停的正是默认模型所属服务商时，默认一并清掉，避免新会话挑一个关掉的提供方。
+			const defaultModel = !enabled && config.defaultModel?.startsWith(`${row.id}/`) ? undefined : config.defaultModel;
+			await saveConfig({ ...config, defaultModel, providers });
+		},
+		[config, saveConfig],
+	);
+
 	const remove = useCallback(
 		(row: PresetProviderRow): Promise<void> => {
 			setConfirm({
@@ -381,6 +405,7 @@ export function usePresetProvidersSectionModel({
 			changeKey: t("changeKey"),
 			remove: t("remove"),
 			enable: t("enable"),
+			toggleProvider: (provider: string) => t("toggleProvider", { provider }),
 			apiKeyDirect: (provider: string) => t("apiKeyDirect", { provider }),
 			apiKeyPlaceholder: t("presetApiKeyPlaceholder"),
 			encryptedApiKeyPlaceholder: t("replaceApiKeyPlaceholder"),
@@ -402,6 +427,7 @@ export function usePresetProvidersSectionModel({
 		onDraftKeyChange: handleDraftKeyChange,
 		onAdopt: adopt,
 		onRemove: remove,
+		onToggleEnabled: toggleEnabled,
 		onRefreshModels: refresh,
 		onCopyApiKey: copyApiKey,
 		refreshingCatalog,

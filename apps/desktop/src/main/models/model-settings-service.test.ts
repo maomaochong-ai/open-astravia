@@ -366,3 +366,29 @@ describe("ModelSettingsService", () => {
 		expect(credentials.values).toEqual(new Map());
 	});
 });
+
+describe("ModelSettingsService 暂停的服务商", () => {
+	it("disabled 只影响参与选择的服务商，密钥与模型仍留在配置里", async () => {
+		let config: ModelsConfig = {
+			defaultModel: "paused/gpt",
+			providers: {
+				paused: { api: "openai-responses", apiKey: "sk-1", disabled: true, models: [{ id: "gpt" }] },
+				live: { api: "openai-responses", apiKey: "sk-2", models: [{ id: "gpt" }] },
+			},
+		};
+		const service = new ModelSettingsService({
+			readConfig: async () => config,
+			writeConfig: async (next) => {
+				config = next;
+			},
+			refreshRegistry: async () => {},
+			credentials: createCredentialStore(),
+		});
+
+		const snapshot = await service.getSanitizedConfig();
+		// 设置页仍要看得到这一行（带开关与密钥掩码），所以快照不隐藏它。
+		expect(snapshot.providers.paused).toMatchObject({ disabled: true });
+		expect(snapshot.providers.paused?.apiKey).not.toBe("sk-1");
+		expect(config.providers.paused?.models).toEqual([{ id: "gpt" }]);
+	});
+});

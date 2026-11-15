@@ -45,7 +45,9 @@ export function loadLocalModelConfig(
 		const config = parsed as ModelsConfig;
 		const validation = validateProviders(config);
 		const providers = Object.fromEntries(
-			Object.entries(config.providers).filter(([name]) => !validation.skip.has(name)),
+			Object.entries(config.providers).filter(
+				([name, provider]) => !validation.skip.has(name) && !provider.disabled,
+			),
 		);
 		const validConfig: ModelsConfig = { ...config, providers };
 		const overrides = new Map<string, ProviderOverride>();

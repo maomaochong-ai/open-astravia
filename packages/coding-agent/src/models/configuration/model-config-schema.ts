@@ -77,6 +77,8 @@ export const ProviderModelConfigSchema = Type.Object({
 	templateId: Type.Optional(Type.String()),
 	icon: Type.Optional(Type.String()),
 	displayName: Type.Optional(Type.String()),
+	/** 暂停该服务商：保留密钥与模型，但不进模型列表、也不被默认模型选中。 */
+	disabled: Type.Optional(Type.Boolean()),
 	models: Type.Optional(Type.Array(ModelDefinitionSchema)),
 	modelOverrides: Type.Optional(Type.Record(Type.String(), ModelOverrideSchema)),
 });

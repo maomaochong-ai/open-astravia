@@ -24,6 +24,8 @@ export interface ModelsConfigData {
 			modelsSyncedAt?: string;
 			/** 该服务商是否经应用代理出网；缺省跟随全局，显式 false 才排除。 */
 			useProxy?: boolean;
+			/** 暂停该服务商：配置与密钥保留，不进模型列表与默认模型解析。 */
+			disabled?: boolean;
 			models?: Array<{
 				id: string;
 				/** 上游 API 真实模型名。远程渠道下 id=网关路由 key、modelId=上游真名；缺省回退 id。 */

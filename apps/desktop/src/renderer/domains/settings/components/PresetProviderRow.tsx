@@ -16,6 +16,7 @@ export function PresetProviderRow({
 	onDraftKeyChange,
 	onAdopt,
 	onRemove,
+	onToggleEnabled,
 	onRefreshModels,
 	onCopyApiKey,
 }: {
@@ -28,6 +29,7 @@ export function PresetProviderRow({
 	onDraftKeyChange: (rowId: string, key: string) => void;
 	onAdopt: (row: PresetProviderRowModel) => Promise<void>;
 	onRemove: (row: PresetProviderRowModel) => Promise<void>;
+	onToggleEnabled: (row: PresetProviderRowModel, enabled: boolean) => Promise<void>;
 	onRefreshModels: (row: PresetProviderRowModel) => Promise<void>;
 	onCopyApiKey: (row: PresetProviderRowModel) => Promise<void>;
 }): JSX.Element {
@@ -42,6 +44,8 @@ export function PresetProviderRow({
 			onDraftKeyChange={(key) => onDraftKeyChange(row.id, key)}
 			onAdopt={() => void onAdopt(row)}
 			onRemove={() => void onRemove(row)}
+			onToggleEnabled={(enabled) => void onToggleEnabled(row, enabled)}
+			toggleLabel={labels.toggleProvider(row.displayName)}
 			onRefreshModels={() => void onRefreshModels(row)}
 			onCopyApiKey={() => void onCopyApiKey(row)}
 			icon={<ProviderIcon symbol={row.icon} className="h-7 w-7 shrink-0" />}

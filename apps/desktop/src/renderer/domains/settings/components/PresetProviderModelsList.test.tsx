@@ -34,6 +34,7 @@ const labels: PresetProvidersSectionLabels = {
 	refreshingModels: "Refreshing models",
 	refreshCatalog: "Refresh catalog",
 	copyApiKey: "Copy API key",
+	toggleProvider: (provider: string) => `Enable ${provider}`,
 };
 
 const row: PresetProviderRow = {
@@ -70,6 +71,7 @@ const row: PresetProviderRow = {
 	isExpanded: true,
 	refreshing: false,
 	hasApiKey: false,
+	enabled: true,
 	modelsError: null,
 };
 

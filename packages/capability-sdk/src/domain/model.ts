@@ -79,6 +79,8 @@ const modelProviderConfigFields = {
 	authHeader: Type.Optional(Type.Boolean()),
 	/** 该服务商是否经应用代理出网；缺省跟随全局代理开关。 */
 	useProxy: Type.Optional(Type.Boolean()),
+	/** 暂停该服务商：配置与密钥保留，但不参与模型列表与默认模型解析。 */
+	disabled: Type.Optional(Type.Boolean()),
 	headers: Type.Optional(modelStringMapType),
 	models: Type.Optional(Type.Array(modelDefinitionDetailType)),
 };

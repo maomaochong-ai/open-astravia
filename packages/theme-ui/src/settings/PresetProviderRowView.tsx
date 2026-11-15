@@ -1,6 +1,6 @@
 import { useRef, type JSX, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Button, cn } from "@astravia-org/ui";
+import { Button, cn, Switch } from "@astravia-org/ui";
 import { InputField } from "./SettingsFormFields";
 import { shouldCloseEmptyApiKeyEditor } from "./shouldCloseEmptyApiKeyEditor";
 
@@ -18,6 +18,8 @@ export interface PresetProviderRowModelView {
 	readonly isExpanded: boolean;
 	readonly isOpen: boolean;
 	readonly adopted: boolean;
+	/** 已采纳且未被暂停：徽标与行尾开关都看它。 */
+	readonly enabled: boolean;
 	readonly offline: boolean;
 	readonly models: readonly unknown[];
 	readonly refreshing: boolean;
@@ -55,6 +57,8 @@ export interface PresetProviderRowViewProps {
 	readonly onDraftKeyChange: (key: string) => void;
 	readonly onAdopt: () => void;
 	readonly onRemove: () => void;
+	readonly onToggleEnabled: (enabled: boolean) => void;
+	readonly toggleLabel: string;
 	readonly onRefreshModels: () => void;
 	readonly onCopyApiKey: () => void;
 	readonly icon: ReactNode;
@@ -71,6 +75,8 @@ export function PresetProviderRowView({
 	onDraftKeyChange,
 	onAdopt,
 	onRemove,
+	onToggleEnabled,
+	toggleLabel,
 	onRefreshModels,
 	onCopyApiKey,
 	icon,
@@ -131,7 +137,7 @@ export function PresetProviderRowView({
 					<div className="min-w-0 flex-1">
 						<div className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-foreground">
 							<span className="truncate">{row.displayName}</span>
-							{row.adopted && (
+							{row.enabled && (
 								<span className="shrink-0 whitespace-nowrap rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-medium text-primary">
 									{labels.enabled}
 								</span>
@@ -269,6 +275,15 @@ export function PresetProviderRowView({
 											)}
 										/>
 									</Button>
+								)}
+								{row.adopted && (
+									<Switch
+										size="sm"
+										checked={row.enabled}
+										onCheckedChange={onToggleEnabled}
+										title={toggleLabel}
+										aria-label={toggleLabel}
+									/>
 								)}
 								{row.adopted && (
 									<Button

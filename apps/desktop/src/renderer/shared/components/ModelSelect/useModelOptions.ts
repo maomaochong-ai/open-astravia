@@ -31,6 +31,8 @@ export interface ModelOption {
 function flattenModels(config: ModelsConfigData, remote?: boolean): ModelOption[] {
 	const result: ModelOption[] = [];
 	for (const [provider, providerConfig] of Object.entries(config.providers)) {
+		// 暂停的服务商整条不进候选：它的密钥与模型仍在配置里，只是不参与选择。
+		if (providerConfig.disabled) continue;
 		for (const model of providerConfig.models ?? []) {
 			const raw = model as Record<string, unknown>;
 			result.push({
@@ -125,5 +127,14 @@ export function useModelOptions(): UseModelOptionsResult {
 		[config, remoteProviders],
 	);
 
-	return { options, grouped, defaultKey: config?.defaultModel, iconFor, labelFor };
+	// 默认模型所属服务商被暂停时不再算默认，否则新会话会挑一个已经关掉的提供方。
+	const defaultKey = (() => {
+		const key = config?.defaultModel;
+		if (!key) return undefined;
+		const providerId = key.slice(0, Math.max(0, key.indexOf("/")));
+		const provider = providerId ? config?.providers[providerId] : undefined;
+		return provider?.disabled ? undefined : key;
+	})();
+
+	return { options, grouped, defaultKey, iconFor, labelFor };
 }
