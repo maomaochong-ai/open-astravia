@@ -19,7 +19,7 @@ const REVEAL_CLIPPED = { clipPath: "inset(100% 0 0 0)" };
 const REVEAL_SHOWN = { clipPath: "inset(0% 0 0 0)" };
 
 /**
- * 输入卡片的「添加」面板（ADR-0175 + ADR-0176）。
+ * 输入卡片的「添加」面板：左栏分类、中栏列表、右栏预览与详情。
  *
  * 两栏：分类轨道（固定位置）｜内容区。内容区在两种形态间切换——
  *

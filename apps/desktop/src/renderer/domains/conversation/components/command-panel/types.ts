@@ -81,7 +81,7 @@ export interface CommandPanelLabels extends SkillListLabels {
  *
  * 只有展示用的字段，**没有动作**：插入由「点这一行」完成，预览是「看清楚它是什么」。
  * 三栏时右栏底部那颗「插入到输入框」既与点行重复，又是面板里唯一一颗实心主色按钮，
- * 在同一块半透明表面上很扎眼（ADR-0176）。
+ * 在同一块半透明表面上很扎眼。
  */
 export interface CommandPanelPreviewModel {
 	readonly key: string;

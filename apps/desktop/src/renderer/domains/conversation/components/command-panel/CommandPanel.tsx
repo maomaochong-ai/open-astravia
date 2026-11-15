@@ -40,7 +40,7 @@ export function CommandPanel(props: CommandPanelProps): JSX.Element {
 	const navigate = useNavigate();
 	const model = useCommandPanelModel({
 		...props,
-		// 能力广场只有一个全局出口与一个上下文出口（ADR-0175 §5.1）：前者去首页，
+		// 能力广场只有一个全局出口与一个上下文出口：前者去首页，
 		// 后者带 `detail` 参数直接打开这一条的抽屉。条目在广场里没有页面时，模型不会
 		// 渲染上下文按钮，所以这里不必再判断一遍。
 		onOpenAbilityPlaza: props.onOpenAbilityPlaza ?? (() => void navigate({ to: "/abilities" })),
