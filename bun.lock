@@ -586,7 +586,7 @@
     },
     "packages/plugins/plugin-sdk": {
       "name": "@astravia-org/plugin-sdk",
-      "version": "0.3.11",
+      "version": "0.3.13",
       "dependencies": {
         "@astravia-org/capability-sdk": "^0.1.0",
         "@sinclair/typebox": "^0.34.41",

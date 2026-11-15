@@ -180,6 +180,11 @@ astraviaPluginFederation({
 
 ## 按需：`@astravia-org/theme-ui/plugin-ui` 宿主成品 UI
 
+只是要让用户选一个模型时，不要用这里的 `ModelSelectorView` 自己拼数据，直接用
+`@astravia-org/plugin-sdk` 的 `ModelPicker`（见 [ai](./ai.md#让用户选模型modelpicker)）：
+数据和行为都由宿主提供，与输入栏的模型选择器完全一致，也不需要开启 `hostThemeUi`。
+`ModelSelectorView` 只留给需要完全自定义清单的场景。
+
 少量经过明确审核的宿主成品组件会从窄入口 `@astravia-org/theme-ui/plugin-ui` 开放。
 它不是默认共享依赖；只有实际使用这些组件的插件才应开启：
 

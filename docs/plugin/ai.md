@@ -7,7 +7,7 @@
 - `ai.models.list`：调用 `ctx.ai.listModels()`。
 - `ai.complete`：调用 `ctx.ai.complete()`、`ctx.ai.stream()` 或 `ctx.ai.chat()`，可能产生模型费用或消耗用户额度。
 
-两项权限独立。只知道固定模型标识的插件可以仅声明 `ai.complete`；需要展示模型选择器时再同时声明 `ai.models.list`。
+两项权限独立。只知道固定模型标识的插件可以仅声明 `ai.complete`；需要**自己拿清单**（自定义排序、过滤或展示清单本身）时才同时声明 `ai.models.list`，只是让用户挑一个模型用下面的 `ModelPicker` 就够了，不需要这条权限。
 
 ## 列出模型
 
@@ -22,6 +22,36 @@ const options = models.map((model) => ({
 ```
 
 列表只包含当前可用且支持文本输入的模型。`modelKey` 使用 `provider/model` 格式；`defaultModel` 只有在用户设置的默认模型当前可用时才返回，否则为 `null`。
+
+## 让用户选模型：`ModelPicker`
+
+```tsx
+import { ModelPicker } from "@astravia-org/plugin-sdk";
+
+<ModelPicker
+  value={selectedModelKey}
+  onChange={setSelectedModelKey}
+  emptyOption={{ label: t("followDefault") }}
+  ariaLabel={t("model")}
+/>
+```
+
+它就是会话输入栏右下角那一个选择器：同一份模型清单（含登录后的云端目录）、服务商分栏、收藏、搜索、模型详情、推理档位与主题定制全部由宿主提供，插件只决定选中的 `modelKey` 写到哪。
+
+| 字段 | 说明 |
+| --- | --- |
+| `value` | 当前选中的 `provider/modelId`；`null` 表示未选 |
+| `onChange` | 选中回调；只有提供了 `emptyOption` 时才会收到 `null` |
+| `reasoning` | `{ value, onChange }`，提供后出现「推理档位」一栏 |
+| `emptyOption` | 列表顶部的空值项（如「跟随默认」），选中它回调 `null` |
+| `placeholder` | 未选中时触发器上的文案 |
+| `defaultModelKey` | 打「默认」徽章的模型；缺省为用户设置的默认模型 |
+| `autoSelectDefault` | 未选中时自动选上宿主默认模型（只回调一次） |
+| `variant` | `field`（默认，表单选择框）或 `inline`（输入栏胶囊） |
+| `className` / `menuClassName` | 追加到触发器 / 弹出菜单的类名；菜单挂在 body 上默认 `z-50`，放在更高浮层里时用它抬高 |
+
+`ModelPicker` 不需要任何权限，也不需要 `hostThemeUi`。选出来的 `modelKey` 可直接交给
+`ctx.ai.complete({ modelKey })`、`ctx.official.sessions.create({ modelKey })`；能否真正调用仍由对应能力决定。
 
 ## 完成文本
 

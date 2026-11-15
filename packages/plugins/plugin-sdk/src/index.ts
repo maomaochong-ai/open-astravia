@@ -452,3 +452,7 @@ export {
 	usePromptAttachment,
 	useSidebarState,
 } from "./hooks.js";
+
+// Host-rendered model picker (same component as the chat input bar)
+export type { PluginModelPickerProps, PluginModelPickerReasoning } from "./model-picker.js";
+export { ModelPicker } from "./model-picker.js";

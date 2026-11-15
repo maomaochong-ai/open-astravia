@@ -4,11 +4,15 @@ All notable changes to `@astravia-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+## [0.3.13] — 2026-11-15
+
+- 新增 `ModelPicker` 组件：宿主渲染的模型选择器，与会话输入栏右下角、知识库设置等处是同一个组件、同一份模型清单（含登录后的云端目录、收藏、推理档位与主题定制）。插件只传受控的 `value` / `onChange`，可选 `reasoning`、`emptyOption`、`defaultModelKey`、`autoSelectDefault`、`variant`、`menuClassName`（选择器放在层级更高的浮层里时抬高菜单）。不需要权限，也不需要 `hostThemeUi`；此前插件只能自己调 `official.models.list()` / `ctx.ai.listModels()` 再拼 `ModelSelectorView` 或原生 `<select>`，字段不全且不会随宿主目录更新。需要 Desktop 0.5.94+，`PluginHostBridge` 相应新增 `ModelPicker`。
+
+- 新增会话页顶栏贡献点 `ctx.ui.registerHeaderAction({ id, order?, useAction })` 与权限 `ui.slot.header-action`，要求 Plugin API `^2.9.0`。它是**声明式**的：`useAction` 是一个 hook，返回 `{ title, icon, badge?, active?, disabled?, onClick | menuItems | popover }`（或 `null` 表示不适用），由宿主把它渲染成顶栏统一按钮组里的一格，插件不能自定义样式，按钮上也没有文字（名称走悬浮提示）。顶栏最多显示 7 格（内置与插件共用），其余进入「收纳」；用户可在收纳托盘里拖动调整哪些上栏、顺序如何，布局按 `${插件 id}:${贡献 id}` 记在本机，新装插件的动作只会占空位、不会挤走已有布局。新增类型 `PluginHeaderActionState` / `PluginHeaderActionMenuItem` / `PluginHeaderActionPopoverProps`；`menuItems` ≤ 20 项、`title` ≤ 40 字等限制见 `docs/plugin/ui-slots.md`。旧宿主没有该方法，调用会得到 `undefined`，需要兼容旧宿主的插件请把 `pluginApiVersion` 写成 `^2.9.0`。
+
 - 新增 `ctx.shell`：`listExternalApplications(targetPath)` 返回本机可打开该目录的应用（含分类与自己的图标 data URL），`openPathWithApplication(targetPath, appId, kind)` 与 `openPathWithDefaultApplication(targetPath)` 负责启动。权限 `shell.open-external-app`，要求 Plugin API `^2.10.0`。平台差异（macOS 的应用目录与 `open`、Windows 的注册表与 exe 启动、Linux 的 `.desktop`）全部由宿主处理，插件不必再自己拼 `open -a` 这类命令，也不会因为平台不同而只能支持其中一种。旧宿主没有 `ctx.shell`，使用前请把 `pluginApiVersion` 写成 `^2.10.0`。
 
 - 活动面板的宽度联动与侧边栏解耦：`setActivityPanelWidth("max")` 与 `openActivityTab(id, { width: "max" })` 不再自动收起宿主侧边栏，而是从可用宽度中扣除常驻侧栏占的那一栏。合同类型不变；依赖「拉满后侧栏消失」的插件需要自己收起侧栏，或接受更窄的面板。
-
-- 新增会话页顶栏贡献点 `ctx.ui.registerHeaderAction({ id, order?, useAction })` 与权限 `ui.slot.header-action`，要求 Plugin API `^2.9.0`。它是**声明式**的：`useAction` 是一个 hook，返回 `{ title, icon, badge?, active?, disabled?, onClick | menuItems | popover }`（或 `null` 表示不适用），由宿主把它渲染成顶栏统一按钮组里的一格，插件不能自定义样式，按钮上也没有文字（名称走悬浮提示）。顶栏最多显示 7 格（内置与插件共用），其余进入「收纳」；用户可在收纳托盘里拖动调整哪些上栏、顺序如何，布局按 `${插件 id}:${贡献 id}` 记在本机，新装插件的动作只会占空位、不会挤走已有布局。新增类型 `PluginHeaderActionState` / `PluginHeaderActionMenuItem` / `PluginHeaderActionPopoverProps`；`menuItems` ≤ 20 项、`title` ≤ 40 字等限制见 `docs/plugin/ui-slots.md`。旧宿主没有该方法，调用会得到 `undefined`，需要兼容旧宿主的插件请把 `pluginApiVersion` 写成 `^2.9.0`。
 
 - `PluginModelDefinition.input` 可声明 `text` / `image`。Desktop 模型写入合同同步保留该字段，修复网关已声明图像输入但模型注册后仍退回纯文本的问题；省略时仍采用宿主默认，旧宿主可能清除该字段。
 
