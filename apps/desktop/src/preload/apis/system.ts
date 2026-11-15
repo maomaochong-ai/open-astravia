@@ -324,6 +324,8 @@ export function createSystemApi(
 		diagnostics: {
 			exportDiagnosticsPackage: () => ipc.invoke("astravia:diagnostics:export"),
 			getLogDir: () => ipc.invoke("astravia:diagnostics:get-log-dir"),
+			logRendererEvent: (scope: string, fields: unknown) =>
+				ipc.invoke("astravia:diagnostics:log-renderer-event", scope, fields),
 		},
 		permissions: {
 			checkAll: () => ipc.invoke("astravia:permissions:check-all"),

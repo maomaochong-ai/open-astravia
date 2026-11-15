@@ -8,11 +8,16 @@ import { applyInitialTheme } from "./shared/theme/apply";
 import { applyStoredCursorStyle } from "./shared/theme/cursor";
 import { applyStoredFont } from "./shared/theme/ui-font";
 import { captureReactError, initializeRendererErrorMonitoring } from "./telemetry/error-monitoring";
+import { initializeLongTaskProbe } from "./telemetry/long-task-probe";
 import { initializeViteHmrDiagnostics } from "./telemetry/vite-hmr-diagnostics";
 import "./styles.css";
 
 initializeViteHmrDiagnostics();
 initializeRendererErrorMonitoring("main");
+// 渲染层 long task 探针：只在开发构建工作，观察超过阈值的 long task 并交主进程写诊断日志。
+initializeLongTaskProbe((record) => {
+	void window.astravia.diagnostics.logRendererEvent("long-task", record);
+});
 
 // 在首个 React 节点挂载前同步恢复持久化主题、光标与字体，保证窗口首次可见时已使用实际设计令牌。
 applyPlatformAttribute();
