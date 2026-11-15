@@ -5,6 +5,7 @@ import type { ArtifactStore } from "../artifacts/artifact-store.js";
 import type { JobManager } from "../jobs/job-manager.js";
 import { getAppLogger } from "../logger.js";
 import { createAstraviaImageProvider } from "../media-generation/astravia-image-provider.js";
+import { CustomImageProviderManager } from "../media-generation/custom-image-provider-manager.js";
 import { MediaArtifactStore } from "../media-generation/media-artifact-store.js";
 import { MediaProviderRegistry } from "../media-generation/media-provider-registry.js";
 
@@ -13,6 +14,8 @@ const DOMAIN_MEDIA_PROVIDER_OWNER = "astravia.domain.media";
 export interface DesktopMediaRuntime {
 	readonly providers: MediaProviderRegistry;
 	readonly artifacts: MediaArtifactStore;
+	/** 用户自配的 OpenAI 兼容图片服务；渲染层的「自定义图片服务」直接读写它。 */
+	readonly customImageProviders: CustomImageProviderManager;
 }
 
 let desktopMediaRuntime: DesktopMediaRuntime | undefined;
@@ -29,7 +32,8 @@ export function registerDesktopMediaProviders(
 ): Disposable {
 	const providers = new MediaProviderRegistry(jobs, getAppLogger("media-generation"));
 	const artifacts = new MediaArtifactStore(artifactStore);
-	desktopMediaRuntime = { providers, artifacts };
+	const customImageProviders = new CustomImageProviderManager(providers, artifacts, { fetch: globalThis.fetch });
+	desktopMediaRuntime = { providers, artifacts, customImageProviders };
 	// Astravia 图像生成走云端网关：lite 构建不注册，provider 列表中不出现。
 	const astraviaRegistration = isCloudBuildEnabled()
 		? providers.registerProvider(createAstraviaImageProvider(artifacts))
@@ -45,6 +49,7 @@ export function registerDesktopMediaProviders(
 	return {
 		dispose: () => {
 			if (desktopMediaRuntime?.providers === providers) desktopMediaRuntime = undefined;
+			customImageProviders.dispose();
 			capabilityRegistration.dispose();
 			astraviaRegistration?.dispose();
 		},

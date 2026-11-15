@@ -234,6 +234,11 @@ export function createSystemApi(
 		media: {
 			listProviders: () => ipc.invoke("astravia:media:list-providers"),
 			getAudioMetadata: (filePath) => ipc.invoke("astravia:media:audio-metadata", filePath),
+			customImageProviders: {
+				list: () => ipc.invoke("astravia:media:custom-image-providers:list"),
+				save: (input) => ipc.invoke("astravia:media:custom-image-providers:save", input),
+				remove: (id) => ipc.invoke("astravia:media:custom-image-providers:remove", id),
+			},
 		},
 		runtimes: {
 			getStatus: () => ipc.invoke("astravia:runtimes:get-status"),
