@@ -11,6 +11,7 @@ import type { CommandPanelLabels } from "./types";
 export function buildCommandPanelLabels(t: TFunction<"chat">): CommandPanelLabels {
 	const categoryLabel = (target: AddPanelTab): string => {
 		if (target === "favorites") return t("slashPanel.favorites");
+		if (target === "all") return t("slashPanel.all");
 		if (target === "operations") return t("slashPanel.operations");
 		return t(`slashPanel.sections.${target}`);
 	};
@@ -22,6 +23,7 @@ export function buildCommandPanelLabels(t: TFunction<"chat">): CommandPanelLabel
 		favoritesEmpty: t("slashPanel.favoritesEmpty"),
 		favoritesEmptyHint: t("slashPanel.favoritesEmptyHint"),
 		categories: t("slashPanel.categories"),
+		all: t("slashPanel.all"),
 		operations: t("slashPanel.operations"),
 		openAbilityPlaza: t("slashPanel.openAbilityPlaza"),
 		categoryLabel,
@@ -42,16 +44,8 @@ export function buildCommandPanelLabels(t: TFunction<"chat">): CommandPanelLabel
 			statusLabel: t("slashPanel.preview.statusLabel"),
 			statusConnected: t("slashPanel.preview.statusConnected"),
 			insertLabel: t("slashPanel.preview.insertLabel"),
-			hintSkill: t("slashPanel.preview.hintSkill"),
-			hintConnector: t("slashPanel.preview.hintConnector"),
-			hintFile: t("slashPanel.preview.hintFile"),
-			hintExtension: t("slashPanel.preview.hintExtension"),
 		},
 		hints: {
-			navigate: t("slashPanel.hints.navigate"),
-			insert: t("slashPanel.hints.insert"),
-			details: t("slashPanel.hints.details"),
-			close: t("slashPanel.hints.close"),
 			scrollToolsLeft: t("slashPanel.hints.scrollToolsLeft"),
 			scrollToolsRight: t("slashPanel.hints.scrollToolsRight"),
 			scrollRailUp: t("slashPanel.hints.scrollRailUp"),

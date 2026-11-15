@@ -30,10 +30,12 @@ function makeLabels(): CommandPanelLabels {
 		openAbilityPlaza: "能力广场",
 		categoryLabel: (tab) => {
 			if (tab === "favorites") return "收藏";
+			if (tab === "all") return "全部";
 			if (tab === "operations") return "操作";
 			return { files: "文件", skills: "技能", connectors: "连接器", plugins: "插件", apps: "应用" }[tab];
 		},
 		groupLabel: (key) => key,
+		all: "全部",
 		categoryEmpty: (category: string) => `${category}里还没有内容`,
 		operationsEmptyHint: "当前会话还没有可用的操作",
 		emptyNoMatch: "未找到匹配项",
@@ -49,16 +51,8 @@ function makeLabels(): CommandPanelLabels {
 			statusLabel: "状态",
 			statusConnected: "已连接",
 			insertLabel: "插入",
-			hintSkill: "内部技能说明",
-			hintConnector: "内部连接器说明",
-			hintFile: "内部文件说明",
-			hintExtension: "内部扩展说明",
 		},
 		hints: {
-			navigate: "选择",
-			insert: "插入",
-			details: "查看详情",
-			close: "关闭",
 			scrollToolsLeft: "向左查看更多工具",
 			scrollToolsRight: "向右查看更多工具",
 			scrollRailUp: "向上翻更多分类",
@@ -106,7 +100,6 @@ const PREVIEW: CommandPanelPreviewModel = {
 	description: "按仓库标准审阅改动",
 	fallbackIcon: "icon-[solar--magic-stick-3-linear]",
 	meta: [{ label: "来源", value: "内置" }],
-	hint: "内部技能说明",
 };
 
 function renderPanel(overrides: Partial<React.ComponentProps<typeof CommandPanelView>> = {}) {
@@ -139,8 +132,8 @@ describe("CommandPanelView 两栏面板", () => {
 	it("左栏固定五类 + 收藏，点一下切分类", () => {
 		const { props } = renderPanel();
 		const tabs = screen.getAllByRole("tab");
-		// 收藏 + 文件 / 技能 / 连接器 / 插件 / 应用 + 操作：分类位置固定，空的也留在轨道上
-		expect(tabs).toHaveLength(7);
+		// 收藏 + 全部 + 文件 / 技能 / 连接器 / 插件 / 应用 + 操作：位置固定，空的也留在轨道上
+		expect(tabs).toHaveLength(8);
 		expect(screen.getByRole("tab", { name: "插件" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("tab", { name: "连接器" }));
 		expect(props.onSelectTab).toHaveBeenCalledWith("connectors");
@@ -178,6 +171,8 @@ describe("CommandPanelView 两栏面板", () => {
 		const { props } = renderPanel({ preview: PREVIEW, onOpenPreview: vi.fn() });
 		// 描述在预览里完整可见
 		expect(screen.getByText("按仓库标准审阅改动")).toBeTruthy();
+		// 回归：预览页不再有那行「点击这一行即可插入…」的提示。
+		expect(screen.queryByText(/点击这一行即可插入/)).toBeNull();
 		// 三栏时的「插入到输入框」已删除：插入就是点列表那一行
 		expect(screen.queryByRole("button", { name: /插入到输入框/ })).toBeNull();
 		// 预览里没有列表与搜索框

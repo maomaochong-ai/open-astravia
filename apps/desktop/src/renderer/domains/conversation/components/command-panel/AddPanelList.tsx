@@ -58,6 +58,7 @@ function EntryRow({
 				icon={entry.icon}
 				iconUrl={entry.iconUrl}
 				fallbackIcon={entry.fallbackIcon}
+				type={entry.kind}
 				boxClassName="size-6 rounded bg-foreground/6"
 				className="size-3.5"
 			/>
@@ -122,6 +123,7 @@ export function AddPanelList({
 	labels,
 	searching,
 	tabKey,
+	limit,
 	operation,
 	onActivateEntry,
 	onOpenPreview,
@@ -135,17 +137,24 @@ export function AddPanelList({
 	readonly searching: boolean;
 	/** 当前分类：仅用于列表重置滚动位置（换分类必须回到顶部）。 */
 	readonly tabKey: AddPanelTab;
+	/** 本次最多渲染多少行（揭幕动画期间用，避免首帧同步布局上百行）。 */
+	readonly limit?: number;
 	/** 「操作」分类里的会话操作（压缩上下文），作为列表里的一行渲染。 */
 	readonly operation?: CommandPanelOperationItem;
 	readonly onActivateEntry: (key: string) => void;
 	readonly onOpenPreview: (key: string) => void;
 	readonly onToggleFavorite: (key: string) => void;
 }): JSX.Element {
-	const rows = buildAddPanelRows(sections, {
+	const allRows = buildAddPanelRows(sections, {
 		searching,
 		categoryLabel: labels.categoryLabel,
 		groupLabel: labels.groupLabel,
 	});
+	/*
+	 * `limit` 只裁「首帧要布局多少行」：揭幕动画期间铺十几行就够填满可视区，
+	 * 动画结束后一次性补齐。裁的是渲染，不是数据——键盘索引仍按全量算。
+	 */
+	const rows = limit === undefined ? allRows : allRows.slice(0, limit);
 	const favoriteKeys = new Set(favorites);
 
 	return (

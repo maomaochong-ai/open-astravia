@@ -40,6 +40,8 @@ export interface CommandPanelLabels extends SkillListLabels {
 	favoritesEmptyHint: string;
 	/** 左栏分类轨道的无障碍名称。 */
 	categories: string;
+	/** 左栏「全部」格：跨分类列出能力页有的全部条目。 */
+	all: string;
 	/** 左栏「操作」格（压缩上下文等会话操作）。 */
 	operations: string;
 	/** 左栏底部「能力广场」入口。 */
@@ -66,18 +68,14 @@ export interface CommandPanelLabels extends SkillListLabels {
 		statusLabel: string;
 		statusConnected: string;
 		insertLabel: string;
-		hintSkill: string;
-		hintConnector: string;
-		hintFile: string;
-		hintExtension: string;
 	};
-	/** 底栏快捷键提示。 */
+	/**
+	 * 左栏与工具行的滚动切换按钮文案（无触控板时也要能翻）。
+	 *
+	 * 面板底部原来还有一行键盘快捷键提示，已按用户反馈移除：展开的列表与对话框本就不搭，
+	 * 再压一行提示更显笨重；键位在 `CommandPanelView` 里直接支持，不需要常驻说明。
+	 */
 	hints: {
-		navigate: string;
-		insert: string;
-		details: string;
-		close: string;
-		/** 工具行的左右切换按钮（无触控板时也要能翻）。 */
 		scrollToolsLeft: string;
 		scrollToolsRight: string;
 		scrollRailUp: string;
@@ -101,8 +99,8 @@ export interface CommandPanelPreviewModel {
 	readonly icon?: string;
 	readonly iconUrl?: string;
 	readonly fallbackIcon: string;
+	readonly kind?: "skill" | "mcp" | "plugin" | "bundle" | "file";
 	readonly meta: readonly { readonly label: string; readonly value: string }[];
-	readonly hint?: string;
 }
 
 export interface CommandPanelFileAction {

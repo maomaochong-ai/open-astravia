@@ -1144,6 +1144,7 @@
 		"favorites": "收藏",
 		"favoritesEmpty": "还没有收藏",
 		"favoritesEmptyHint": "在任意条目上悬停并点星标，就能把它放进这一格。",
+		"all": "全部",
 		"operations": "操作",
 		"categories": "添加分类",
 		"openAbilityPlaza": "能力广场",
@@ -1168,17 +1169,9 @@
 			"sourceLabel": "来源",
 			"statusLabel": "状态",
 			"statusConnected": "已连接",
-			"insertLabel": "插入",
-			"hintSkill": "点击这一行即可插入；输入框里会留下一个提示词标签，可继续追加描述再发送。",
-			"hintConnector": "接入后它提供的工具由 Agent 直接调用，不需要先插入文字。",
-			"hintFile": "直接作用于当前消息的附件，不会进入模型上下文。",
-			"hintExtension": "启用后它提供的技能会出现在「技能」分类里。"
+			"insertLabel": "插入"
 		},
 		"hints": {
-			"navigate": "选择",
-			"insert": "插入",
-			"details": "详情",
-			"close": "关闭",
 			"scrollToolsLeft": "向左查看更多工具",
 			"scrollToolsRight": "向右查看更多工具",
 			"scrollRailUp": "向上翻更多分类",

@@ -41,6 +41,7 @@ export function AddPanelPreviewView({
 						icon={preview.icon}
 						iconUrl={preview.iconUrl}
 						fallbackIcon={preview.fallbackIcon}
+						type={preview.kind}
 						boxClassName="size-9 rounded-lg border border-border/40 bg-foreground/5"
 						className="size-4"
 					/>
@@ -69,11 +70,6 @@ export function AddPanelPreviewView({
 					</dl>
 				)}
 
-				{preview.hint && (
-					<p className="mt-3 rounded-lg bg-foreground/4 px-2.5 py-2 text-[10.5px] leading-relaxed text-muted-foreground/80">
-						{preview.hint}
-					</p>
-				)}
 			</div>
 		</div>
 	);

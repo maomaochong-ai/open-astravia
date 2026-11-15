@@ -1,6 +1,7 @@
 import { cn } from "@astravia-org/ui/utils";
 import { useEffect, useRef, useState } from "react";
 import {
+	ADD_PANEL_ALL_ICON,
 	ADD_PANEL_CATEGORY_ICONS,
 	ADD_PANEL_CATEGORY_ORDER,
 	ADD_PANEL_OPERATION_ICON,
@@ -125,6 +126,8 @@ export function AddPanelRail({
 				className="no-scrollbar flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto"
 			>
 				{item("favorites", "icon-[solar--star-linear]", labels.favorites, { favorite: true })}
+				{/* 「全部」：紧挨收藏，能力页有的都列出来（跨分类）。 */}
+				{item("all", ADD_PANEL_ALL_ICON, labels.all)}
 				{categories.map((category) =>
 					item(category, ADD_PANEL_CATEGORY_ICONS[category], labels.categoryLabel(category)),
 				)}
