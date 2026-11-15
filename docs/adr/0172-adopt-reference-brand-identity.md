@@ -33,6 +33,25 @@ ADR-0157 最初把三类条目从「功能对齐」里摘出来：本机代理�
 
 1. `PresetProviderDef` 增加可选 `defaultApiKey`：有值的预置在创建时预填密钥，用户不再
    需要自己填一个假 key。这不是「免密」，只是「默认值」。
+
+   **这类预置在行内不给「修改密钥」入口，也不给删除入口**（本轮修正，与参照实现的
+   `autoKey` 一致）。理由是同一条事实的两面：既然密钥由产品内置、用户无从得知也无从修改，
+   给一颗钥匙按钮只会让人以为「必须先有一个 key 才能用」；而它不在用户可添加的目录里，
+   删掉之后也装不回来。行内保留的是开关与端口编辑——那是用户真正能决定的两件事。
+
+   字段与推导链与参照实现逐层一致，不新造名字：
+
+   | 层 | 名字 | 含义 |
+   | --- | --- | --- |
+   | 预设定义 | `PresetProviderDef.defaultApiKey?: string` | 产品内置的密钥值（Magpie 是 `"magpie"`） |
+   | 主进程快照 → preload 合同 | `PresetProviderInfo.defaultApiKey?: string` | 原样透传，**不**在这两处改叫别的名字 |
+   | 渲染层行 | `PresetProviderRow.autoKey: boolean` | 由 `Boolean(row.defaultApiKey)` 派生 |
+   | 视图 | `row.autoKey` | `canEditKey = !offline && !autoKey`；端口编辑 `canEditUrl = autoKey && !offline`；删除 `adopted && !autoKey` |
+
+   视图的三个判据与参照实现 `PresetProviderRowView` 的写法逐字对应。此前本仓有两个偏差：
+   把行模型叫成 `hasDefaultApiKey` 且只用它表达「空草稿也能采纳」，于是 Magpie 那一行同时
+   出现钥匙按钮与「空草稿可保存」；另有一个参照实现根本没有的 `localProxy` 字段，用它决定
+   端口按钮——两处都已在这次收敛掉（`localProxy` 从预设定义、合同、行模型、视图一并删除）。
 2. 预置服务商支持**启用开关**：未启用的预置不出现在模型选择器里（`ojsy` 已在
    B5 落地了「停用的预设服务商不再出现在模型选择里」的读取侧，这里补写入侧）。
 3. `baseUrl` 可编辑，且**只对本机回环地址开放端口修改**（`f52cefabc` 的最终态）：
@@ -58,6 +77,24 @@ ADR-0157 最初把三类条目从「功能对齐」里摘出来：本机代理�
 - 面板去掉外阴影、去头部分隔线、底栏保留分隔线并换底色、标题头部加大加粗
   （`hl6i` / `8afc059a4` / `709750d8b`）。这些只在 `theme-ui` 的 Splash 组件里改一次。
 
+### 4. 品牌边界（本轮收紧）：出厂图标是 Astravia 自己的
+
+品牌采纳原来写成「整套图标资源与身份一并继承」。实际执行时要把两类素材分开：
+
+| 类别 | 内容 | 归属 |
+| --- | --- | --- |
+| 出厂身份 | `default` 应用图标、Dock 默认图标、安装包图标 | **本仓自己的 Astravia 图标**，不继承参照实现 |
+| 场景图标 | `coding` / `design` / `work` / `study` / `read` / `game` / `sport` / `cook` / `travel` / `sleep` 十款 | 沿用参照实现的素材 |
+| 规范 | 超椭圆遮罩、824 本体、标准边距 | 沿用参照实现的做法（形状与边距，不是图案） |
+
+理由：出厂图标是用户第一眼看到的应用身份。把它设成对方的形象，会让「这是哪个产品」在
+Dock、任务栏、安装包、设置页四个位置同时出现第二种答案。场景图标是风格素材，与身份无关，
+继续沿用不会造成这种歧义。
+
+落地方式：`settings/assets/app-icons/default.png` 由本仓 `build/icon.png`（1024 画布、
+824 本体）裁到图形本体后缩放到 256 生成；`appIcon_default` 文案由「默认 / Default」改为
+「Astravia」；打包侧仍走 `icon.icns` 与 `icon-dock.png`，与场景图标不是同一条路径。
+
 ## 备选方案
 
 - **只采纳应用图标，不采纳本机代理**：图标是纯装饰，代理会引入一个用户不一定装的
@@ -78,6 +115,8 @@ ADR-0157 最初把三类条目从「功能对齐」里摘出来：本机代理�
   旧的 `models.json` 不需要迁移；未启用的预置只在选择器层面隐藏，已存在的会话仍可读。
 - 已知限制：Dock 图标的超椭圆遮罩只在 macOS 生效；Windows/Linux 用同一份 824 本体
   的方形资源，不做平台特调。
+- 品牌边界（见决策 4）：出厂图标归本仓，参照实现只提供场景图标与「超椭圆 + 824 本体」
+  的规范；`NOTICE` 只需记录场景图标素材来源。
 
 ## 验证
 
@@ -104,7 +143,17 @@ ADR-0157 最初把三类条目从「功能对齐」里摘出来：本机代理�
 | 打包 | `scripts/build-resource-filters.mjs` | `app-icons/**/*` 随 `build/` 进 resources |
 
 外观页同时按参照实现收敛：语言行与界面大小行不再带说明文字，应用图标作为同一张卡片的
-第四行紧跟界面大小之后（该行 `border={false}` 收尾）。字体行也去掉了多余的副标题。
+第四行紧跟界面大小之后。字体行随后并入同一张卡片作为最后一行（`border={false}` 收尾），
+不再自带分区标题、副标题或说明——细节见 ADR-0161 §9。
+
+**本轮修订（0.5.94）**：
+
+| 项 | 改动 |
+| --- | --- |
+| 出厂图标 | `settings/assets/app-icons/default.png` 改为由本仓 `build/icon.png` 的 824 本体生成；`appIcon_default` 文案改为「Astravia」；打包侧的 `icon.icns` / `icon-dock.png` 不变 |
+| 图标形状 | `SquircleIcon` 的 `clip-path` 从极坐标扰动换成 n=5 超椭圆参数方程，11 个图标同形 |
+| 打包守卫 | `build-resource-filters.node-test.mjs` 三条断言锁住三平台 filters 都含 `app-icons/**/*`（缺了它打包后切换图标静默失效） |
+| 预置服务商行 | 启用开关改为常驻（未采纳时是「关」，拨开即启用）；「换密钥」与「改端口」从行内输入改为 `Dialog`；`shouldCloseEmptyApiKeyEditor` 与其 10 条用例随行内编辑一起删除 |
 
 ## 实施顺序
 
