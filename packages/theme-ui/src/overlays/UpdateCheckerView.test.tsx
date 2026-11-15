@@ -46,7 +46,8 @@ describe("UpdateCheckerDetail", () => {
 
 		expect(html).toContain(">新增<");
 		expect(html).toContain("内置浏览器可以从标签页菜单添加了");
-		expect(html).toContain("现在它按普通面板参与可见性解析。");
+		// 每条只显摘要（粗体标题），冒号后的细节正文不再进入卡片。
+		expect(html).not.toContain("现在它按普通面板参与可见性解析。");
 		expect(html).not.toContain("&lt;h2&gt;");
 		expect(html).not.toContain("&lt;ul&gt;");
 	});
@@ -60,12 +61,12 @@ describe("UpdateCheckerDetail", () => {
 		expect(html).not.toContain("## ");
 	});
 
-	it("separates the lead-in title from the body so the two read as different levels", () => {
+	it("每条变更只显摘要标题，不把冒号后的细节正文铺出来", () => {
 		const html = renderDetail(FEED_HTML);
 
-		// 标题是分行的一块加粗文字，正文是它下面的段落：两者不能挤成一段。
+		// 摘要（粗体标题）是单独一行；细节正文不再渲染成第二段。
 		expect(html).toMatch(/font-medium[^"]*">内置浏览器可以从标签页菜单添加了<\/div>/u);
-		expect(html).toMatch(/<p class="[^"]*">现在它按普通面板参与可见性解析。<\/p>/u);
+		expect(html).not.toContain("现在它按普通面板参与可见性解析。");
 	});
 
 	it("numbers the items and restarts the numbering for every section", () => {

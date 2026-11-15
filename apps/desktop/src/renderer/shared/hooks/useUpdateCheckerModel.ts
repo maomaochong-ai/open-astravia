@@ -47,6 +47,7 @@ export function useUpdateCheckerModel(): UpdateCheckerViewProps {
 				idle: (version) => t("updaterIdle", { version }),
 				newVersion: (version) => t("updaterNewVersion", { version }),
 				restart: t("updaterRestart"),
+				viewCurrent: t("updaterViewCurrent"),
 				viewMore: t("updaterViewMore"),
 			},
 			latestVersion: state.latestVersion,
@@ -83,6 +84,6 @@ export function useUpdateCheckerModel(): UpdateCheckerViewProps {
 			releaseNote: state.releaseNote,
 			statusText,
 		}),
-		[checking, openRestartDialog, setFilePreview, state, statusText, t],
+		[checking, openCurrentNotes, openRestartDialog, setFilePreview, state, statusText, t],
 	);
 }
