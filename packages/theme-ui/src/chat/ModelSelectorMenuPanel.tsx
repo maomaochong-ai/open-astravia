@@ -1,7 +1,7 @@
 import { cn } from "@astravia-org/ui/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@astravia-org/ui/popover";
 import type { JSX } from "react";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { ModelSelectorLabels, ModelSelectorOptionView, ModelSelectorProviderGroup } from "./ModelSelectorView";
 import {
 	buildModelColumns,
@@ -143,7 +143,7 @@ function ModelInfoButton({
 	);
 }
 
-function ModelRow({
+const ModelRow = memo(function ModelRowInner({
 	model,
 	providerLabel,
 	selected,
@@ -163,9 +163,12 @@ function ModelRow({
 	readonly labels: ModelSelectorLabels;
 	readonly showProvider: boolean;
 	readonly className?: string;
-	readonly onSelect: () => void;
-	readonly onToggleFavorite: () => void;
+	readonly onSelect: (key: string) => void;
+	readonly onToggleFavorite: (key: string) => void;
 }): JSX.Element {
+	// 回调只传 key：宿主给的是稳定引用时，未变化的行可以整行跳过重渲。
+	const handleSelect = useCallback(() => onSelect(model.key), [onSelect, model.key]);
+	const handleToggleFavorite = useCallback(() => onToggleFavorite(model.key), [onToggleFavorite, model.key]);
 	const multiplier = labels.multiplierLabel?.(model);
 	return (
 		<div
@@ -179,7 +182,7 @@ function ModelRow({
 		>
 			<button
 				type="button"
-				onClick={onSelect}
+				onClick={handleSelect}
 				title={showProvider ? `${model.displayName} · ${providerLabel}` : model.displayName}
 				className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
 			>
@@ -222,7 +225,7 @@ function ModelRow({
 			 */}
 			<button
 				type="button"
-				onClick={onToggleFavorite}
+				onClick={handleToggleFavorite}
 				title={favorited ? labels.unfavorite : labels.favorite}
 				aria-label={`${favorited ? labels.unfavorite : labels.favorite}：${model.displayName}`}
 				aria-pressed={favorited}
@@ -240,7 +243,7 @@ function ModelRow({
 			</button>
 		</div>
 	);
-}
+});
 
 export const ModelSelectorMenuPanel = forwardRef<ModelSelectorMenuPanelHandle, ModelSelectorMenuPanelProps>(
 	function ModelSelectorMenuPanel({
@@ -446,8 +449,8 @@ export const ModelSelectorMenuPanel = forwardRef<ModelSelectorMenuPanelHandle, M
 						labels={labels}
 						showProvider={columns.searching}
 						className={classNames?.item}
-						onSelect={() => onSelectModel(entry.model.key)}
-						onToggleFavorite={() => onToggleFavorite(entry.model.key)}
+						onSelect={onSelectModel}
+						onToggleFavorite={onToggleFavorite}
 					/>
 				))}
 				{range.paddingBottom > 0 && <div style={{ height: range.paddingBottom }} aria-hidden="true" />}

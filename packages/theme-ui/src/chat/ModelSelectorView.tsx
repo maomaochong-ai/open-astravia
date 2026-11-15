@@ -249,13 +249,26 @@ export function ModelSelectorView({
 		});
 	}, []);
 
-	const handleModelSelect = (key: string) => {
-		onModelSelect(key);
-		setSearchQuery("");
-		// 有思考档位时保持打开：用户接下来还要在同一面板里选强度（右栏）。
-		// 没有档位就关掉——此时选中即完成，留着面板只会挡视线。
-		if (menuLevels.length === 0) handleOpenChange(false);
-	};
+	// 面板 props 的对象字面量同理：每次渲染都换新引用会让 memo 的行全部失效。
+	const panelClassNames = useMemo(
+		() => ({
+			...(classNames?.providerHeader ? { providerHeader: classNames.providerHeader } : {}),
+			...(classNames?.item ? { item: classNames.item } : {}),
+		}),
+		[classNames?.item, classNames?.providerHeader],
+	);
+
+	// 稳定引用：面板里的行是 memo 的，回调每次换新会让所有行跟着重渲。
+	const handleModelSelect = useCallback(
+		(key: string) => {
+			onModelSelect(key);
+			setSearchQuery("");
+			// 有思考档位时保持打开：用户接下来还要在同一面板里选强度（右栏）。
+			// 没有档位就关掉——此时选中即完成，留着面板只会挡视线。
+			if (menuLevels.length === 0) handleOpenChange(false);
+		},
+		[menuLevels.length, onModelSelect],
+	);
 
 	return (
 		/*
@@ -358,10 +371,7 @@ export function ModelSelectorView({
 													}
 												: undefined
 										}
-										classNames={{
-											...(classNames?.providerHeader ? { providerHeader: classNames.providerHeader } : {}),
-											...(classNames?.item ? { item: classNames.item } : {}),
-										}}
+										classNames={panelClassNames}
 										onSelectModel={handleModelSelect}
 										onSelectReasoning={(level) => {
 											onReasoningSelect(level);
