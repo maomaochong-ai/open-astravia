@@ -2,7 +2,7 @@ import { builtinModules } from "node:module";
 import { defineConfig } from "vite";
 
 /**
- * 设计历史 runner 的独立构建（ADR-0069）：打成一个自包含 ESM 单文件，随插件
+ * 设计历史 runner 的独立构建：打成一个自包含 ESM 单文件，随插件
  * dist 分发，运行时物化到磁盘后由内置 node 执行。
  *
  * 与插件主构建分开的原因：主构建的产物是给浏览器的 Module Federation chunk，

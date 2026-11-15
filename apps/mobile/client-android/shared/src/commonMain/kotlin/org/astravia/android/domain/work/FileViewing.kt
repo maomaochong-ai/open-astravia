@@ -13,8 +13,8 @@ import org.astravia.android.domain.remote.protocol.RemoteErrorCode
 import org.astravia.android.domain.work.documents.DocumentPreview
 
 /*
- * Viewing the desktop's files from the phone (port of the iPhone's `FileViewing`,
- * ADR-0139): which reply links point at them, how a file is fetched in chunks and how
+ * Viewing the desktop's files from the phone (port of the iPhone's `FileViewing`):
+ * which reply links point at them, how a file is fetched in chunks and how
  * it is shown.
  */
 

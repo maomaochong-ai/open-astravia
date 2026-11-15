@@ -2,7 +2,7 @@ import type { PluginPermission } from "@preload/api";
 
 /**
  * 插件权限的展示文案：模块级常量只存 i18n key（abilities ns），渲染期用 t() 解析。
- * 权限清单以 zip 内 plugin.json 为唯一真相源（ADR-0049 对 ADR-0019 的刻意例外）。
+ * 权限清单以 zip 内 plugin.json 为唯一真相源（对刻意例外）。
  */
 export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"ui.slot.global": "permission.uiSlotGlobal",

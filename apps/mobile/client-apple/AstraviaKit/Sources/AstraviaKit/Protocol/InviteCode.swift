@@ -3,7 +3,7 @@ import CryptoKit
 import Foundation
 
 /// Pairing with a connection code and password (port of `@astravia/remote-control`'s
-/// `invite-code.ts`, ADR-0136): the desktop leaves its pairing link sealed under both on
+/// `invite-code.ts`): the desktop leaves its pairing link sealed under both on
 /// the relay, in a mailbox named by a hash of the code; this phone fetches it and opens
 /// it with the password. The two ends must agree byte for byte; a shared test vector
 /// keeps them honest.
@@ -64,7 +64,7 @@ public enum InviteCode {
 	}
 
 	/// What a desktop's pairing QR code holds once its connection code is on the relay
-	/// (ADR-0138): the code and password instead of the whole pairing link, so the code
+	/// the code and password instead of the whole pairing link, so the code
 	/// is sparse enough to scan at a glance. The relay is named only when it is not the
 	/// default one.
 	public struct QR: Equatable, Sendable {

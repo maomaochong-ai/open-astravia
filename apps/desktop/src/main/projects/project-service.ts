@@ -38,7 +38,7 @@ function isAbsolutePath(path: string): boolean {
 	return path.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(path) || path.startsWith("\\\\");
 }
 
-/** 这个项目标识指向远程主机吗。远程项目的 path 是 `ssh://<hostId>/<路径>`（ADR-0124）。 */
+/** 这个项目标识指向远程主机吗。远程项目的 path 是 `ssh://<hostId>/<路径>`。 */
 function resolveLocation(path: string): ReturnType<typeof parseProjectLocation> {
 	try {
 		return parseProjectLocation(path);

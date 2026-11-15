@@ -4,7 +4,7 @@ import type { SshProcessChannel } from "./process-runner.js";
  * 与远端 helper（`apps/ssh-helper`）对话的客户端。
  *
  * 协议是行分隔 JSON：请求 `{id, method, params}`，响应 `{id, result | error}`，通知没有 `id`。
- * 协议版本是语义化版本号而不是构建哈希（ADR-0124）：远端可能还留着旧版本 helper 起的
+ * 协议版本是语义化版本号而不是构建哈希：远端可能还留着旧版本 helper 起的
  * 任务，新客户端必须仍能连上去接管它们。
  */
 export const HELPER_PROTOCOL_VERSION = "1.1.0";

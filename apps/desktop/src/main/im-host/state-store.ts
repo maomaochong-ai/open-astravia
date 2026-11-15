@@ -13,7 +13,7 @@ import type { SessionStateEntry } from "./host-protocol.js";
  * Path: ~/.astravia/desktop-app/im-state.json
  *
  * Schema v3: keyed by (userId, chatId). v3 supersedes v2 in everything but
- * version number — ADR-0005 split im-gateway's cwd from the desktop "对话"
+ * version numbersplit im-gateway's cwd from the desktop "对话"
  * cwd, which makes every v2 entry's `sessionPath` (pointing into the old
  * shared cwd) a dead reference. Pre-v3 files are dropped on load so each
  * chat starts a brand-new session in the new IM cwd on its next message.
@@ -38,7 +38,7 @@ export function loadImState(filePath = DEFAULT_PATH): ImStateFile {
 		const raw = readFileSync(filePath, "utf-8");
 		const parsed = JSON.parse(raw) as { version?: number; sessions?: unknown };
 		if (parsed.version !== STATE_VERSION) {
-			// v1 用 projectId（ADR-0004），v2 用旧的共享 cwd 路径（ADR-0005）。两者都
+			// v1 用 projectId，v2 用旧的共享 cwd 路径。两者都
 			// 不能向 v3 迁移——sessionPath 已经是死引用，直接重置让每个 chat 重起。
 			return { version: STATE_VERSION, sessions: [] };
 		}

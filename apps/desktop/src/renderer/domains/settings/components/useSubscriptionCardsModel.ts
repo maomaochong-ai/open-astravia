@@ -36,7 +36,7 @@ export interface SubscriptionWindowViewModel {
 export interface SubscriptionCardsModel {
 	actions: {
 		refresh: () => Promise<void>;
-		/** 打开官网定价页（ADR-0051：desktop 不做站内支付，仅外链引流） */
+		/** 打开官网定价页（desktop 不做站内支付，仅外链引流） */
 		upgrade?: () => void;
 	};
 	expiry: string | null;
@@ -139,7 +139,7 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 	);
 
 	const handleUpgrade = useCallback(() => {
-		// ADR-0051：desktop 不内嵌收银台（3DS/银行跳转在 BrowserWindow 里不可靠），外链官网定价页
+		// desktop 不内嵌收银台（3DS/银行跳转在 BrowserWindow 里不可靠），外链官网定价页
 		void window.astravia.shell.openExternal(PRICING_URL);
 		recordSettingsUsage({ tab: "subscription", action: "selected", target: "upgrade-pricing-link" });
 	}, []);

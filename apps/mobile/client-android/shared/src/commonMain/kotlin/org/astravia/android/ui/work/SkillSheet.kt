@@ -60,7 +60,7 @@ import org.astravia.android.resources.skills_title
 import org.astravia.android.ui.theme.astraviaExtra
 
 /**
- * What the composer needs to reference the desktop's skills (ADR-0137): the list for the
+ * What the composer needs to reference the desktop's skills: the list for the
  * prompt's project, a way to refresh it (each time the picker opens), and the desktop's
  * name for a picked skill.
  */

@@ -12,7 +12,7 @@ import type {
 import { ABILITY_LEDGER_SCHEMA_VERSION, migrateAbilityLedgerConfig } from "./ability-ledger-migrations.js";
 
 /**
- * 能力安装台账（ADR-0049）。
+ * 能力安装台账。
  *
  * 只记录「装了哪些能力、什么版本」，**不改变任何物理安装位置**：
  * skill → `~/.astravia/skills/<slug>`、

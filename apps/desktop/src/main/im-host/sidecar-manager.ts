@@ -171,7 +171,7 @@ export interface SidecarConfig {
 	imessage?: IMessageConfig;
 	/**
 	 * Absolute cwd of desktop-app's default "对话" project. The sidecar
-	 * routes every IM session into this directory (see ADR-0004 +
+	 * routes every IM session into this directory (+
 	 * CONTEXT.md → "conversation cwd"). Required.
 	 */
 	conversationCwd: string;
@@ -245,7 +245,7 @@ export class SidecarManager {
 	/**
 	 * Reapply runtime configuration. Credential / transport / conversation
 	 * cwd changes always restart the sidecar — the gateway no longer has a
-	 * soft "runtime update" path (project list is gone, see ADR-0004).
+	 * soft "runtime update" path (project list is gone).
 	 */
 	async applyConfig(next: SidecarConfig): Promise<void> {
 		this.currentConfig = next;

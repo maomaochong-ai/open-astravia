@@ -150,7 +150,7 @@ function harness() {
 					{
 						id: "chat",
 						path: CONVERSATION_PATH,
-						// Each conversation session runs in its own workspace under the root (ADR-0007).
+						// Each conversation session runs in its own workspace under the root.
 						cwd: `${CONVERSATION_CWD}/chat`,
 						name: "整理周报",
 						firstMessage: "帮我整理周报",

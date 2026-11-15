@@ -181,7 +181,7 @@ export function buildPluginCapabilityGrants(
 
 function buildOfficialDomainGrants(): CapabilityGrant[] {
 	return [
-		// 网关调用不挂可声明权限，只按来源收口给 official 插件（ADR-0056）
+		// 网关调用不挂可声明权限，只按来源收口给 official 插件
 		createCapabilityGrant(FOUNDATION_GATEWAY_CAPABILITIES.REQUEST),
 		createCapabilityGrant(DOMAIN_AGENT_SETTINGS_CAPABILITIES.GET_EXPERIMENTAL),
 		createCapabilityGrant(DOMAIN_AGENT_SETTINGS_CAPABILITIES.SET_EXPERIMENTAL),

@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useFilesPanelModel } from "./useFilesPanelModel";
 
 /**
- * 目录树工具栏（ADR-0162）：新建文件与新建文件夹合并进一个下拉按钮，
+ * 目录树工具栏：新建文件与新建文件夹合并进一个下拉按钮，
  * 两个入口仍然各自可用，新建态仍然落在树上。
  */
 

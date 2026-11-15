@@ -5,7 +5,7 @@ import { defineCapabilityInputSchema, defineCapabilityOutputSchema } from "../sc
 import { CAPABILITY_JSON_VALUE_TYPE, type CapabilityJsonValue } from "./json.js";
 
 /**
- * Astravia 服务端网关调用（ADR-0056）。
+ * Astravia 服务端网关调用。
  *
  * 与 `foundation.network.request` 的区别：调用方只给出 **相对 `/api/v1` 的路径**，
  * 服务端地址与登录凭据都由宿主解析注入，调用方拿不到 token、也拼不出指向其它

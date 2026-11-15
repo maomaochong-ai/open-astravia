@@ -9,7 +9,7 @@ import {
 	type TurnResult,
 } from "../../src/kernel/index.js";
 
-describe("SessionInputQueue 条目管理（ADR-0060）", () => {
+describe("SessionInputQueue 条目管理", () => {
 	it("enqueueWithId 返回条目 id，list 按 steering 在前 followUp 在后给出快照", () => {
 		const queue = new SessionInputQueue();
 		const followUp = queue.enqueueWithId("followUp", { message: userMessage("later") });
@@ -137,7 +137,7 @@ describe("SessionInputQueue 条目管理（ADR-0060）", () => {
 	});
 });
 
-describe("AgentSession 队列生命周期（ADR-0060）", () => {
+describe("AgentSession 队列生命周期", () => {
 	it("空闲时入队压缩会立即执行，且连续点击只执行一次", async () => {
 		const fixture = createFixture();
 		let finishOperation = () => {};

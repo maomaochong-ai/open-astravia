@@ -146,7 +146,7 @@ export interface CodingAgentRuntimePromptOptions {
 	/** 无状态系统提示词来源的兼容入口。 */
 	readonly resolveSystemPromptOptions?: CodingAgentSystemPromptOptionsResolver;
 	/**
-	 * 工作模式 id → mode 提示词正文的宿主解析器（ADR-0071 修订）。
+	 * 工作模式 id → mode 提示词正文的宿主解析器（修订）。
 	 *
 	 * 模式注册表归宿主所有（desktop 的 `main/agent-modes`）；不提供即等于任何 agentMode
 	 * 都不追加 `core.mode` block，CLI / SDK 宿主的默认行为。

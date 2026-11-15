@@ -135,7 +135,7 @@ export function useSessionOpener(): SessionOpenerController {
 	const batchProjectsRef = useRef(batchProjects);
 	batchProjectsRef.current = batchProjects;
 	const { loadSessions, ensureLocalSession } = useProjectActions();
-	// ADR-0007：「对话」session 运行 cwd 是项目根下的 per-session 子目录，但其 jsonl 与
+	// 「对话」session 运行 cwd 是项目根下的 per-session 子目录，但其 jsonl 与
 	// 侧边栏 sessionsMap bucket 都挂在项目根 cwd 上。重命名/刷新必须落到「根」bucket，
 	// 否则侧边栏与顶部标题读不到更新。用此 ref 把子目录 cwd 归一回项目根。
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
@@ -286,7 +286,7 @@ export function useSessionOpener(): SessionOpenerController {
 			// Runtime hydration below remains canonical and will reconcile streaming drafts.
 			// The whole history is presented at once: the virtualized list sizes and places
 			// rows from the items it starts with, and history inserted above shown rows later
-			// cannot be placed without visible corrections while scrolling up (ADR-0147).
+			// cannot be placed without visible corrections while scrolling up.
 			let previewPresentation: Promise<void> | undefined;
 			if (stageExistingSessionOpen) {
 				markSessionSwitch("session-preview-history-start");
@@ -295,7 +295,7 @@ export function useSessionOpener(): SessionOpenerController {
 				 * 1. 先只要文件尾部的片段（几百条）——4.7 MB 会话实测 11 ms，而读全量要 1140 ms；
 				 * 2. 再把完整历史换上（同一次打开里继续往下走）。
 				 *
-				 * 这与 ADR-0147 不冲突：那条约束禁止的是「在已显示的行上方再插历史」，
+				 * 这与既有约束不冲突：那条约束禁止的是「在已显示的行上方再插历史」，
 				 * 而这里是把整个列表替换成同一份历史的超集，行的 id 都来自 entryId，
 				 * 所以在底部对齐的滚动位置上不会错位。
 				 */
@@ -445,7 +445,7 @@ export function useSessionOpener(): SessionOpenerController {
 			// Runtime's are ignored, and sends it had not confirmed when left reappear.
 			bindConversationFeed(sessionId);
 			const canonicalSessionPath = createResult.sessionPath || sessionPath || "";
-			// ADR-0007: 「对话」项目下 main 会把 cwd 改写成 per-session 子目录，
+			// 「对话」项目下 main 会把 cwd 改写成 per-session 子目录，
 			// 这里以 main 返回的 effective cwd 为准，保证 FilesPanel/调试 cwd 都指向子目录。
 			const effectiveCwd = createResult.cwd ?? cwd;
 
@@ -497,7 +497,7 @@ export function useSessionOpener(): SessionOpenerController {
 			}
 			const cachedKey = resolvedSessionPath;
 			let subscribed = false;
-			// History and the running Turn's replay arrive as one snapshot (ADR-0146). The
+			// History and the running Turn's replay arrive as one snapshot. The
 			// Turn is rebuilt from its events alone, so the snapshot has no gap or overlap.
 			const applyAttachSnapshot = (snapshot: DesktopSessionAttachmentSnapshot): void => {
 				const revision = nextConversationHistoryRevision();
@@ -679,7 +679,7 @@ export function useSessionOpener(): SessionOpenerController {
 			if (stageExistingSessionOpen) clearOwnPendingTransition();
 			if (isExistingSessionOpen) perfSessionSwitchComplete("completed", interactionId);
 
-			// kernel 队列镜像初始化（ADR-0060）：整体替换、不做消费差分——后台期间被
+			// kernel 队列镜像初始化：整体替换、不做消费差分——后台期间被
 			// 消费的条目由历史重放呈现，这里只要拿到当前真实队列与 paused 状态。
 			void window.astravia.session
 				.getQueueState(sessionId)
@@ -701,7 +701,7 @@ export function useSessionOpener(): SessionOpenerController {
 					console.warn("[useSessionManager] getQueueState failed", err);
 				});
 
-			// ADR-0007: 侧边栏 sessionsMap 挂在「对话」项目根；运行 cwd 可能是 UUID 子目录。
+			// 侧边栏 sessionsMap 挂在「对话」项目根；运行 cwd 可能是 UUID 子目录。
 			// 必须归一到 bucket 再 list，否则 fork/打开已有会话后侧栏不出现该条。这里不再
 			// 阻塞 openSession：新会话的首条 prompt 只依赖上面的订阅与运行时状态，侧边栏
 			// 对账可以在发送之后异步完成。

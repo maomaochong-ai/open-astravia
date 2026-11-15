@@ -51,7 +51,7 @@ const pluginsBaseDir = join(getAstraviaHomePath(), "plugins");
 const manifestPath = join(getAstraviaHomePath(), "plugins-manifest.json");
 const tmpBaseDir = join(getAstraviaHomePath(), "tmp", "plugins");
 const MAX_LOCAL_PLUGIN_PACKAGE_BYTES = 512 * 1024 * 1024;
-// 系统插件的用户态偏好（目前仅停用开关），与用户插件注册表分离（ADR-0024）。
+// 系统插件的用户态偏好（目前仅停用开关），与用户插件注册表分离。
 const systemPrefsPath = join(getAstraviaHomePath(), "system-plugin-prefs.json");
 const pluginRegistry = new PluginRegistryStore(manifestPath, pluginsBaseDir);
 const systemPluginPreferences = new SystemPluginPreferenceStore(systemPrefsPath);
@@ -132,7 +132,7 @@ function broadcastPluginChanged(pluginId: string): void {
 }
 
 // =============================================================================
-// 系统插件（ADR-0024）—— 随 App 发布、用户不可删改，源在 packages/plugins/presets
+// 系统插件—— 随 App 发布、用户不可删改，源在 packages/plugins/presets
 // =============================================================================
 
 /** 系统插件只读根目录：打包后在 Resources，dev 下读取 zip 解压后的 staging。 */
@@ -161,7 +161,7 @@ export function getPluginsBaseDir(): string {
 }
 
 // =============================================================================
-// 插件密钥 —— 只走凭据库，普通配置由插件自己用 ctx.storage 持久化（ADR-0105）。
+// 插件密钥 —— 只走凭据库，普通配置由插件自己用 ctx.storage 持久化。
 // =============================================================================
 
 const pluginSecretsStore = new PluginSecretsStore(getDesktopCredentialVault());
@@ -199,7 +199,7 @@ export function clearPluginSecrets(pluginId: string): void {
 export function listPlugins(): InstalledPlugin[] {
 	const system = discoverSystemPlugins();
 	const reserved = new Set(system.map((plugin) => plugin.id));
-	// id 冲突时系统插件遮蔽用户插件（ADR-0024）。
+	// id 冲突时系统插件遮蔽用户插件。
 	const registryPlugins = Object.values(pluginRegistry.read());
 	const userPlugins = registryPlugins
 		.filter((plugin) => !reserved.has(plugin.id))
@@ -243,7 +243,7 @@ export async function installPluginFromArchive(
 			reloadToken: Date.now().toString(),
 		});
 		// Fresh install with explicit grants: if caller passed permissions, keep them.
-		// ADR-0042 agent path typically grants all declared permissions at approve time.
+		// agent path typically grants all declared permissions at approve time.
 		if (options?.grantedPermissions && options.grantedPermissions.length > 0) {
 			const allowed = new Set(installed.permissions);
 			installed = {
@@ -256,7 +256,7 @@ export async function installPluginFromArchive(
 		}
 		registry[manifest.id] = installed;
 		pluginRegistry.write(registry);
-		// 能力安装台账（ADR-0049）：记生效中的版本；安装即生效，装完就是新版本。
+		// 能力安装台账：记生效中的版本；安装即生效，装完就是新版本。
 		recordAbilityInstall("plugin", installed.id, installed.activeVersion);
 		broadcastPluginChanged(installed.id);
 		return installed;
@@ -328,7 +328,7 @@ export function uninstallPlugin(id: string): void {
 
 export function setPluginEnabled(id: string, enabled: boolean): InstalledPlugin {
 	validatePluginId(id);
-	// 系统插件可停用但不可删改：偏好写进独立的 prefs 文件，本体不入注册表（ADR-0024）。
+	// 系统插件可停用但不可删改：偏好写进独立的 prefs 文件，本体不入注册表。
 	if (isSystemPluginId(id)) {
 		const refreshed = pluginSystemCatalog.setEnabled(id, enabled);
 		broadcastPluginChanged(id);
@@ -449,7 +449,7 @@ export function applyPluginSetup(
 
 export function reloadPlugin(id: string): InstalledPlugin {
 	validatePluginId(id);
-	// 系统插件版本随 App，无 pending 更新流（ADR-0024）。
+	// 系统插件版本随 App，无 pending 更新流。
 	if (isSystemPluginId(id)) {
 		const refreshed = discoverSystemPlugins(true).find((plugin) => plugin.id === id);
 		if (!refreshed) throw new Error(`Plugin not found: ${id}`);
@@ -486,7 +486,7 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	plugin.rootPath = computePluginRootPath(plugin.id, plugin.source, plugin.activeVersion);
 	plugin.updatedAt = new Date().toISOString();
 	pluginRegistry.write(registry);
-	// 台账（ADR-0049）跟着改写为实际生效的版本。
+	// 台账跟着改写为实际生效的版本。
 	recordAbilityInstall("plugin", plugin.id, plugin.activeVersion);
 	// dev 链接期间：注册表照常收敛到实际版本（否则「应用到 Astravia」的新版本会被吞掉，
 	// 关热更新后回落旧版本），但返回值与广播叠加 dev 快照（资源仍从工程加载）。

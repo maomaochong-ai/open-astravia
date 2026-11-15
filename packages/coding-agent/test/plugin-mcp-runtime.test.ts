@@ -43,7 +43,7 @@ describe("CodingAgentPluginMcpRuntime", () => {
 			kind: "mcp",
 			source: { ecosystem: "mcp", serverName: "plugin-alpha-docs", originalName: "lookup" },
 		});
-		// 可见性是硬闸（与工作模式无关，ADR-0071）。
+		// 可见性是硬闸（与工作模式无关）。
 		const invisible = first.compose(compositionContext(), new Map(), {
 			isToolVisible: () => false,
 		});
@@ -56,7 +56,7 @@ describe("CodingAgentPluginMcpRuntime", () => {
 		expect(clients.first("plugin-beta-docs").closeCalls).toBe(1);
 	});
 
-	it("keeps plugin MCP tool order at registration order, repeatably (ADR-0071)", async () => {
+	it("keeps plugin MCP tool order at registration order, repeatably", async () => {
 		const clients = new FakeClientFactory();
 		const runtime = await createTestPluginMcpRuntime(clients);
 		await runtime.reconfigure({

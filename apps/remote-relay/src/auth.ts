@@ -35,7 +35,7 @@ export function parseDesktopRoute(
 	return { pairingId, role: match[2] };
 }
 
-/** An invite mailbox (ADR-0136): its name is a base64url SHA-256, never the code itself. */
+/** An invite mailbox: its name is a base64url SHA-256, never the code itself. */
 export function parseInviteRoute(pathname: string): { readonly boxId: string } | undefined {
 	const match = /^\/v2\/invite\/([A-Za-z0-9_-]{43})$/.exec(pathname);
 	return match?.[1] ? { boxId: match[1] } : undefined;

@@ -92,7 +92,7 @@ interface FileSource {
 
 /**
  * The session's working directory, read-only, as the desktop's files panel shows it
- * (ADR-0139): folders first, a way up, and a tap on a file previews it. What the agent
+ * folders first, a way up, and a tap on a file previews it. What the agent
  * wrote shows up once its turn ends (`active` falling back), or on refresh; a live watch
  * would cost the desktop for every phone.
  */

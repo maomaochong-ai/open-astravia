@@ -66,7 +66,7 @@ import org.astravia.android.ui.work.linkDetail
  * the phone reaches it; while the computer is offline the page says so instead of showing
  * a stale picture. In landscape the controls move to the sides so the picture keeps the
  * full height. The desktop captures only while this page is open ([onScreenOpen]), and
- * says when macOS keeps it from showing its screen or taking taps (ADR-0140).
+ * says when macOS keeps it from showing its screen or taking taps.
  */
 @Composable
 fun RemoteDesktopScreen(state: MirrorState, viewerUrl: String?, onClose: () -> Unit, onScreenOpen: (Boolean) -> Unit = {}) {

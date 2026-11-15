@@ -485,7 +485,7 @@ export function AgentMessageBody() {
 	);
 }
 
-/** Parts for `<Conversation.AgentMessage>` templates (ADR-0147). */
+/** Parts for `<Conversation.AgentMessage>` templates. */
 export const AgentMessage = {
 	Root: AgentMessageRoot,
 	Header: AgentMessageHeader,

@@ -394,7 +394,7 @@ export interface PluginInputActionContribution {
 	/**
 	 * When true, this plugin's agent contributions (tools / skills / MCP /
 	 * systemPrompt) and Activity Tabs are hard-isolated: inactive until this
-	 * toggle is on (ADR-0041, knowledgeMode-style). Default false.
+	 * toggle is on (knowledgeMode-style). Default false.
 	 */
 	hardIsolation?: boolean;
 	/**
@@ -863,7 +863,7 @@ export interface PluginUiApi {
 	 * 栏里」。配合 `initiallyVisible: false` 使用，插件即可完全掌握自己标签卡的
 	 * 出现条件（如 git 只在仓库目录里上栏、工作台跟随输入栏 toggle）。
 	 *
-	 * 上栏记录按会话 cwd 持久化（ADR-0026），所以只需在条件变化时调用一次；
+	 * 上栏记录按会话 cwd 持久化，所以只需在条件变化时调用一次；
 	 * 用户随后用减号手动隐藏的结果不会被重复调用覆盖。缺省作用于宿主当前显示的
 	 * 会话；工具 handler 与后台任务应通过 `options.cwd` 传入自己的会话 cwd。既没有
 	 * 显式 cwd、也没有活动会话时为 no-op（无处记录）。

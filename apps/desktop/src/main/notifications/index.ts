@@ -10,7 +10,7 @@ export type { AppNotification } from "./notification-service.js";
 export { notify } from "./notification-service.js";
 
 /**
- * 注册系统通知相关 IPC（见 ADR-0002）。检测「session 完成一轮」本身在
+ * 注册系统通知相关 IPC。检测「session 完成一轮」本身在
  * session.ts 的常驻订阅里做并直接调 notify()；这里只负责渲染端→主进程的
  * 「上报前台所在 session」通道，以及持有用于点击路由的 webContents。
  */

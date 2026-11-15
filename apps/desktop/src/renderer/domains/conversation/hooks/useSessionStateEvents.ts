@@ -143,7 +143,7 @@ export function useSessionStateEvents({ activeSessionRef, syncDurableHistory }: 
 					setIsCompacting(event.state.compaction.status === "running");
 					setCompactionEligibility(event.state.compaction.eligibility);
 					return;
-				// Kernel queue snapshot (ADR-0060). Its disappearance never means consumption;
+				// Kernel queue snapshot. Its disappearance never means consumption;
 				// conversation.message.appended alone decides when a queued message joins a Turn.
 				case "queue.changed": {
 					const store = getDefaultStore();

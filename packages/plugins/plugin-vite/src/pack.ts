@@ -306,7 +306,7 @@ async function collectRuntimeFiles(
 		// optional agent/docs
 	}
 
-	// Plugin i18n catalogs (ADR-0033): bundle locales/<lang>.json so the host can
+	// Plugin i18n catalogs: bundle locales/<lang>.json so the host can
 	// load them alongside the manifest. Optional — absent for single-language plugins.
 	try {
 		for (const file of await collectFiles(resolve(rootDir, "locales"))) {

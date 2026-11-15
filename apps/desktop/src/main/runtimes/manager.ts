@@ -556,7 +556,7 @@ export class RuntimeManager {
 	}
 
 	/**
-	 * 把托管运行时注入全局 process.env(ADR-0011 / A1)。一处生效:桌面 in-process
+	 * 把托管运行时注入全局 process.env。一处生效:桌面 in-process
 	 * bash 经 getShellEnv() spread、IM sidecar 继承 main env → coding-agent → bash。
 	 * 幂等:重复调用安全。即使运行时未就绪也安全(前置不存在目录无害)。
 	 */

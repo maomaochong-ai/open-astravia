@@ -322,7 +322,7 @@ export class RuntimeHost implements SessionFacade {
 		await this.sessionOperations.abort(sessionId);
 	}
 
-	// ---- 输入队列管理（ADR-0060）。backend 不具备 queueController 时静默降级为空队列。 ----
+	// ---- 输入队列管理。backend 不具备 queueController 时静默降级为空队列。 ----
 
 	getQueueState(sessionId: string): RuntimeSessionQueueStateView {
 		return this.sessionOperations.getQueueState(sessionId);

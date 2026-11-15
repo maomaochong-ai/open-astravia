@@ -414,7 +414,7 @@ export interface PluginOfficialSessionHandle {
 	sessionId: string;
 	/** 会话文件绝对路径，跨重启稳定，用于持久化与跳转。 */
 	sessionPath: string;
-	/** 实际运行目录（「对话」项目会落到 per-session 子目录，见 ADR-0007）。 */
+	/** 实际运行目录（「对话」项目会落到 per-session 子目录）。 */
 	cwd?: string;
 }
 
@@ -726,7 +726,7 @@ export interface PluginOfficialApi {
 		 */
 		create(input: { cwd: string; title?: string; modelKey?: string }): Promise<PluginOfficialSessionHandle>;
 		/**
-		 * 向会话发起一轮对话。streaming 中会进入该会话的输入队列（ADR-0060）。
+		 * 向会话发起一轮对话。streaming 中会进入该会话的输入队列。
 		 *
 		 * `options.modelKey` 只钉住**这一轮**用哪个模型（不改会话设置）；要让整个会话
 		 * 都用某个模型，在 `create` 时传 `modelKey`。

@@ -50,7 +50,7 @@ export const cloudLogoutAtom = atom(null, (get, set) => {
 
 export { remoteProvidersAtom } from "./model-catalog-atoms";
 
-// ─── Subscription status (Astravia Go 套餐，ADR-0016 离线回退) ───
+// ─── Subscription status (Astravia Go 套餐， 离线回退) ───
 
 const SUBSCRIPTION_CACHE_KEY = "astravia-subscription-flags";
 

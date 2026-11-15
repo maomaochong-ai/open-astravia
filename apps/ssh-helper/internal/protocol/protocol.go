@@ -10,7 +10,7 @@ import "encoding/json"
 // Version is the semantic protocol version. It names the install directory on
 // the remote host and is checked during the handshake.
 //
-// It is deliberately NOT a build hash (ADR-0124): a hash changes on every app
+// It is deliberately NOT a build hash: a hash changes on every app
 // release, so an upgraded client could never reattach to a daemon that is still
 // supervising the user's running tasks. Bump the major only for changes an
 // older peer cannot ignore.

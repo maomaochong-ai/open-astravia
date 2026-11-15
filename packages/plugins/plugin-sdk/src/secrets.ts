@@ -10,7 +10,7 @@ import type { Disposable } from "./disposable.js";
  *
  * Use it for credentials only. Ordinary configuration belongs in a plugin file
  * such as `settings.json`, serialized by the plugin and validated in its own
- * workspace view (ADR-0105).
+ * workspace view.
  */
 export interface PluginSecretsApi {
 	/** Resolved secret, or `undefined` when unset or the vault is unavailable. */

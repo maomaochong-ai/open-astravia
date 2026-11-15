@@ -12,7 +12,7 @@
 //   - private chats (optionally filtered by an E.164 allowlist) and group
 //     chats where the bot is @-mentioned
 //   - inbound text + image/document/audio/video media (downloaded to the
-//     inbox, mirroring feishu/wechat per ADR-0006/0008)
+//     inbox, mirroring feishu/wechat)
 //   - outbound text (minimal markdown → WhatsApp formatting), replies,
 //     edits (server-enforced ~20-minute window), revokes, reactions,
 //     typing indicators, and image/file attachments

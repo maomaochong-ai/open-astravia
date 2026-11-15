@@ -24,7 +24,7 @@ const SYNONYM_CLUSTERS: readonly (readonly string[])[] = [
 		"通用",
 	],
 	["agent", "Agent", "实验", "experimental", "人设", "个性化"],
-	// 能力页统一了 skill / 场景 / MCP / 插件 / 套装（ADR-0049），这些词都应命中同一处。
+	// 能力页统一了 skill / 场景 / MCP / 插件 / 套装，这些词都应命中同一处。
 	[
 		"skills",
 		"skill",

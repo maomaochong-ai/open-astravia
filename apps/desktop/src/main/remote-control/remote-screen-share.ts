@@ -34,7 +34,7 @@ export interface RemoteScreenShareOptions {
 }
 
 /**
- * Which phones are looking at the desktop's screen (ADR-0140). The screen is
+ * Which phones are looking at the desktop's screen. The screen is
  * captured only while at least one phone served by a host subscribes, and every
  * answer carries why frames or taps might not arrive, so the phone never shows
  * an unexplained black picture or ignores taps silently.

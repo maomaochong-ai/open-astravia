@@ -194,7 +194,7 @@ export interface SessionStateEntry {
  *
  * `conversationCwd` is the absolute cwd shared by all IM sessions
  * (`DEFAULT_IM_CONVERSATION_CWD`, `~/.astravia/im-gateway/conversation`). It
- * is physically separate from desktop-app's "对话" cwd (ADR-0005) so the
+ * is physically separate from desktop-app's "对话" cwd so the
  * two sides don't share sessions or generated artifacts.
  */
 /**

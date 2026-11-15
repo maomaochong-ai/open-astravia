@@ -90,7 +90,7 @@ async function run(): Promise<Record<string, number | string | boolean>> {
 	};
 }
 
-/** ADR-0140: the session opens without a screen; frames flow only between two `replaceScreen` calls. */
+/** the session opens without a screen; frames flow only between two `replaceScreen` calls. */
 async function runOnDemand(): Promise<Record<string, number | string | boolean>> {
 	const sessionId = `webrtc-e2e-demand-${crypto.randomUUID()}`;
 	const canvas = createAnimatedCanvas(1920, 1200, 30);

@@ -147,7 +147,7 @@ export default definePlugin({
 		};
 
 		/**
-		 * 这批 UI 一律常驻，不按工作模式装卸（见 ADR-0046 修订：模式只做提示词软引导，
+		 * 这批 UI 一律常驻，不按工作模式装卸（修订：模式只做提示词软引导，
 		 * 系统里不再有任何模式硬闸）。是否露出由「cwd 里有没有 .astravia-design」决定——那本来
 		 * 就是比模式更准的条件：在代码仓库里写着写着要看设计稿，画布就该在。
 		 */
@@ -189,7 +189,7 @@ export default definePlugin({
 			description: "%gallery.nav.description%",
 			component: GalleryView,
 		});
-		// 设计版本历史的自动提交（ADR-0069）。commitTurn 只遍历 cwd 下真实存在的
+		// 设计版本历史的自动提交。commitTurn 只遍历 cwd 下真实存在的
 		// .astravia-design 目录，纯代码仓库里是空操作，所以无条件注册不会产生噪音提交。
 		registerTurnHistory(ctx);
 

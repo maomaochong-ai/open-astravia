@@ -175,7 +175,7 @@ describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOU
 			expect(clients.first("plugin-child-docs").callToolCalls).toBe(1);
 		});
 
-		// 零硬闸后（ADR-0046 修订 / ADR-0071）root 会话自己声明的 plugin MCP 工具对 root 模型同样可见；
+		// 零硬闸后（修订版规则）：root 会话自己声明的 plugin MCP 工具对 root 模型同样可见；
 		// 旧断言 [] 锁定的是当年「server agent_mode 与会话模式不匹配即排除」的硬闸行为。
 		expect(rootMcpTools[0]).toEqual(["mcp_plugin-child-docs_lookup"]);
 		expect(childMcpTools[0]).toEqual(["mcp_plugin-child-docs_lookup"]);

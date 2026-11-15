@@ -422,7 +422,7 @@ if (existsSync(imGatewayDistDir)) {
 }
 
 // =============================================================================
-// ssh-helper: remote-project helper binaries (extraResources) —— ADR-0124
+// ssh-helper: remote-project helper binaries (extraResources)
 // =============================================================================
 //
 // The helper runs on the REMOTE host of an SSH project, so its targets have
@@ -598,7 +598,7 @@ if (existsSync(runtimeCoreSandboxDir)) {
 }
 
 // =============================================================================
-// 托管运行时 vendor 二进制 (extraResources) —— ADR-0011
+// 托管运行时 vendor 二进制 (extraResources)
 // =============================================================================
 //
 // 把当前构建目标平台的 Node + Python(python-build-standalone)原始归档内置进
@@ -649,7 +649,7 @@ async function stageVendorRuntimes() {
 await stageVendorRuntimes();
 
 // =============================================================================
-// 系统插件（extraResources）—— ADR-0024
+// 系统插件（extraResources）
 // =============================================================================
 //
 // build:presets 已为每个 preset 生成 release/<id>-<version>.astraviapkg。打包阶段只消费

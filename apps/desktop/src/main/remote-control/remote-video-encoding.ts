@@ -1,6 +1,6 @@
 import type { CommandLine } from "electron";
 
-/** Chromium 132's Windows encoder reuse fails during size changes; recreate only the encoder (ADR-0149). */
+/** Chromium 132's Windows encoder reuse fails during size changes; recreate only the encoder. */
 export function configureRemoteVideoEncoding(
 	commandLine: Pick<CommandLine, "getSwitchValue" | "appendSwitch">,
 	platform: string,

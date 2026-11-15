@@ -63,7 +63,7 @@ function NoGitBanner({ onRecheck }: { onRecheck: () => Promise<void> }): JSX.Ele
 /**
  * The plugin's configuration page, registered as an off-sidebar workspace view
  * (Settings → Extensions). The host has no declarative settings schema since
- * plugin API 1.6.0 (ADR-0105), so the page is ours to draw.
+ * plugin API 1.6.0, so the page is ours to draw.
  *
  * Settings are global to the plugin: project-specific commit rules belong in the
  * project's AGENTS.md / CLAUDE.md, which generation reads with higher priority.

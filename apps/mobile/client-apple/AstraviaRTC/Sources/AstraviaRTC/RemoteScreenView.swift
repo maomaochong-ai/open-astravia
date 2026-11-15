@@ -3,7 +3,7 @@ import UIKit
 import AstraviaKit
 @preconcurrency import WebRTC
 
-/// The desktop's screen with the whole phone screen as its trackpad (ADR-0140): one
+/// The desktop's screen with the whole phone screen as its trackpad: one
 /// finger moves the pointer from where it is, anywhere on the screen, picture or not; a
 /// tap clicks and a two-finger tap right-clicks where the pointer is; holding a finger
 /// half a second presses the button, so moving then drags. Two fingers pinch to zoom

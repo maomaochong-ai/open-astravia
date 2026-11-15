@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import AstraviaKit
 
-/// The remote desktop page against a scripted desktop (ADR-0140).
+/// The remote desktop page against a scripted desktop.
 @Suite(.serialized) struct AppModelScreenTests {
 	final class InterruptedSecrets: KeyValueStore {
 		private let values = MemoryKeyValueStore()

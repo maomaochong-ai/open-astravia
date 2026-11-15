@@ -1,7 +1,7 @@
 import { INVITE_TOKEN_HEADERS, type RemoteInviteEnvelope } from "@astravia/remote-control";
 
 /**
- * The relay's invite mailbox (ADR-0136) as the desktop uses it: put a sealed invite
+ * The relay's invite mailbox as the desktop uses it: put a sealed invite
  * where a phone that knows the connection code can fetch it, and take it back once
  * the invite is used or gone.
  */

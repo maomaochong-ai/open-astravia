@@ -318,7 +318,7 @@ interface Rule {
  * 规则表按「这份设计装了什么」现建。
  *
  * 只有 `uninstalled-import` 需要这个信息，但它需要的是**这一份设计**的依赖清单
- * （ADR-0068：包装在 x.astravia-design/node_modules/ 里，各设计不同），所以整张表不能再是
+ * （包装在 x.astravia-design/node_modules/ 里，各设计不同），所以整张表不能再是
  * 模块级常量。重建成本是几个对象字面量，正则都还是模块级的。
  */
 function rulesFor(installedPackages: ReadonlySet<string>): Rule[] {

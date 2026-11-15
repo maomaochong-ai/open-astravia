@@ -45,10 +45,10 @@ interface WorkActions {
 
     fun setDraft(sessionId: String, draft: PromptDraft)
 
-    /** Refreshes the skills a prompt in `cwd` may reference (ADR-0137). */
+    /** Refreshes the skills a prompt in `cwd` may reference. */
     fun loadSkills(cwd: String?) {}
 
-    /** The session's files on the desktop (ADR-0139); null where they cannot be read. */
+    /** The session's files on the desktop; null where they cannot be read. */
     fun files(sessionId: String): FileSource? = null
 
     /** Answers the question the desktop is waiting on, or cancels it. */

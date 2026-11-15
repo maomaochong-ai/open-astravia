@@ -26,7 +26,7 @@ export interface QrMatrix {
 /**
  * The pairing QR code, drawn in the rounded style: neighbouring modules run together,
  * lone ends are rounded, the three corner squares are rounded frames, and the centre is
- * left clear for a badge. A short text (the connection code, ADR-0138) gets high error
+ * left clear for a badge. A short text (the connection code) gets high error
  * correction (30%), which also gives it a few more modules than the bare minimum so it
  * does not look sparse, and room for a larger badge; a whole pairing URI gets medium
  * (15%) so it stays as sparse as it can.

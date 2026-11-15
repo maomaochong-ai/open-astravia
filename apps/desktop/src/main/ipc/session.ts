@@ -105,7 +105,7 @@ import { readSettings, updateSettings } from "./settings.js";
 
 export { ensureConversationSubCwd, resolveSessionDirForCwd } from "../conversations/session-paths.js";
 
-/** ADR-0007 per-session dir name under conversation roots (UUID). */
+/** per-session dir name under conversation roots (UUID). */
 function isSessionArtifactDirName(name: string): boolean {
 	return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(name);
 }
@@ -254,7 +254,7 @@ const CHANNELS = {
 	CLEAR_DEFAULT_CONVERSATION: "astravia:session:clear-default-conversation",
 	CLEAR_DEFAULT_ARTIFACTS: "astravia:session:clear-default-artifacts",
 	// Read-only viewer for sessions we don't want to (or can't) take the
-	// write lock on — currently IM sessions, see ADR-0004. The viewer
+	// write lock on — currently IM sessions,. The viewer
 	// reads the .jsonl directly and tails fs.watch for new entries.
 	VIEWER_OPEN: "astravia:session:viewer-open",
 	/** 只读文件尾部做首屏预览；完整历史随后仍走 VIEWER_OPEN。 */
@@ -455,7 +455,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const turnStartMap = new Map<string, number>();
 	const interactiveResidency = new InteractiveSessionResidencyTracker();
 	/**
-	 * ADR-0002: 交互式 session 的常驻通知订阅（独立于渲染端视图订阅，不随
+	 * 交互式 session 的常驻通知订阅（独立于渲染端视图订阅，不随
 	 * 切换 session 销毁）。只有经本 IPC CHANNELS.CREATE 创建的 session 才会挂，
 	 * 故天然只覆盖交互式 session（批量/定时任务直接调 runtime.createSession）。
 	 */
@@ -983,10 +983,10 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			if (effectiveCwd) {
 				sessionCwdMap.set(result.sessionId, effectiveCwd);
 			}
-			// ADR-0002: 经本通道创建的即交互式 session，挂常驻通知订阅。
+			// 经本通道创建的即交互式 session，挂常驻通知订阅。
 			attachNotificationSub(result.sessionId, effectiveCwd);
 			scheduleIdleInteractiveSessionReconcile();
-			// ADR-0007: 把实际 cwd（可能是「对话」per-session 子目录）返回给渲染端，
+			// 把实际 cwd（可能是「对话」per-session 子目录）返回给渲染端，
 			// 否则 activeSession.cwd 仍是用户传入的项目根，ActivityPanel 文件树会
 			// 落到项目根、看到其他 session 的子目录。
 			return {
@@ -1052,7 +1052,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		if (!settled) sessionLog.warn(`abort for ${sessionId} still running after ${ABORT_REPLY_DEADLINE_MS}ms`);
 	});
 
-	// 输入队列管理（ADR-0060）：薄桥接，能力全部在 RuntimeHost。
+	// 输入队列管理：薄桥接，能力全部在 RuntimeHost。
 	ipcMain.handle(CHANNELS.QUEUE_STATE, async (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
 		return runtime.getQueueState(sessionId);
@@ -1152,7 +1152,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		return PERSONAS.map((p) => ({ id: p.id, label: p.label, description: p.description }));
 	});
 
-	// 工作模式注册表：唯一来源是 main/agent-modes 的 modes/*.md（ADR-0071），只下发
+	// 工作模式注册表：唯一来源是 main/agent-modes 的 modes/*.md，只下发
 	// id/label/description/icon，不含提示词正文。renderer 的模式 toggle 据此遍历渲染，
 	// 新增模式无需改任何 UI 代码。
 	ipcMain.handle(CHANNELS.GET_AGENT_MODES, () => {
@@ -1320,7 +1320,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	});
 
 	ipcMain.handle(CHANNELS.CLEAR_DEFAULT_CONVERSATION, async (_event, scope: unknown) => {
-		// 物理分家后（ADR-0005）每个 scope 对应一个独立 cwd，互不干扰：
+		// 物理分家后每个 scope 对应一个独立 cwd，互不干扰：
 		// - "conversation"：清桌面「对话」cwd 下 .astravia/sessions 内的全部会话（保留产物）
 		// - "claw"：清 IM cwd 下 .astravia/sessions 内的全部会话（保留产物）
 		if (scope !== "conversation" && scope !== "claw") {
@@ -1346,7 +1346,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		for (const [sessionId, cwd] of sessionCwdMap.entries()) {
 			const absCwd = resolve(cwd);
 			// "conversation" 场景下 session cwd 可能是 DEFAULT_CONVERSATION_CWD
-			// 本身（老 session）或其 per-session 子目录（ADR-0007 之后的新 session）。
+			// 本身（老 session）或其 per-session 子目录（之后的新 session）。
 			const matched = absCwd === targetCwd || (scope === "conversation" && isConversationSubCwd(cwd));
 			if (!matched) continue;
 			toDispose.push(sessionId);
@@ -1373,7 +1373,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.CLEAR_DEFAULT_ARTIFACTS, async (_event, scope: unknown) => {
 		// 清空「对话」或 Claw cwd 下的产物文件（保留 .astravia 目录，会话不受影响）。
-		// ADR-0007：UUID 子目录 *就是* session 的运行 cwd，不能整目录删除——否则 header
+		// UUID 子目录 *就是* session 的运行 cwd，不能整目录删除——否则 header
 		// 仍指向该路径，重开/编辑后 bash、文件树全部 ENOENT。只清空目录内容并保留壳。
 		if (scope !== "conversation" && scope !== "claw") {
 			throw new Error("Invalid scope for clearDefaultArtifacts");
@@ -1730,7 +1730,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		return { subscriptionId };
 	});
 
-	// Subscribe and read history as one snapshot (ADR-0146): the running Turn is replayed
+	// Subscribe and read history as one snapshot: the running Turn is replayed
 	// from its start before this reply, and the preload holds those events until the
 	// renderer has applied the snapshot.
 	ipcMain.handle(CHANNELS.ATTACH, async (_event, sessionId: unknown) => {

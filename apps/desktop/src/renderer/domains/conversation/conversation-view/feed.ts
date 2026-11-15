@@ -34,7 +34,7 @@ export interface UserMessageCommands {
 /**
  * What the Runtime behind a conversation lets the view do. A part that needs a
  * capability renders nothing when the feed does not provide it, so a read-only
- * feed stays read-only however it is composed (ADR-0147).
+ * feed stays read-only however it is composed.
  */
 export interface ConversationCapabilities {
 	readonly userMessageCommands?: UserMessageCommands;

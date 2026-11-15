@@ -17,7 +17,7 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 /**
- * Workflow summary items under the message list (ADR-0044).
+ * Workflow summary items under the message list.
  * Click opens the workflow activity tab focused on that workflow.
  */
 export function WorkflowFooterItems(): JSX.Element | null {

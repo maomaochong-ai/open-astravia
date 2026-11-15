@@ -27,7 +27,7 @@ function putWithHeader(
 	});
 }
 
-describe("invite mailbox (ADR-0136)", () => {
+describe("invite mailbox", () => {
 	it("hands the sealed invite to whoever knows the code, and the relay cannot open it", async () => {
 		const code = "K7Q29MXD";
 		const boxId = inviteBoxId(code);

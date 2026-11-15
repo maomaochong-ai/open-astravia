@@ -6,7 +6,7 @@ import type { RemoteTerminalBackendFactory, RemoteTerminalOpenResult } from "./t
 
 /**
  * 远程项目的终端。命令一律在远端跑——`cwd` 是 `ssh://` URI 时绝不退回本机执行，
- * 那会让用户以为自己在操作远端仓库（ADR-0124）。
+ * 那会让用户以为自己在操作远端仓库。
  *
  * helper 在就走 `pty.*`（真伪终端、尺寸可变）；helper 不在或版本旧就退回 `ssh -tt`，
  * 此时尺寸固定，这个缺口随 open 一起报给上层，由界面如实告知。

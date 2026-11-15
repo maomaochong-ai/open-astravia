@@ -99,7 +99,7 @@ function DoneSquare(): JSX.Element {
 }
 
 /**
- * Workflow summary block in the MessageList footer (ADR-0044):
+ * Workflow summary block in the MessageList footer:
  * cube loader + theme-primary shimmering title, then a guiding-words-style
  * branch list of workflows. Click a row to open the workflow activity tab;
  * stop interrupts the child.

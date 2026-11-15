@@ -168,7 +168,7 @@ export function useProjectsPanelModel({
 
 	const showBatchGroup = filter === "all" || filter === "batch";
 	const defaultProject = useMemo(() => projects.find((project) => project.isDefault), [projects]);
-	// 默认区的会话来源 cwd：claw 过滤读 im-gateway 自己的 cwd（ADR-0005），
+	// 默认区的会话来源 cwd：claw 过滤读 im-gateway 自己的 cwd，
 	// 与 defaultProject.cwd 是两个物理目录，选中 / 重命名都必须用这个值。
 	const defaultSessionsCwd = defaultConversationSource === "claw" ? imCwd : defaultProject?.cwd;
 	const filteredProjects = useMemo(() => {

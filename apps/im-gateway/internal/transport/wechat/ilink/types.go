@@ -242,7 +242,7 @@ const (
 //   - filesize       : ciphertext size after AES-128-ECB + PKCS7 padding
 //   - aeskey         : 32-char hex of the 16-byte AES key (legacy field)
 //   - no_need_thumb  : upstream sets true for non-image; we set true for all
-//     because we don't generate thumbnails (see ADR-0006)
+//     because we don't generate thumbnails
 type GetUploadUrlReq struct {
 	FileKey         string   `json:"filekey"`
 	MediaType       int      `json:"media_type"`

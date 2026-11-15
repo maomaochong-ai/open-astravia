@@ -129,7 +129,7 @@ function isMissing(error: unknown): boolean {
 
 /**
  * Serves `file.list`, `file.stat` and `file.read` for one paired phone
- * (ADR-0139). Paths resolve against the session's working directory; reads
+ *. Paths resolve against the session's working directory; reads
  * stay inside the desktop's preview scope minus the phone's blocklist, and
  * listings inside the working directory.
  */

@@ -70,7 +70,7 @@ struct InteropTests {
 		model.unpair()
 	}
 
-	/// Through the relay, where a chunk has to fit the relay's message limit (ADR-0139).
+	/// Through the relay, where a chunk has to fit the relay's message limit.
 	@Test func browsesAndReadsDesktopFilesInChunksThroughTheRelay() async throws {
 		let info = try #require(Interop.info)
 		let model = AppModel(platform: Interop.platform())

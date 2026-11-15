@@ -99,7 +99,7 @@ export async function buildDesignPackage(ctx: PluginContext, session: DesignSess
 			zipEntries[`design/${rel}`] = bytesFromBase64(binary.data);
 		}
 	}
-	// 版本历史跟着分享包走（ADR-0069）：收包方导入后能看到这份设计是怎么长成这样的。
+	// 版本历史跟着分享包走：收包方导入后能看到这份设计是怎么长成这样的。
 	const history = await packHistoryForShare(ctx, session.dirPath);
 	if (history.kind === "ok") zipEntries[HISTORY_ENTRY] = bytesFromBase64(history.base64);
 	if (history.kind === "too-large") {

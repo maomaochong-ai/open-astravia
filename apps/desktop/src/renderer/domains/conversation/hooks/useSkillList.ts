@@ -39,7 +39,7 @@ export function prepareSkillsForSurface(skills: readonly SkillInfo[], surface: S
  * 因此预取一次并缓存，展开时先用缓存立即出内容。
  *
  * 键带语言：内置 skill 的展示文案由主进程按当前语言给出，切语言后不能复用旧缓存。
- * 不带工作模式：skill 清单与顺序和模式无关（ADR-0071），主进程返回的清单不随模式增减。
+ * 不带工作模式：skill 清单与顺序和模式无关，主进程返回的清单不随模式增减。
  */
 const cache = new Map<string, SkillListData>();
 const inflight = new Map<string, Promise<SkillListData>>();

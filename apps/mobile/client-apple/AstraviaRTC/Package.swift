@@ -3,7 +3,7 @@ import PackageDescription
 
 let isolation: [SwiftSetting] = [.defaultIsolation(MainActor.self)]
 
-// The WebRTC side of the remote desktop and the P2P control channel (ADR-0140). Kept out
+// The WebRTC side of the remote desktop and the P2P control channel. Kept out
 // of AstraviaKit so its tests never download or link the WebRTC binary; only the app uses it.
 // Same WebRTC build family and milestone as Android's io.github.webrtc-sdk:android. The
 // binary is taken straight from webrtc-sdk/Specs' release: that package's own manifest

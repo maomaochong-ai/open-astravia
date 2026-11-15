@@ -67,7 +67,7 @@ export interface RuntimeHostSessionAssembly {
 	readonly conversationController?: RuntimeSessionConversationController;
 	readonly executionObservationStream?: RuntimeSessionExecutionObservationStream;
 	readonly toolController?: RuntimeSessionToolController;
-	/** 可选能力（ADR-0060）：缺失时 RuntimeHost 相应功能静默降级，不做 no-op 伪造。 */
+	/** 可选能力：缺失时 RuntimeHost 相应功能静默降级，不做 no-op 伪造。 */
 	readonly queueController?: RuntimeSessionQueueController;
 	readonly metadataController?: RuntimeSessionMetadataController;
 }

@@ -41,7 +41,7 @@ export const ENGINE_FILES: Record<string, string> = {
  *
  * 这是 vite.config.mjs 里那组 alias 的另一半事实：这些包装在**引擎**的
  * node_modules 里，设计源码走 node 解析够不到，靠 alias 钉过去。设计自己装的包
- * 不在这张表里——那些在 `x.astravia-design/node_modules/`，天然就能解析（ADR-0068）。
+ * 不在这张表里——那些在 `x.astravia-design/node_modules/`，天然就能解析。
  */
 export const ENGINE_PROVIDED_PACKAGES = ["react", "react-dom", "react-router", "lucide-react"] as const;
 

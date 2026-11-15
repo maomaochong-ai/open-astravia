@@ -129,7 +129,7 @@ export interface DesktopPermissionsApi {
 	openPane(kind: PermissionKind): Promise<void>;
 }
 
-/** 托管运行时(环境管理面板)。见 ADR-0011。 */
+/** 托管运行时(环境管理面板)。 */
 export interface DesktopRuntimesApi {
 	getStatus(): Promise<RuntimesStatus>;
 	/** 强制重新获取(内置 vendor 拷贝,失败回退下载)推荐版本。 */

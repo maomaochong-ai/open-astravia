@@ -65,7 +65,7 @@ export function toExtensionEntry(
 /**
  * 「扩展设置」只做一件事：把已注册的插件工作区视图列成入口。
  *
- * 插件配置本身归插件自己的页面所有（ADR-0105），这里不读也不写任何插件配置。
+ * 插件配置本身归插件自己的页面所有，这里不读也不写任何插件配置。
  */
 export function useExtensionsSettingsModel(): ExtensionsSettingsModel {
 	const { t } = useTranslation("settings");

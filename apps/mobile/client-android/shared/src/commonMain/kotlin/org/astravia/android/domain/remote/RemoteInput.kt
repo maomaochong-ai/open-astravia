@@ -115,7 +115,7 @@ data class RemoteViewport(val zoom: Float = 1f, val panX: Float = 0f, val panY: 
 data class RemotePointerCommand(val type: String, val x: Float, val y: Float, val button: String? = null, val action: String? = null)
 
 /**
- * The phone as a trackpad (port of the iPhone's `RemoteTrackpad`, ADR-0140): the finger
+ * The phone as a trackpad (port of the iPhone's `RemoteTrackpad`): the finger
  * moves the pointer from where it is, not to where the finger is. Travel is measured
  * against the picture as shown, so a zoomed picture gives finer control; faster moves go
  * further, as on a laptop's trackpad. The phone only knows where it put the pointer: the

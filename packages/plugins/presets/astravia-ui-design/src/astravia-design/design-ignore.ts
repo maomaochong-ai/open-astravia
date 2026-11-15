@@ -6,7 +6,7 @@ import type { PluginFsApi } from "@astravia-org/plugin-sdk";
 import { HISTORY_DIR } from "../history/history-paths";
 
 /**
- * 必须被忽略的条目。`.history/` 是设计自己的版本历史（ADR-0069）——它随设计目录
+ * 必须被忽略的条目。`.history/` 是设计自己的版本历史——它随设计目录
  * 和 `.astravia-design-share` 走，但不该随用户的 git 提交走。
  */
 export const DESIGN_IGNORE_LINES = [

@@ -302,7 +302,7 @@ export interface AgentTool<TParameters extends TSchema = TSchema, TDetails = any
 	 *   类型默认 `string`（agent-core 不绑定任何场景词汇）；上层消费者可通过 `TScenario`
 	 *   传入具体的场景联合（如 coding-agent 的 `ConversationScenario`）拿到补全/防拼写。
 	 * - requires：需要的会话能力 slug（如 "knowledge"/"bg-tasks"/"host:ask"）；全满足才激活。
-	 * - agent_mode：**已废弃（ADR-0071），无任何运行时语义**。上层消费者（coding-agent）
+	 * - agent_mode：**已废弃，无任何运行时语义**。上层消费者（coding-agent）
 	 *   既不排序也不过滤，字段仅为容忍既有声明而保留解析。新代码不要写它；想收窄使用
 	 *   场景，写进 description 的反向触发段。
 	 * - category：功能域分类，仅供分组/UI，不影响激活。

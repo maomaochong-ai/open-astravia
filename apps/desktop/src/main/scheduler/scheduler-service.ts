@@ -264,7 +264,7 @@ export class SchedulerService {
 
 	/**
 	 * 会话被删除：清掉指向它们的执行记录；绑定到它们的自动化暂停并标明原因，
-	 * 绝不悄悄换一个新会话顶上（ADR-0127）。
+	 * 绝不悄悄换一个新会话顶上。
 	 */
 	async handleSessionsDeleted(isDeleted: (sessionPath: string) => boolean): Promise<void> {
 		const suspended = await mutateTasks((tasks) => {

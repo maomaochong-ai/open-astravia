@@ -93,7 +93,7 @@ export type RpcCommand =
 	// Commands (available for invocation via prompt)
 	| { id?: string; type: "get_commands" }
 
-	// Memory (ADR-0009): consolidate durable facts from the current context into
+	// Memory: consolidate durable facts from the current context into
 	// MEMORY.md on demand — e.g. before the host discards the session on /new.
 	| { id?: string; type: "flush_memory" };
 

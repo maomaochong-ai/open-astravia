@@ -125,7 +125,7 @@ export function CommandPanelView({
 							) : null}
 							{/*
 							 * 过滤态隐藏直接动作区段：此时用户在按关键词找条目，文件动作没有可匹配的文本。
-							 * 顺序按 ADR-0156：文件 → 连接器 → 技能列表。
+							 * 顺序按文件 → 连接器 → 技能列表。
 							 */}
 							{!filtering && <FileActionSection items={files} title={labels.filesSection} />}
 							{!filtering && (

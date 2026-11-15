@@ -71,7 +71,7 @@ describe("prompt cache verification", () => {
 	});
 
 	it("classifies a host-supplied mode prompt as part of the volatile system tail", () => {
-		// 模式注册表归宿主所有（ADR-0071 修订）：这里只验证 core.mode 槽位的缓存分层，
+		// 模式注册表归宿主所有（修订）：这里只验证 core.mode 槽位的缓存分层，
 		// 用合成正文即可，正文长度与内容是 desktop 注册表的事实。
 		const modePrompt = `You are operating in **Coding mode**.\n${"mode guidance line.\n".repeat(400)}`;
 		const draft = buildSystemPromptDraft({

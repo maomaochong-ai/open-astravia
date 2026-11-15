@@ -199,7 +199,7 @@ export interface InstalledPlugin {
 	defaultLocale: string;
 	/**
 	 * 宿主加载的全部语言 catalog（main 读 `locales/<lang>.json`，随本对象一次性下发）。
-	 * 同时服务 manifest 占位符解析与运行期组件 `t()`（ADR-0033）。
+	 * 同时服务 manifest 占位符解析与运行期组件 `t()`。
 	 */
 	locales: PluginLocales;
 	enabled: boolean;
@@ -213,7 +213,7 @@ export interface InstalledPlugin {
 	/** 执行权限信任级别；与安装来源分离，不能由插件 manifest 自行声明。 */
 	trustLevel: PluginTrustLevel;
 	/**
-	 * 旧宿主的「装了但没生效」状态。安装即激活后不再产生（ADR-0113），只为读取存量注册表保留，
+	 * 旧宿主的「装了但没生效」状态。安装即激活后不再产生，只为读取存量注册表保留，
 	 * 会在一次重载或重新安装后消失；新代码不要依赖它判断插件是否有待应用的更新。
 	 */
 	availableVersion?: string;
@@ -264,7 +264,7 @@ export interface PluginAgentToolRegistration {
 	context?: { conversation?: "summary" | "messages" };
 	/**
 	 * 该工具带有自渲染卡片（同一插件为它注册了 tool-call slot）。由渲染进程自动探测，
-	 * 插件无需声明；宿主据此为它注入可选的 md_intro 参数。见 ADR-0047。
+	 * 插件无需声明；宿主据此为它注入可选的 md_intro 参数。
 	 */
 	rendersCard?: boolean;
 }
@@ -876,7 +876,7 @@ export interface DesktopPluginsApi {
 		args?: string[],
 		options?: PluginCommandRunOptions,
 	): Promise<PluginCommandRunResult>;
-	/** Start an allowed long-lived command (ADR-0054). No shell; own process group. */
+	/** Start an allowed long-lived command. No shell; own process group. */
 	spawnCommand(
 		sessionId: string,
 		file: string,
@@ -902,11 +902,11 @@ export interface DesktopPluginsApi {
 	/** 关闭 dev 热更新：停掉 vite watch 与文件监听，资源回落已安装目录。 */
 	stopDevWatch(sessionId: string, id: string): Promise<void>;
 	/**
-	 * Mark a plugin as contribution-mode-gated (ADR-0041). Until
+	 * Mark a plugin as contribution-mode-gated. Until
 	 * {@link setContributionMode} enables it, agent contributions are stripped.
 	 */
 	registerModeGate(pluginId: string): Promise<void>;
-	/** Enable/disable a mode-gated plugin's agent contributions (ADR-0041). */
+	/** Enable/disable a mode-gated plugin's agent contributions. */
 	setContributionMode(pluginId: string, active: boolean): Promise<void>;
 	/** Report that the current renderer document has installed and loaded the plugin contribution host. */
 	reportAgentContributionHostReady(): Promise<void>;
@@ -974,7 +974,7 @@ export interface DesktopPluginsApi {
 	/** Fired when plugins are installed/uninstalled/enabled/reloaded (host should re-load remotes). */
 	onPluginsChanged(listener: (event?: PluginsChangedEvent) => void): () => void;
 	networkRequest<T = unknown>(sessionId: string, request: PluginNetworkRequest): Promise<PluginNetworkResponse<T>>;
-	/** 带登录身份打 Astravia 服务端；仅 official 插件的 session 会被主进程放行（ADR-0056）。 */
+	/** 带登录身份打 Astravia 服务端；仅 official 插件的 session 会被主进程放行。 */
 	gatewayRequest<T = unknown>(sessionId: string, request: PluginGatewayRequest): Promise<PluginGatewayResponse<T>>;
 	secretsGet(sessionId: string, key: string): Promise<string | undefined>;
 	secretsHas(sessionId: string, key: string): Promise<boolean>;
@@ -1035,7 +1035,7 @@ export interface PluginNetworkResponse<T = unknown> {
 	body: T;
 }
 
-/** 相对 `/api/v1` 的路径；服务端地址与 JWT 由主进程注入（ADR-0056）。 */
+/** 相对 `/api/v1` 的路径；服务端地址与 JWT 由主进程注入。 */
 export interface PluginGatewayRequest {
 	path: string;
 	method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";

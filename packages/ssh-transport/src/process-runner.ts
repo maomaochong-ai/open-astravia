@@ -23,7 +23,7 @@ export interface SshProcessInvocation {
 }
 
 export interface SshProcessResult {
-	/** 进程被信号杀死时为 null——此时不能断言远端命令的结果，见 ADR-0124。 */
+	/** 进程被信号杀死时为 null——此时不能断言远端命令的结果，。 */
 	readonly exitCode: number | null;
 	readonly stdout: Uint8Array;
 	readonly stderr: string;

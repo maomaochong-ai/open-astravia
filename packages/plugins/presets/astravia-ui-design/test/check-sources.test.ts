@@ -83,7 +83,7 @@ it("catches a re-export from a missing package too", () => {
 });
 
 it("stays quiet on a package this design installed", () => {
-	// ADR-0068：第三方库装在 x.astravia-design/node_modules/，判据是这份设计的 package.json。
+	// 第三方库装在 x.astravia-design/node_modules/，判据是这份设计的 package.json。
 	// 装完还报是误报里最糟的一种——agent 会回去删掉本来正确的 import。
 	const content = 'import { LineChart } from "recharts";';
 	const rules = checkSources([{ path: "frames/home.tsx", content }], null, ["react", "recharts"]).map(

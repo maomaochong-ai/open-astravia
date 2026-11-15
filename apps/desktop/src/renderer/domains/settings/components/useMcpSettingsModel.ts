@@ -814,7 +814,7 @@ function formToServer(form: McpServerFormState): McpServerConfigData {
 }
 
 /**
- * 市场 MCP 落盘后补记安装台账（ADR-0049）。mcp.json 由本模块整份覆写，
+ * 市场 MCP 落盘后补记安装台账。mcp.json 由本模块整份覆写，
  * 主进程侧的 upsert 不在这条路径上，故显式补记，否则「可更新」永远不会出现。
  */
 async function recordMcpAbilityInstall(name: string, options: McpAbilityInstallOptions | undefined): Promise<void> {

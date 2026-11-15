@@ -13,7 +13,7 @@ app.on("quit", () => {
 const timeout = setTimeout(() => finish({ ok: false, error: "Electron WebRTC E2E timed out" }), 40_000);
 
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
-// Match the Desktop host's version-scoped Windows configuration (ADR-0149).
+// Match the Desktop host's version-scoped Windows configuration.
 if (process.platform === "win32" && process.versions.chrome?.split(".")[0] === "132") {
 	app.commandLine.appendSwitch("disable-features", "KeepEncoderInstanceOnRelease");
 }

@@ -76,8 +76,8 @@ async function main() {
 	if (!Array.isArray(raw.permissions)) warnings.push("permissions should be an array");
 
 	if (raw.agent_mode !== undefined) {
-		// 字段已整体废弃（ADR-0071）：值对错都无意义，只提示删除。
-		warnings.push("agent_mode is deprecated (ADR-0071): it has no runtime effect and should be removed");
+		// 字段已整体废弃：值对错都无意义，只提示删除。
+		warnings.push("agent_mode is deprecated: it has no runtime effect and should be removed");
 	}
 
 	try {

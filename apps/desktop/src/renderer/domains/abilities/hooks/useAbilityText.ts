@@ -3,7 +3,7 @@ import { usePluginI18n } from "../../plugins/runtime/plugin-i18n";
 import type { AbilityItem } from "../types";
 
 /**
- * 插件的 name / description 可能是 `%catalogKey%` 占位符（ADR-0033），需要用插件自带
+ * 插件的 name / description 可能是 `%catalogKey%` 占位符，需要用插件自带
  * catalog 解析；其余 type 直接透传。条目组装是纯函数，故解析放在渲染期。
  */
 export function useAbilityText(): (item: AbilityItem) => { title: string; description: string } {

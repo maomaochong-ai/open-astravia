@@ -52,7 +52,7 @@ function EventMessageBody() {
 	);
 }
 
-/** Parts for `<Conversation.EventMessage>` templates (ADR-0147); each renders only its own kind. */
+/** Parts for `<Conversation.EventMessage>` templates; each renders only its own kind. */
 export const EventMessage = {
 	Root: EventMessageRoot,
 	Compaction: EventMessageCompaction,

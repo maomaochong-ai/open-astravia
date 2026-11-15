@@ -29,7 +29,7 @@ sealed interface InviteLookup {
 
 /**
  * Fetches the invite a desktop left on the relay under a connection code and opens it
- * with the password (ADR-0136). `get` returns the HTTP status and body, or null when the
+ * with the password. `get` returns the HTTP status and body, or null when the
  * relay could not be reached; tests pass their own.
  */
 class InviteCodeLookup(

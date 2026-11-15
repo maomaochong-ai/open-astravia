@@ -33,7 +33,7 @@ export interface PluginI18nEntry {
  * Per-plugin i18n registry, published by PluginGlobalSlotHost from loaded
  * plugins. Drives `%key%` resolution for host-rendered contribution strings
  * (activity-tab/input-action labels) and the __PluginI18nContext that backs
- * `useTranslation` in plugin components (ADR-0033).
+ * `useTranslation` in plugin components.
  */
 export const pluginI18nByIdAtom = atom<Record<string, PluginI18nEntry>>({});
 
@@ -201,7 +201,7 @@ export interface RegisteredInputAction {
 	requiresActiveTool?: PluginInputActionContribution["requiresActiveTool"];
 	/** 允许出现的对话场景（fail-closed：缺省/空 = 任何会话都不显示）。见契约。 */
 	scope_use?: PluginInputActionContribution["scope_use"];
-	/** When true, hide this plugin's activity tabs while the toggle is off (ADR-0041). */
+	/** When true, hide this plugin's activity tabs while the toggle is off. */
 	hardIsolation?: boolean;
 	onToggle?: PluginInputActionContribution["onToggle"];
 	decoratePrompt?: PluginInputActionContribution["decoratePrompt"];

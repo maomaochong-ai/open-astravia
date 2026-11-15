@@ -117,7 +117,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 	useRunningSessionsSync();
 	// 会话置顶以主进程为准（手机也会改它），同理挂在根部。
 	useSessionPinsSync();
-	// 队列的出队/续发已收归主进程 kernel（ADR-0060）：followUp 在 turn 自然停止点
+	// 队列的出队/续发已收归主进程 kernel：followUp 在 turn 自然停止点
 	// 接力消费，renderer 不再需要全局出队调度器。
 	// 会话打开/发送的唯一挂载点。ChatPage 与新会话页走模块级 ref，避免再挂一份。
 	const { openSession, sendMessage } = useSessionManager();

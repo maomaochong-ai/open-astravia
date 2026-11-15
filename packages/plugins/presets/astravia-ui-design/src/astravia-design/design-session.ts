@@ -66,12 +66,12 @@ export type DesignChange = "frames" | "theme";
 /**
  * One open design bundle (`x.astravia-design/`). Owns the manifest (single writer): the
  * agent and the user only touch the sources; every manifest mutation flows
- * through this class. Reconcile rules (ADR-0053): tsx meta is the DECLARATION
+ * through this class. Reconcile rules: tsx meta is the DECLARATION
  * (initial size / follow on change), the manifest is the CURRENT state (user
  * drags win until the meta changes again).
  */
 export class DesignSession {
-	/** The bundle directory. Same value as {@link dirPath} — see ADR-0066. */
+	/** The bundle directory. Same value as {@link dirPath}. */
 	readonly astraviaDesignPath: string;
 	readonly dirPath: string;
 	readonly manifestPath: string;
@@ -132,7 +132,7 @@ export class DesignSession {
 	}
 
 	/**
-	 * 整份重载。给「恢复到某个历史版本」用（ADR-0069）：那一步在磁盘上整份换掉了
+	 * 整份重载。给「恢复到某个历史版本」用：那一步在磁盘上整份换掉了
 	 * 源码和 design.json，而目录监听走的是增量对账，认不出「manifest 自己被换了」
 	 * ——画框位置会停在旧值上。
 	 */
@@ -147,7 +147,7 @@ export class DesignSession {
 	async open(): Promise<void> {
 		await this.loadManifest();
 		await this.reconcile();
-		// 版本历史在这里接上（ADR-0069）。放在 reconcile 之后：基础版本应该包含
+		// 版本历史在这里接上。放在 reconcile 之后：基础版本应该包含
 		// 已经收敛的 design.json，而不是打开瞬间的中间态。不等它——历史不可用
 		// 时设计照常打开。
 		void bootstrapHistory(this.ctx, this);
@@ -167,7 +167,7 @@ export class DesignSession {
 	}
 
 	/**
-	 * 目录监听回调。manifest 就在被监听的包里（ADR-0066），所以**我们自己**的每一次
+	 * 目录监听回调。manifest 就在被监听的包里，所以**我们自己**的每一次
 	 * 落盘（拖动、平移视口）都会绕回这里；宿主的事件只带被监听的目录路径，认不出
 	 * 是哪个文件变的。因此对外的通知一律按「内容真的变了」再发：reconcile 只在
 	 * frame 集合/声明变化时 emit，theme 按内容比对。否则拖一下画框就会全画布重渲染

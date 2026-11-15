@@ -77,7 +77,7 @@ private const val TRACE_STEPS = 8
 private const val SIGNALING_OPEN_TIMEOUT_MS = 10_000L
 
 /**
- * STUN only, no TURN (ADR-0135), and only servers reachable in mainland China without a
+ * STUN only, no TURN, and only servers reachable in mainland China without a
  * proxy: one a proxy carries (Google, Cloudflare) can answer first with the proxy's exit
  * as this phone's address, and the link then goes through it. Kept in step with the
  * desktop's `REMOTE_DESKTOP_ICE_SERVERS`.

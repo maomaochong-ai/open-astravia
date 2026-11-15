@@ -152,7 +152,7 @@ func (newCmd) Run(ctx context.Context, env Env, _ []string) (Result, error) {
 	}
 
 	// Consolidate the current session's durable facts into MEMORY.md before we
-	// discard it (ADR-0009). The automatic flush only fires at a rollover, so a
+	// discard it. The automatic flush only fires at a rollover, so a
 	// short session the user abandons via /new before ever hitting the threshold
 	// would otherwise lose its memory. Best-effort: a flush failure must not
 	// block /new.

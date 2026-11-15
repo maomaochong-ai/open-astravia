@@ -169,7 +169,7 @@ export function useProjectActions() {
 		if (!imSubscribed) {
 			imSubscribed = true;
 			window.astravia.im.onSessionChanged(() => {
-				// Claw 会话写在独立的 IM cwd 下（ADR-0005），fs watcher 监听的也是它；
+				// Claw 会话写在独立的 IM cwd 下，fs watcher 监听的也是它；
 				// 桌面「对话」cwd 不会被 sidecar 写，但保留刷新以兼容历史路径。
 				const imCwd = store.get(defaultImConversationCwdAtom);
 				if (imCwd) void loadSessionsRef.current(imCwd);
@@ -394,7 +394,7 @@ export function useProjectActions() {
 				setScheduledRecordsVersion((v) => v + 1);
 			}
 			setSessionsMap((prev) => {
-				// ADR-0007: 「对话」项目下的 session.cwd 是 per-session 子目录，但
+				// 「对话」项目下的 session.cwd 是 per-session 子目录，但
 				// sessionsMap 的 key 仍是项目根。这里不再用传入的 cwd 反查，而是
 				// 遍历所有桶把命中 sessionPath 的条目摘掉，避免侧栏不刷新。
 				const next = new Map(prev);

@@ -5,7 +5,7 @@ import type * as Koffi from "koffi";
 
 /**
  * The pointer macOS shows right now (arrow, I-beam, hand…), for a phone that draws the
- * pointer itself (ADR-0140). Read through the Objective-C runtime: `NSCursor
+ * pointer itself. Read through the Objective-C runtime: `NSCursor
  * currentSystemCursor` is the system-wide pointer, whichever app set it.
  */
 const objc = (() => {

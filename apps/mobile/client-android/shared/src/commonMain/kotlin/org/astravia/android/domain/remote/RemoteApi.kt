@@ -217,17 +217,17 @@ data class RemoteDeviceStatus(
     val relayBaseUrl: String? = null,
     /**
      * Whether the desktop answers `screen.subscribe` and captures only while it is open
-     * (ADR-0140); older desktops share the screen whenever the P2P link is up.
+     * older desktops share the screen whenever the P2P link is up.
      */
     val screen: Boolean = false,
-    /** Whether the desktop answers `file.list`, `file.stat` and `file.read` (ADR-0139). */
+    /** Whether the desktop answers `file.list`, `file.stat` and `file.read`. */
     val fileRead: Boolean = false,
 )
 
 /**
  * A file or folder the phone may look at, as `file.list` and `file.stat` describe it.
  * `path` is the desktop's canonical form and what the phone passes back; the phone never
- * builds paths itself (ADR-0139).
+ * builds paths itself.
  */
 data class RemoteFileEntry(
     val name: String,
@@ -256,7 +256,7 @@ class RemoteFileChunk(val data: ByteArray, val offset: Long, val totalSize: Long
 /**
  * A skill or scene the phone may reference by writing `@skill:<name>` / `@scene:<name>`
  * into a prompt, already filtered and ordered as the desktop composer's picker shows them
- * (ADR-0137).
+ *
  */
 data class RemoteSkillOption(
     /** What the token carries; the agent looks the skill up by it. */

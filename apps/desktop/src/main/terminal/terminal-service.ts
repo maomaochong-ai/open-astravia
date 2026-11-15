@@ -81,7 +81,7 @@ export class TerminalService {
 
 		if (location.kind === "ssh") {
 			// 远程项目的终端必须在远端跑，`cwd` 是 ssh:// 时**绝不**退回本机执行：
-			// 那会让用户以为自己在操作远端仓库（ADR-0124）。
+			// 那会让用户以为自己在操作远端仓库。
 			const opened = await this.remoteFactory.open({
 				cwd: request.cwd,
 				cols: size.cols,

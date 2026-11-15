@@ -1,5 +1,5 @@
 /**
- * 设计历史的插件侧入口（ADR-0069）。其余代码只认这几个方法，不知道 git 存在。
+ * 设计历史的插件侧入口。其余代码只认这几个方法，不知道 git 存在。
  */
 import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { runHistoryCommand } from "./runner-host";

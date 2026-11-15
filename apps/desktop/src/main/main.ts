@@ -132,7 +132,6 @@ protocol.registerSchemesAsPrivileged([
 ]);
 const isMac = process.platform === "darwin";
 const appRoot = app.isPackaged ? app.getAppPath() : process.cwd();
-const buildDir = join(appRoot, "build");
 const devMainEntryPath = join(appRoot, "dist/main/index.js");
 const packagedCliBinaryName = process.platform === "win32" ? "astravia.exe" : "astravia";
 const packagedCliPlatformTag = `${process.platform}-${process.arch}`;

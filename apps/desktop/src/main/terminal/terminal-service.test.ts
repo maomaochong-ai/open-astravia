@@ -217,7 +217,7 @@ describe("TerminalService", () => {
 		});
 
 		await expect(target.open(1, { cwd: "ssh://host-1/srv/app", cols: 80, rows: 24 })).rejects.toThrow(/unreachable/);
-		// 关键断言：本地 backend 一次都没被碰过（ADR-0124）。
+		// 关键断言：本地 backend 一次都没被碰过。
 		expect(localOpened).toEqual([]);
 	});
 

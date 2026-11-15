@@ -69,7 +69,7 @@ type Transport interface {
 
 	// SendAttachment delivers a local file to the chat as a first-class
 	// IM attachment (image / file). The bridge calls this in response to
-	// an `im_send_attachment` tool invocation from the agent (see ADR-0006).
+	// an `im_send_attachment` tool invocation from the agent.
 	//
 	// `kind` selects the wire shape ("image" for inline-rendered media,
 	// "file" for everything else). `caption` is an optional short text

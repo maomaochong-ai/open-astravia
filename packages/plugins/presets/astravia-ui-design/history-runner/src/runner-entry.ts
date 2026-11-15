@@ -1,5 +1,5 @@
 /**
- * 设计历史的 node 侧执行体（ADR-0069）。
+ * 设计历史的 node 侧执行体。
  *
  * 为什么要有一个独立进程：isomorphic-git 读写的是 git 对象文件——无扩展名的二进制。
  * 插件的 `fs.readFile` 只对已知二进制扩展名返回 base64，其余按 utf8 解，object 文件
@@ -22,7 +22,7 @@ const GIT_DIR_NAME = ".history";
  * 永远不进历史的顶层条目。
  *
  * `node_modules` 是性能前提而不是整洁问题：装两个库后设计目录会从 4 个文件涨到
- * 七千多个（ADR-0068 实测），每个回合遍历一遍会明显拖慢回合结束。所以下面的
+ * 七千多个（实测），每个回合遍历一遍会明显拖慢回合结束。所以下面的
  * 工作区遍历直接剪掉这些目录，而不是遍历完再过滤。
  */
 const IGNORED_TOP_LEVEL = new Set([
@@ -227,7 +227,7 @@ async function log(dir: string, limit: number): Promise<HistoryCommit[]> {
 }
 
 /**
- * 把某个版本的内容写回工作区，再落一个新提交——历史只增不减（ADR-0069）。
+ * 把某个版本的内容写回工作区，再落一个新提交——历史只增不减。
  * `noUpdateHead` 让 HEAD 留在分支尖端，于是「恢复」在历史里是一次前进而不是回退。
  */
 async function restore(dir: string, sha: string, title: string): Promise<HistoryCommit | null> {

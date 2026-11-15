@@ -12,7 +12,7 @@ import { MODELS_DEV_SNAPSHOT } from "./models-dev-snapshot.generated.js";
  * models.dev 目录:补齐各家 `/models` 不返回的元数据(价格、上下文长度、视觉/思考能力)。
  *
  * 各家的 `/models` 一律不给价格,OpenAI / DeepSeek / GLM 连上下文长度都不给。曾用手写
- * 静态表补,但各家发版一快就全错(见 ADR-0050),改为拉这份社区维护、跟各家发版更新的目录。
+ * 静态表补,但各家发版一快就全错,改为拉这份社区维护、跟各家发版更新的目录。
  * 拉不到就用磁盘缓存,再没有就只展示接口给的字段——绝不显示猜的价格。
  */
 

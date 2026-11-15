@@ -30,7 +30,7 @@ export const DEFAULT_CONVERSATION_PROJECT_NAME = "对话";
 export const defaultConversationCwdAtom = atom<string>("");
 
 /**
- * im-gateway 的 cwd（绝对路径），与桌面「对话」cwd 物理分离（ADR-0005）。
+ * im-gateway 的 cwd（绝对路径），与桌面「对话」cwd 物理分离。
  * 用于判定一条 session 是否是 Claw（IM）来源：session.cwd === defaultImConversationCwdAtom。
  */
 export const defaultImConversationCwdAtom = atom<string>("");
@@ -51,7 +51,7 @@ export function getProjectDisplayName(cwd: string, defaultCwd: string): string {
 }
 
 /**
- * ADR-0007：默认「对话」session 的运行 cwd 是项目根（`defaultCwd`）下的 per-session 子目录，
+ * 默认「对话」session 的运行 cwd 是项目根（`defaultCwd`）下的 per-session 子目录，
  * 但侧边栏 sessionsMap / 默认会话列表都以项目根为 bucket key。任何要落到侧边栏 bucket 的
  * 操作（ensureLocalSession / applyLocalRename / loadSessions / 顶部新会话目标 cwd）都必须先把
  * 子目录 cwd 归一回项目根，否则会出现「乐观行进错桶、改名落空、列表要刷新才更新」等问题。

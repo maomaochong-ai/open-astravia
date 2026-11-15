@@ -104,7 +104,7 @@ export function pathNormalize(path: string): string {
 }
 
 /**
- * Map a local absolute path to the privileged astravia-file:// scheme (ADR-0027).
+ * Map a local absolute path to the privileged astravia-file:// scheme.
  * Do not use file:// — Electron renderer blocks it ("Not allowed to load local resource").
  */
 export function toAstraviaFileUrl(path: string): string {

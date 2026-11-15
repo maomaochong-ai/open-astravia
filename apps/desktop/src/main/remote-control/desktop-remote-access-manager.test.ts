@@ -876,7 +876,7 @@ describe("DesktopRemoteAccessManager", () => {
 		} as unknown as RemoteConnection;
 		relayLinks[0]?.options.onConnection(connection);
 		await vi.waitFor(() => expect(desktopHosts).toHaveLength(1));
-		// The phone learns here, not from the handshake, that it may ask for files (ADR-0139).
+		// The phone learns here, not from the handshake, that it may ask for files.
 		expect(statuses[0]).toMatchObject({ desktopControl: true, fileRead: true });
 		expect(manager.getState().devices[0]?.desktopControl).toBe(true);
 
@@ -993,7 +993,7 @@ describe("DesktopRemoteAccessManager", () => {
 		expect(desktopHosts[1]?.stopped).toBe(true);
 	});
 
-	describe("screen on demand (ADR-0140)", () => {
+	describe("screen on demand", () => {
 		const pairingId = "a".repeat(24);
 		const phoneKey = "k".repeat(43);
 		const paired = {

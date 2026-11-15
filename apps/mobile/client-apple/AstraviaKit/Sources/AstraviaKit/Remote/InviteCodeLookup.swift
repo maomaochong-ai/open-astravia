@@ -12,7 +12,7 @@ public enum InviteLookup: Equatable, Sendable {
 }
 
 /// Fetches the invite a desktop left on the relay under a connection code and opens it
-/// with the password (ADR-0136). `get` returns the HTTP status and body, or nil when the
+/// with the password. `get` returns the HTTP status and body, or nil when the
 /// relay could not be reached; tests pass their own.
 public struct InviteCodeLookup {
 	public typealias Get = (_ url: String) async -> (status: Int, body: Data)?

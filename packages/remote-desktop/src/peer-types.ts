@@ -13,7 +13,7 @@ export const NOOP_REMOTE_DESKTOP_LOGGER: RemoteDesktopLogger = {
 };
 
 /**
- * STUN only, no TURN (ADR-0135), and only servers reachable in mainland China without a
+ * STUN only, no TURN, and only servers reachable in mainland China without a
  * proxy. Chromium keeps one public address per network interface, from whichever server
  * answers first; a proxy (Clash and the like) carries Google's and Cloudflare's, so with
  * them listed each new connection could take the proxy's exit as this machine's address

@@ -276,7 +276,7 @@ describe("ConversationHeaderActions", () => {
 	});
 
 	it("a new activeSessionAtom instance with identical fields does not re-render the probe", async () => {
-		// ADR-0167：useActiveConversation 按字段订阅（runtimeId / cwd / sessionPath），
+		// useActiveConversation 按字段订阅（runtimeId / cwd / sessionPath），
 		// 会话对象换实例但字段没变时，常驻的顶栏探针不该重渲，更不该重新发布。
 		const renders: string[] = [];
 		const hook = () => {

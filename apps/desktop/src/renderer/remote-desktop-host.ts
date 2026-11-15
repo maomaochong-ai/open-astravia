@@ -26,7 +26,7 @@ const params = new URLSearchParams(window.location.search);
 const target = params.get("target");
 const sessionId = params.get("sessionId");
 if (!target || !sessionId) throw new Error("remote desktop host target is missing");
-// "demand": capture only while a phone subscribes (ADR-0140); otherwise for the whole session.
+// "demand": capture only while a phone subscribes; otherwise for the whole session.
 const onDemand = params.get("screen") === "demand";
 // Sharp enough to read zoomed-in text, small enough for the hardware encoder to keep up at
 // full frame rate, so dragging stays smooth.

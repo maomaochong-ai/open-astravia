@@ -311,7 +311,7 @@ func TestRouter_PerChatIsolation(t *testing.T) {
 
 // gatedClient blocks OpenSession until release is closed, signaling via
 // opened once the first OpenSession is reached. Lets a test deterministically
-// enqueue a second message inside the acquire window (ADR-0010).
+// enqueue a second message inside the acquire window.
 type gatedClient struct {
 	reply   string
 	release chan struct{}
@@ -336,7 +336,7 @@ func (c *gatedClient) OpenSession(_ context.Context, _ string, sessionPath strin
 func TestRouter_CoalescesBurstDuringAcquire(t *testing.T) {
 	// Two messages from the same chat, the second arriving while the agent is
 	// still being acquired (cold start), must coalesce into a single prompt and
-	// produce exactly one reply — not two turns, two replies (ADR-0010).
+	// produce exactly one reply — not two turns, two replies.
 	tr := newFakeTransport()
 	st := newFakeStore()
 	gc := &gatedClient{reply: "ok", release: make(chan struct{}), opened: make(chan struct{})}

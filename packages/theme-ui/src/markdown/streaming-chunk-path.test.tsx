@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-// 守住 ADR-0152 的归属边界与预算门控。
+// 守住归属边界与预算门控。
 //
 // 两条路径必须分开看：
 // 1. 用户消息路径（宿主不传 `isStreamingTail`）：`rehypeStreamingChunks` 从不挂载，
-//    因此 ADR-0152 的分段预算在这条路径上不生效——#185 的用户消息路径与此无关。
+// 因此分段预算在这条路径上不生效——#185 的用户消息路径与此无关。
 // 2. 助手尾块路径（`isStreamingTail=true`）：文本超过 `STREAM_CHUNK_MAX_CHARS` 后
 //    不挂插件，`.streaming-chunk` 归零，但 `.markdown-streaming-tail` 包裹类保留。
 import { act, createElement } from "react";
@@ -73,7 +73,7 @@ describe("分段预算的路径归属", () => {
 		act(() => {
 			vi.advanceTimersByTime(250);
 		});
-		// 用户消息路径与 ADR-0152 的分段预算无关：插件在这里本来就从未挂上。
+		// 用户消息路径与既有约束的分段预算无关：插件在这里本来就从未挂上。
 		expect(view.container.querySelectorAll(".streaming-chunk").length).toBe(0);
 		expect(view.container.querySelector(".markdown-streaming-tail")).toBeNull();
 		// 正文仍然完整渲染。
@@ -92,7 +92,7 @@ describe("分段预算的路径归属", () => {
 		act(() => {
 			view.root.render(createElement(MarkdownContent, { ...environment, text: OVER_BUDGET, isStreamingTail: true }));
 		});
-		// ADR-0152：跨过预算后不产生逐短语 span。
+		// 跨过预算后不产生逐短语 span。
 		expect(view.container.querySelectorAll(".streaming-chunk").length).toBe(0);
 		// 包裹类由 `animateChunks` 驱动，不随分段一起关。
 		expect(view.container.querySelector(".markdown-streaming-tail")).not.toBeNull();

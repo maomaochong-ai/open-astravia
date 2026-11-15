@@ -13,7 +13,7 @@ function htmlStorageKey(cwd: string): string {
 	return `mobile-ui-preview:html:${cwd}`;
 }
 
-/** 静态文件协议 URL（ADR-0027）：pathname 承载绝对路径，相对资源按目录解析。 */
+/** 静态文件协议 URL：pathname 承载绝对路径，相对资源按目录解析。 */
 function toFileProtocolUrl(filePath: string): string {
 	return `astravia-file://local${encodeURI(filePath)}`;
 }

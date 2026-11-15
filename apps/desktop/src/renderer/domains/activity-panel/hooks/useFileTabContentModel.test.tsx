@@ -102,7 +102,7 @@ it("keeps a preview opened before the file tab mounts when the tab remounts imme
 	expect(store.get(inlineFilePreviewAtom)).toBeNull();
 });
 
-// ADR-0162：预览顶栏「在文件树中定位」——目录树收起时先展开，等它绑定后再定位。
+// 预览顶栏「在文件树中定位」——目录树收起时先展开，等它绑定后再定位。
 it("locate 在树展开时直接定位，收起时先展开再定位", async () => {
 	const reveal = vi.spyOn(explorerHost, "revealPluginFileExplorerPath").mockResolvedValue();
 	const { result } = setup();

@@ -31,8 +31,8 @@ const TypingHeartbeatInterval = 5 * time.Second
 const DeferredEmptyText = "⚠️ 未返回文本内容"
 
 // HostResponder is the optional callback the bridge uses to answer
-// `host_request` events emitted by built-in coding-agent tools (see
-// ADR-0006). Receiving a host_request and not having a responder set is
+// `host_request` events emitted by built-in coding-agent tools. Receiving
+// a host_request and not having a responder set is
 // not an error — the bridge logs and drops the request.
 //
 // The send function is expected to be a thin adapter over
@@ -41,7 +41,7 @@ const DeferredEmptyText = "⚠️ 未返回文本内容"
 type HostResponder func(ctx context.Context, cmd hostclient.Command) error
 
 // PathChangeHandler is the optional callback the bridge invokes when the agent
-// emits a `session_path_changed` event (memory-mode rollover, ADR-0009). The
+// emits a `session_path_changed` event (memory-mode rollover). The
 // router uses it to repoint the (user, chat) → sessionPath mapping at the new
 // .jsonl so the next inbound message resumes the rolled-over session rather
 // than the archived one.
@@ -763,7 +763,7 @@ func extractAssistantText(raw json.RawMessage) string {
 }
 
 // hostRequest is the on-wire shape of an agent-emitted reverse RPC. The
-// only `method` currently understood is `send_attachment` — see ADR-0006
+// only `method` currently understood is `send_attachment`
 // and packages/coding-agent/docs/rpc.md.
 type hostRequest struct {
 	Type   string `json:"type"`

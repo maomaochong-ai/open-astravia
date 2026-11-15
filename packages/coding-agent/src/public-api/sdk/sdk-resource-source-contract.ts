@@ -8,7 +8,7 @@ export interface CodingAgentSkillContribution {
 	readonly content: string;
 	readonly filePath?: string;
 	readonly baseDir?: string;
-	/** @deprecated 工作模式不再影响 Skill 的可见性与顺序（ADR-0071）。字段容忍传入但被忽略。 */
+	/** @deprecated 工作模式不再影响 Skill 的可见性与顺序。字段容忍传入但被忽略。 */
 	readonly agentModes?: readonly string[];
 	readonly disableModelInvocation?: boolean;
 	/** 可选的结构化来源；SDK source 未提供时由宿主填充。 */

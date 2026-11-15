@@ -19,7 +19,7 @@ export const officialAndCommandProbes: ProbeDefinition[] = [
 						return {
 							status: "blocked",
 							severity: "info",
-							summary: "gateway 未注入（符合 ADR-0056 第三方边界）",
+							summary: "gateway 未注入（符合第三方边界）",
 						};
 					}
 					return {

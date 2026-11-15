@@ -1,6 +1,6 @@
 /**
  * 市场行 + 本地状态 → AbilityItem。全部为纯函数，便于单独推理与测试。
- * installed / localVersion / needsUpdate 一律以安装台账为准（ADR-0049），
+ * installed / localVersion / needsUpdate 一律以安装台账为准，
  * enabled 才回各自运行时读（skills 清单 / mcp.json / 插件注册表）。
  */
 
@@ -41,7 +41,7 @@ import type {
 import { buildMarketAbilityId, getMarketCatalogSource, getOpenCatalogOrigin } from "./merge-ability-catalogs";
 
 /**
- * 解析插件 manifest 里的 `%key%` NLS 占位符（ADR-0033）。已装插件走它自带的
+ * 解析插件 manifest 里的 `%key%` NLS 占位符。已装插件走它自带的
  * catalog（第三参，来自 InstalledPlugin）；未装的市场条目没有 catalog，回落为裸
  * key —— 那种情况由服务端在上传时就把占位符解析成真实文案来兜底，客户端这里不做
  * 二次猜测。
@@ -511,7 +511,7 @@ export function buildPluginAbilities(
 		const installedPlugin = installed ? plugin : null;
 		const isSystem = installedPlugin?.source === "system";
 		const localVersion = installed ? (ledgerEntry?.version ?? plugin?.activeVersion) : undefined;
-		// manifest 的 name/description 可能是 `%key%` NLS 占位符（ADR-0033），必须过 catalog 解析。
+		// manifest 的 name/description 可能是 `%key%` NLS 占位符，必须过 catalog 解析。
 		// 已装插件一律用它自带的 catalog：注册表只有已启用且加载成功的插件，刚装完（默认未启用）
 		// 查不到就会把裸 key 显示成名字。
 		const title = trPlugin(slug, installedPlugin?.name ?? entry?.name, installedPlugin ?? undefined) || slug;

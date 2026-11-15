@@ -196,7 +196,7 @@ function translate(event: SessionEvent): void {
 	}
 	switch (event.type) {
 		case "queue.changed":
-			// 队列镜像（ADR-0060）：插件卡片据此呈现「已排队/已发出/被移除」。
+			// 队列镜像：插件卡片据此呈现「已排队/已发出/被移除」。
 			emit({
 				type: "queue-changed",
 				queue: {
@@ -745,7 +745,7 @@ const conversation: PluginConversationApi = {
 	sendPrompt: async (text: string): Promise<SendPromptResult> => {
 		const send = pluginSendMessageRef.current;
 		if (!send) throw new Error("No active conversation to send to");
-		// source: "plugin" —— 不清用户输入预测、不消费用户挂的 promptAttachment（ADR-0060）。
+		// source: "plugin" —— 不清用户输入预测、不消费用户挂的 promptAttachment。
 		const result = await send(text, { source: "plugin" });
 		return result ?? { status: "sent" };
 	},

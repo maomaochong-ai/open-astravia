@@ -230,21 +230,21 @@ public struct RemoteDeviceStatus: Equatable, Sendable {
 	public var lanEndpoints: [String]
 	public var relayEnabled: Bool
 	public var runningSessionCount: Double
-	/// Whether the desktop answers `file.*` requests (ADR-0139). Older desktops leave it
+	/// Whether the desktop answers `file.*` requests. Older desktops leave it
 	/// out and drop the link on those methods, so nothing may send them unless it is set.
 	public var fileRead: Bool = false
 	/// Whether this phone may view and operate the desktop's screen; nil from desktops
 	/// that let every phone view.
 	public var desktopControl: Bool? = nil
 	/// Whether the desktop answers `screen.subscribe` and captures only while a phone
-	/// subscribes (ADR-0140). The phone opens no P2P link to a desktop without it: that
+	/// subscribes. The phone opens no P2P link to a desktop without it: that
 	/// desktop would stream its screen for as long as the link is up.
 	public var screen: Bool = false
 	/// The relay currently announced by the desktop; absent on older versions.
 	public var relayBaseUrl: String? = nil
 }
 
-/// Why frames or taps might not reach the phone (ADR-0140).
+/// Why frames or taps might not reach the phone.
 public enum RemoteScreenState: String, Equatable, Sendable {
 	case stopped
 	case streaming

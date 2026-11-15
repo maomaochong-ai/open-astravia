@@ -105,7 +105,7 @@ export type InputBarDrawerItem =
 			id: string;
 			label: string;
 			desc: string;
-			/** abort/error 后队列暂停时脉冲提醒（ADR-0060）。 */
+			/** abort/error 后队列暂停时脉冲提醒。 */
 			pulsing?: boolean;
 			runtimeId: string;
 			onSendNow: (id: string) => void;

@@ -164,7 +164,7 @@ fun SessionScreen(
                 )
             }
             headerActions()
-            // The desktop's files (ADR-0139). The folder stays in the corner; an older desktop
+            // The desktop's files. The folder stays in the corner; an older desktop
             // explains itself when the panel opens. Pin, rename, and refresh live on the session list.
             if (files != null) {
                 IconButton(

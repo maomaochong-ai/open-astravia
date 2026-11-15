@@ -39,7 +39,7 @@ export function basenameOf(path: string): string {
 	return parts[parts.length - 1] || path;
 }
 
-/** v1 遗留的旁挂目录后缀（`x.astravia-design` 文件 + `x.astravia-design-dir/` 目录，见 ADR-0066）。 */
+/** v1 遗留的旁挂目录后缀（`x.astravia-design` 文件 + `x.astravia-design-dir/` 目录）。 */
 const LEGACY_SIDECAR_SUFFIX = ".astravia-design-dir";
 
 /**

@@ -119,7 +119,7 @@ export function registerAbilitiesIpc(): () => void {
 			if (!win.isDestroyed()) win.webContents.send("astravia:abilities:open-marketplaces-updated");
 		}
 	});
-	// 一次性下发全量台账；读取时顺带剔除漂移条目（ADR-0049）。
+	// 一次性下发全量台账；读取时顺带剔除漂移条目。
 	ipcMain.handle("astravia:abilities:get-ledger", () => readAbilityLedger());
 	ipcMain.handle("astravia:abilities:list-local-presentations", () => listLocalAbilityPresentations());
 	ipcMain.handle("astravia:abilities:list-open-marketplace", async () => {

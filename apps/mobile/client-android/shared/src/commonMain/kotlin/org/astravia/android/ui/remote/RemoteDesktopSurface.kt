@@ -5,7 +5,7 @@ import androidx.compose.ui.Modifier
 import org.astravia.android.domain.remote.RemoteScreenCursor
 
 /**
- * The paired desktop's screen with the whole page as its trackpad (ADR-0140): one
+ * The paired desktop's screen with the whole page as its trackpad: one
  * finger moves the pointer from where it is, anywhere on the page; a tap clicks and a
  * two-finger tap right-clicks where the pointer is; holding half a second presses the
  * button, so moving then drags. Two fingers pinch to zoom the picture, move it once

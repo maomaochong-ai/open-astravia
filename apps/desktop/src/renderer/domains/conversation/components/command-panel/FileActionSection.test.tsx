@@ -6,7 +6,7 @@ import { FileActionSection } from "./FileActionSection";
 afterEach(cleanup);
 
 /**
- * ADR-0156：文件区段把原先散在工具行的「添加图片 / 附加文件引用」收进「添加」面板，
+ * 文件区段把原先散在工具行的「添加图片 / 附加文件引用」收进「添加」面板，
  * 三段动作都是直接点击目标。
  */
 describe("文件区段", () => {

@@ -39,7 +39,7 @@ export function resolveSshHelperTarget(platform: RemotePlatform): SshHelperTarge
 /**
  * 把 helper 送到远端并连上它；任何一步不成就返回 undefined，调用方走 `ssh exec` 的降级路径。
  *
- * 安装目录按**协议版本**命名，不按构建哈希（ADR-0124）。内容用 sha256 比对：同一协议版本
+ * 安装目录按**协议版本**命名，不按构建哈希。内容用 sha256 比对：同一协议版本
  * 下二进制被替换（修了个 bug）时会重新上传，而目录名不变，旧 helper 起的任务依然看得见——
  * 任务状态存在与版本无关的目录里。
  */

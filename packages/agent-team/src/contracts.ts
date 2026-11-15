@@ -50,7 +50,7 @@ export type TeamAgentBinding =
 
 /**
  * 成员在**本团队内**的任务书：叠加在 Agent Profile 之上的增量，不改动本体。
- * 空白字段一律等同于缺省，即回到本体（见 ADR-0109）。
+ * 空白字段一律等同于缺省，即回到本体。
  */
 export interface TeamMemberAssignment {
 	/** 覆盖全队可见的职责摘要；缺省沿用 Agent Profile 的 description。 */
@@ -407,7 +407,7 @@ export interface AgentResourceSource {
 	readonly pluginId: string;
 	/**
 	 * 名称在提供方语言包里的 key（不带 `%`）。`name` 只存默认语言的字面量，是给模型与降级
-	 * 展示用的；界面按这个 key 现场查提供方的语言包，切换语言才能立刻跟上（ADR-0033）。
+	 * 展示用的；界面按这个 key 现场查提供方的语言包，切换语言才能立刻跟上。
 	 */
 	readonly nameKey?: string;
 	/** 描述的语言包 key，语义同 {@link AgentResourceSource.nameKey}。 */

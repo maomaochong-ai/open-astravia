@@ -1,5 +1,5 @@
 /**
- * frame ↔ URL 映射（ADR-0055）。画布拼 iframe 地址、预览工具栏显示地址、以及
+ * frame ↔ URL 映射。画布拼 iframe 地址、预览工具栏显示地址、以及
  * 引擎自己的路由表全部读同一份规则，映射错位的表现是「预览打开的是另一帧」。
  */
 import { expect, it } from "vitest";

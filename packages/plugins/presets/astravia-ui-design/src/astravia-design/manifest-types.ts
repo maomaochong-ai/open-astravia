@@ -14,7 +14,7 @@ export interface FrameMeta {
 /**
  * One canvas frame in the manifest. `meta` is the last frame-meta snapshot the
  * plugin synced from the tsx: current width/height follow the manifest (user
- * drags win) until the tsx meta CHANGES again (last writer wins, ADR-0053).
+ * drags win) until the tsx meta CHANGES again (last writer wins).
  */
 export interface AstraviaDesignFrameEntry {
 	id: string;
@@ -68,7 +68,7 @@ export function emptyManifest(): AstraviaDesignManifest {
  * `git mv` 都要成对操作，漏一个就剩下半份设计。
  *
  * 目录而不是单文件容器：引擎（vite dev server）要的是磁盘上的真实文件树，agent
- * 也要能用普通读写工具改 tsx —— 见 ADR-0053、ADR-0066。
+ * 也要能用普通读写工具改 tsx。
  */
 export const MANIFEST_FILE = "design.json";
 

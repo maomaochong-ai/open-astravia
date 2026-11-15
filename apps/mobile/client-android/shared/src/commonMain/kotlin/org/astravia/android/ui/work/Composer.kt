@@ -135,7 +135,7 @@ fun Composer(
     onStop: () -> Unit = {},
     containerColor: Color = MaterialTheme.astraviaExtra.pageBackground,
     dictation: Dictation = rememberDictation(),
-    /** The desktop's skills to reference (ADR-0137); null leaves them out. */
+    /** The desktop's skills to reference; null leaves them out. */
     skills: ComposerSkills? = null,
 ) {
     val colors = MaterialTheme.workColors

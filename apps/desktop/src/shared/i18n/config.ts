@@ -22,7 +22,7 @@ export const DEFAULT_LANGUAGE_PREFERENCE: LanguagePreference = "system";
  */
 export const DEFAULT_LANGUAGE: AppLanguage = "en";
 
-/** 回退语言：key 缺译文时回退中文，绝不暴露原始 key（见 ADR-0031）。 */
+/** 回退语言：key 缺译文时回退中文，绝不暴露原始 key。 */
 export const FALLBACK_LANGUAGE: AppLanguage = "zh";
 
 /** 命名空间：按 renderer domain 切分 + common（基础件）+ main（主进程原生 UI）。 */

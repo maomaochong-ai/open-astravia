@@ -169,7 +169,7 @@ export const REMOTE_MAX_UPLOAD_BYTES = 700 * 1024;
  * `file.stat`, `file.read` and `file.list`: relative to the session's working
  * directory inside it (the directory itself is ""), `~/…` under the home
  * directory, absolute anywhere else. The phone never builds paths itself
- * (ADR-0139).
+ *
  */
 export interface RemoteFileEntry {
 	readonly name: string;
@@ -205,7 +205,7 @@ export const REMOTE_FILE_CHUNK_BYTES = 700 * 1024;
 export const REMOTE_MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 /**
- * The desktop's screen as the phone may see it (ADR-0140). `stopped` while no phone
+ * The desktop's screen as the phone may see it. `stopped` while no phone
  * subscribes; `permission_denied` when macOS withholds Screen Recording, so the phone
  * explains it instead of showing black; `unavailable` when capture failed otherwise.
  */
@@ -255,7 +255,7 @@ export interface RemoteDeviceStatus {
 	 */
 	readonly relayBaseUrl?: string;
 	/**
-	 * Whether the desktop answers `file.list`, `file.stat` and `file.read` (ADR-0139).
+	 * Whether the desktop answers `file.list`, `file.stat` and `file.read`.
 	 * The phone learns it here rather than from the handshake, whose `hello_ack` does not
 	 * carry the desktop's capabilities. Older desktops leave it out and drop the link on
 	 * those methods, so the phone must not send them.
@@ -263,7 +263,7 @@ export interface RemoteDeviceStatus {
 	readonly fileRead?: boolean;
 	/**
 	 * Whether the desktop answers `screen.subscribe` and captures only while a phone
-	 * subscribes (ADR-0140). Older desktops leave it out and stream whenever a P2P link
+	 * subscribes. Older desktops leave it out and stream whenever a P2P link
 	 * is up; the iPhone does not open one to them.
 	 */
 	readonly screen?: boolean;

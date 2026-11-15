@@ -120,7 +120,7 @@ export interface SpawnPluginCommandResult {
 }
 
 /**
- * Start a long-lived plugin-declared command in the main process (ADR-0054).
+ * Start a long-lived plugin-declared command in the main process.
  * Same authoritative gates as `runPluginCommand`, but behind the separate
  * `agent.command.spawn` permission. The shared launcher selects the managed
  * Node toolchain and safely bridges platform script shims. The child runs in

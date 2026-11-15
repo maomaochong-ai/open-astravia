@@ -20,7 +20,7 @@ export const MAX_INVITE_TTL_MS = 10 * 60 * 1_000;
 export const MAX_INVITE_READS = 10;
 
 /**
- * One sealed pairing invite, named by a hash of its connection code (ADR-0136). The
+ * One sealed pairing invite, named by a hash of its connection code. The
  * desktop that wrote it may replace or withdraw it; anyone who knows the code may read
  * it a few times until it expires. The relay cannot open it.
  */

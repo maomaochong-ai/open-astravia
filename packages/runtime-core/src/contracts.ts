@@ -272,7 +272,7 @@ export type SessionEvent =
 	| RetryEndEvent
 	| QueueChangedEvent;
 
-/** prompt 的即时回执（ADR-0060）：排队时立即返回，宿主/UI 据此区分「已发出」与「已排队」。 */
+/** prompt 的即时回执：排队时立即返回，宿主/UI 据此区分「已发出」与「已排队」。 */
 export interface RuntimeTurnPromptOutcome {
 	readonly status: "completed" | "cancelled" | "failed" | "queued" | "handled";
 	/** Structured failure for a terminal failed turn. Kept on the prompt receipt so
@@ -294,7 +294,7 @@ export type RuntimeQueuePromptIfRunningOutcome =
 			readonly id?: string;
 	  };
 
-/** 输入队列变化广播：renderer 镜像队列抽屉、插件卡片据此渲染排队状态（ADR-0060）。 */
+/** 输入队列变化广播：renderer 镜像队列抽屉、插件卡片据此渲染排队状态。 */
 export interface QueueChangedEvent extends SessionEventBase {
 	type: "queue.changed";
 	paused: boolean;

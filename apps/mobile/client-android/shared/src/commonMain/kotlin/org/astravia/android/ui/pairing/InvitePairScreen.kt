@@ -120,7 +120,7 @@ private enum class InviteStep { Code, Password }
 
 /**
  * Pairing with the connection code and password the computer shows next to its QR code
- * (ADR-0136), one step at a time as on the iPhone: eight boxes for the code, then six for
+ * one step at a time as on the iPhone: eight boxes for the code, then six for
  * the password. A full code moves on by itself and a full password connects; what went
  * wrong sends the user back to the step that needs fixing. The picture on top follows
  * along, answering what is typed rather than playing on its own.

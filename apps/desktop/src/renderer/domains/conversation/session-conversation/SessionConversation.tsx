@@ -22,7 +22,7 @@ export interface SessionConversationProps {
 	readonly onSend?: (overrideText?: string) => Promise<void>;
 }
 
-/** The active session's conversation, composed from the parts it needs (ADR-0147). */
+/** The active session's conversation, composed from the parts it needs. */
 export function SessionConversation({
 	sessionId,
 	workspace,

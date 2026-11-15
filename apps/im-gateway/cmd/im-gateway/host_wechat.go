@@ -40,7 +40,7 @@ type buildSpec struct {
 	Log func(level, msg string, fields map[string]any)
 
 	// ConversationCwd is the host runtime's working directory for the
-	// gateway. Transports use it (the directory itself per ADR-0006) as the
+	// gateway. Transports use it (the directory itself) as the
 	// destination for inbound media. Empty disables inbound media handling.
 	ConversationCwd string
 }

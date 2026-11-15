@@ -26,7 +26,7 @@ import type { CommandMenuEntry } from "../types";
  */
 export type CommandMenuSettingsLabelKey = SettingsTabLabelKey | NonNullable<RegisteredSettingsSection["titleKey"]>;
 
-/** 会被重定向到能力页的设置 section（ADR-0049），从目录里剔除，避免"点了跳到别处"。 */
+/** 会被重定向到能力页的设置 section，从目录里剔除，避免"点了跳到别处"。 */
 const REDIRECTED_SETTINGS_TAB = "mcp";
 
 export interface CommandMenuSourceLabels {

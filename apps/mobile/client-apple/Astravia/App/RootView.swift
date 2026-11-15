@@ -193,7 +193,7 @@ struct RootView: View {
 				if model.paired { router.show(sessionId) }
 				return
 			}
-			// Case-blind: a code-only QR code is upper case (ADR-0138).
+			// Case-blind: a code-only QR code is upper case.
 			guard url.scheme?.lowercased() == PairingURI.scheme, url.host?.lowercased() == PairingURI.host else { return }
 			Task {
 				if await model.pairWithCode(url.absoluteString) {

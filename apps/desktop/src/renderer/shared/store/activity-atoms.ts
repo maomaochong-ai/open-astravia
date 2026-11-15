@@ -287,7 +287,7 @@ function createPersistedCwdStringListAtom(storageKey: string) {
 export const ATTACHED_PLUGIN_TABS_STORAGE_KEY = "astravia-activity-plugin-tabs";
 
 /**
- * 活动面板插件 tab 的 attach 记录：会话 cwd → ["pluginId:tabId"]（见 ADR-0026）。
+ * 活动面板插件 tab 的 attach 记录：会话 cwd → ["pluginId:tabId"]。
  * 普通项目所有 session 共享项目 cwd → 项目级同步；「对话」项目 per-session 子目录
  * cwd → 天然按 session 隔离。写入时同步持久化到 localStorage。
  */

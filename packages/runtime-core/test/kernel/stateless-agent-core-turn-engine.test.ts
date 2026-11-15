@@ -425,7 +425,7 @@ describe("StatelessAgentCoreTurnEngine", () => {
 	});
 
 	it("never mirrors continuation-policy messages through the user input queue", async () => {
-		// 续跑消息一旦进 inputQueue，queue.changed 镜像（ADR-0060）就会在 UI 上补出
+		// 续跑消息一旦进 inputQueue，queue.changed 镜像就会在 UI 上补出
 		// 一个用户气泡，而规范历史按 origin 过滤掉它 —— 两侧永远对不上账。
 		const snapshots: SessionInputQueueSnapshot[] = [];
 		const queue = new SessionInputQueue({ onChange: (entry) => snapshots.push(entry) });

@@ -3,7 +3,7 @@ import AstraviaKit
 @preconcurrency import WebRTC
 
 /// The encrypted remote-control protocol over the session's `astravia-control-v2` data
-/// channel (ADR-0135): one frame per text message. Closing it ends the whole WebRTC
+/// channel: one frame per text message. Closing it ends the whole WebRTC
 /// session, screen included.
 final class P2PControlTransport: RemoteTransport {
 	/// The desktop's own limit for one control message.

@@ -46,7 +46,7 @@ export function teamRosterFingerprint(roster: TeamRosterSnapshot): string {
  * Member-specific instructions placed after the shared public checkpoint at Turn admission.
  *
  * `assignmentInstructions` 是团队任务书的**追加**段落：本体人格与 blueprint 的协作纪律
- * 原样保留在 `roleInstructions` 里，团队只在其后补充本团队内的交待（见 ADR-0109）。
+ * 原样保留在 `roleInstructions` 里，团队只在其后补充本团队内的交待。
  * 它只出现在该成员自己的上下文，不进入共享名册。
  */
 export function buildTeamMemberOperatingContext(

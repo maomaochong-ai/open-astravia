@@ -4,7 +4,7 @@ import { getAstraviaHomePath } from "@astravia/action-rpc";
 import { readPluginFile, writePluginFile } from "./plugin-storage-service.js";
 
 /**
- * 一次性迁移：`contributes.settings` 撤销后（ADR-0105），旧宿主写在
+ * 一次性迁移：`contributes.settings` 撤销后，旧宿主写在
  * `plugin-settings.json` 里的非密钥配置搬进各插件的私有存储。
  *
  * 落点固定为 UTF-8 JSON 文件 `settings.json`，插件读回后自行归一化——宿主不解释这些值的结构。

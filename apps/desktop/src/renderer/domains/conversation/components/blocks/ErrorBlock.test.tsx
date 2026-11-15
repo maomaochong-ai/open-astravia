@@ -39,7 +39,7 @@ interface RenderOptions {
 	readonly streaming?: boolean;
 }
 
-/** 部件从 feed 取能力与流式状态，测试就当一个最小 feed（ADR-0147）。 */
+/** 部件从 feed 取能力与流式状态，测试就当一个最小 feed。 */
 function Feed({
 	capabilities,
 	streaming = false,

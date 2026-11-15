@@ -190,7 +190,7 @@ export interface BuildSystemPromptOptions {
 	personalization?: string;
 	/**
 	 * 工作模式专用系统提示词正文（getModePrompt 解析）。作为独立 `mode` block 注入，与 persona 正交。
-	 * 空/未传 = 不追加。见 ADR-0046。
+	 * 空/未传 = 不追加。
 	 */
 	modePrompt?: string;
 	/** Runtime plugin contributions applied to the structured prompt draft before rendering. */

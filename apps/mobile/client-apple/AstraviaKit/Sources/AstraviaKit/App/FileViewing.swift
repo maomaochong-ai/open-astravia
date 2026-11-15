@@ -1,6 +1,6 @@
 import Foundation
 
-/// Viewing the desktop's files from the phone (ADR-0139): which reply links
+/// Viewing the desktop's files from the phone: which reply links
 /// point at them, how a file is fetched in chunks, how it is shown, and the
 /// panels a chat's More menu offers.
 

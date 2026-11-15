@@ -250,7 +250,7 @@ export function inspectPackage(filePath) {
 	};
 }
 
-/** `%key%` 占位符（ADR-0033）。与服务端 resolveNlsText 的判定一致。 */
+/** `%key%` 占位符。与服务端 resolveNlsText 的判定一致。 */
 export function nlsKeyOf(value) {
 	const match = /^%([^%]+)%$/.exec(String(value ?? "").trim());
 	return match ? match[1] : null;

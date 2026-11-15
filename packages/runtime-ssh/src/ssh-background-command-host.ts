@@ -17,7 +17,7 @@ import { type SshConnection, type SshHelperClient, SshHelperClosedError } from "
  * 输出落在**本地**临时文件里：它已经跨过 SSH 到了本机，再往远端写一份只是多一次
  * 往返，而且读取还要再跨一次。
  *
- * 任务由谁托管取决于远端有没有 helper（ADR-0124 第二阶段）：有，任务在远端独立存活，
+ * 任务由谁托管取决于远端有没有 helper（第二阶段）：有，任务在远端独立存活，
  * 本机断开、重连之后接着读输出；没有，任务绑在这条 SSH 通道上，通道一断就结束。
  */
 export function createSshBackgroundCommandHost(connection: SshConnection): BackgroundCommandHost {
@@ -119,7 +119,7 @@ function superviseThroughHelper(
 				offset = read.nextOffset;
 				if (read.status.state === "live" || read.data) continue;
 				if (read.status.state === "exited") options.onExit(read.status.exitCode);
-				// 进程不见了又没留下退出码：主机重启或被外部杀掉，结局不可知（ADR-0124）。
+				// 进程不见了又没留下退出码：主机重启或被外部杀掉，结局不可知。
 				else options.onError(new Error("The remote task ended without reporting an exit status."));
 				void helper.call("proc.remove", { id: taskId }).catch(() => {});
 				return;

@@ -6,7 +6,7 @@ import { i18n, initI18n } from "@shared/i18n";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
- * 能力页布局合同（对应 ADR-0162）：工具条按「搜索左、筛选与添加右」排，
+ * 能力页布局合同（对应）：工具条按「搜索左、筛选与添加右」排，
  * 横幅只在「发现」分区出现，卡片在窄宽度下一列、800px 以上两列。
  */
 

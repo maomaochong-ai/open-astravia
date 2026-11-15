@@ -130,7 +130,7 @@ export class DefaultCodingAgentPromptRequestRuntime implements CodingAgentPrompt
 		};
 		// 排队消费与空闲直发共用同一形态：上下文一律以 contextRecords 投递
 		// （排队路径经 appendQueuedContext 落盘 context.appended），user 消息
-		// 保持与队列条目 displayText 一致的纯文本（ADR-0060 遗留优化）。
+		// 保持与队列条目 displayText 一致的纯文本（遗留优化）。
 		const contextRecords = [
 			...(request.context ?? []),
 			...hookContexts.map((content) => hiddenContext("ecosystem_hook_context", content)),

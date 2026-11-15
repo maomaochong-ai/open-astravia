@@ -22,7 +22,7 @@ export interface CommandPanelProps {
 	allowCompaction?: boolean;
 	/**
 	 * 「文件」区段的三段动作（添加文件 / 添加图片 / 引用对话中的文件）。
-	 * 由输入框宿主注入——附件选择的实现在它那里，面板只负责呈现（ADR-0156）。
+	 * 由输入框宿主注入——附件选择的实现在它那里，面板只负责呈现。
 	 */
 	fileActions?: readonly CommandPanelFileAction[];
 }

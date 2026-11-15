@@ -4,7 +4,7 @@ import { useWorkflowTabPanelModel } from "../hooks/useWorkflowTabPanelModel";
 import { useActivityWorkspace } from "../registry/context";
 
 /**
- * Workflow activity tab (ADR-0044): switcher + read-only 1:1 transcript of
+ * Workflow activity tab: switcher + read-only 1:1 transcript of
  * the selected workflow child session.
  */
 export function WorkflowTabPanel(): JSX.Element {

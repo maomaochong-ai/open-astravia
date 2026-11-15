@@ -1,5 +1,5 @@
 /**
- * 工作模式注册表（ADR-0071）。
+ * 工作模式注册表。
  *
  * 唯一编辑来源：`modes/*.md`（frontmatter 存 id/label/description/icon，正文存提示词，
  * 英文撰写）。构建期由 `scripts/build-agent-modes.mjs` 内联生成同目录的 `modes-data.ts`，

@@ -58,13 +58,13 @@ export interface RemoteAccessInviteView {
 	readonly pairingId: string;
 	readonly inviteUri: string;
 	/**
-	 * What the QR code shows (ADR-0138): just the connection code and password once they are
+	 * What the QR code shows: just the connection code and password once they are
 	 * on the relay, the whole pairing URI when there is no code; undefined while the code is
 	 * still being left on the relay, so the QR code does not change under a phone's camera.
 	 */
 	readonly qrText?: string;
 	readonly expiresAt: number;
-	/** The same invite as a connection code and password, for a phone that is not here (ADR-0136). */
+	/** The same invite as a connection code and password, for a phone that is not here. */
 	readonly code?: RemoteAccessInviteCodeView;
 }
 
@@ -118,7 +118,7 @@ export interface RemoteAccessState {
 export interface RemoteAccessNotifications {
 	deviceConnected(device: { readonly id: string; readonly name: string; readonly channel: RemoteChannel }): void;
 	pairingRequested(request: { readonly deviceName: string; readonly code: string }): void;
-	/** A phone opened the screen but macOS withholds Screen Recording or Accessibility (ADR-0140). */
+	/** A phone opened the screen but macOS withholds Screen Recording or Accessibility. */
 	screenPermissionMissing?(request: {
 		readonly deviceName: string;
 		readonly screen: boolean;
@@ -131,7 +131,7 @@ export interface DesktopRemoteDesktopController {
 		readonly relayBaseUrl: string;
 		readonly pairingId: string;
 		readonly desktopSecret: string;
-		/** The phone declared `screen`: capture only while it subscribes (ADR-0140). */
+		/** The phone declared `screen`: capture only while it subscribes. */
 		readonly screenOnDemand: boolean;
 	}): Promise<DesktopRemoteDesktopHostHandle>;
 }

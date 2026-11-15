@@ -50,7 +50,7 @@ export function buildPluginMcpRuntimeName(pluginId: string, localName: string): 
 export function buildPluginRuntimeConfig(
 	dependencies: PluginRuntimeConfigDependencies,
 ): AgentPluginRuntimeConfig | undefined {
-	// 工作模式不参与插件贡献的组装（ADR-0071）：模式差异完全由 mode 系统提示词承担。
+	// 工作模式不参与插件贡献的组装：模式差异完全由 mode 系统提示词承担。
 	const enabledPlugins = dependencies.plugins.filter(
 		(plugin) =>
 			plugin.enabled &&

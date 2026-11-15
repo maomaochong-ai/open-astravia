@@ -42,7 +42,7 @@ type taskMeta struct {
 	StartedMs int64  `json:"startedMs"`
 }
 
-// Task state is the three-value vocabulary from ADR-0124. "exited" requires
+// Task state is the three-value vocabulary. "exited" requires
 // positive evidence (the exit file); a vanished process without one is
 // "unverifiable", never silently folded into either side.
 const (

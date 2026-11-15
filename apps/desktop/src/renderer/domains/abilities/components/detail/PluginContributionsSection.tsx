@@ -11,9 +11,9 @@ import { AbilityIcon } from "../AbilityIcon";
 const COLLAPSED_LIMIT = 5;
 
 /**
- * 「本插件提供」：插件内聚的 MCP server 与 skill（ADR-0040 的 agent.mcpServers / agent.skillPaths）。
+ * 「本插件提供」：插件内聚的 MCP server 与 skill（agent.mcpServers / agent.skillPaths）。
  *
- * 这些成员随插件生死、对用户不可单独安装卸载（与 bundle 的松散组合相对，见 ADR-0049），
+ * 这些成员随插件生死、对用户不可单独安装卸载（与 bundle 的松散组合相对），
  * 展示策略可以把内部编排 Skill 从详情页隐藏；公开的 Skill 才在安装前列出，
  * 让用户看到插件真正对外提供的能力，而不是实现细节。
  *

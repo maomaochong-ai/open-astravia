@@ -1,7 +1,7 @@
 import type { AutomationMonthDay, AutomationSchedule, ScheduledTask } from "../../shared/automation.js";
 import { nextFireTime } from "./cron.js";
 
-/** 重新设计前（ADR-0127 之前）写入 scheduled-tasks.json 的任务形状。 */
+/** 重新设计前（之前）写入 scheduled-tasks.json 的任务形状。 */
 export interface LegacyScheduledTask {
 	id: string;
 	name: string;

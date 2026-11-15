@@ -1,5 +1,5 @@
 /**
- * 一份设计的依赖清单：`x.astravia-design/package.json`（ADR-0068）。
+ * 一份设计的依赖清单：`x.astravia-design/package.json`。
  *
  * 唯一事实源，三个消费方问的是同一件事：
  * - scaffold：新建设计时写出清单，让 `x.astravia-design/` 从第一秒就是一个可 npm install 的工程。

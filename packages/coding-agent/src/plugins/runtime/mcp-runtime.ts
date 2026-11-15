@@ -161,7 +161,7 @@ function composePluginMcpSurface(
 ): CodingAgentPluginMcpToolSurface {
 	const availableTools = new Map(baseAvailableTools);
 	const activeTools = new Map(context.frame.tools);
-	// 可见性开关是硬闸；工作模式不参与组装（ADR-0071），顺序即注册序。
+	// 可见性开关是硬闸；工作模式不参与组装，顺序即注册序。
 	for (const [name, tool] of tools) {
 		availableTools.set(name, tool);
 		if (options.isToolVisible(name)) activeTools.set(name, tool);

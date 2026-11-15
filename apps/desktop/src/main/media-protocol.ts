@@ -10,7 +10,7 @@ import { openRemoteMediaSource } from "./filesystem/remote-filesystem.js";
 import { createEphemeralMediaToken, resolveEphemeralMediaToken } from "./media-token-store.js";
 
 /**
- * 媒体流协议（ADR-0021）：把校验过的本地媒体路径映射为支持 Range 的流式 URL，
+ * 媒体流协议：把校验过的本地媒体路径映射为支持 Range 的流式 URL，
  * 供 <audio>（未来含 <video>）直接作 src。与既有 readFile IPC + base64 全量
  * 加载并存——无损音频可达百 MB，全量 IPC 会阻塞且内存翻倍，故走流式。
  *

@@ -1,5 +1,5 @@
 {
-	"$comment": "运行时来源清单(ADR-0011)。单一推荐版本;每平台 filename/dir 用字面量避免模板拼接漂移。node 走 npmmirror 兜底官方;python(python-build-standalone)仅 GitHub 发布、国内无稳定公共镜像,故首启主路径靠内置 vendor 拷贝,sources 仅用于升级/装非内置版本(将来插入自建 CDN 作首位)。",
+	"$comment": "运行时来源清单。单一推荐版本;每平台 filename/dir 用字面量避免模板拼接漂移。node 走 npmmirror 兜底官方;python(python-build-standalone)仅 GitHub 发布、国内无稳定公共镜像,故首启主路径靠内置 vendor 拷贝,sources 仅用于升级/装非内置版本(将来插入自建 CDN 作首位)。",
 	"node": {
 		"version": "22.22.2",
 		"sources": [
@@ -29,7 +29,7 @@
 		}
 	},
 	"git": {
-		"$comment": "MinGit 只给 Windows 做可选的托管安装，系统 git 始终优先（ADR-0134）。tag 与 sha256 取自 git-for-windows 官方 release 说明。",
+		"$comment": "MinGit 只给 Windows 做可选的托管安装，系统 git 始终优先。tag 与 sha256 取自 git-for-windows 官方 release 说明。",
 		"version": "2.55.0.5",
 		"tag": "v2.55.0.windows.5",
 		"sources": [

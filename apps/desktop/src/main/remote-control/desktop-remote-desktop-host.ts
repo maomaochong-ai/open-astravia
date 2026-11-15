@@ -14,7 +14,7 @@ export interface DesktopRemoteDesktopHostOptions {
 	readonly signalingTarget?: string;
 	readonly inputEnabled: boolean;
 	/**
-	 * Capture only while a phone subscribes through `setScreen` (ADR-0140). Off for a
+	 * Capture only while a phone subscribes through `setScreen`. Off for a
 	 * phone that does not declare `screen`: it expects the screen for the whole session.
 	 */
 	readonly screenOnDemand?: boolean;

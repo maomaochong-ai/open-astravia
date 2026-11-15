@@ -12,7 +12,7 @@ private let log = Logger(subsystem: "com.astravia.mobile", category: "remote-des
 /// remote desktop page (port of Android's `NativeRemoteDesktopSession`).
 ///
 /// The screen's video slot exists from the start but stays empty until the page
-/// subscribes (`screen.subscribe`, ADR-0140), so a session that only carries the
+/// subscribes (`screen.subscribe`), so a session that only carries the
 /// control channel costs neither side a capture.
 ///
 /// Once connected directly, the session no longer needs the relay: if signaling drops
@@ -90,7 +90,7 @@ public final class RemoteDesktopSession {
 		let delegate = PeerDelegate(owner: self)
 		self.delegate = delegate
 		let configuration = RTCConfiguration()
-		// STUN only (ADR-0135), kept in step with Android and REMOTE_DESKTOP_ICE_SERVERS: only
+		// STUN only, kept in step with Android and REMOTE_DESKTOP_ICE_SERVERS: only
 		// servers reachable in mainland China without a proxy. One a proxy carries (Google,
 		// Cloudflare) can answer first with the proxy's exit, and the link then goes through it.
 		configuration.iceServers = [

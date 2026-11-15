@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Install deps, bump patch, vite build, and create a Astravia plugin package.
- * Uses managed Node/npm (ADR-0011). Does not assume bun.
+ * Uses managed Node/npm . Does not assume bun.
  *
  * Usage: node build-and-pack.mjs <pluginRoot> [--skip-install] [--no-bump]
  *

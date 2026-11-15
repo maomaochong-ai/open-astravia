@@ -52,7 +52,7 @@ export class CodingAgentMemoryRolloverOrchestrator implements CodingAgentMemoryR
 			charLimit: this.memoryCharLimit,
 		});
 		bindings.push({ scope: "project", file: this.memoryFile, store: this.projectStore });
-		// 快照在会话开始时冻结一次：提示词缓存因此保持稳定（ADR-0009）。
+		// 快照在会话开始时冻结一次：提示词缓存因此保持稳定。
 		this.scopes = bindings.map((binding) => ({
 			scope: binding.scope,
 			file: binding.file,

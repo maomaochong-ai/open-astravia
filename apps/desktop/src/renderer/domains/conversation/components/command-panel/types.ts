@@ -34,7 +34,7 @@ export interface CommandPanelLabels extends SkillListLabels {
 	header: string;
 	resultCount: string;
 	connectorsSection: string;
-	/** 分区标题（ADR-0156）：文件 / 技能 / 连接器。 */
+	/** 分区标题：文件 / 技能 / 连接器。 */
 	filesSection: string;
 	skillsSectionTitle: string;
 }

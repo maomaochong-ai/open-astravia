@@ -14,7 +14,7 @@ export interface DesktopSessionCommandsDependencies {
 		deleteSession(sessionPath: string): Promise<void>;
 		renameSession(sessionPath: string, name: string): Promise<void>;
 	};
-	/** 自动化在 scheduler 里，它反过来依赖本目录，所以由调用方接上（ADR-0127）。 */
+	/** 自动化在 scheduler 里，它反过来依赖本目录，所以由调用方接上。 */
 	readonly onSessionsDeleted: (isDeleted: (sessionPath: string) => boolean) => void;
 	/** 消息问答批注挂着模型运行时，同样由调用方接上。 */
 	readonly forgetAnnotations: (sessionPath: string) => Promise<void>;
@@ -55,7 +55,7 @@ export function createDesktopSessionCommands(deps: DesktopSessionCommandsDepende
 	return {
 		async delete(sessionPath) {
 			await assertOrdinary(sessionPath);
-			// ADR-0007: 「对话」项目下的 session cwd 是独立子目录；删除 session 时
+			// 「对话」项目下的 session cwd 是独立子目录；删除 session 时
 			// 连带回收子目录里的产物。读 header 先取 cwd，再 delete，最后 rm 子目录。
 			const cwd = await readSessionCwd(sessionPath);
 			await deps.runtime.deleteSession(sessionPath);

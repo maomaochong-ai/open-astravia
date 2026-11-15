@@ -73,7 +73,7 @@ public struct RemoteViewport: Equatable, Sendable {
 	}
 }
 
-/// The phone as a trackpad (ADR-0140): the finger moves the cursor from where it is,
+/// The phone as a trackpad: the finger moves the cursor from where it is,
 /// not to where the finger is. Travel is measured against the picture as shown, so a
 /// zoomed picture gives finer control; faster moves go further, as on a Mac trackpad.
 public struct RemoteTrackpad: Equatable, Sendable {

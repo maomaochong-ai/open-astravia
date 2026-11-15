@@ -1,7 +1,7 @@
 import Foundation
 
 /// File payloads of `file.list`, `file.stat` and `file.read` (port of the file
-/// part of `api.ts`, ADR-0139).
+/// part of `api.ts`).
 ///
 /// `path` is always the desktop's canonical form and goes back to it as is:
 /// relative to the session's working directory inside it ("" is the directory

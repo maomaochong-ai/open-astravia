@@ -84,7 +84,7 @@ describe("activity-tab command target cwd", () => {
 		expect(store.get(activityPanelTabByProjectAtom).get(FOREGROUND_CWD)).toBe("plugin:demo-plugin:canvas");
 	});
 
-	// A Team workspace keys panel state by its own workspace id, not by cwd (ADR-0105/0111).
+	// A Team workspace keys panel state by its own workspace id, not by cwd.
 	// Addressing the write by cwd would land on a key the Team panel never reads.
 	it("writes to the workspace that owns the requested cwd", () => {
 		const store = getDefaultStore();

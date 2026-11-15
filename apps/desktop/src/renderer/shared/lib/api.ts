@@ -292,7 +292,7 @@ export async function fetchUsageSeries(token: string, days: 7 | 30 | 90 | 365 = 
 	});
 }
 
-// ─── Market Abilities（ADR-0049：Skill / MCP / Plugin / Bundle 统一为 Ability） ───
+// ─── Market Abilities（Skill / MCP / Plugin / Bundle 统一为 Ability） ───
 
 export type AbilityType = "skill" | "mcp" | "plugin" | "bundle";
 /** bundle 不允许嵌套，成员集合恒为一层。 */
@@ -319,7 +319,7 @@ export interface AbilityConfig {
 	permissions?: string[];
 	commands?: string[];
 	/**
-	 * type=plugin：插件内聚的 MCP server 与 skill（ADR-0040），上传时从 zip 解析。
+	 * type=plugin：插件内聚的 MCP server 与 skill，上传时从 zip 解析。
 	 * 纯展示——运行时装配仍由客户端读安装目录的 plugin.json 完成。
 	 */
 	contributions?: AbilityPluginContributions;
@@ -605,7 +605,7 @@ export async function resolveMarketIconUrl(icon: string | undefined | null): Pro
 	return `${base}/${trimmed}`;
 }
 
-// ─── Notifications (站内信, ADR-0018) ───
+// ─── Notifications (站内信) ───
 
 export interface NotificationVO {
 	id: number;

@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import AstraviaKit
 
-/// The upgrade from the LAN or relay to the WebRTC control channel (ADR-0135, ADR-0140).
+/// The upgrade from the LAN or relay to the WebRTC control channel.
 @Suite(.serialized) struct ChannelManagerP2PTests {
 	private let viewer = "wss://relay.example/v2/desktop/pair-1234567890abcdef/viewer#pairing=secret"
 

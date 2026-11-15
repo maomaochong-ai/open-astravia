@@ -49,7 +49,7 @@ export interface RuntimeConfigurationModel {
 /**
  * 内置运行时配置（包括上下文压缩、图片处理与 OCR）的读写模型。
  *
- * 插件配置不在此列：插件自己渲染配置界面并持久化（ADR-0105）。
+ * 插件配置不在此列：插件自己渲染配置界面并持久化。
  */
 export function useRuntimeConfigurationModel(): RuntimeConfigurationModel {
 	const { t } = useTranslation("settings");

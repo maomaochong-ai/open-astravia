@@ -29,7 +29,7 @@ export interface CodingAgentPromptRuntimeOptions {
 	readonly settingsManager: CodingAgentPromptSettingsSource;
 	readonly scenario?: ConversationScenario;
 	readonly readAgentMode?: () => string | undefined;
-	/** 宿主注入的 mode 提示词解析器；缺省 = 不追加 mode block（ADR-0071 修订）。 */
+	/** 宿主注入的 mode 提示词解析器；缺省 = 不追加 mode block（修订）。 */
 	readonly resolveModePrompt?: CodingAgentModePromptResolver;
 	readonly readMemory?: () => CodingAgentPromptMemoryState | undefined;
 	readonly readAgentPlugins?: () => AgentPluginRuntimeConfig | undefined;

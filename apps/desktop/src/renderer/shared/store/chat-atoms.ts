@@ -196,7 +196,7 @@ export interface SelectedSkill {
 export type { AppshotAttachment, MentionedFile } from "@shared/conversation";
 
 /**
- * The active conversation feed (ADR-0146). Every write goes through
+ * The active conversation feed. Every write goes through
  * `reduceConversationFeed`; the message list is a read-only projection of it.
  */
 export interface ConversationFeedState {
@@ -540,7 +540,7 @@ export interface SendMessageOptions {
 	metadata?: Record<string, unknown>;
 	/** Settings page tab id for the optimistic bubble badge (e.g. "mcp" →「MCP配置协助」). */
 	settingsAssistTabId?: string;
-	/** 插件 sendPrompt 路径：不清用户输入预测、不消费用户挂的 promptAttachment（ADR-0060）。 */
+	/** 插件 sendPrompt 路径：不清用户输入预测、不消费用户挂的 promptAttachment。 */
 	source?: "plugin";
 	/** New-session input already rendered optimistically before runtime creation. */
 	stagedInput?: StagedSendInput;
@@ -548,7 +548,7 @@ export interface SendMessageOptions {
 	streamingBehavior?: "steer" | "followUp";
 }
 
-/** sendMessage 的回执（ADR-0060）：streaming 中入 kernel 队列时返回 queued + 条目 id。 */
+/** sendMessage 的回执：streaming 中入 kernel 队列时返回 queued + 条目 id。 */
 export interface SendMessageResult {
 	status: "sent" | "queued" | "failed";
 	error?: { message: string };

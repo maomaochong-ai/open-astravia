@@ -1,5 +1,5 @@
 // 构建全部预置插件（packages/plugins/presets/*），生成统一 zip 制品，再解压到
-// Desktop 开发 staging。运行时不直接读取 preset 源码目录（ADR-0024）。
+// Desktop 开发 staging。运行时不直接读取 preset 源码目录。
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";

@@ -18,7 +18,7 @@
 //
 // Out of scope: streaming responses, message edit, voice transcoding,
 // typing indicators, group chat, multi-account. Image and generic-file
-// receive + send ARE in scope as of ADR-0006.
+// receive + send ARE in scope.
 package wechat
 
 import (
@@ -177,7 +177,7 @@ func (t *Transport) Capabilities() transport.Capabilities {
 		SupportsMessageEdit: false,
 		SupportsCards:       false,
 		SupportsButtons:     false,
-		SupportsFileUpload:  true, // image + file via SendAttachment (ADR-0006)
+		SupportsFileUpload:  true, // image + file via SendAttachment
 		SupportsThreads:     false,
 		MaxMessageLength:    0, // unknown; will be probed in real testing
 		// iLink enforces ≤10 outbound messages per peer until the next
@@ -320,7 +320,7 @@ func (t *Transport) dispatchInbound(ctx context.Context, msg *ilink.WeixinMessag
 // transport.Attachment list (URL field populated with the absolute local
 // path; the bridge consumes this).
 //
-// Voice and video items are deliberately skipped (see ADR-0006 scope).
+// Voice and video items are deliberately skipped.
 // Errors on a single item are logged and silently dropped so one bad
 // download cannot stall the rest of the message.
 func (t *Transport) extractAndPersistAttachments(ctx context.Context, peer string, msg *ilink.WeixinMessage) []transport.Attachment {

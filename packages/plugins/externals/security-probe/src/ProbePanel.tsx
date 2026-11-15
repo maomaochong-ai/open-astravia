@@ -127,7 +127,7 @@ export function ProbePanel({ compact = false }: { compact?: boolean }) {
 				</p>
 				<h2 className="text-[15px] font-bold">插件系统安全探针</h2>
 				<p className="mt-[6px] text-[12px] leading-[1.45] text-[var(--muted-foreground)]">
-					按 ADR-0023，插件与宿主同 renderer、无沙箱。本工具探测权限门控、路径/存储隔离、官方 API
+					按既有约定，插件与宿主同 renderer、无沙箱。本工具探测权限门控、路径/存储隔离、官方 API
 					边界与 <code className="text-[11px]">window.astravia</code> 暴露面。默认不破坏用户数据；写探测仅触及
 					plugin storage 或预期应失败的路径。
 				</p>

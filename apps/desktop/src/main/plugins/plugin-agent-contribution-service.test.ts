@@ -65,7 +65,7 @@ describe("PluginAgentContributionService", () => {
 	});
 
 	it("never gates hook invocation on any agent mode notion", () => {
-		// 工作模式不参与 hook 过滤（ADR-0071），服务不持有「当前模式」这个可过滤的状态。
+		// 工作模式不参与 hook 过滤，服务不持有「当前模式」这个可过滤的状态。
 		const service = createService(plugin());
 
 		expect(service.canInvokeHook("demo")).toBe(true);

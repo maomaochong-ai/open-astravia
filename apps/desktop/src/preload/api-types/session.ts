@@ -61,7 +61,7 @@ export type {
 
 /**
  * 工作模式 id（agent_mode 轴）。会话创建时固化，会话内不可变。
- * 合法值由主进程的模式注册表定义（ADR-0071），经 getAgentModes() 下发；
+ * 合法值由主进程的模式注册表定义，经 getAgentModes() 下发；
  * preload 层不复刻注册表，故放宽为 string，主进程写入前校验。
  */
 export type AgentMode = string;
@@ -153,7 +153,7 @@ export interface DesktopSessionApi {
 			session?: { id: string; cwd: string; firstMessage: string; modifiedAt: number };
 		}) => void,
 	): () => void;
-	/** 回执（ADR-0060）：streaming 中带 streamingBehavior 的请求入 kernel 队列并立即返回 queued。 */
+	/** 回执：streaming 中带 streamingBehavior 的请求入 kernel 队列并立即返回 queued。 */
 	prompt(
 		sessionId: string,
 		request: PromptRequest,
@@ -161,7 +161,7 @@ export interface DesktopSessionApi {
 	): Promise<RuntimeTurnPromptOutcome>;
 	continue(sessionId: string): Promise<void>;
 	abort(sessionId: string): Promise<void>;
-	/** kernel 输入队列快照（ADR-0060）。 */
+	/** kernel 输入队列快照。 */
 	getQueueState(sessionId: string): Promise<RuntimeSessionQueueStateView>;
 	/** 在当前回复自然结束后压缩上下文；空闲时立即从队列执行。 */
 	queueContextCompaction(sessionId: string): Promise<{ status: "queued"; id?: string; pendingCount: number }>;
@@ -181,7 +181,7 @@ export interface DesktopSessionApi {
 	clearTodos(sessionId: string): Promise<boolean>;
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): Promise<() => void>;
 	/**
-	 * Subscribe with a history snapshot taken in the same step (ADR-0146). `onSnapshot`
+	 * Subscribe with a history snapshot taken in the same step. `onSnapshot`
 	 * runs before any event; the running Turn arrives as events from its start.
 	 */
 	attach(
@@ -255,7 +255,7 @@ export interface DesktopSessionApi {
 	setGlobalThinkingLevel(level: string): Promise<void>;
 	getGlobalThinkingLevel(): Promise<string>;
 	getPersonas(): Promise<PersonaOption[]>;
-	/** 工作模式注册表（ADR-0071）：新会话页 toggle 遍历渲染，新增模式无需改 UI。 */
+	/** 工作模式注册表：新会话页 toggle 遍历渲染，新增模式无需改 UI。 */
 	getAgentModes(): Promise<AgentModeOption[]>;
 	getPersonalization(): Promise<PersonalizationConfig>;
 	setPersonalization(input: PersonalizationConfig): Promise<void>;
@@ -298,7 +298,7 @@ export interface DesktopSessionApi {
 		}) => void,
 	): () => void;
 	/**
-	 * 清空默认「对话」或 Claw 项目的全部会话（保留产物），按 scope 分流（物理 cwd 分家，ADR-0005）：
+	 * 清空默认「对话」或 Claw 项目的全部会话（保留产物），按 scope 分流（物理 cwd 分家）：
 	 * - "conversation"：清桌面「对话」cwd 的 .astravia/sessions
 	 * - "claw"：清 IM cwd 的 .astravia/sessions
 	 * 主进程会先 dispose 本 scope 涉及的 session handle；若该 scope 仍有运行中的会话则抛错拒绝。

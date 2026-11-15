@@ -131,7 +131,7 @@ data class MirrorState(
     val unlinked: UnlinkReason? = null,
     /**
      * What the desktop said about its screen while the remote screen is open; null
-     * otherwise, and from desktops that share it without being asked (ADR-0140).
+     * otherwise, and from desktops that share it without being asked.
      */
     val screen: RemoteScreenStatus? = null,
     /** Skills the composer may reference, per project; "" holds the global ones. In memory only. */
@@ -262,7 +262,7 @@ class DesktopMirror(
         if (screenOpen && value != wasActive) syncScreen()
     }
 
-    /** The remote screen opened or closed: the desktop starts or stops capturing (ADR-0140). */
+    /** The remote screen opened or closed: the desktop starts or stops capturing. */
     fun setScreenOpen(open: Boolean) {
         if (screenOpen == open) return
         screenOpen = open
@@ -277,7 +277,7 @@ class DesktopMirror(
         if (!desktopScreen) return
         scope.launch {
             try {
-                // `cursor`: this phone draws the pointer itself and wants its shape (ADR-0140).
+                // `cursor`: this phone draws the pointer itself and wants its shape.
                 val result =
                     current.request(
                         RemoteRequestMethod.ScreenSubscribe,
@@ -736,7 +736,7 @@ class DesktopMirror(
         }
     }
 
-    // Files (ADR-0139)
+    // Files
 
     private fun requireFiles(): DesktopLink {
         val current = requireLink()

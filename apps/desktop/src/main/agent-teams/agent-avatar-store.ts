@@ -18,7 +18,7 @@ const MAX_BYTES = 5 * 1024 * 1024;
 
 export interface StoredAgentAvatar {
 	readonly path: string;
-	/** 渲染进程可直接当 `<img src>` 用；file:// 会被 Electron 拦掉，必须走本协议（ADR-0027）。 */
+	/** 渲染进程可直接当 `<img src>` 用；file:// 会被 Electron 拦掉，必须走本协议。 */
 	readonly url: string;
 }
 

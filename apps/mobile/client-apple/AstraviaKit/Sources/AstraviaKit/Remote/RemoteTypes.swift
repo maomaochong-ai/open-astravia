@@ -51,7 +51,7 @@ public enum LinkStatus: String, Sendable {
 }
 
 public enum LinkChannel: String, Sendable {
-	/// The WebRTC control channel, direct between phone and desktop (ADR-0135, ADR-0140).
+	/// The WebRTC control channel, direct between phone and desktop.
 	case p2p
 	case lan, relay
 }

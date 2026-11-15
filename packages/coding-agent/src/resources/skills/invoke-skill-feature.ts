@@ -29,7 +29,7 @@ export function createCodingAgentInvokeSkillFeature(
 	options: CodingAgentInvokeSkillFeatureOptions,
 ): CodingAgentInvokeSkillFeature {
 	const readVisibleSkills = (): Skill[] => {
-		// 可见集合与顺序不随工作模式变化（ADR-0071）：模式偏移由 mode 提示词承担，不在候选列表施力。
+		// 可见集合与顺序不随工作模式变化：模式偏移由 mode 提示词承担，不在候选列表施力。
 		return options.resourceSource.getSkills().skills.filter((skill) => !skill.disableModelInvocation);
 	};
 	const pendingActivations = new Map<string, EcosystemHookContributionSource>();

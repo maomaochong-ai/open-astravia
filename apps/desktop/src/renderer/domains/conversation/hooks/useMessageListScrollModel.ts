@@ -31,7 +31,7 @@ export function useMessageListScrollModel({
 }: MessageListScrollModelInput): MessageListScrollModel {
 	const activityPanelResizing = useAtomValue(activityPanelResizingAtom);
 	// 活动面板铺满时消息列被压到 0 宽，按消息列居中的「滚动到底部」会落到面板上。
-	// 铺满状态在这里合进 model，组合件（conversation-view/parts）不直读全局状态（ADR-0147）。
+	// 铺满状态在这里合进 model，组合件（conversation-view/parts）不直读全局状态。
 	const activityPanelFocused = useAtomValue(activityPanelFocusAtom);
 	const feed = useMessageFeedScrollModel({
 		active: isStreaming,

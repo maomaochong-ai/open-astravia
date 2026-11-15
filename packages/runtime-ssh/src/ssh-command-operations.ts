@@ -14,7 +14,7 @@ export function createSshForegroundCommandOperations(connection: SshConnection):
 			const result = await connection
 				.exec(command, {
 					cwd,
-					// 本机环境变量不透传远端（ADR-0124）：远端有自己的 PATH、代理和凭据配置，
+					// 本机环境变量不透传远端：远端有自己的 PATH、代理和凭据配置，
 					// 把本机的盖上去只会让「在终端里能跑」和「Agent 跑」得到不同结果。
 					env: toStringRecord(options.env),
 					onStdout: options.onData,

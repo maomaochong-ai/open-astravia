@@ -120,7 +120,7 @@ export class RemoteDesktopHost {
 	/**
 	 * With a stream, the screen is shared for the whole session. Without one, the
 	 * session opens with an empty video slot so the data channels work while nobody
-	 * watches, and `replaceScreen` fills it on demand without renegotiating (ADR-0140).
+	 * watches, and `replaceScreen` fills it on demand without renegotiating.
 	 */
 	async start(stream?: MediaStream, startOptions: RemoteDesktopHostStartOptions = {}): Promise<void> {
 		if (this.closed) throw new Error("remote desktop host is closed");

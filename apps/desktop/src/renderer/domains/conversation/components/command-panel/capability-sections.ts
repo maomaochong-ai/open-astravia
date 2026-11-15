@@ -2,7 +2,7 @@ import type { SkillInfo } from "@preload/api";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 
 /**
- * 输入框「添加」面板的能力目录（ADR-0156）。
+ * 输入框「添加」面板的能力目录。
  *
  * 这里只做投影与排序：技能来自 `SkillInfo[]`、连接器来自 `ConnectorGridItem[]`、
  * 文件来自工具行的附件动作。各类的存储、权限与安装路径都不在这里，也不因为

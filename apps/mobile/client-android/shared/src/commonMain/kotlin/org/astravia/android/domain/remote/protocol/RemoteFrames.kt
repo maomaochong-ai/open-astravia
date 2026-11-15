@@ -162,7 +162,7 @@ enum class RemoteErrorCode {
     @SerialName("transport_closed") TransportClosed,
     @SerialName("internal_error") InternalError,
 
-    /** The file lies outside what the phone may read (ADR-0139). */
+    /** The file lies outside what the phone may read. */
     @SerialName("forbidden") Forbidden,
 
     /** The file is larger than a phone may preview. */

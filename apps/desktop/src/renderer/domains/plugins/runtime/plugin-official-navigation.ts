@@ -141,7 +141,7 @@ function buildSettingsHashPath(tab: string, section?: string): string {
 }
 
 /**
- * 连接器已并入能力页（ADR-0049），该页按能力条目组织、不再有可定位的 section，
+ * 连接器已并入能力页，该页按能力条目组织、不再有可定位的 section，
  * 故不带 section/nav 查询参数——它们此处无人消费。
  */
 function buildConnectorsHashPath(): string {

@@ -4,7 +4,7 @@ type RuntimeSessionEventType = Exclude<SessionEvent, { readonly channel: "assist
 
 /**
  * Where a Runtime event goes in the renderer:
- * - `conversation-feed`: the message list reducer (ADR-0146);
+ * - `conversation-feed`: the message list reducer;
  * - `session-state`: session-wide atoms such as context usage, queue and extensions;
  * - `both`: a session-wide fact that is also a step of the running reply (automatic compaction);
  * - `ignored`: deliberately not consumed by the chat view.

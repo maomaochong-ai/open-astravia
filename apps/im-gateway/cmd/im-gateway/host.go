@@ -133,7 +133,7 @@ func runHostWithIO(opts hostOptions) int {
 		// im_send_attachment / host_request. Other agents (desktop, TUI,
 		// CLI) never set this flag and the tool stays invisible to them.
 		EnableHostBridge: true,
-		// memory-mode (ADR-0009): Claw is a fixed, single project, so memory is
+		// memory-mode: Claw is a fixed, single project, so memory is
 		// always on for the embedded gateway. MEMORY.md lives at the conversation
 		// root — a stable path independent of the per-day run cwd the router
 		// spawns the agent in. SessionDir above is likewise pinned to the root.
@@ -206,7 +206,7 @@ func runHostWithIO(opts hostOptions) int {
 		tr = newPlaceholderTransport()
 	}
 	r := router.New(tr, command.NewRouter(), stateStore, pool, initFrame.ConversationCwd)
-	// Dated work log (ADR-0009): run each agent in <conversationCwd>/<date>/ so
+	// Dated work log: run each agent in <conversationCwd>/<date>/ so
 	// artifacts, inbound media, and JOURNAL.md group by day.
 	r.SetDatedCwd(true)
 

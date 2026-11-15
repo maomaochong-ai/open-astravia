@@ -3,7 +3,7 @@ import type { CredentialRef, CredentialVault } from "../credentials/credential-v
 /**
  * 插件密钥（`ctx.secrets`）。值只存 CredentialVault，不落明文。
  *
- * 命名空间沿用历史的 `plugin-settings`：ADR-0105 之前 `contributes.settings` 的 `secret`
+ * 命名空间沿用历史的 `plugin-settings`：之前 `contributes.settings` 的 `secret`
  * 字段就写在这里，改名会让用户已保存的 API Key 全部失联。
  */
 const CREDENTIAL_NAMESPACE = "plugin-settings";

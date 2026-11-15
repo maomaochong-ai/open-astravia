@@ -44,8 +44,8 @@ public struct ChannelManagerOptions {
 /// race first; the relay is the fallback. While on the relay a LAN probe runs
 /// periodically and the link switches back silently. Once either is online, the
 /// link upgrades to the WebRTC control channel in the foreground, as Android's
-/// `DesktopLink` does (ADR-0135), but only with a desktop that captures its screen
-/// on demand (ADR-0140). Behind P2P the LAN or relay link stays open as a standby, so a
+/// `DesktopLink` does, but only with a desktop that captures its screen
+/// on demand. Behind P2P the LAN or relay link stays open as a standby, so a
 /// dropped P2P link hands over without reconnecting. The event sequence lives here, so a
 /// switch never replays or drops.
 public final class ChannelManager {
@@ -335,7 +335,7 @@ public final class ChannelManager {
 	/// trying while it cannot, waiting twice as long after each failure up to
 	/// `p2pMaxProbeIntervalMs`. Only in the foreground, and only
 	/// with a desktop that captures on demand: an older one streams its screen for as long
-	/// as the link is up (ADR-0140).
+	/// as the link is up.
 	private func launchP2pProbe() {
 		guard running, foreground, let active, active.channel != .p2p, p2pTask == nil,
 		      snapshot.desktop?.screen == true,
@@ -495,7 +495,7 @@ public final class ChannelManager {
 			role: .mobile,
 			deviceId: options.link.deviceId,
 			deviceName: options.link.deviceName,
-			// `screen`: the desktop captures only while the remote screen is open (ADR-0140).
+			// `screen`: the desktop captures only while the remote screen is open.
 			capabilities: RemoteCapabilities(chat: true, sessionRead: true, screen: true),
 			identity: options.link.identity
 		)

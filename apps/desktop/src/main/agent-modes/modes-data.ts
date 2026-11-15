@@ -1,6 +1,6 @@
 // AUTO-GENERATED from modes/*.md by scripts/build-agent-modes.mjs. Do not edit by hand.
 
-/** 合法工作模式 id 联合类型，由 modes/*.md 派生（ADR-0071）。 */
+/** 合法工作模式 id 联合类型，由 modes/*.md 派生。 */
 export type AgentModeId = "coding" | "work";
 
 export interface RawMode {

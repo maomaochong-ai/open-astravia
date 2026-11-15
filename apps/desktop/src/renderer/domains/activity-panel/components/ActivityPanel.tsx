@@ -75,7 +75,7 @@ export function ActivityPanel(props: ActivityPanelProps): JSX.Element {
 
 /**
  * 登记挂载中的工作空间，供插件 API 把会话 cwd 翻成面板真正使用的工作空间键
- * （普通对话两者同值，Team 不同，见 ADR-0111）。
+ * （普通对话两者同值，Team 不同）。
  */
 function useMountedActivityWorkspace(workspace: ActivityWorkspace): void {
 	const setMounted = useSetAtom(mountedActivityWorkspacesAtom);

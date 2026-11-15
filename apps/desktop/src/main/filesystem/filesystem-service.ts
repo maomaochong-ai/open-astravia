@@ -188,7 +188,7 @@ export async function readFilesystemDirectory(dirPath: string): Promise<FsEntry[
 	const settled = await Promise.all(
 		entries.map(async (entry): Promise<FsEntry | null> => {
 			// Presentation filters belong to the file explorer; dotfiles are ordinary project files.
-			// 「对话」根下的会话工作区目录是内部状态，不进入 UI 列举（ADR-0007 修订）。
+			// 「对话」根下的会话工作区目录是内部状态，不进入 UI 列举（修订）。
 			if (entry.isDirectory() && isConversationWorkspaceDirEntry(resolved, entry.name)) return null;
 			const fullPath = join(resolved, entry.name);
 			try {

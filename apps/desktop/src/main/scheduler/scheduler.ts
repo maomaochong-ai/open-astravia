@@ -51,7 +51,7 @@ export async function initScheduler(): Promise<void> {
 
 /**
  * 休眠期间计时器冻结，唤醒后 croner 可能立刻补触发积压的一次：休眠前先停掉所有作业，
- * 唤醒后把这段时间本该触发的记为「已错过」，再重新排程（ADR-0127：不补跑）。
+ * 唤醒后把这段时间本该触发的记为「已错过」，再重新排程（不补跑）。
  */
 function attachPowerListeners(): void {
 	if (powerListenersAttached) return;

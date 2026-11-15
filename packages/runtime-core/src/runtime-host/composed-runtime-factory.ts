@@ -220,7 +220,7 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 				cwd: resources.identity.cwd,
 				steeringMode: resources.steeringMode,
 				followUpMode: resources.followUpMode,
-				// 队列变化以 kernel 事件广播（ADR-0060）：宿主据此镜像 UI 并持久化 sidecar。
+				// 队列变化以 kernel 事件广播：宿主据此镜像 UI 并持久化 sidecar。
 				onQueueChange: (snapshot: SessionInputQueueSnapshot) => {
 					void eventSink
 						.publish({

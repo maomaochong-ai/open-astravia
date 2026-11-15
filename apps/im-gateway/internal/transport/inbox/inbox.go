@@ -6,7 +6,7 @@
 // The persist + naming logic is identical for every transport (wechat,
 // feishu, ...); only the way the raw bytes are obtained differs (wechat
 // CDN-downloads + AES decrypts; feishu downloads plaintext via an
-// authenticated MessageResource.Get). See ADR-0006 and ADR-0008.
+// authenticated MessageResource.Get).
 package inbox
 
 import (

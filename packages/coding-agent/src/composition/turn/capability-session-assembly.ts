@@ -112,7 +112,7 @@ export interface CodingAgentTurnCapabilityPromptOptions {
 	readonly settingsSource?: CodingAgentPromptSettingsSource;
 	readonly systemPromptAdvertisedToolNames?: readonly string[];
 	readonly workspaceFacts?: string;
-	/** 宿主注入的 mode 提示词解析器；缺省 = 不追加 mode block（ADR-0071 修订）。 */
+	/** 宿主注入的 mode 提示词解析器；缺省 = 不追加 mode block（修订）。 */
 	readonly resolveModePrompt?: CodingAgentModePromptResolver;
 }
 

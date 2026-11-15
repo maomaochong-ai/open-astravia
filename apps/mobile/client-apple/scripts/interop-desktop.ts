@@ -133,7 +133,7 @@ if (longTurns > 0) {
 	histories.set("s-long", entries);
 }
 
-// ---- Files (ADR-0139) ------------------------------------------------------------------
+// ---- Files ------------------------------------------------------------------
 // Every session's working directory is one fixture folder, served by the desktop's real
 // file service; its home is the fixture root, so anything outside it is refused.
 const filesHome = join(tmpdir(), "astravia-interop-files");

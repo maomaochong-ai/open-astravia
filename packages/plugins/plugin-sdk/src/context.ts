@@ -31,7 +31,7 @@ export interface PluginPermissionApi {
 }
 
 /**
- * 工作模式 id。合法值由宿主的模式注册表定义（ADR-0071），插件不应硬编码枚举；
+ * 工作模式 id。合法值由宿主的模式注册表定义，插件不应硬编码枚举；
  * 需要区分模式时按 id 字符串比较，未知 id 一律按通用处理。
  */
 export type AgentMode = string;
@@ -74,7 +74,7 @@ export interface PluginContext {
 	browser: PluginBrowserApi;
 	network: PluginNetworkApi;
 	/**
-	 * Astravia 服务端网关调用（ADR-0056）。**仅内置 official 插件可用**，
+	 * Astravia 服务端网关调用。**仅内置 official 插件可用**，
 	 * 第三方插件读到 `undefined`，故使用前必须判空。
 	 */
 	gateway?: PluginGatewayApi;
@@ -83,7 +83,7 @@ export interface PluginContext {
 	secrets: PluginSecretsApi;
 	i18n: PluginI18nApi;
 	/**
-	 * 当前的**新会话默认工作模式**（agent_mode 轴，见 ADR-0046 及其 2026-08 修订）。
+	 * 当前的**新会话默认工作模式**（agent_mode 轴，含 2026-08 修订）。
 	 *
 	 * 工作模式只在会话创建时固化，之后会话内不可变，因此这里读到的是用户此刻的设置值，
 	 * **不是**某个已存在会话正在使用的模式，不要用它推断进行中的会话。

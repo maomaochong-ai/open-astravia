@@ -1,4 +1,4 @@
-/** Minimal host bridge types for trusted plugins (ADR-0023). */
+/** Minimal host bridge types for trusted plugins. */
 interface AstraviaPluginDevWatchState {
 	projectDir: string;
 	entryUrl?: string;

@@ -172,7 +172,7 @@ const (
 	AgentEventTypeToolExecutionEnd   = "tool_execution_end"
 	AgentEventTypeError              = "error"
 	// AgentEventTypeSessionPathChanged is emitted by coding-agent in memory-mode
-	// when a session rollover switches the active .jsonl file (ADR-0009). The
+	// when a session rollover switches the active .jsonl file. The
 	// bridge forwards the new path to the router so routing state is repointed.
 	AgentEventTypeSessionPathChanged = "session_path_changed"
 )
@@ -187,7 +187,7 @@ const (
 	CommandTypeSetSessionName = "set_session_name"
 	// CommandTypeFlushMemory asks coding-agent (memory-mode) to consolidate
 	// durable facts from the current context into MEMORY.md before the session
-	// is discarded — used by /new (ADR-0009). No-op when memory-mode is off.
+	// is discarded — used by /new. No-op when memory-mode is off.
 	CommandTypeFlushMemory = "flush_memory"
 )
 

@@ -27,7 +27,7 @@ export interface QueueCardModel {
 }
 
 /**
- * 队列抽屉数据模型。队列属主在主进程 kernel（ADR-0060）：本地 atom 只是镜像，
+ * 队列抽屉数据模型。队列属主在主进程 kernel：本地 atom 只是镜像，
  * 增删排序全部走 IPC；镜像同时做乐观更新，等 queue.changed 回流校正。
  */
 export function useQueueCardModel(runtimeId: string): QueueCardModel {

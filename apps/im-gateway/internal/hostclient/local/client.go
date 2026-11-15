@@ -47,15 +47,15 @@ type Options struct {
 	// EnableHostBridge appends `--enable-host-bridge` to the spawned
 	// coding-agent subprocess argv. The flag tells coding-agent to
 	// register the `im_send_attachment` tool and to accept `host_response`
-	// commands on stdin (see packages/coding-agent/docs/rpc.md and
-	// ADR-0006). Without it the agent has no way to call back into the
+	// commands on stdin (see packages/coding-agent/docs/rpc.md). Without it
+	// the agent has no way to call back into the
 	// IM transport — the tool is invisible to the LLM.
 	EnableHostBridge bool
 
 	// MemoryMode appends `--memory-mode` to the spawned coding-agent argv,
 	// enabling MEMORY.md cross-session memory, the `memory` tool, session
-	// rollover (replacing the LLM compaction layer), and the dated work log
-	// (ADR-0009). im-gateway sets it for the Claw conversation.
+	// rollover (replacing the LLM compaction layer), and the dated work log.
+	// im-gateway sets it for the Claw conversation.
 	MemoryMode bool
 
 	// MemoryFile is forwarded as `--memory-file`. It must be an absolute,

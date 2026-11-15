@@ -234,7 +234,7 @@ const UserMessageDeleteCommand = withCommands(function DeleteCommand({ commands 
 	return null;
 });
 
-/** Parts for `<Conversation.UserMessage>` templates (ADR-0147). */
+/** Parts for `<Conversation.UserMessage>` templates. */
 export const UserMessage = {
 	Root: UserMessageRoot,
 	Actions: UserMessageActions,

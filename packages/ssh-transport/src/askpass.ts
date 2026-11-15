@@ -33,7 +33,7 @@ export interface SshPromptRequest {
 export function classifySshPrompt(prompt: string, askpassPromptEnv?: string): SshPromptKind {
 	if (askpassPromptEnv === "confirm") return "confirm";
 	const text = prompt.toLowerCase();
-	// 首次连接的主机指纹核对。必须由用户确认，不能默认放行（ADR-0124）。
+	// 首次连接的主机指纹核对。必须由用户确认，不能默认放行。
 	if (text.includes("(yes/no") || text.includes("authenticity of host") || text.includes("fingerprint)?")) {
 		return "confirm";
 	}

@@ -49,7 +49,7 @@ export function registerSettingsIpc(): () => void {
 
 	ipcMain.handle("astravia:settings:set-model-transport", (_event, value: unknown) => setModelTransport(value));
 
-	// 预设服务商目录内置在客户端(见 ADR-0050);模型清单取自 models.dev 公共目录,免 key 可见。
+	// 预设服务商目录内置在客户端;模型清单取自 models.dev 公共目录,免 key 可见。
 	ipcMain.handle("astravia:models:list-presets", async () => {
 		return listPresetProviders();
 	});

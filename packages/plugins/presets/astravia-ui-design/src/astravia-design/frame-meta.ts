@@ -42,8 +42,8 @@ export function sanitizeFrameTitle(raw: string): string {
 }
 
 /**
- * 把新标题写回 `export const frame = { ... }`。tsx 的 meta 才是标题的声明
- * （ADR-0053），只改 manifest 的话下一次 agent 动这行就被改回去了。
+ * 把新标题写回 `export const frame = { ... }`。tsx 的 meta 才是标题的声明，
+ *只改 manifest 的话下一次 agent 动这行就被改回去了。
  * 找不到 meta 声明时返回 null——调用方据此报错，而不是往源码里瞎塞。
  */
 export function withFrameTitle(source: string, title: string): string | null {

@@ -263,7 +263,7 @@ describe("Desktop RuntimeHost model-call frame contract", () => {
 		expect(secondToolResult).not.toContain(firstCwd);
 	}, 30_000);
 
-	// 工作模式注册表归 desktop 所有（ADR-0071 修订）：coding-agent 只保留 core.mode 槽位。
+	// 工作模式注册表归 desktop 所有（修订）：coding-agent 只保留 core.mode 槽位。
 	// 这条用例验证整条注入链——宿主 resolver → composition → Prompt Runtime → system prompt。
 	it("carries the Desktop-owned mode prompt into the system prompt of the session's agentMode", async () => {
 		const cwd = await temporaryDirectory("desktop-frame-mode-prompt-workspace-");

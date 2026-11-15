@@ -265,7 +265,7 @@ public enum L10n {
 		public static func answering(_ choice: String) -> String { tr("activity.answering \(choice)") }
 	}
 
-	/// The paired computer's screen, seen and operated from the phone (ADR-0140).
+	/// The paired computer's screen, seen and operated from the phone.
 	public enum Remote {
 		public static var title: String { tr("remote.title") }
 		public static var hint: String { tr("remote.hint") }

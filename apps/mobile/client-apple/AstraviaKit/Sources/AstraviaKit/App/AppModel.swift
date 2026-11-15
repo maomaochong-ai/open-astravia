@@ -90,7 +90,7 @@ public final class AppModel {
 	public private(set) var pairing: PairingPhase = .idle
 	public var lastError: String?
 	/// What the desktop said about its screen while the remote desktop page is open; nil
-	/// otherwise (ADR-0140).
+	/// otherwise.
 	public private(set) var screen: RemoteScreenStatus?
 	/// The desktop's pointer shape while the remote desktop is open; nil until it says, or
 	/// from a desktop that cannot (the phone then draws a plain arrow).
@@ -198,7 +198,7 @@ public final class AppModel {
 	// MARK: Pairing
 
 	/// Pairs with what a QR code or link holds: a whole pairing link, or just a connection
-	/// code and password (ADR-0138), which is then looked up on the relay.
+	/// code and password, which is then looked up on the relay.
 	public func pairWithCode(_ text: String) async -> Bool {
 		if let qr = InviteCode.parseQR(text) {
 			return await pairWithInvite(code: qr.code, password: qr.password, relayBaseUrl: qr.relayBaseUrl)
@@ -209,7 +209,7 @@ public final class AppModel {
 	}
 
 	/// Pairs with the desktop whose invite waits on the relay under a connection code
-	/// (ADR-0136); from there it is the same as scanning its QR code. `relayBaseUrl` is
+	/// from there it is the same as scanning its QR code. `relayBaseUrl` is
 	/// what was typed for a desktop on its own relay, nil for the default one.
 	public func pairWithInvite(code: String, password: String, relayBaseUrl: String? = nil) async -> Bool {
 		let flow = startFlow()
@@ -368,7 +368,7 @@ public final class AppModel {
 
 	// MARK: Remote desktop
 
-	/// The remote desktop page opened or closed: the desktop starts or stops capturing (ADR-0140).
+	/// The remote desktop page opened or closed: the desktop starts or stops capturing.
 	public func setScreenOpen(_ open: Bool) {
 		guard screenOpen != open else { return }
 		screenOpen = open
@@ -941,7 +941,7 @@ public final class AppModel {
 		if let key = desktopKey { platform.cache.saveSessions(key, sessions) }
 	}
 
-	// MARK: Files (ADR-0139)
+	// MARK: Files
 
 	/// Lists a folder of the session's working directory; `path` is "" for the directory itself
 	/// or a path the desktop gave earlier.

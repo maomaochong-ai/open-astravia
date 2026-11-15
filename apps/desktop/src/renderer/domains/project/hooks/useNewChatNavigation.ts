@@ -24,7 +24,7 @@ export function useNewChatNavigation(): () => void {
 	//   1. 当前路由参数 cwd（/project/$cwd）—— 项目详情聚焦
 	//   2. 当前就在新会话页（/new-session?cwd=…）时沿用它，重复点「新会话」不丢选中的项目
 	//   3. 仅在聊天页（/）时，跟随 activeSession 的 cwd —— 聚焦的是「某项目的会话」时落到该项目。
-	//      ADR-0007：默认「对话」session 的运行 cwd 是默认项目根下的 per-session 子目录，
+	// 默认「对话」session 的运行 cwd 是默认项目根下的 per-session 子目录，
 	//      必须归一回项目根，否则新会话会挂到子目录 bucket、不在「会话」列表出现。
 	//   4. 其余一切场景（自动化/批量任务/Claw 查看器/设置等）落到默认「会话」项目，
 	//      不能沿用残留的 activeSession.cwd，否则会把新会话建到上一个项目里。

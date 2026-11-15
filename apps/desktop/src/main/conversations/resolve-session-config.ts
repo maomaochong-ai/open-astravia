@@ -16,7 +16,7 @@ import {
 	resolveSessionDirForCwd,
 } from "./session-paths.js";
 
-/** automation：定时自动化在无人值守时发起的会话/轮次（ADR-0127）。 */
+/** automation：定时自动化在无人值守时发起的会话/轮次。 */
 export type DesktopConversationSource = "interactive" | "debug" | "automation";
 export type DesktopSessionKind = "conversation" | "other";
 

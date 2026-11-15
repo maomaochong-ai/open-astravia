@@ -248,7 +248,7 @@ function serializeTeam(team: TeamDefinition): Omit<TeamDefinition, "description"
 	return { ...metadata, members: team.members.map(serializeMember) };
 }
 
-/** 任务书的补充指令是长文本，按 ADR-0106 的合同落到独立 Markdown，不进 team.json。 */
+/** 任务书的补充指令是长文本，按合同落到独立 Markdown，不进 team.json。 */
 function serializeMember(member: TeamMember): TeamMember {
 	if (!member.assignment) return member;
 	const { instructions: _instructions, ...assignment } = member.assignment;

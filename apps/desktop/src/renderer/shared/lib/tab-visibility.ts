@@ -8,7 +8,7 @@
  * 无前缀条目沿用旧格式，历史 localStorage 记录直接兼容。
  *
  * 内置与插件 tab 共用这套记录：插件用它表达「还没 attach」，内置用它表达「用户从
- * 「+」菜单把它添加上来」（`initiallyVisible: false` 的内置面板默认不上栏，见 ADR-0026）。
+ * 「+」菜单把它添加上来」（`initiallyVisible: false` 的内置面板默认不上栏）。
  */
 const HIDDEN_PREFIX = "-";
 

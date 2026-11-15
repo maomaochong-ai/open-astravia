@@ -170,7 +170,7 @@ describe("PluginLifecycleService", () => {
 		]);
 	});
 
-	it("lists every installed plugin regardless of any mode notion (ADR-0071)", () => {
+	it("lists every installed plugin regardless of any mode notion", () => {
 		const harness = createHarness(installedPlugin());
 
 		expect(harness.service.list().map((item) => item.id)).toEqual(["demo"]);

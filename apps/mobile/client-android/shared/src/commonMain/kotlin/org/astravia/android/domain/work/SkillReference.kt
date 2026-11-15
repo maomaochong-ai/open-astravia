@@ -3,8 +3,8 @@ package org.astravia.android.domain.work
 import org.astravia.android.domain.remote.RemoteSkillOption
 
 /**
- * A skill or scene the prompt refers to (port of the iPhone's `SkillReference`,
- * ADR-0137). On the wire it is a token at the start of the text, `@skill:name` or
+ * A skill or scene the prompt refers to (port of the iPhone's `SkillReference`).
+ * On the wire it is a token at the start of the text, `@skill:name` or
  * `@scene:name`, the same form the desktop composer writes; the desktop turns a scene
  * into its prompt resource.
  */

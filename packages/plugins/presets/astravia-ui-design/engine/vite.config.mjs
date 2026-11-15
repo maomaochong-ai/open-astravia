@@ -1,6 +1,6 @@
 // Astravia Design Engine — shared vite template (materialized to ~/.astravia/design-engine/<version>/).
 // The design bundle dir (x.astravia-design/) is mounted via the ASTRAVIA_DESIGN_SRC env var; the engine itself
-// never contains user content. See ADR-0053.
+// never contains user content..
 import { readdirSync, watch } from "node:fs";
 import { dirname, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -70,8 +70,8 @@ function astraviaDesignThemeSource() {
  *   utility class only that file introduces is missing, which reads as a
  *   scrambled layout until the server restarts.
  *
- * Handing the directory to vite's own watcher does not help: an `add()` during
- * `configureServer` is dropped (it only takes effect once `listen()` has
+ * Handing the directory to vite's own watcher does not help: an `add` during
+ * `configureServer` is dropped (it only takes effect once `listen` has
  * resolved, which no plugin hook lines up with). So watch the directory
  * directly and invalidate by hand.
  *
@@ -85,7 +85,7 @@ function astraviaDesignWatchDesign() {
 	 * Dot-prefixed entries are skipped on purpose: `.snapshots/` is written on
 	 * every canvas capture, and reloading on it would loop capture ↔ reload.
 	 *
-	 * `node_modules/` is skipped for cost, not correctness (ADR-0068): a design
+	 * `node_modules/` is skipped for cost, not correctness: a design
 	 * declaring two libraries goes from 4 files to 7000+, and this walk runs on
 	 * every settle. Nothing in there is a design source, and a dependency change
 	 * already reaches the client through package.json moving in this same set.
@@ -119,7 +119,7 @@ function astraviaDesignWatchDesign() {
 			let timer = null;
 			let watcher;
 			/**
-			 * 依赖清单变了（ADR-0068 的 astravia_design_install）。
+			 * 依赖清单变了（的 astravia_design_install）。
 			 *
 			 * 单独一个标记，因为下面的判据是**文件集合**变没变：第一次装包会新增
 			 * package-lock.json 所以能被看见，第二次装包只是改写这两个文件的内容，

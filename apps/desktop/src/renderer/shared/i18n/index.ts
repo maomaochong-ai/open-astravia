@@ -1,4 +1,4 @@
-// Renderer i18next 实例。资源静态内联（见 ADR-0031），故 init 同步生效、首帧不闪。
+// Renderer i18next 实例。资源静态内联，故 init 同步生效、首帧不闪。
 // 初值来自主进程同步暴露的 window.astravia.i18n.initialState（preference + language）。
 
 import i18n from "i18next";

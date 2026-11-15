@@ -1,6 +1,6 @@
 /**
  * 插件自己的配置。存在插件私有存储里，工作区配置页读写，Provider 也要同步读它，
- * 所以放在 React 之外并提供订阅（ADR-0105）。
+ * 所以放在 React 之外并提供订阅。
  */
 
 export interface ProviderSettings {

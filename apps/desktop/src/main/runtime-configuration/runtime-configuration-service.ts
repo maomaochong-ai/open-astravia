@@ -38,7 +38,7 @@ export interface DesktopRuntimeConfigurationServiceDependencies {
 /**
  * Desktop Host 的配置控制面：汇总内置 Definition 与持久化 Layer，值仍由各领域 Adapter 拥有。
  *
- * 插件配置不在此列——插件自己渲染配置界面并使用 `ctx.storage` / `ctx.secrets` 持久化（ADR-0105）。
+ * 插件配置不在此列——插件自己渲染配置界面并使用 `ctx.storage` / `ctx.secrets` 持久化。
  */
 export class DesktopRuntimeConfigurationService {
 	private readonly center = new RuntimeConfigurationCenter();

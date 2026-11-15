@@ -5,7 +5,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
 
 /**
- * 站内信初始化：登录后拉取列表与未读数，并监听 SSE "notification:new" 实时插入（ADR-0018）。
+ * 站内信初始化：登录后拉取列表与未读数，并监听 SSE "notification:new" 实时插入。
  */
 export function useNotificationInit(): void {
 	const token = useAtomValue(authTokenAtom);

@@ -3,7 +3,7 @@ import { formatSshProjectUri, isSshProjectUri, parseProjectLocation } from "@ast
 import { RemoteOperationError } from "./remote-error-mapping.js";
 
 /**
- * Paths the phone names a desktop file by (ADR-0139).
+ * Paths the phone names a desktop file by.
  *
  * The phone hands over whatever the assistant wrote, or a path the desktop gave
  * it earlier, and the desktop resolves it against the session's working
@@ -181,7 +181,7 @@ function segments(value: string): string[] {
 
 /**
  * The sensitive locations the phone may never read, even where the desktop's own
- * preview may (ADR-0139). Checked against the path as named and, for local
+ * preview may. Checked against the path as named and, for local
  * files, against where its symlinks lead.
  */
 export function isBlockedForPhone(target: string, context: Pick<RemotePathContext, "home" | "path">): boolean {

@@ -62,7 +62,7 @@ export interface PluginCommandSpawnHandle {
  * user; otherwise the call is rejected (and the host notifies the user). Needs
  * the `agent.command.run` permission.
  *
- * `spawn` starts a long-lived process instead (ADR-0054, e.g. a local dev
+ * `spawn` starts a long-lived process instead (, e.g. a local dev
  * server): same manifest `commands` declaration and user toggle, but gated by
  * the separate `agent.command.spawn` permission. The child runs in its own
  * process group; the host kills the whole tree on stop, plugin unload/disable,

@@ -16,7 +16,7 @@ export interface RuntimeStatus {
 	managedVersion?: string;
 	/** 托管可执行文件路径(就绪时)。 */
 	executablePath?: string;
-	/** 注入 PATH 后实际生效的来源。当前恒为 managed(优先托管版,见 ADR-0011)。 */
+	/** 注入 PATH 后实际生效的来源。当前恒为 managed(优先托管版)。 */
 	activeSource: RuntimeSource;
 	/** 系统探测到的同名运行时(仅展示/兜底,不参与 PATH 优先级)。 */
 	system?: { path: string; version: string };
@@ -37,7 +37,7 @@ export type GitInstallGuide =
 
 /**
  * Git 的对外状态。与 node/python 相反，系统 git 优先：它带着用户自己的
- * 配置与凭据；托管 MinGit 只在系统没有 git 时兜底（ADR-0134）。
+ * 配置与凭据；托管 MinGit 只在系统没有 git 时兜底。
  */
 export interface GitToolStatus {
 	available: boolean;

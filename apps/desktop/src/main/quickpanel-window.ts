@@ -13,7 +13,7 @@ const isMac = process.platform === "darwin";
 // electron-liquid-glass 是 darwin-only 原生模块（node-gyp-build 仅含 mac prebuild）。
 // 顶层模块 eval 即加载 .node，在 Windows/Linux 上会抛错。主进程 bundle 在 mac 上
 // 一次构建、跨平台打包，同一份 import 语句会在所有平台执行，故只能在 macOS 上按需
-// require，避免非 mac 启动崩溃（见 ADR-0036）。
+// require，避免非 mac 启动崩溃。
 interface LiquidGlassApi {
 	addView(handle: Buffer, options?: GlassOptions): number;
 	isGlassSupported(): boolean;

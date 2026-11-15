@@ -148,7 +148,7 @@ export function createPluginAgentApi({
 				scope_use: registration.scope_use,
 				requires: registration.requires,
 				context: registration.context,
-				// 宿主自动检测：带自渲染槽的工具会被注入可选的 md_intro 参数（见 ADR-0047）。
+				// 宿主自动检测：带自渲染槽的工具会被注入可选的 md_intro 参数。
 				rendersCard: hasToolCallSlot(toolName) || undefined,
 			};
 			registeredAgentTools.set(toolName, payload);

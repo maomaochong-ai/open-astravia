@@ -57,7 +57,7 @@ describe("更多选项入口", () => {
 
 /**
  * 分区的标题在命令面板里是 `t(titleKey)` 直接渲染的：文案文件里少一条，用户看到的
- * 就是这串 key 本身（中英都缺译时回退链会落到 key，与 ADR-0031 的约定相悖）。这里按
+ * 就是这串 key 本身（中英都缺译时回退链会落到 key，既有约定相悖）。这里按
  * 注册表逐条核对，避免新增分区时注册与文案两边脱节。
  */
 function lookup(bundle: Record<string, unknown>, dottedKey: string): unknown {

@@ -89,7 +89,7 @@ export class ContentCreationPluginRuntime {
 		this.ctx.ui.setActivityPanelWidth("max");
 	}
 
-	/** 面板里的「设置」入口：跳到本插件自己的工作区配置页（ADR-0105）。 */
+	/** 面板里的「设置」入口：跳到本插件自己的工作区配置页。 */
 	openSettings = (): void => {
 		this.ctx.ui.openWorkspaceView(SETTINGS_VIEW_ID);
 	};

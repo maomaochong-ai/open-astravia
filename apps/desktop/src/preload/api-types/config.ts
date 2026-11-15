@@ -89,7 +89,7 @@ export interface DesktopConfigData {
 	};
 	/** 默认「对话」项目的绝对路径（~/.astravia/conversation），主进程已确保目录存在。 */
 	defaultConversationCwd?: string;
-	/** im-gateway 自己的 cwd（~/.astravia/im-gateway/conversation），与桌面「对话」物理分家（ADR-0005）。 */
+	/** im-gateway 自己的 cwd（~/.astravia/im-gateway/conversation），与桌面「对话」物理分家。 */
 	defaultImConversationCwd?: string;
 	/** 知识库加工设置。 */
 	knowledgeBase?: {

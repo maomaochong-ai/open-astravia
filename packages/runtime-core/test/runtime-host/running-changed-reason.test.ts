@@ -13,7 +13,7 @@ import {
 } from "../../src/index.js";
 
 /**
- * running-changed 的 reason 是渲染端队列策略的唯一依据（ADR-0060）：
+ * running-changed 的 reason 是渲染端队列策略的唯一依据：
  * agent_end = 自然结束（允许继续消费队列），aborted / error = 终止（队列暂停）。
  * turn.failed 只产生 error observation + agent_end，这里锁住 error 不得伪装成
  * agent_end；同时锁住重试恢复成功的回合不得残留早前的 error 标记。

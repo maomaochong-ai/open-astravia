@@ -333,7 +333,7 @@ class DesktopLink(
                         role = RemoteRole.Mobile,
                         deviceId = options.deviceId,
                         deviceName = options.deviceName,
-                        // `screen`: the desktop captures only while the remote screen is open (ADR-0140).
+                        // `screen`: the desktop captures only while the remote screen is open.
                         capabilities = RemoteCapabilities(chat = true, sessionRead = true, screen = true),
                         identity = options.identity,
                         expectedPeerIdentityKey = RemoteCrypto.decodePublicKey(options.desktop.desktopIdentityKey),

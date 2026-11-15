@@ -88,7 +88,7 @@ describe("CodingAgentMemoryRolloverOrchestrator", () => {
 			signal: new AbortController().signal,
 		});
 		expect(readMemoryTextStorage(projectMemoryStorage)).toBe("Runs bun test");
-		// 快照仍是会话开始时冻结的内容，新写入只会在下个会话进提示词（ADR-0009）。
+		// 快照仍是会话开始时冻结的内容，新写入只会在下个会话进提示词。
 		expect(runtime.readPromptMemory().scopes[0]?.snapshot).toBe("Prefers Bun");
 
 		const prompt = runtime.renderPromptMemory();

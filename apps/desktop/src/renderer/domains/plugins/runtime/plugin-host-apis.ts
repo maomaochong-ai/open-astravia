@@ -462,7 +462,7 @@ export function createArtifactsApi(plugin: InstalledPlugin, capabilitySessionId:
 
 /**
  * 网关调用不挂可声明权限，只按来源收口：`ctx.gateway` 仅对随包分发的 official
- * 插件挂载，第三方插件读到 undefined（ADR-0056）。主进程的 capability 适配层
+ * 插件挂载，第三方插件读到 undefined。主进程的 capability 适配层
  * 会再校验一次 session 的 official 属性，这里只是不把入口暴露出去。
  */
 export function createGatewayApi(capabilitySessionId: string): PluginGatewayApi {

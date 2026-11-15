@@ -85,7 +85,7 @@ export interface SidebarNavItem {
 	readonly key: string;
 	readonly label?: string;
 	readonly labelKey?: SidebarLabelKey;
-	/** `/skills` 与 `/plugins` 为旧入口，现已重定向到 `/abilities`（ADR-0049）。 */
+	/** `/skills` 与 `/plugins` 为旧入口，现已重定向到 `/abilities`。 */
 	readonly path?: "/automation" | "/batch-tasks" | "/knowledge" | "/abilities" | "/skills" | "/plugins" | "/agents";
 	/** 直达设置页某个 tab（`/settings/$tab`）；与 `path` 互斥。 */
 	readonly settingsTab?: string;

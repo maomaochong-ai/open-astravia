@@ -91,7 +91,7 @@ struct AstraviaApp: App {
 		platform.onTurnStart = { impact.impactOccurred() }
 		platform.onTurnEnd = { feedback.notificationOccurred(.success) }
 		// Once on the LAN or relay, the link moves to the WebRTC control channel through the
-		// relay's viewer signaling; the same session carries the screen (ADR-0140).
+		// relay's viewer signaling; the same session carries the screen.
 		platform.configureManager = { options in
 			guard options.p2pTarget != nil else { return }
 			options.createP2pTransport = { RemoteDesktopSessions.shared.transport(for: $0) }

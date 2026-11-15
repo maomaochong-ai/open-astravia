@@ -36,7 +36,7 @@ function response<T>(body: T): PluginNetworkResponse<T> {
 	return { ok: true, status: 200, statusText: "OK", headers: {}, body };
 }
 
-/** 配置现在存在插件私有存储里，Provider 同步读单例 store（ADR-0105）。 */
+/** 配置现在存在插件私有存储里，Provider 同步读单例 store。 */
 async function primeSettings(baseUrl = "http://comfy.local:8188"): Promise<void> {
 	let stored: unknown = null;
 	setPluginCtx({

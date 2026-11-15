@@ -214,7 +214,7 @@ public final class PairingFlow {
 			role: .mobile,
 			deviceId: options.link.deviceId,
 			deviceName: options.link.deviceName,
-			// Like the lasting link: the desktop may start its screen host from this one (ADR-0140).
+			// Like the lasting link: the desktop may start its screen host from this one.
 			capabilities: RemoteCapabilities(chat: true, sessionRead: true, screen: true),
 			identity: options.link.identity
 		)

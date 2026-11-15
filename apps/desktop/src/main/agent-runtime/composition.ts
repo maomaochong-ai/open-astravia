@@ -204,7 +204,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				}),
 				createPromptRuntimeSources: createDesktopPromptRuntimeSources,
 				createPluginRuntime: () => getDesktopCodingAgentPluginRuntimeSource(),
-				// 工作模式注册表归 desktop 所有（ADR-0071 修订）：coding-agent 只保留 core.mode
+				// 工作模式注册表归 desktop 所有（修订）：coding-agent 只保留 core.mode
 				// 槽位，正文由这里按会话固化的 agentMode 解析注入。
 				resolveModePrompt: getModePrompt,
 				sessionExtensionFunctions,

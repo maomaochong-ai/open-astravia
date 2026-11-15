@@ -87,8 +87,8 @@ export function registerImIpc(webContents: WebContents): () => void {
 		webContents.send(CHANNELS.SESSION_CHANGED);
 	});
 
-	// Belt-and-suspenders: also watch the IM sessions dir directly (ADR-0005
-	// 分家后 IM session 写到独立 cwd，桌面「对话」cwd 已不再有 IM 文件)。
+	// Belt-and-suspenders: also watch the IM sessions dir directly.
+	// 分家后 IM session 写到独立 cwd，桌面「对话」cwd 已不再有 IM 文件。
 	// The sidecar's state_patch fires when im-gateway *learns* of a new
 	// session path, but for already-known (userID, chatID) pairs the patch
 	// is skipped, so a fresh .jsonl appearing on disk (e.g. after a stale

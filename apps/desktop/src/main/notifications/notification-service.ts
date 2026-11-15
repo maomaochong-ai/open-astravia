@@ -46,7 +46,7 @@ export type AppNotification =
 			code: string;
 	  }
 	| {
-			/** 手机打开了远程桌面，但 macOS 没给屏幕录制或辅助功能权限（ADR-0140）。 */
+			/** 手机打开了远程桌面，但 macOS 没给屏幕录制或辅助功能权限。 */
 			type: "remote-screen-permission";
 			deviceName: string;
 			screen: boolean;

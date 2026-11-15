@@ -77,7 +77,7 @@ export function useSettingsPageModel(): SettingsPageModel {
 	const navigationNonce = typeof search.nav === "string" ? search.nav : undefined;
 	const targetSection = sectionId ? findSettingsSection(sectionId) : undefined;
 
-	// MCP 已并入能力页（ADR-0049）；旧 /settings/mcp 与 mcp-* section 深链重定向过去。
+	// MCP 已并入能力页；旧 /settings/mcp 与 mcp-* section 深链重定向过去。
 	useEffect(() => {
 		if (rawTab === "mcp" || targetSection?.tab === "mcp") {
 			void navigate({ to: "/abilities", replace: true });

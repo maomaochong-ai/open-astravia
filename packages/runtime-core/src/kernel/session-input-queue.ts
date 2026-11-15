@@ -34,7 +34,7 @@ export interface SessionInputQueueEntry {
 	readonly internal?: boolean;
 }
 
-/** 可序列化快照：条目 + 暂停位。持久化与镜像共用（ADR-0060）。 */
+/** 可序列化快照：条目 + 暂停位。持久化与镜像共用。 */
 export interface SessionInputQueueSnapshot {
 	readonly paused: boolean;
 	readonly entries: readonly SessionInputQueueEntry[];
@@ -179,7 +179,7 @@ export class SessionInputQueue implements TurnInputQueue {
 		this.notifyChange();
 	}
 
-	/** 把 followUp 条目提升为 steering（「立即发送」的 turn 内注入形态，ADR-0060）。 */
+	/** 把 followUp 条目提升为 steering（「立即发送」的 turn 内注入形态）。 */
 	promoteToSteering(id: string): boolean {
 		const index = this.followUpQueue.findIndex((slot) => slot.id === id);
 		if (index < 0) return false;

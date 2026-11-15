@@ -7,7 +7,7 @@ import type { AgentPluginRuntimeConfig } from "./plugin-runtime.js";
 import type { BuildSystemPromptOptions } from "./system-prompt-policy.js";
 
 /**
- * 工作模式 id → mode 提示词正文的宿主解析器（ADR-0071 修订）。
+ * 工作模式 id → mode 提示词正文的宿主解析器（修订）。
  *
  * 模式注册表归宿主所有：桌面把 `modes/*.md` 内联成注册表并注入本解析器，CLI / SDK 宿主
  * 不传即等于不追加 `core.mode` block。coding-agent 只认 agentMode 这个不透明 id 与
@@ -60,7 +60,7 @@ export function resolveSystemPromptOptionsFromSources(
 	dependencies: SystemPromptSourceDependencies,
 ): BuildSystemPromptOptions {
 	const loaderAppendSystemPrompt = dependencies.resourceLoader.getAppendSystemPrompt();
-	// skill 清单在任何工作模式下一致，顺序即加载序（ADR-0071：模式差异只由 modePrompt 承担）。
+	// skill 清单在任何工作模式下一致，顺序即加载序（模式差异只由 modePrompt 承担）。
 	const loadedSkills = dependencies.resourceLoader.getSkills().skills;
 	const mcpTools =
 		dependencies.mcpManager

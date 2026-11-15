@@ -27,7 +27,7 @@ export interface SubscriptionWindowViewModel {
 export interface SubscriptionCardsViewModel {
 	actions: {
 		refresh: () => Promise<void>;
-		/** 打开官网定价页外链（ADR-0051：desktop 不做站内支付，仅外链引流）。缺省不渲染按钮。 */
+		/** 打开官网定价页外链（desktop 不做站内支付，仅外链引流）。缺省不渲染按钮。 */
 		upgrade?: () => void;
 	};
 	expiry: string | null;

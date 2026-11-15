@@ -32,7 +32,7 @@ export interface CreateAgentSessionOptions {
 	readonly cwd?: string;
 	readonly steeringMode?: SessionInputQueueMode;
 	readonly followUpMode?: SessionInputQueueMode;
-	/** 输入队列任何可观察变化后的同步回调；宿主用于镜像广播与持久化（ADR-0060）。 */
+	/** 输入队列任何可观察变化后的同步回调；宿主用于镜像广播与持久化。 */
 	readonly onQueueChange?: (snapshot: SessionInputQueueSnapshot) => void;
 	/** 执行排到 follow-up 队首的宿主操作；操作不进入 Turn/模型消息。 */
 	readonly onQueueOperation?: (operation: SessionQueueOperation, signal: AbortSignal) => Promise<void>;
@@ -487,7 +487,7 @@ export class AgentSession {
 
 		try {
 			const result = await turn;
-			// pause-on-terminal（ADR-0060）：aborted/failed 收尾时冻结残留队列，
+			// pause-on-terminal：aborted/failed 收尾时冻结残留队列，
 			// 避免它们在下一个不相干的 turn 里被自然停止点突然消费。
 			if (result.status !== "completed" && this.inputQueue.pendingCount > 0) {
 				this.inputQueue.pause();

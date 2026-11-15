@@ -191,7 +191,7 @@ export interface RuntimeSessionQueueController extends RuntimeSessionQueueView {
 	readSteeringMessages(): readonly string[];
 	readFollowUpMessages(): readonly string[];
 	clear(): { readonly steering: readonly string[]; readonly followUp: readonly string[] };
-	/** 以下为 ADR-0060 的可管理队列能力。 */
+	/** 以下为可管理队列能力。 */
 	readQueueState(): RuntimeSessionQueueStateView;
 	/** 完整可序列化快照（含 kernel 输入），宿主持久化 sidecar 用。 */
 	readQueueSnapshot(): unknown;

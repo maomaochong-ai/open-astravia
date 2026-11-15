@@ -110,7 +110,7 @@ public enum RemoteErrorCode: String, Sendable {
 	case requestTimeout = "request_timeout"
 	case transportClosed = "transport_closed"
 	case internalError = "internal_error"
-	/// The file lies outside what the phone may read (ADR-0139).
+	/// The file lies outside what the phone may read.
 	case forbidden
 	/// The file is larger than a phone may preview.
 	case tooLarge = "too_large"
@@ -147,7 +147,7 @@ public enum RemoteEventName: String, Sendable, CaseIterable {
 	case sessionInput = "session.input"
 	case sessionResync = "session.resync"
 	case diagnosticsUpdated = "diagnostics.updated"
-	/// Sent only to a phone subscribed to the screen (ADR-0140).
+	/// Sent only to a phone subscribed to the screen.
 	case screenStatus = "screen.status"
 	/// The desktop's pointer shape, for a phone that draws the pointer itself.
 	case screenCursor = "screen.cursor"

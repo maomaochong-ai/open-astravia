@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 
 /**
- * kernel 输入队列的渲染端镜像条目（ADR-0060）。队列唯一属主是主进程 kernel 的
+ * kernel 输入队列的渲染端镜像条目。队列唯一属主是主进程 kernel 的
  * SessionInputQueue；渲染端只消费 queue.changed 事件与 getQueueState 快照，
  * 所有修改（移除/重排/立即发送/继续/清空）都走 IPC 回 kernel。
  */

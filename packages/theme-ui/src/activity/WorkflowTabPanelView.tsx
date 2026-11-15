@@ -32,7 +32,7 @@ export interface WorkflowTabPanelViewProps {
 }
 
 /**
- * Workflow activity tab (ADR-0044): switcher bar on top, read-only
+ * Workflow activity tab: switcher bar on top, read-only
  * MessageList of the selected workflow below.
  */
 export function WorkflowTabPanelView({

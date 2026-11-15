@@ -127,7 +127,7 @@ export type RemoteEventName =
 	| "session.input"
 	| "session.resync"
 	| "diagnostics.updated"
-	/** Sent only to a phone subscribed to the screen, which declared `screen` in its hello (ADR-0140). */
+	/** Sent only to a phone subscribed to the screen, which declared `screen` in its hello. */
 	| "screen.status"
 	/** Sent only to a phone that subscribed with `cursor: true` and draws the pointer itself. */
 	| "screen.cursor";
@@ -162,7 +162,7 @@ export interface RemoteError {
 		| "request_timeout"
 		| "transport_closed"
 		| "internal_error"
-		/** The file lies outside what the phone may read (ADR-0139). */
+		/** The file lies outside what the phone may read. */
 		| "forbidden"
 		/** The file is larger than a phone may preview, or a tool result exceeds `REMOTE_MAX_TOOL_RESULT_CHARS`. */
 		| "too_large"

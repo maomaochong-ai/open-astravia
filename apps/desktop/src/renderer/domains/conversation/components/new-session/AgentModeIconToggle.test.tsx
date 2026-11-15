@@ -144,7 +144,7 @@ it("出厂默认模式（work）始终排在最前，与注册表顺序无关", 
 	expect(labels[0]).toBe("agentMode.work");
 });
 
-it("registry drives the rendered modes: a third mode appears without UI changes (ADR-0071)", async () => {
+it("registry drives the rendered modes: a third mode appears without UI changes", async () => {
 	mountWithConfig({ defaultAgentMode: "work" }, [
 		...REGISTRY_MODES,
 		{ id: "design", label: "Design", description: "", icon: "icon-[solar--palette-linear]" },

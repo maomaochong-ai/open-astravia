@@ -52,7 +52,7 @@ export interface Args {
 	 */
 	enableHostBridge?: boolean;
 	/**
-	 * Enable memory-mode (ADR-0009): MEMORY.md cross-session memory injected as a
+	 * Enable memory-mode: MEMORY.md cross-session memory injected as a
 	 * frozen system-prompt snapshot, the `memory` tool, session rollover replacing
 	 * the LLM compaction layer, and the dated work log. Only meaningful with
 	 * `--mode rpc`; im-gateway sets it for the Claw conversation cwd.

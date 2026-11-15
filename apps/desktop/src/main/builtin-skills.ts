@@ -82,7 +82,7 @@ export function getBuiltinSkillPaths(): string[] {
 }
 
 /**
- * 内置 Skill 的展示名 / 描述走宿主 catalog（`skills:builtin.<name>.*`，见 ADR-0031），
+ * 内置 Skill 的展示名 / 描述走宿主 catalog（`skills:builtin.<name>.*`），
  * 清单里的中文只作缺译回退。i18next 缺 key 时原样吐回 key，故以此判定。
  */
 export function builtinSkillText(name: string, field: "name" | "description", fallback?: string): string | undefined {

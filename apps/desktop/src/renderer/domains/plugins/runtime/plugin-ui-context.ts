@@ -85,7 +85,7 @@ export interface CreatePluginUiApiOptions {
 }
 
 /**
- * 面板状态的持久化键是工作空间 id，不是 cwd（ADR-0105 决策 5 / ADR-0111）。插件按会话
+ * 面板状态的持久化键是工作空间 id，不是 cwd（决策 5 /）。插件按会话
  * cwd 寻址，因此写入前翻成挂载中的工作空间键；普通对话两者同值，记录格式不变。
  *
  * 未显式给 cwd 时先看当前挂载的工作空间——Team 不写全局活动会话，只靠 activeSession
@@ -523,7 +523,7 @@ export function createPluginUiApi({
 		const hardIsolation = contribution.hardIsolation === true;
 		const namespacedId = `${plugin.id}:${contribution.id}`;
 		if (hardIsolation) {
-			// Register mode gate immediately so agent contributions stay stripped until toggle on (ADR-0041).
+			// Register mode gate immediately so agent contributions stay stripped until toggle on.
 			void window.astravia.plugins.registerModeGate(plugin.id);
 			// 会话恢复可能早于插件加载：若工作集已含本 action，立刻放行 contribution。
 			if (getDefaultStore().get(activeInputActionIdsAtom).has(namespacedId)) {

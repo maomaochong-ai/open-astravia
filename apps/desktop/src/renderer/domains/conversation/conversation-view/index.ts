@@ -1,5 +1,5 @@
 /**
- * Composable conversation view (ADR-0147): a headless feed, compound parts that
+ * Composable conversation view: a headless feed, compound parts that
  * place things, message templates for per-message structure, and registered
  * extensions for cross-cutting features.
  */

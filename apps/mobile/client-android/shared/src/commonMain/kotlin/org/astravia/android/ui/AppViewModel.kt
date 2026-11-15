@@ -184,7 +184,7 @@ class AppViewModel(
 
     /**
      * Pairs with the desktop in a scanned code: a whole pairing link, or just a connection
-     * code and password (ADR-0138), which is then looked up on the relay.
+     * code and password, which is then looked up on the relay.
      */
     fun connectDesktop(target: String) {
         val qr = InviteCode.parseQr(target) ?: return pair { container.mirror.pairWithCode(target) }
@@ -196,7 +196,7 @@ class AppViewModel(
 
     /**
      * Pairs with the desktop whose invite waits on the relay under a connection code
-     * (ADR-0136); from there it is the same as scanning its QR code.
+     * from there it is the same as scanning its QR code.
      */
     fun connectDesktopWithCode(code: String, password: String, relayBaseUrl: String? = null) =
         pair {

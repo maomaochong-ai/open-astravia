@@ -184,7 +184,7 @@ export class McpSettingsService {
 	}
 
 	/**
-	 * @param options.abilityVersion 市场能力的版本号；给出时写入能力安装台账（ADR-0049）。
+	 * @param options.abilityVersion 市场能力的版本号；给出时写入能力安装台账。
 	 * 用户手工添加的 server 不是市场能力，不传则不进台账。
 	 */
 	async upsert(

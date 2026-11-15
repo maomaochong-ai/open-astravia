@@ -3,7 +3,7 @@ import AstraviaKit
 import AstraviaRTC
 
 /// The paired computer's screen, full size on black, with the whole phone screen as its
-/// trackpad and the phone's keyboard as its keyboard (ADR-0140). The computer captures only while this page is open and the app is in
+/// trackpad and the phone's keyboard as its keyboard. The computer captures only while this page is open and the app is in
 /// front. When the picture cannot show, the page says why and what to do instead of
 /// staying black. The only page that turns to landscape; controls move to the sides
 /// there so the picture keeps the full height.

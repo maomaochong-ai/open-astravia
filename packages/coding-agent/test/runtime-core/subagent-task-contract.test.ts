@@ -6,7 +6,7 @@ import {
 
 describe("subagent task contract", () => {
 	const task = {
-		history: "The root mapped the existing session lifecycle and accepted ADR-0076.",
+		history: "The root mapped the existing session lifecycle and settled the follow-up behaviour.",
 		current_state: "The coordinator works, but child policy is still profile-specific.",
 		objective: "Expose one general child definition with inherited capabilities.",
 		scope: "Only composition/subagent definitions and their contract tests.",

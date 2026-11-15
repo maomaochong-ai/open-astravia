@@ -29,7 +29,7 @@ function settingEnabled(key: DemoToggleKey): boolean {
 }
 
 /**
- * 插件自绘的配置区。宿主不再提供设置页配置槽，开关就放在插件自己的面板里（ADR-0105）。
+ * 插件自绘的配置区。宿主不再提供设置页配置槽，开关就放在插件自己的面板里。
  */
 function DemoSettingsPanel() {
 	const store = getDemoSettingsStore();

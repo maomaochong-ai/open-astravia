@@ -4,7 +4,7 @@
  *
  * 放在 `apps/desktop` 而不是 `packages/theme-ui`：该包刻意不依赖 `@testing-library/*`
  * （包内既有 jsdom 用例一律 `react-dom/client` + `act`），面板级断言需要 testing-library
- * 才表达得清楚，因此按 ADR-0170 §1 用宿主里已配置好的环境跑同一个组件。
+ * 才表达得清楚，因此按既有的分层约定，用宿主里已配置好的环境跑同一个组件。
  */
 import { ManageSessionsSplashView, type ManageSessionsSplashViewProps } from "@astravia-org/theme-ui/project";
 import { render, screen, waitFor } from "@testing-library/react";

@@ -3,7 +3,7 @@ import { legacySidecarDirOf, manifestPathOf, sniffAstraviaDesignKind } from "./m
 
 /**
  * 把 v1 工作态（`x.astravia-design` manifest 文件 + `x.astravia-design-dir/` 旁挂目录）就地升级成 v2
- * 设计包（`x.astravia-design/` 目录，manifest 落在里面的 design.json）。见 ADR-0066。
+ * 设计包（`x.astravia-design/` 目录，manifest 落在里面的 design.json）。
  *
  * 步骤顺序保证任何一步中断都不丢内容，且重跑幂等：
  * 1. manifest 先复制进旁挂目录（此时两份都在，删谁都不致命）；

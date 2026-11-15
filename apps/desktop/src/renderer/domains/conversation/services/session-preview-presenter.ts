@@ -7,7 +7,7 @@ import type { HistoryEntry } from "@astravia/runtime-core";
  * 历史先画出来；第二段再取完整历史替换它。抽成独立函数是为了能直接测顺序与
  * 跳过条件，而不是靠渲染整个会话管理器去间接观察。
  *
- * 与 ADR-0147 的关系：那条约束禁止「在已显示的行上方插入历史」。这里是把整个列表
+ * 与既有约束的关系：那条约束禁止「在已显示的行上方插入历史」。这里是把整个列表
  * 替换成同一份历史的超集，行的 id 都来自 `entryId`，底部对齐的滚动位置不会错位。
  */
 export interface SessionPreviewStages {

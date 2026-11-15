@@ -27,9 +27,9 @@
 //     the Non-Goals in the spec)
 //   - inbound: text + image + file + post rich-text (downloaded to the
 //     inbox and surfaced as `@<path>` mentions); audio / video /
-//     merge_forward / sticker still get a hint reply and drop. See ADR-0008.
+//     merge_forward / sticker still get a hint reply and drop.
 //   - outbound media via SendAttachment (image upload with file fallback,
-//     file upload, caption as a follow-up text). See ADR-0008.
+//     file upload, caption as a follow-up text).
 //   - automatic reconnect via SDK default behavior (autoReconnect=true,
 //     unlimited retries, 2-minute interval)
 //
@@ -95,7 +95,7 @@ type Options struct {
 	// (image / file / post-embedded images). Each file is written under a
 	// per-day subdirectory via the shared inbox package. Empty disables
 	// inbound media handling — image/file/post images are dropped and only
-	// text survives, matching the text-only behavior from before ADR-0008.
+	// text survives, matching the text-only behavior.
 	InboxDir string
 }
 
@@ -245,13 +245,13 @@ func (t *Transport) Stop() error {
 
 // inboundMediaHint is the friendly reply sent for message types we still
 // don't support (audio / video / merge_forward / sticker ...). Image, file
-// and post are handled as of ADR-0008.
+// and post are handled.
 const inboundMediaHint = "暂不支持该消息类型（语音/视频/合并转发等），请发送文字、图片或文件。"
 
 // handleInbound translates a Feishu P2MessageReceiveV1 event into the
 // gateway's normalized InboundMessage and forwards it to the handler.
 //
-// Supported message types (ADR-0008):
+// Supported message types:
 //   - text:  plain text, @-mentions stripped.
 //   - image: the image_key is downloaded + persisted to the inbox and
 //     surfaced as an image Attachment.
@@ -659,7 +659,7 @@ func (t *Transport) ShowTyping(_ context.Context, _ string) error {
 }
 
 // SendAttachment uploads a local file to Feishu and sends it to the chat as
-// an image or generic file (ADR-0008).
+// an image or generic file.
 //
 //   - kind=image: upload via Im.Image.Create → send msg_type=image. If the
 //     upload fails (Feishu's image API only accepts jpg/png/webp/gif/bmp and

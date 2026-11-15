@@ -5,11 +5,11 @@ import { createCodingAgentInvokeSkillFeature } from "../src/resources/skills/inv
 import type { CodingAgentPromptResourceSource } from "../src/runtime-contracts/prompt-runtime.js";
 
 /**
- * ADR-0071 合同：工作模式是任务解释的先验，不影响能力面。
+ * 合同：工作模式是任务解释的先验，不影响能力面。
  * Skill 清单在任何模式下集合与顺序都完全一致（加载序），mode 只改变 modePrompt block；
  * invoke_skill 的可调用集合同样与模式无关。回归出「因模式改变清单」即违约。
  */
-describe("工作模式不影响 Skill 清单（ADR-0071）", () => {
+describe("工作模式不影响 Skill 清单", () => {
 	const skills = [skill("beta"), skill("alpha"), skill("gamma")];
 
 	it("system prompt 的 Skill 清单在各模式下集合与顺序一致，且保持加载序", () => {
@@ -85,7 +85,7 @@ function dependencies(skills: readonly Skill[], agentMode: string | undefined) {
 		settingsManager: { getPersonalization: () => ({ personaId: "", customPrompt: "" }) },
 		memory: undefined,
 		agentMode,
-		// 模式注册表归宿主所有（ADR-0071 修订）：这里注入一个最小解析器，验证的是
+		// 模式注册表归宿主所有（修订）：这里注入一个最小解析器，验证的是
 		// 「mode 只落到 modePrompt 上」这条不变量，与具体注册表内容无关。
 		resolveModePrompt: (mode: string | undefined) => (mode ? `prompt for ${mode}` : ""),
 	};

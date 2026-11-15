@@ -4,7 +4,7 @@ import { runAgentTurn } from "../src/engine/run-agent-turn.js";
 import type { AgentTurnRequest } from "../src/engine/types.js";
 
 /**
- * 中断挽救（ADR-0060 连带修复）：abort 发生在模型流中途时，provider 会在同一
+ * 中断挽救（连带修复）：abort 发生在模型流中途时，provider 会在同一
  * signal 上收尾并以 stopReason=aborted 的部分 assistant 消息 resolve result。
  * 引擎必须在宽限期内把它取回、放进 run 结果的 messages —— 否则已流出的内容
  * 既不发 assistant_message 事件也不落盘，UI 上先显示后被历史重放吞掉。

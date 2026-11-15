@@ -41,7 +41,7 @@ export function useRemoteMcpSectionModel({
 		}
 		setLoading(true);
 		setError(null);
-		// MCP 已并入统一的能力市场（ADR-0049），这里只取 type=mcp 的行再适配成 mcp.json 条目。
+		// MCP 已并入统一的能力市场，这里只取 type=mcp 的行再适配成 mcp.json 条目。
 		void fetchMarketAbilities(token)
 			.then((list) => {
 				setItems(list.filter((entry) => entry.type === "mcp").map(abilityToMarketMcpServer));

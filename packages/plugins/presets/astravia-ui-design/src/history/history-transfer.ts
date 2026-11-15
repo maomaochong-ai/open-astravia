@@ -1,5 +1,5 @@
 /**
- * 让版本历史跟着 `.astravia-design-share` 走（ADR-0069）。
+ * 让版本历史跟着 `.astravia-design-share` 走。
  *
  * 打包与还原都必须绕到 node 侧：宿主的递归列举跳过所有 `.` 开头的条目，`.history/`
  * 对导出代码完全不可见；而 git 对象是无扩展名的二进制，插件的 `readFile` 会按 utf8

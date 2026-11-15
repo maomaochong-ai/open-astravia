@@ -19,7 +19,7 @@ interface DefaultConversationSectionProps {
 	scrollParent: HTMLElement | null;
 	sessions: SidebarConversationInfo[];
 	/**
-	 * `sessions` 真正所属的 cwd。claw 过滤下会话来自 im-gateway 的 cwd（ADR-0005），
+	 * `sessions` 真正所属的 cwd。claw 过滤下会话来自 im-gateway 的 cwd，
 	 * 与 `project.cwd` 是两个物理目录；选中 / 重命名必须用这个值，否则按 project.cwd
 	 * 查不到会话，access 缺失后会错误地走交互式恢复而进不了只读视图。
 	 */

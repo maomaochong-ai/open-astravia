@@ -167,7 +167,7 @@ const abilityDetailRedirectRoute = createRoute({
 	},
 });
 
-/** 旧深链：/skills 一律并入能力页（ADR-0049）。 */
+/** 旧深链：/skills 一律并入能力页。 */
 const skillsRedirectRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/skills",
@@ -205,7 +205,7 @@ const settingsTabRoute = createRoute({
 		const section = typeof search.section === "string" ? search.section : undefined;
 		const h2 = typeof search.h2 === "string" ? search.h2 : undefined;
 		const nav = typeof search.nav === "string" ? search.nav : undefined;
-		// `<pluginId>/<viewId>`：设置壳内嵌打开某个插件工作区视图（ADR-0105）。
+		// `<pluginId>/<viewId>`：设置壳内嵌打开某个插件工作区视图。
 		const view = typeof search.view === "string" ? search.view : undefined;
 		return {
 			...(section ? { section } : {}),

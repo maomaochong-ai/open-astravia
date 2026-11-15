@@ -46,7 +46,7 @@ export const runtimeIsolationProbes: ProbeDefinition[] = [
 							severity: "critical",
 							summary: "插件可读写宿主 DOM（无 iframe/worker 沙箱）",
 							detail:
-								"ADR-0023 明确选择「可信 in-renderer」模型：插件与宿主同 document、同 React 单例。" +
+								"明确选择「可信 in-renderer」模型：插件与宿主同 document、同 React 单例。" +
 								" 任意已安装插件可挂载监听器、读取输入框、注入 UI、窃取会话可见内容。" +
 								" 这不是实现疏漏，而是信任模型的直接后果；不可信第三方不可上架。",
 						};

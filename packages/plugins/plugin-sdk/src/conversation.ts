@@ -37,7 +37,7 @@ export type ConversationEvent =
 	| { type: "conversation-changed"; conversation: ConversationState }
 	| { type: "queue-changed"; queue: ConversationQueueState };
 
-/** 会话输入队列快照（ADR-0060）：排队中的 prompt 与暂停状态。 */
+/** 会话输入队列快照：排队中的 prompt 与暂停状态。 */
 export interface ConversationQueueState {
 	/** abort/error 后队列暂停；恢复由用户在宿主 UI 操作。 */
 	paused: boolean;
@@ -45,7 +45,7 @@ export interface ConversationQueueState {
 }
 
 /**
- * sendPrompt 的回执（ADR-0060）。streaming 中发送不再静默排队：返回 `queued` 与
+ * sendPrompt 的回执。streaming 中发送不再静默排队：返回 `queued` 与
  * 队列条目 id，插件可结合 `queue-changed` 事件呈现「已排队/已发出/被移除」状态。
  */
 export interface SendPromptResult {

@@ -18,7 +18,7 @@ export interface ConversationRowDecoratorProps {
 
 /**
  * A cross-cutting feature registered by a component placed anywhere under
- * `Conversation.Root` (ADR-0147). Registering never changes the component tree's
+ * `Conversation.Root`. Registering never changes the component tree's
  * shape, so adding or removing an extension does not remount the list.
  */
 export interface ConversationExtension {

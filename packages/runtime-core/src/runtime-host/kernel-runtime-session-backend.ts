@@ -257,7 +257,7 @@ export class RuntimeSession {
 		} catch (error) {
 			// prompt 在进入 turn 之前失败（模型选择或扩展预处理等）时，
 			// 用户消息不会经 TurnPipeline 落盘。补一条 custom entry 保住事实，
-			// 历史可查（ADR-0060）。仅空闲态写入，避免与进行中 turn 的追加冲突。
+			// 历史可查。仅空闲态写入，避免与进行中 turn 的追加冲突。
 			if (this.session.state === "idle") {
 				try {
 					await this.appendEntry("prompt_rejected", {

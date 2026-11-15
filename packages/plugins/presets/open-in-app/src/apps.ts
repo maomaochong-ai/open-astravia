@@ -2,7 +2,7 @@ import type { PluginExternalApplication, PluginExternalApplicationKind } from "@
 
 /**
  * 顶栏菜单的纯逻辑：只做「什么能进菜单、按什么顺序、图标怎么兜底」，
- * 平台探测与启动全部由宿主 `ctx.shell` 负责（见 ADR-0158 第三步）。
+ * 平台探测与启动全部由宿主 `ctx.shell` 负责（第三步）。
  */
 
 /** 每个分类的兜底图标：应用自己没图标时用它，至少还能认出「这是编辑器还是终端」。 */

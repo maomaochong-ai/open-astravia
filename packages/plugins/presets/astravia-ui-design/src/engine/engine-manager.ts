@@ -1,5 +1,5 @@
 /**
- * Shared design-engine lifecycle (ADR-0053/0054):
+ * Shared design-engine lifecycle:
  *
  * 1. Migrate the legacy ~/.astravia/design-engine directory into this plugin's
  *    data namespace, then materialize the engine template there via `node -e`.
@@ -26,7 +26,7 @@ export type EngineProgress =
 	| { phase: "checking" }
 	| { phase: "materializing" }
 	| { phase: "installing"; outputTail: string }
-	/** 这份设计自己声明的第三方依赖（ADR-0068），与引擎依赖分开报：等的是两件事。 */
+	/** 这份设计自己声明的第三方依赖，与引擎依赖分开报：等的是两件事。 */
 	| { phase: "installing-design"; outputTail: string }
 	| { phase: "starting" };
 
@@ -249,12 +249,12 @@ async function installDependencies(
 }
 
 /**
- * 把第三方包装进这一份设计（ADR-0068）。
+ * 把第三方包装进这一份设计。
  *
  * cwd 是设计包目录本身，所以 npm 会就地改写 `x.astravia-design/package.json` 的 dependencies
  * 并写出 lock——两者都是设计源码，跟着设计走。装进去的 node_modules 是生成物。
  *
- * 不带 `--ignore-scripts`：与用户在自己项目里装依赖同一个信任层级，见 ADR-0068。
+ * 不带 `--ignore-scripts`：与用户在自己项目里装依赖同一个信任层级，。
  */
 export async function installDesignDependencies(
 	ctx: PluginContext,
@@ -286,7 +286,7 @@ export async function ensureDesignDependencies(
 	});
 }
 
-/** 老设计（ADR-0068 之前建的）没有 package.json，装第一个包时补上。 */
+/** 老设计（之前建的）没有 package.json，装第一个包时补上。 */
 async function ensureDesignPackageFile(ctx: PluginContext, designDir: string): Promise<void> {
 	if ((await ctx.fs.stat(`${designDir}/${PACKAGE_FILE}`)) !== null) return;
 	const base = designDir.replaceAll("\\", "/").split("/").pop() ?? "design";

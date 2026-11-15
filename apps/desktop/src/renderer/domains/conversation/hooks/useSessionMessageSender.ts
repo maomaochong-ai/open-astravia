@@ -329,7 +329,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			if (!streaming && stagedInput) {
 				optimisticUserMsgId = stagedInput.optimisticMessage.id;
 			} else if (!streaming) {
-				// 失败重发去重（ADR-0060）：上一轮在 prompt 前置阶段就失败、什么都没产出，
+				// 失败重发去重：上一轮在 prompt 前置阶段就失败、什么都没产出，
 				// 且本次原样重发时，先 replaceLastUserMessage 回退再发，避免 jsonl 双份
 				// user 记录、也避免下一轮模型上下文里出现两条相同消息。
 				// 判据见 planFailedResendRollback——后端是硬删子树，收不紧会连带销毁
@@ -362,7 +362,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			// auto-title or the next loadSessions will overwrite as appropriate.
 			const sp = session.sessionPath;
 			if (!streaming && sp) {
-				// ADR-0007：「对话」session 的 cwd 是默认项目根下的 per-session 子目录，
+				// 「对话」session 的 cwd 是默认项目根下的 per-session 子目录，
 				// 但侧边栏 sessionsMap / 默认列表都挂在项目根 bucket 上。乐观行必须落到根
 				// bucket，否则既不在「会话」列表显示，auto-title 的 applyLocalRename(root,…)
 				// 也会因 bucket 不匹配而落空，导致改名要等下一次磁盘刷新才生效。
@@ -522,7 +522,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			// Plugin-owned attachment data stays structured until the coding-agent
 			// input boundary. Legacy metadata/instructions remain supported.
 			// 插件 sendPrompt 不消费：promptAttachment 是用户为下一条手动消息挂的，
-			// 被插件静默发送吃掉会既丢附件又让用户困惑（ADR-0060）。
+			// 被插件静默发送吃掉会既丢附件又让用户困惑。
 			const promptAttachment = options?.source === "plugin" ? null : pluginStore.get(promptAttachmentAtom);
 			if (promptAttachment) {
 				if (promptAttachment.metadata) {
@@ -550,7 +550,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				promptReq.metadata = { ...promptReq.metadata, pluginPromptContexts };
 			}
 			recordInputActionsUsed(usedInputActions);
-			// 恒置 followUp（ADR-0060）：streaming 中入 kernel 队列、立即收 queued 回执；
+			// 恒置 followUp：streaming 中入 kernel 队列、立即收 queued 回执；
 			// 空闲时 kernel 忽略该字段直接开 turn。即便 isStreamingAtom 与主进程真实状态
 			// 失步，最坏结果也是入队而非 SESSION_BUSY 丢消息。
 			promptReq.streamingBehavior = options?.streamingBehavior ?? "followUp";
@@ -657,7 +657,7 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				}
 				sendResult = { status: "failed", error: { message } };
 			}
-			// ADR-0007：归一回项目根 bucket，否则「对话」session 刷的是没用的子目录桶，
+			// 归一回项目根 bucket，否则「对话」session 刷的是没用的子目录桶，
 			// 侧边栏默认列表（挂在根 bucket）拿不到这一轮的对账更新。
 			void loadSessions(conversationBucketCwd(session.cwd, defaultConversationCwdRef.current)).catch((err) => {
 				console.warn("[useSessionManager.sendMessage] background session list refresh failed", err);

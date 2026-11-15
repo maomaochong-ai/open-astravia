@@ -41,7 +41,7 @@ describe("resolveActiveToolNames", () => {
 		]);
 	});
 
-	it("激活结果保持注册序，且可重复（提示词前缀缓存的稳定性前提，ADR-0071）", () => {
+	it("激活结果保持注册序，且可重复（提示词前缀缓存的稳定性前提）", () => {
 		const tools = [tool("b", ["cli"]), tool("a", ["cli"]), tool("c", ["cli"])];
 		const first = resolveActiveToolNames("cli", tools, new Set());
 		expect(first).toEqual(["b", "a", "c"]);

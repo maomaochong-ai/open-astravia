@@ -183,7 +183,7 @@ func runStart(args []string) int {
 		HandshakeTimeout: cfg.HostClient.HandshakeTimeout,
 		CloseTimeout:     cfg.HostClient.CloseTimeout,
 		// Standalone `start` mode is also wechat-aware: same im_send_attachment
-		// pipeline applies (see ADR-0006). Cheap to always enable.
+		// pipeline applies. Cheap to always enable.
 		EnableHostBridge: true,
 	})
 	pool := hostclient.NewProcessPool(hostClient, cfg.HostClient.PoolMaxSize)

@@ -35,7 +35,7 @@ type Router struct {
 	pool            *hostclient.ProcessPool
 	conversationCwd string
 	// datedCwd, when true, runs each agent in a per-day subdirectory
-	// <conversationCwd>/<YYYY-MM-DD>/ (the dated work log, ADR-0009) instead of
+	// <conversationCwd>/<YYYY-MM-DD>/ (the dated work log) instead of
 	// the conversation root. Set via SetDatedCwd by the embedded host runtime.
 	datedCwd bool
 
@@ -143,7 +143,7 @@ func convKey(userID, chatID string) string {
 }
 
 // processConversation drains one queue, implementing the live-turn state
-// machine (ADR-0010). A message received while no turn is active (IDLE) is
+// machine. A message received while no turn is active (IDLE) is
 // either a slash-command (handled inline, no turn) or the seed of a new turn.
 // Messages that arrive while a turn is live fold into it — merged into the
 // initial prompt during the acquire window, or steered into the running agent
@@ -189,7 +189,7 @@ func (r *Router) processConversation(ctx context.Context, queue chan transport.I
 // was a slash-command (already executed, reply sent); handled=false means it's
 // a normal prompt that should seed or fold into a turn. Slash-commands are only
 // recognized in IDLE — messages folded into a live turn are never dispatched
-// here (ADR-0010), they go to the agent as plain text.
+// here, they go to the agent as plain text.
 func (r *Router) tryCommand(ctx context.Context, msg transport.InboundMessage) (bool, error) {
 	env := command.Env{
 		UserID:          msg.UserID,
@@ -210,7 +210,7 @@ func (r *Router) tryCommand(ctx context.Context, msg transport.InboundMessage) (
 	return !res.NotACommand, nil
 }
 
-// runTurn drives one live turn (ADR-0010): look up the (user, chat) session,
+// runTurn drives one live turn: look up the (user, chat) session,
 // acquire a HostSession, send the seed prompt (merging any messages that
 // arrived during the acquire window), run the Bridge in its own goroutine, and
 // fold any further inbound messages into the running agent via steer until the
@@ -246,7 +246,7 @@ func (r *Router) runTurn(
 		})
 	}
 
-	// Acquire window (ADR-0010): cold-start latency is a free coalescing
+	// Acquire window: cold-start latency is a free coalescing
 	// window — no debounce timer. Drain whatever already queued during Acquire
 	// and merge it into the seed prompt so a burst of messages becomes one.
 	prompt := buildPromptMessage(seed)
@@ -281,7 +281,7 @@ drain:
 	br.SetHostResponder(func(rctx context.Context, cmd hostclient.Command) error {
 		return session.SendNoReply(rctx, cmd)
 	})
-	// memory-mode rollover (ADR-0009): when the agent rolls the session into a
+	// memory-mode rollover: when the agent rolls the session into a
 	// fresh .jsonl, repoint this chat's routing state at the new path so the
 	// next message resumes the rolled-over session, not the archived one.
 	br.SetPathChangeHandler(func(newPath string) {
@@ -352,7 +352,7 @@ func discardRestartRequiredSession(acquired *hostclient.Acquired, err error) boo
 	return true
 }
 
-// SetDatedCwd toggles per-day run directories (ADR-0009). Called by the
+// SetDatedCwd toggles per-day run directories. Called by the
 // embedded host runtime for the Claw conversation; left off for standalone
 // dev mode and tests.
 func (r *Router) SetDatedCwd(enabled bool) { r.datedCwd = enabled }
@@ -376,7 +376,7 @@ func (r *Router) agentCwd() (string, error) {
 // buildPromptMessage assembles the text the agent sees. Mirrors desktop-app's
 // `mentionedFile` convention: each attachment becomes an `@<absolute-path>`
 // line prepended to the user's text. Agent reads each path via its own Read
-// tool — `resizeImageBuffer` handles image sizing automatically, see ADR-0006.
+// tool — `resizeImageBuffer` handles image sizing automatically,.
 //
 // Returns msg.Text unchanged when no attachments are present so plain text
 // flows behave identically to before.

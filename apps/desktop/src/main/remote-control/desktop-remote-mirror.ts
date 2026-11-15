@@ -108,7 +108,7 @@ export interface DesktopRemoteMirrorOptions {
 	readonly emit: (name: RemoteEventName, payload?: unknown, sessionId?: string) => Promise<void>;
 	readonly deviceStatus: () => RemoteDeviceStatus;
 	readonly saveUpload: RemoteUploadWriter;
-	/** Lists and reads files for the phone, relative to a session's working directory (ADR-0139). */
+	/** Lists and reads files for the phone, relative to a session's working directory. */
 	readonly files: Pick<RemoteFiles, "list" | "stat" | "read">;
 	/** Rename and delete exactly as the sidebar does, cleanup included. */
 	readonly sessionCommands: Pick<DesktopSessionCommands, "rename" | "delete">;

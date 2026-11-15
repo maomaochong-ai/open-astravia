@@ -1,5 +1,5 @@
 /**
- * 自动化（定时任务）的共享数据模型，main / preload / renderer 共用一份定义（ADR-0127）。
+ * 自动化（定时任务）的共享数据模型，main / preload / renderer 共用一份定义。
  *
  * 这里只放结构与纯函数：调度、执行、存储分别在 main/scheduler 下实现。
  */
