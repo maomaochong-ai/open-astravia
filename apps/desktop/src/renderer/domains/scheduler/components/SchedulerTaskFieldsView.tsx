@@ -232,7 +232,7 @@ export function SchedulerTaskFieldsView({
 									rows={4}
 									aria-label={t("form.notifyTemplate")}
 									onChange={(event) => onChange({ template: event.target.value })}
-									className="w-full resize-y rounded-md border border-border/50 bg-background/60 px-2.5 py-2 font-mono text-[12px] text-foreground focus:outline-none"
+									className="w-full resize-y rounded-md bg-muted px-2.5 py-2 font-mono text-[12px] text-foreground hover:bg-accent focus-visible:border focus-visible:border-primary/50 focus:outline-none"
 								/>
 							</div>
 						</FieldRow>

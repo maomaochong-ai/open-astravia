@@ -1,3 +1,4 @@
+import type { PresetProviderModelTestState } from "@astravia-org/theme-ui/settings";
 import type { ModelsConfigData, PresetError, PresetProviderInfo } from "@preload/api.js";
 import { confirmDialogAtom } from "@shared/store/atoms";
 import { showToast } from "@shared/store/toast-atoms";
@@ -12,6 +13,7 @@ type ModelCost = { input: number; output: number; cacheRead: number; cacheWrite:
 type CostLabelKey = "costInput" | "costCacheRead" | "costCacheWrite" | "costOutput";
 
 export interface PresetProviderModelRow {
+	reasoningLevels?: readonly string[];
 	id: string;
 	name: string;
 	contextWindow?: number;
@@ -62,6 +64,10 @@ export interface PresetProvidersSectionLabels {
 	toggleProvider: (provider: string) => string;
 	/** 本机代理改端口时的输入框名称。 */
 	port: string;
+	/** 逐行连通测试的按钮名称与结果提示。 */
+	testModel: (model: string) => string;
+	testOk: string;
+	testFailed: string;
 	apiKeyDirect: (provider: string) => string;
 	apiKeyPlaceholder: string;
 	encryptedApiKeyPlaceholder: string;
@@ -96,6 +102,9 @@ export interface PresetProvidersSectionModel {
 	onToggleEnabled: (row: PresetProviderRow, enabled: boolean) => Promise<void>;
 	/** 本机代理：改端口即重新启用，主机固定回环。 */
 	onSetPort: (row: PresetProviderRow, port: string) => Promise<void>;
+	/** 逐行测试某个模型能否连通。 */
+	onTestModel: (rowId: string, model: string) => Promise<void>;
+	modelTestStates: Readonly<Record<string, PresetProviderModelTestState>>;
 	onRefreshModels: (row: PresetProviderRow) => Promise<void>;
 	onCopyApiKey: (row: PresetProviderRow) => Promise<void>;
 	/** 手动重拉公共目录(models.dev)。 */
@@ -382,6 +391,29 @@ export function usePresetProvidersSectionModel({
 
 	// 移除会连同本地保存的 Key 和模型配置一起删掉，且无法撤销，所以先二次确认；
 	// 真正执行放在确认回调里，点「取消」什么都不会发生。
+	/** 连通测试状态；同一模型并发只保留一次请求，结果留在行上直到下次测试。 */
+	const [modelTestStates, setModelTestStates] = useState<Record<string, PresetProviderModelTestState>>({});
+	const testModel = useCallback(async (rowId: string, model: string): Promise<void> => {
+		const key = `${rowId}/${model}`;
+		setModelTestStates((prev) =>
+			prev[key]?.status === "testing" ? prev : { ...prev, [key]: { status: "testing" } },
+		);
+		try {
+			const result = await window.astravia.models.probe({ provider: rowId, model });
+			setModelTestStates((prev) => ({
+				...prev,
+				[key]: result.ok
+					? { status: "ok", ...(result.message ? { message: result.message } : {}) }
+					: { status: "fail", ...(result.error ? { message: result.error } : {}) },
+			}));
+		} catch (err) {
+			setModelTestStates((prev) => ({
+				...prev,
+				[key]: { status: "fail", message: err instanceof Error ? err.message : String(err) },
+			}));
+		}
+	}, []);
+
 	const toggleEnabled = useCallback(
 		async (row: PresetProviderRow, enabled: boolean): Promise<void> => {
 			const provider = config.providers[row.id];
@@ -436,6 +468,9 @@ export function usePresetProvidersSectionModel({
 			remove: t("remove"),
 			enable: t("enable"),
 			port: t("port"),
+			testModel: (model: string) => t("testModel", { model }),
+			testOk: t("testOk"),
+			testFailed: t("testFailed"),
 			toggleProvider: (provider: string) => t("toggleProvider", { provider }),
 			apiKeyDirect: (provider: string) => t("apiKeyDirect", { provider }),
 			apiKeyPlaceholder: t("presetApiKeyPlaceholder"),
@@ -460,6 +495,8 @@ export function usePresetProvidersSectionModel({
 		onRemove: remove,
 		onToggleEnabled: toggleEnabled,
 		onSetPort: setPresetPort,
+		onTestModel: testModel,
+		modelTestStates,
 		onRefreshModels: refresh,
 		onCopyApiKey: copyApiKey,
 		refreshingCatalog,
@@ -477,6 +514,7 @@ function toModelRow(
 		contextWindow: model.contextWindow,
 		hasVision: model.input?.includes("image") ?? false,
 		hasReasoning: Boolean(model.reasoning),
+		...(model.reasoningLevels && model.reasoningLevels.length > 0 ? { reasoningLevels: model.reasoningLevels } : {}),
 		price: formatPrice(model.cost, t),
 	};
 }

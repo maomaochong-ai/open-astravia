@@ -999,7 +999,7 @@
   "test": "测试连接",
   "testing": "测试中…",
   "tested": "测试通过",
-  "testFailed": "测试失败",
+  "testFailed": "连接失败",
   "error": "错误",
   "connected": "已连接",
   "disconnected": "未连接",
@@ -2159,7 +2159,7 @@
   "setModelOk": "已设为 {{provider}} / {{model}}",
   "clearedModel": "已清除模型设定",
   "pleaseSelectModel": "请先选择模型",
-  "testOk": "可连通",
+  "testOk": "连通正常",
   "testUnknown": "未知错误",
   "testPass": "测试通过",
   "testFail": "测试失败",
@@ -2413,5 +2413,6 @@
   "toggleProvider": "启用 {{provider}}",
   "invalidPort": "端口无效",
   "invalidPortHint": "请填 1–65535 之间的整数端口。",
-  "port": "端口"
+  "port": "端口",
+  "testModel": "测试 {{model}} 是否能连通"
 }

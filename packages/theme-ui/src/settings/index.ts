@@ -146,6 +146,7 @@ export type {
 export { PetSettingsView } from "./PetSettingsView";
 export type {
 	PresetProviderModelRowView,
+	PresetProviderModelTestState,
 	PresetProviderModelsListViewLabels,
 	PresetProviderModelsListViewProps,
 } from "./PresetProviderModelsListView";

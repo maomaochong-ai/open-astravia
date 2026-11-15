@@ -1,6 +1,7 @@
 import { ProviderIcon } from "@astravia-org/theme-ui/shared";
 import { PresetProviderRowView } from "@astravia-org/theme-ui/settings";
 import { PresetProviderModelsList } from "./PresetProviderModelsList";
+import type { PresetProviderModelTestState } from "@astravia-org/theme-ui/settings";
 import type {
 	PresetProviderRow as PresetProviderRowModel,
 	PresetProvidersSectionLabels,
@@ -18,6 +19,8 @@ export function PresetProviderRow({
 	onRemove,
 	onToggleEnabled,
 	onSetPort,
+	onTestModel,
+	testStates,
 	onRefreshModels,
 	onCopyApiKey,
 }: {
@@ -32,6 +35,8 @@ export function PresetProviderRow({
 	onRemove: (row: PresetProviderRowModel) => Promise<void>;
 	onToggleEnabled: (row: PresetProviderRowModel, enabled: boolean) => Promise<void>;
 	onSetPort: (row: PresetProviderRowModel, port: string) => Promise<void>;
+	onTestModel: (rowId: string, model: string) => Promise<void>;
+	testStates: Readonly<Record<string, PresetProviderModelTestState>>;
 	onRefreshModels: (row: PresetProviderRowModel) => Promise<void>;
 	onCopyApiKey: (row: PresetProviderRowModel) => Promise<void>;
 }): JSX.Element {
@@ -52,7 +57,18 @@ export function PresetProviderRow({
 			onRefreshModels={() => void onRefreshModels(row)}
 			onCopyApiKey={() => void onCopyApiKey(row)}
 			icon={<ProviderIcon symbol={row.icon} className="h-7 w-7 shrink-0" />}
-			modelsList={<PresetProviderModelsList row={row} labels={labels} />}
+			modelsList={
+				<PresetProviderModelsList
+					labels={labels}
+					row={row}
+					{...(onTestModel ? { onTestModel: (model: string) => void onTestModel(row.id, model) } : {})}
+					{...(testStates ? { testStates: Object.fromEntries(
+						Object.entries(testStates)
+							.filter(([key]) => key.startsWith(`${row.id}/`))
+							.map(([key, value]) => [key.slice(row.id.length + 1), value]),
+					) } : {})}
+				/>
+			}
 		/>
 	);
 }

@@ -1000,7 +1000,7 @@
   "test": "Test connection",
   "testing": "Testing…",
   "tested": "Test passed",
-  "testFailed": "Test failed",
+  "testFailed": "Connection failed",
   "error": "Error",
   "connected": "Connected",
   "disconnected": "Disconnected",
@@ -2160,7 +2160,7 @@
   "setModelOk": "Set to {{provider}} / {{model}}",
   "clearedModel": "Model setting cleared",
   "pleaseSelectModel": "Please select a model first",
-  "testOk": "Connection OK",
+  "testOk": "Reachable",
   "testUnknown": "Unknown error",
   "testPass": "Test passed",
   "testFail": "Test failed",
@@ -2414,5 +2414,6 @@
   "toggleProvider": "Enable {{provider}}",
   "invalidPort": "Invalid port",
   "invalidPortHint": "Enter a whole number between 1 and 65535.",
-  "port": "Port"
+  "port": "Port",
+  "testModel": "Test {{model}}"
 }

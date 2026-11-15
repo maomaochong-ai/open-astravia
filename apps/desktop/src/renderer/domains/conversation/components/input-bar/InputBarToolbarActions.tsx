@@ -61,10 +61,13 @@ export function InputBarLeadingActions({ model }: { readonly model: InputBarMode
 						<InputBarExecutionModeAction key={tool.kind} visible={!slashOpen} model={tool.model} />
 					))}
 			{/*
-			 * 激活胶囊（技能、上下文、子代理…）自成一组：它前面同样保留一条竖线，
+			 * 激活胶囊（技能、上下文、子代理…）自成一组：它前面保留一条竖线，
 			 * 否则胶囊紧贴执行模式控件，看起来像同一组的另一颗按钮。
+			 *
+			 * 执行模式已移进模型菜单时这里没有左侧兄弟，竖线会挂在行首变成一根悬空短线，
+			 * 因此只有工具栏里确实渲染了前一组控件时才画。
 			 */}
-			{model.activeActions.length > 0 && !slashOpen ? <InputBarToolbarDivider /> : null}
+			{!menuFooter && model.activeActions.length > 0 && !slashOpen ? <InputBarToolbarDivider /> : null}
 			<InputBarActiveActions
 				items={model.activeActions}
 				removeHint={model.labels.capsule.removeDefault}

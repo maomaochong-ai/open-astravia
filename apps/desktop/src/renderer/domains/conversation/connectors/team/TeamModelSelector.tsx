@@ -11,7 +11,7 @@ import type { ModelConfigurationGroup } from "@astravia-org/theme-ui/chat";
 import { fmtMultiplier } from "@astravia-org/theme-ui/shared/MultiplierTag";
 import { agentAvatarUrl } from "@shared/agent-teams/agent-avatar";
 import { modelCatalog } from "@shared/store/model-catalog";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveTeamMemberModel } from "../../../../../shared/agent-team-member-model";
 import type { TeamChatActions, TeamComposerViewModel } from "./teamChatModel";
@@ -39,7 +39,16 @@ export function TeamModelSelector({
 	}, [open]);
 	const rememberModel = useSetAtom(selectedModelAtom);
 	const setSupportsImages = useSetAtom(modelSupportsImagesAtom);
-	const catalogOption = options.find((option) => option.key === model.modelKey);
+	// 模型数量可能上百，按 key 建一次索引，避免每次渲染、每个行回调都线性扫一遍。
+	const optionsByKey = useMemo(
+		() => new Map(options.map((option) => [option.key, option] as const)),
+		[options],
+	);
+	const lookup = useCallback(
+		(key?: string | null) => (key ? optionsByKey.get(key) : undefined),
+		[optionsByKey],
+	);
+	const catalogOption = lookup(model.modelKey);
 	useEffect(() => {
 		if (options.length > 0) setSupportsImages(catalogOption?.supportsImage ?? false);
 	}, [options.length, catalogOption, setSupportsImages]);
@@ -64,7 +73,7 @@ export function TeamModelSelector({
 	const selectDefault = useCallback(
 		(key: string) =>
 			updateDefault(async () => {
-				await actions.selectModel(key, resolveReasoning(options.find((option) => option.key === key))?.default);
+				await actions.selectModel(key, resolveReasoning(lookup(key))?.default);
 				rememberModel(key);
 				persistSelectedModel(key);
 			}),
@@ -81,9 +90,9 @@ export function TeamModelSelector({
 	const preferences = state?.models;
 	const fixedCount = model.members.filter((member) => preferences?.[member.id]).length;
 	const nameFor = (key?: string | null) =>
-		options.find((option) => option.key === key)?.displayName ?? key ?? t("common:modelSelect.placeholder");
+		lookup(key)?.displayName ?? key ?? t("common:modelSelect.placeholder");
 	const unavailable = (key?: string | null) =>
-		Boolean(key && options.length > 0 && !options.some((option) => option.key === key));
+		Boolean(key && options.length > 0 && !optionsByKey.has(key));
 	const triggerLabel = !preferences
 		? t("common:modelSelect.placeholder")
 		: fixedCount > 0
@@ -93,7 +102,7 @@ export function TeamModelSelector({
 
 	const levelLabel = (level: string) => t(`common:modelSelect.reasoningLevel.${level}`, { defaultValue: level });
 	const reasoningFor = (key: string | undefined, value: string | undefined) => {
-		const resolved = resolveReasoning(options.find((option) => option.key === key));
+		const resolved = resolveReasoning(lookup(key));
 		return resolved ? (value ?? resolved.default) : undefined;
 	};
 	const groups = new Map<string, { group: ModelConfigurationGroup; levels: Set<string>; fixed: number }>();
@@ -167,7 +176,7 @@ export function TeamModelSelector({
 	const pinned = selectedMember ? preferences?.[selectedMember.id] : undefined;
 	const selectedKey = selectedMember ? pinned?.modelKey : (model.modelKey ?? undefined);
 	const selectedReasoning = selectedMember ? pinned?.reasoning : model.reasoning;
-	const resolved = resolveReasoning(options.find((option) => option.key === selectedKey));
+	const resolved = resolveReasoning(lookup(selectedKey));
 	const levels = !resolved
 		? []
 		: resolved.levels.includes("none")
@@ -237,7 +246,7 @@ export function TeamModelSelector({
 						defaultBadge: t("common:modelSelect.defaultBadge"),
 						levelLabel,
 						multiplierLabel: (option) => {
-							const multiplier = options.find((candidate) => candidate.key === option.key)?.multiplier;
+							const multiplier = lookup(option.key)?.multiplier;
 							return multiplier
 								? multiplier.input === 0 && multiplier.output === 0
 									? t("common:modelSelect.free")

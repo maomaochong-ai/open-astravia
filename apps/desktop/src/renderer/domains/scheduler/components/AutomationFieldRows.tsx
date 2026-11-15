@@ -1,3 +1,4 @@
+import { SELECT_TRIGGER_CLASS } from "@astravia-org/ui";
 import { MotionSelect } from "@astravia-org/theme-ui/settings";
 import { cn } from "@astravia-org/ui/utils";
 import type { ReactNode } from "react";
@@ -63,8 +64,14 @@ export function RowSelect({
 	);
 }
 
-export const rowInputClass =
-	"h-7 rounded-md border border-border/50 bg-background/60 px-2 text-[12px] text-foreground focus:outline-none [color-scheme:light_dark]";
+/**
+ * 行内输入框：与设置页的下拉用同一套「无边框 + 底色 + 悬停加深」皮肤，
+ * 否则同一张卡片里下拉是填充面、输入框是描边面，看起来像两代控件。
+ */
+export const rowInputClass = cn(
+	"h-7 rounded-md px-2 text-[12px] text-foreground [color-scheme:light_dark]",
+	SELECT_TRIGGER_CLASS,
+);
 
 export function chipClass(selected: boolean): string {
 	return cn(

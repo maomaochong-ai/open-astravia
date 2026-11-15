@@ -36,6 +36,9 @@ const labels: PresetProvidersSectionLabels = {
 	copyApiKey: "Copy API key",
 	toggleProvider: (provider: string) => `Enable ${provider}`,
 	port: "Port",
+	testModel: (model: string) => `Test ${model}`,
+	testOk: "Reachable",
+	testFailed: "Connection failed",
 };
 
 const row: PresetProviderRow = {
