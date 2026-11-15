@@ -36,7 +36,11 @@ export function InputBarLeadingActions({ model }: { readonly model: InputBarMode
 			{model.routing ? (
 				<InputBarMention model={model.routing} disabled={!model.hasSession} visible={!slashOpen} />
 			) : null}
-			{commands ? <InputBarToolbarDivider /> : null}
+			{/*
+			 * 分割线只在**下一组控件真的渲染**时才画：面板收起时附件按钮整组隐藏，
+			 * 这条线会变成加号右边一根悬空的竖线（默认态只剩「添加」一个按钮时尤其明显）。
+			 */}
+			{commands?.slashOpen ? <InputBarToolbarDivider /> : null}
 			{/* 两组控件保持挂载、只切 display，避免展开动画首帧重建复杂 selector。 */}
 			<InputBarAttachmentActions
 				disabled={!model.hasSession}

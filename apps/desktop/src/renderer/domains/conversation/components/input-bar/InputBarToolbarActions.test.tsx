@@ -60,6 +60,31 @@ describe("输入栏工具栏的竖线", () => {
 		expect(dividerCount(container)).toBe(1);
 	});
 
+	it("面板收起（默认态）时，添加按钮右边不再留一根悬空竖线", () => {
+		const { container } = render(
+			<ModelMenuFooterContext.Provider value={FOOTER}>
+				<InputBarLeadingActions
+					model={model({ commands: { slashOpen: false, onOpen: () => undefined } as never })}
+				/>
+			</ModelMenuFooterContext.Provider>,
+		);
+
+		// 回归：附件按钮此时整组隐藏，分割线若照画就是加号右侧一根孤立竖线。
+		expect(dividerCount(container)).toBe(0);
+	});
+
+	it("面板展开时附件按钮出现，分割线才补上", () => {
+		const { container } = render(
+			<ModelMenuFooterContext.Provider value={FOOTER}>
+				<InputBarLeadingActions
+					model={model({ commands: { slashOpen: true, onOpen: () => undefined } as never })}
+				/>
+			</ModelMenuFooterContext.Provider>,
+		);
+
+		expect(dividerCount(container)).toBe(1);
+	});
+
 	it("没有激活胶囊时也不画分隔线", () => {
 		const { container } = render(
 			<ModelMenuFooterContext.Provider value={null}>
