@@ -10,6 +10,7 @@ import {
 	type AstraviaDesignCanvasViewport,
 	type AstraviaDesignFrameEntry,
 	type AstraviaDesignManifest,
+	type FrameMeta,
 } from "./manifest-types";
 import { blankFrameSource } from "./scaffold";
 
@@ -30,6 +31,11 @@ function finiteNumber(value: unknown): value is number {
 	return typeof value === "number" && Number.isFinite(value);
 }
 
+/** 窄化出完整 FrameMeta：isRecord 只到 Record<string, unknown>，不窄化字段类型。 */
+function isFrameMeta(value: unknown): value is FrameMeta {
+	return isRecord(value) && finiteNumber(value.width) && finiteNumber(value.height) && typeof value.title === "string";
+}
+
 /** Converts externally edited manifest data into the complete internal frame contract. */
 function recoverFrameEntry(value: unknown): RecoveredFrameEntry | null {
 	if (!isRecord(value)) return null;
@@ -40,11 +46,7 @@ function recoverFrameEntry(value: unknown): RecoveredFrameEntry | null {
 
 	const title = typeof value.title === "string" ? value.title : value.id;
 	const rawMeta = value.meta;
-	const hasMeta =
-		isRecord(rawMeta) &&
-		finiteNumber(rawMeta.width) &&
-		finiteNumber(rawMeta.height) &&
-		typeof rawMeta.title === "string";
+	const hasMeta = isFrameMeta(rawMeta);
 	return {
 		frame: {
 			id: value.id,
