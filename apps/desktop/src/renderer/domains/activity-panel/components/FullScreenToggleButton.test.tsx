@@ -18,7 +18,7 @@ describe("FullScreenToggleButton", () => {
 
 		expect(button.getAttribute("aria-label")).toBe("tabPicker.enterFullScreen");
 		expect(button.getAttribute("aria-pressed")).toBe("false");
-		expect(button.innerHTML).toContain("icon-[solar--maximize-square-3-linear]");
+		expect(button.innerHTML).toContain("icon-[solar--maximize-square-linear]");
 
 		fireEvent.click(button);
 
@@ -31,7 +31,7 @@ describe("FullScreenToggleButton", () => {
 
 		expect(button.getAttribute("aria-label")).toBe("tabPicker.exitFullScreen");
 		expect(button.getAttribute("aria-pressed")).toBe("true");
-		expect(button.innerHTML).toContain("icon-[solar--minimize-square-3-linear]");
-		expect(button.innerHTML).not.toContain("icon-[solar--maximize-square-3-linear]");
+		expect(button.innerHTML).toContain("icon-[solar--minimize-square-linear]");
+		expect(button.innerHTML).not.toContain("icon-[solar--maximize-square-linear]");
 	});
 });

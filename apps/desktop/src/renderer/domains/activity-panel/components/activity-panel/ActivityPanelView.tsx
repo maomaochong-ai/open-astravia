@@ -99,7 +99,14 @@ export function ActivityPanelView({
 		<>
 			{tabBar || tabPicker || fullScreenToggle ? (
 				<ActivityPanelPrimitive.Header
-					className={macTrafficLightGutter ? "pl-[78px]" : undefined}
+					className={[
+						macTrafficLightGutter ? "pl-[78px]" : "",
+						// 铺满时面板顶栏贴窗口第一像素：去掉 Header 默认的 pt-3，否则 tab
+						// 顶部离屏幕顶有 12px 空隙（Windows 上尤其明显）。
+						isMaximized ? "pt-0" : "",
+					]
+						.filter(Boolean)
+						.join(" ") || undefined}
 				>
 					{macTrafficLightGutter ? (
 						<div aria-hidden className="drag-region absolute inset-y-0 left-0 w-[78px]" />
