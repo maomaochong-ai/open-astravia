@@ -31,8 +31,8 @@ function makeLabels(): CommandPanelLabels {
 		categoryLabel: (tab) => {
 			if (tab === "favorites") return "收藏";
 			if (tab === "all") return "全部";
-			if (tab === "operations") return "操作";
-			return { files: "文件", skills: "技能", connectors: "连接器", plugins: "插件", apps: "应用" }[tab];
+			if (tab === "commands") return "操作";
+			return { skill: "技能", mcp: "连接器", plugin: "插件", bundle: "应用" }[tab];
 		},
 		groupLabel: (key) => key,
 		all: "全部",
@@ -62,7 +62,7 @@ function makeLabels(): CommandPanelLabels {
 }
 
 const SKILL_SECTION: AddPanelSection = {
-	category: "skills",
+	category: "skill",
 	titleKey: "slashPanel.sections.skills",
 	groups: [
 		{
@@ -70,7 +70,7 @@ const SKILL_SECTION: AddPanelSection = {
 			titleKey: "内置",
 			entries: [
 				{
-					category: "skills",
+					category: "skill",
 					id: "skill:code-review",
 					key: "skills:skill:code-review",
 					label: "代码审阅",
@@ -80,7 +80,7 @@ const SKILL_SECTION: AddPanelSection = {
 					fallbackIcon: "icon-[solar--magic-stick-3-linear]",
 				},
 				{
-					category: "skills",
+					category: "skill",
 					id: "skill:diagnose",
 					key: "skills:skill:diagnose",
 					label: "缺陷诊断",
@@ -105,7 +105,7 @@ const PREVIEW: CommandPanelPreviewModel = {
 function renderPanel(overrides: Partial<React.ComponentProps<typeof CommandPanelView>> = {}) {
 	const props: React.ComponentProps<typeof CommandPanelView> = {
 		open: true,
-		tab: "skills",
+		tab: "skill",
 		query: "",
 		sections: [SKILL_SECTION],
 		activeKey: "skills:skill:code-review",
@@ -129,14 +129,14 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof CommandPanel
 }
 
 describe("CommandPanelView 两栏面板", () => {
-	it("左栏固定五类 + 收藏，点一下切分类", () => {
+	it("左栏固定四类 + 收藏，点一下切分类", () => {
 		const { props } = renderPanel();
 		const tabs = screen.getAllByRole("tab");
-		// 收藏 + 全部 + 文件 / 技能 / 连接器 / 插件 / 应用 + 操作：位置固定，空的也留在轨道上
-		expect(tabs).toHaveLength(8);
+		// 收藏 + 全部 + 技能 / 连接器 / 插件 / 套装 + 指令：位置固定，空的也留在轨道上
+		expect(tabs).toHaveLength(7);
 		expect(screen.getByRole("tab", { name: "插件" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("tab", { name: "连接器" }));
-		expect(props.onSelectTab).toHaveBeenCalledWith("connectors");
+		expect(props.onSelectTab).toHaveBeenCalledWith("mcp");
 	});
 
 	it("行只有名字，点行即插入、点星标只收藏、点详情只开预览", () => {
@@ -194,7 +194,7 @@ describe("CommandPanelView 两栏面板", () => {
 		rerender(
 			<CommandPanelView
 				open
-				tab="skills"
+				tab="skill"
 				query="代码"
 				sections={[SKILL_SECTION]}
 				activeKey="skills:skill:code-review"
@@ -220,7 +220,7 @@ describe("CommandPanelView 两栏面板", () => {
 	it("压缩上下文是「操作」分类里的一行，带真实占比圆环", () => {
 		const onSelect = vi.fn();
 		const { container } = renderPanel({
-			tab: "operations",
+			tab: "commands",
 			sections: [],
 			activeKey: null,
 			preview: null,

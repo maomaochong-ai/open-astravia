@@ -139,7 +139,11 @@ export function useInputBarTriggerModel({
 	const handleTriggerChange = useCallback((next: TriggerMatch | null) => {
 		setTrigger(next);
 		const key = next ? `${next.kind === "slash" ? "/" : "@"}${next.query}` : null;
-		if (dismissedTriggerRef.current !== null && dismissedTriggerRef.current !== key) {
+		// 重新敲出「空的触发符」（如刚输入第一个 `/`）时，无论之前是不是被 dismiss 过，
+		// 都视为一次新的打开：否则点过「添加」按钮又关掉后，在编辑器里输入第一个 `/`
+		// 会被旧的 dismissed 记录挡住，要再敲一个字符才出现——「按两次斜杠」的来源。
+		const isFreshEmptyTrigger = next !== null && next.query === "" && dismissedTriggerRef.current === key;
+		if (isFreshEmptyTrigger || (dismissedTriggerRef.current !== null && dismissedTriggerRef.current !== key)) {
 			dismissedTriggerRef.current = null;
 		}
 	}, []);

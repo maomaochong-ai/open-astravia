@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AddPanelCategory, AddPanelEntry } from "../components/command-panel/add-panel-catalog";
 import { ADD_PANEL_CATEGORY_ICONS, addPanelEntryKey, splitIcon } from "../components/command-panel/add-panel-catalog";
+import { useSkillIconMap } from "./useSkillIconMap";
 
 /**
  * 添加面板的分类目录**直接来自能力页的同一套组装结果**。
@@ -69,7 +70,7 @@ export function projectAbilityEntries(
 			...splitIcon(icon),
 			groupId: groupOf(item),
 			kind: item.type,
-			searchable: category !== "files",
+			searchable: true,
 			fallbackIcon: ADD_PANEL_CATEGORY_ICONS[category],
 		});
 	}
@@ -83,16 +84,15 @@ export function projectAbilityEntries(
 }
 
 /**
- * 能力类型 → 面板分类。
+ * 能力类型 → 面板分类（键与能力页类型一致，见 ADR-0183）。
  *
- * `bundle`（能力套装）**不映射**：它的成员已经各自出现在技能/连接器/插件分类里，
- * 再以「应用」出现既改了名字也重复了一遍。面板的「应用」分类因此始终为空态——
- * 这是诚实的状态：本仓目前没有「应用」这种能力条目。
+ * `bundle`（能力套装）不映射：它的成员已经各自出现在技能/连接器/插件分类里，
+ * 再以套装出现就重复了一遍；面板的套装分类因此保持空态。
  */
 function categoryOf(item: AbilityItem): AddPanelCategory | undefined {
-	if (item.type === "skill") return "skills";
-	if (item.type === "mcp") return "connectors";
-	if (item.type === "plugin") return "plugins";
+	if (item.type === "skill") return "skill";
+	if (item.type === "mcp") return "mcp";
+	if (item.type === "plugin") return "plugin";
 	return undefined;
 }
 
@@ -136,6 +136,9 @@ const RELOAD_AFTER_MS = 5_000;
 export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry[] {
 	const { t } = useTranslation("settings");
 	const trPlugin = usePluginTextResolver();
+	// 市场技能不在 skills.list() 里（它们只进 skills-manifest），图标得从市场目录补。
+	// 与命令区共用的 useSkillIconMap 有模块级缓存：命令面板已经拉过时这里零成本命中。
+	const marketIconMap = useSkillIconMap(open, true);
 	const [state, setState] = useState<{
 		ledger: AbilityLedger;
 		skillManifest: Record<string, InstalledSkill>;
@@ -180,7 +183,13 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 		const mcps = buildMcpAbilities([], localState, t);
 		const plugins = buildPluginAbilities([], localState, trPlugin);
 		const bundles = buildBundleAbilities([], [...skills, ...mcps, ...plugins], localState, t);
-		const skillIcons = new Map(state.skills.map((skill) => [skill.name, skill.icon]));
+		const skillIcons = new Map<string, string | undefined>(state.skills.map((skill) => [skill.name, skill.icon]));
+		// 市场目录的图标键是 `${type}:${slug}`，去前缀后按 slug 补进技能图标表——
+		// 否则市场装来的技能（含 bundle 成员）在面板里全落默认图，看不出谁是谁。
+		for (const [key, icon] of marketIconMap) {
+			const slug = key.split(":").pop();
+			if (slug && !skillIcons.has(slug)) skillIcons.set(slug, icon);
+		}
 		return projectAbilityEntries(
 			[...skills, ...mcps, ...plugins, ...bundles].filter((item) => {
 				if (item.isBuiltin) return true;
@@ -208,7 +217,7 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 			}),
 			skillIcons,
 		);
-	}, [state, t, trPlugin]);
+	}, [state, t, trPlugin, marketIconMap]);
 
 	useEffect(() => {
 		if (entries.length > 0) entryCache = entries;

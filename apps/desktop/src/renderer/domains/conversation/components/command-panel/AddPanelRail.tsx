@@ -4,7 +4,7 @@ import {
 	ADD_PANEL_ALL_ICON,
 	ADD_PANEL_CATEGORY_ICONS,
 	ADD_PANEL_CATEGORY_ORDER,
-	ADD_PANEL_OPERATION_ICON,
+	ADD_PANEL_COMMAND_ICON,
 	type AddPanelCategory,
 	type AddPanelTab,
 } from "./add-panel-catalog";
@@ -133,7 +133,7 @@ export function AddPanelRail({
 				)}
 				{/* 操作（压缩上下文等）：与分类同一条轨道、同一档图标，靠间距分开而不是画线。 */}
 				<div aria-hidden="true" className="h-1.5 shrink-0" />
-				{item("operations", ADD_PANEL_OPERATION_ICON, labels.operations)}
+				{item("commands", ADD_PANEL_COMMAND_ICON, labels.operations)}
 			</div>
 
 			<RailStepButton

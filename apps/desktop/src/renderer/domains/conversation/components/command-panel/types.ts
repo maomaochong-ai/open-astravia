@@ -103,14 +103,6 @@ export interface CommandPanelPreviewModel {
 	readonly meta: readonly { readonly label: string; readonly value: string }[];
 }
 
-export interface CommandPanelFileAction {
-	readonly id: string;
-	readonly label: string;
-	readonly description?: string;
-	readonly icon?: string;
-	readonly onSelect: () => void;
-}
-
 export interface CommandPanelActionItem {
 	id: string;
 	label: string;
