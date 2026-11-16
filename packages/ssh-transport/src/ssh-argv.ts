@@ -16,6 +16,12 @@ export interface SshArgvOptions {
 	readonly connectTimeoutSeconds?: number;
 	/** 是否分配 pty。批量取文件、跑非交互命令时必须为 false，否则输出会被 tty 改写。 */
 	readonly requestTty?: boolean;
+	/**
+	 * 是否启用 ControlMaster 连接复用。Windows 的 OpenSSH 对 ControlPath 用 Unix domain
+	 * socket 语义，传普通文件路径会报 `getsockname failed: Not a socket`；Windows 上关掉
+	 * 复用、每条命令独立握手，认证交给 askpass 回填即可。缺省 true。
+	 */
+	readonly controlMaster?: boolean;
 }
 
 /**
@@ -30,15 +36,20 @@ export interface SshArgvOptions {
  * 禁止的；设成 `accept-new` 则跳过了首次确认。
  */
 export function buildSshArgv(host: SshHost, options: SshArgvOptions, remoteCommand?: string): string[] {
+	const useControlMaster = options.controlMaster ?? true;
 	const argv: string[] = [
 		// 复用同一条连接：认证只在建立 master 时发生一次，之后每次操作只是开一个 channel，
 		// 否则每读一个文件都要重新握手加认证，一次几百毫秒。
-		"-o",
-		"ControlMaster=auto",
-		"-o",
-		`ControlPath=${options.controlPath}`,
-		"-o",
-		`ControlPersist=${CONTROL_PERSIST_SECONDS}`,
+		...(useControlMaster
+			? [
+					"-o",
+					"ControlMaster=auto",
+					"-o",
+					`ControlPath=${options.controlPath}`,
+					"-o",
+					`ControlPersist=${CONTROL_PERSIST_SECONDS}`,
+				]
+			: []),
 		"-o",
 		`ConnectTimeout=${options.connectTimeoutSeconds ?? 15}`,
 	];

@@ -17,6 +17,8 @@ export interface SshConnectionManagerOptions {
 	 * 才能取对凭据、也才能在弹窗里说清是谁在要口令。
 	 */
 	readonly resolveEnv?: (hostId: string) => Readonly<Record<string, string>> | undefined;
+	/** 是否启用 ControlMaster 连接复用。Windows 上传 false（见 {@link buildSshArgv}）。 */
+	readonly controlMaster?: boolean;
 	/** 远端 helper 的部署方式，透传给每条连接。不给就始终走 `ssh exec`。 */
 	readonly helper?: SshConnectionOptions["helper"];
 	/** 诊断钩子，透传给每条连接。见 {@link SshConnectionOptions.onTrace}。 */
@@ -60,6 +62,7 @@ export class SshConnectionManager {
 			env: this.options.resolveEnv?.(hostId),
 			onTrace: this.options.onTrace,
 			helper: this.options.helper,
+			controlMaster: this.options.controlMaster,
 		});
 		this.connections.set(hostId, connection);
 		return connection;
