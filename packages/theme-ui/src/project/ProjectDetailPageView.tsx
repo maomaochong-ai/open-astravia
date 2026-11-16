@@ -74,6 +74,8 @@ export interface ProjectDetailPageViewProps {
 	onNewSession: () => void;
 	onSave: () => void;
 	onShowInFolder: () => void;
+	/** Host opens http(s)/mailto/tel links in the markdown preview (e.g. via shell.openExternal). */
+	onOpenExternal: (href: string) => void;
 	onToggleActivity: () => void;
 	onDocumentChange: (file: "AGENTS.md" | "CLAUDE.md") => void;
 	onOpenRecentSession: (path: string) => void;
@@ -111,6 +113,7 @@ export function ProjectDetailPageView({
 	onNewSession,
 	onSave,
 	onShowInFolder,
+	onOpenExternal,
 	onDocumentChange,
 	onOpenRecentSession,
 	onToggleActivity,
@@ -408,7 +411,7 @@ export function ProjectDetailPageView({
 														content={content}
 														theme={theme}
 														className="!px-0 !pt-1 !pb-4"
-														onOpenExternal={(href) => window.astravia?.shell?.openExternal?.(href)}
+														onOpenExternal={onOpenExternal}
 													/>
 												</div>
 											) : (

@@ -23,6 +23,15 @@ function fireDrop(target: Element): void {
 	});
 }
 
+const baseProps = {
+	dragKind: null as null,
+	enabled: true,
+	labels: { releaseToRef: "释放", internalRef: "内部", externalRef: "外部" },
+	onDragEnter: () => {},
+	onDragOver: () => {},
+	onDragLeave: () => {},
+};
+
 describe("SessionDropZoneView", () => {
 	afterEach(() => {
 		document.body.innerHTML = "";
@@ -32,6 +41,7 @@ describe("SessionDropZoneView", () => {
 		const order: string[] = [];
 		const container = mount(
 			<SessionDropZoneView
+				{...baseProps}
 				onDrop={() => {
 					order.push("zone");
 				}}
@@ -56,6 +66,7 @@ describe("SessionDropZoneView", () => {
 		const editorDrop = vi.fn();
 		const container = mount(
 			<SessionDropZoneView
+				{...baseProps}
 				onDrop={(event) => {
 					event.preventDefault();
 					event.stopPropagation();
