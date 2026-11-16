@@ -334,5 +334,8 @@
 	"agent.designer.name": "Designer",
 	"agent.designer.description": "Designs the UI on the Astravia canvas: screens, landing pages, slides, posters",
 	"newSession.styles.title": "Design resources",
-	"newSession.styles.pick": "Use the {{name}} style"
+	"newSession.styles.pick": "Use the {{name}} style",
+	"gallery.banner.kicker": "Featured style",
+	"gallery.banner.cta": "View details",
+	"gallery.banner.goto": "Go to slide {{n}}"
 }

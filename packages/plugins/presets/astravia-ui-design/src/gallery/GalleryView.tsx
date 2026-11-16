@@ -7,6 +7,7 @@ import { getPluginCtx, notify } from "../plugin-context";
 import { GALLERY_VIEW_ID } from "../tab-ids";
 import { AllProjectsView } from "./AllProjectsView";
 import { CardContextMenu, type CardMenuAnchor } from "./CardContextMenu";
+import { GalleryBanner } from "./GalleryBanner";
 import { CreateDesignDialog } from "./CreateDesignDialog";
 import { DesignSystemDetailDialog } from "./DesignSystemDetailDialog";
 import { DesignSystemGrid } from "./DesignSystemGrid";
@@ -331,6 +332,7 @@ export function GalleryView() {
 					// 空态：Hero 换一句更具引导性的副标题，风格库紧随其后当首屏主角——
 					// 点一套风格就能开工，比对着空白画布想第一句话快。
 					<>
+						<GalleryBanner onPick={setDetailSystem} />
 						{hero}
 						<div ref={stylesRef}>
 							<DesignSystemGrid busy={busy} onPick={setDetailSystem} />
@@ -338,6 +340,7 @@ export function GalleryView() {
 					</>
 				) : (
 					<>
+						<GalleryBanner onPick={setDetailSystem} />
 						{hero}
 						<section>
 							<SectionHeader

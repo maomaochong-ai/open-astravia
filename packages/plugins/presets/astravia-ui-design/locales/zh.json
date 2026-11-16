@@ -334,5 +334,8 @@
 	"agent.designer.name": "设计师",
 	"agent.designer.description": "在 Astravia 设计画布上产出界面：App 页面、落地页、幻灯片与海报",
 	"newSession.styles.title": "设计资源",
-	"newSession.styles.pick": "用「{{name}}」风格"
+	"newSession.styles.pick": "用「{{name}}」风格",
+	"gallery.banner.kicker": "推荐风格",
+	"gallery.banner.cta": "查看详情",
+	"gallery.banner.goto": "第 {{n}} 张"
 }
