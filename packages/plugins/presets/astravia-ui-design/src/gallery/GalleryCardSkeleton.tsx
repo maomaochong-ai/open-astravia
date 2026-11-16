@@ -5,7 +5,7 @@
 export function GalleryCardSkeleton() {
 	return (
 		<div aria-hidden className="flex w-full animate-pulse flex-col overflow-hidden rounded-xl border border-border bg-card">
-			<div className="aspect-[4/3] w-full bg-accent/40" />
+			<div className="aspect-[16/10] w-full bg-accent/40" />
 			<div className="flex flex-col gap-1.5 px-3 py-3">
 				<span className="h-3.5 w-2/3 rounded bg-accent/60" />
 				<span className="h-3 w-1/3 rounded bg-accent/40" />

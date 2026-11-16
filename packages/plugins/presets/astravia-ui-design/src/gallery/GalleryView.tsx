@@ -13,7 +13,6 @@ import { DesignSystemDetailDialog } from "./DesignSystemDetailDialog";
 import { DesignSystemGrid } from "./DesignSystemGrid";
 import { GalleryCard } from "./GalleryCard";
 import { GalleryCardSkeleton } from "./GalleryCardSkeleton";
-import { GalleryHero } from "./GalleryHero";
 import { GalleryToolbarLeft, GalleryToolbarRight } from "./GalleryToolbar";
 import { SectionHeader } from "./SectionHeader";
 import { hasMoreProjects, homeVisibleCount, PROJECT_GRID_CLASS } from "./gallery-layout";
@@ -57,8 +56,6 @@ export function GalleryView() {
 	const [archiveTarget, setArchiveTarget] = useState<GalleryCardData | null>(null);
 	/** 右键菜单的定位基准：菜单是这个容器的 absolute 子节点。 */
 	const rootRef = useRef<HTMLDivElement | null>(null);
-	/** Hero 的「逛逛风格库」滚动目标。 */
-	const stylesRef = useRef<HTMLDivElement | null>(null);
 	const loadAbortRef = useRef<AbortController | null>(null);
 
 	const refresh = useCallback(
@@ -229,7 +226,6 @@ export function GalleryView() {
 
 	// memo 不只是省一次 filter：AllProjectsView 以数组引用变化为「重置分页」的信号。
 	const cards = useMemo(() => filterGalleryProjects(snapshot?.cards ?? [], keyword), [snapshot, keyword]);
-	const designCount = useMemo(() => cards.reduce((total, card) => total + card.designs.length, 0), [cards]);
 	const empty = !loading && (snapshot?.cards.length ?? 0) === 0;
 	/** 没有缓存可先画的首次扫描：项目多时要等几秒，这段时间铺骨架而不是「0 个项目」。 */
 	const initialLoading = loading && snapshot === null;
@@ -291,15 +287,6 @@ export function GalleryView() {
 	// 离开画廊就把页头还给宿主（否则切到别的页面还挂着已卸载组件的节点）。
 	useEffect(() => () => getPluginCtx().ui.setWorkspaceViewHeader(GALLERY_VIEW_ID, null), []);
 
-	// 首页与空态共用同一块 Hero，只有副标题和统计随「库里有没有东西」变。
-	const hero = (
-		<GalleryHero
-			projectCount={cards.length}
-			designCount={designCount}
-			empty={empty}
-			onBrowseStyles={() => stylesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-		/>
-	);
 
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: 整页都是分享包的放置区
@@ -333,15 +320,13 @@ export function GalleryView() {
 					// 点一套风格就能开工，比对着空白画布想第一句话快。
 					<>
 						<GalleryBanner onPick={setDetailSystem} />
-						{hero}
-						<div ref={stylesRef}>
+						<div>
 							<DesignSystemGrid busy={busy} onPick={setDetailSystem} />
 						</div>
 					</>
 				) : (
 					<>
 						<GalleryBanner onPick={setDetailSystem} />
-						{hero}
 						<section>
 							<SectionHeader
 								title={t("gallery.section.mine")}
@@ -394,7 +379,7 @@ export function GalleryView() {
 						) : null}
 
 						{/* 风格库排在用户自己的作品之后，同一套宫格、跟着一起滚。 */}
-						<div ref={stylesRef}>
+						<div>
 							<DesignSystemGrid divided busy={busy} onPick={setDetailSystem} />
 						</div>
 					</>

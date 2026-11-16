@@ -35,9 +35,9 @@ describe("galleryColumnCount", () => {
 
 	it("常量必须与宫格 CSS 保持同步", () => {
 		expect(PROJECT_GRID_CLASS).toContain(`minmax(${PROJECT_CARD_MIN_WIDTH}px`);
-		// gap-3 = 12px。
-		expect(PROJECT_GRID_GAP).toBe(12);
-		expect(PROJECT_GRID_CLASS).toContain("gap-3");
+		// gap-4 = 16px。
+		expect(PROJECT_GRID_GAP).toBe(16);
+		expect(PROJECT_GRID_CLASS).toContain("gap-4");
 	});
 });
 

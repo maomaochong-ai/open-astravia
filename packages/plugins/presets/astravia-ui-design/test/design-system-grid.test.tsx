@@ -16,17 +16,6 @@ import type { DesignSystem } from "../src/design-systems/types";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-// happy-dom 没有 IntersectionObserver；demo 预览的懒挂载需要它存在。
-class ImmediateIntersectionObserver {
-	constructor(private readonly callback: (entries: { isIntersecting: boolean }[]) => void) {}
-	observe(): void {
-		this.callback([{ isIntersecting: true }]);
-	}
-	disconnect(): void {}
-	unobserve(): void {}
-}
-vi.stubGlobal("IntersectionObserver", ImmediateIntersectionObserver);
-
 function system(id: string, name: string): DesignSystem {
 	return {
 		id,
@@ -114,28 +103,8 @@ describe("DesignSystemGrid", () => {
 		]);
 	});
 
-	it("悬停点燃对应卡片的 demo 预览，移开熄灭", () => {
-		const html = "<!doctype html><html><body>demo</body></html>";
-		setDesignSystems([
-			{
-				...system("linear", "Linear"),
-				resources: [{ path: "demo.html", role: "demo", encoding: "text", content: html, bytes: html.length }],
-			},
-			system("stripe", "Stripe"),
-		]);
-		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
-		const active = (): number => document.body.querySelectorAll("[data-active]").length;
-		expect(active()).toBe(0);
-		// React 的 onMouseEnter/Leave 由委托的 mouseover/mouseout 驱动。
-		act(() => {
-			tiles()[0].dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
-		});
-		expect(active()).toBe(1);
-		act(() => {
-			tiles()[0].dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
-		});
-		expect(active()).toBe(0);
-	});
+	// 悬停 demo 预览已随 ADR-0178 移除：风格卡预览固定用纯 token 骨架（DesignSystemPreview），
+	// 不再挂 iframe demo，也不再需要「悬停才挂」的懒加载与对应状态。
 });
 
 describe("目录拿不到时的状态", () => {
