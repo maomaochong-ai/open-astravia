@@ -35,7 +35,7 @@ vi.mock("../src/plugin-context", () => ({
 
 vi.mock("../src/gallery/DesignSystemGrid", () => ({ DesignSystemGrid: () => null }));
 vi.mock("../src/gallery/AllProjectsView", () => ({ AllProjectsView: () => null }));
-vi.mock("../src/gallery/GalleryHero", () => ({ GalleryHero: () => null }));
+vi.mock("../src/gallery/GalleryBanner", () => ({ GalleryBanner: () => null }));
 vi.mock("../src/gallery/GalleryCard", () => ({
 	GalleryCard: ({ card }: { card: { name: string } }) => <div data-card={card.name} />,
 }));

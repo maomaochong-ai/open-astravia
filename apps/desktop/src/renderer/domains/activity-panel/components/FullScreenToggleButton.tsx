@@ -27,15 +27,17 @@ export function FullScreenToggleButton({
 			aria-pressed={isFullScreen}
 			onClick={onToggle}
 			className={[
-				"mb-0.5 mr-1 flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md px-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+				// h-8 与 TabBar 的标签同高、去掉 mb-0.5：否则在 Header 的 items-end 布局里，
+				// 按钮底部比标签底高 2px，图标与标签不在同一水平线上。
+				"mr-1 flex h-8 min-w-7 shrink-0 items-center justify-center rounded-md px-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
 				className ?? "",
 			].join(" ")}
 		>
 			<span
 				className={
 					isFullScreen
-						? "icon-[solar--minimize-square-3-linear] h-4 w-4"
-						: "icon-[solar--maximize-square-3-linear] h-4 w-4"
+						? "icon-[solar--minimize-square-linear] h-4 w-4"
+						: "icon-[solar--maximize-square-linear] h-4 w-4"
 				}
 			/>
 		</button>

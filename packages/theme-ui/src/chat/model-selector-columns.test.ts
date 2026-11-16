@@ -36,23 +36,29 @@ const groups: ModelSelectorProviderGroup[] = [
  * 不搜索按服务商收敛；搜索跨服务商平铺并标注来源。
  */
 describe("模型菜单三栏", () => {
-	it("没有收藏时不出现收藏栏，默认选中第一个服务商", () => {
+	it("收藏栏常驻且只出现一次，没有收藏时默认选中第一个服务商", () => {
 		const columns = buildModelColumns(groups, { favorites: [], query: "" });
-		expect(columns.providers.map((column) => column.id)).toEqual(["openai", "anthropic"]);
+		expect(columns.providers.map((column) => column.id)).toEqual([FAVORITES_COLUMN_ID, "openai", "anthropic"]);
+		// 回归：曾经在「有收藏」分支里又 push 了一份收藏列，渲染出两个星标按钮，
+		// 而 React 的重复 key 会让这一栏的点击与高亮错位。
+		expect(columns.providers.filter((column) => column.isFavorites)).toHaveLength(1);
 		expect(columns.activeProviderId).toBe("openai");
 		expect(columns.models.map((entry) => entry.model.key)).toEqual(["openai/gpt-5", "openai/o4"]);
 	});
 
-	it("有收藏时收藏栏排最前并被默认选中", () => {
+	it("有收藏时收藏栏排最前并被默认选中，且仍然只有一个收藏列", () => {
 		const columns = buildModelColumns(groups, { favorites: ["anthropic/sonnet"], query: "" });
 		expect(columns.providers[0]?.id).toBe(FAVORITES_COLUMN_ID);
+		expect(columns.providers.filter((column) => column.isFavorites)).toHaveLength(1);
+		expect(columns.providers.map((column) => column.id)).toEqual([FAVORITES_COLUMN_ID, "openai", "anthropic"]);
 		expect(columns.activeProviderId).toBe(FAVORITES_COLUMN_ID);
 		expect(columns.models.map((entry) => entry.model.key)).toEqual(["anthropic/sonnet"]);
 	});
 
-	it("收藏里已经不存在的模型自动消失，不留空壳栏", () => {
+	it("收藏里已经不存在的模型清空计数，但不额外多出收藏列", () => {
 		const columns = buildModelColumns(groups, { favorites: ["gone/model"], query: "" });
-		expect(columns.providers.map((column) => column.id)).toEqual(["openai", "anthropic"]);
+		expect(columns.providers.map((column) => column.id)).toEqual([FAVORITES_COLUMN_ID, "openai", "anthropic"]);
+		expect(columns.providers[0]?.count).toBe(0);
 	});
 
 	it("搜索跨服务商平铺，并带来源服务商名", () => {

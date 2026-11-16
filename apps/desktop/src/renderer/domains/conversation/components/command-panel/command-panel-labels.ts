@@ -1,5 +1,5 @@
 import type { TFunction } from "i18next";
-import type { AddPanelTab } from "./add-panel-catalog";
+import { ADD_PANEL_CATEGORY_TITLE_KEYS, type AddPanelTab } from "./add-panel-catalog";
 import type { CommandPanelLabels } from "./types";
 
 /**
@@ -12,8 +12,8 @@ export function buildCommandPanelLabels(t: TFunction<"chat">): CommandPanelLabel
 	const categoryLabel = (target: AddPanelTab): string => {
 		if (target === "favorites") return t("slashPanel.favorites");
 		if (target === "all") return t("slashPanel.all");
-		if (target === "operations") return t("slashPanel.operations");
-		return t(`slashPanel.sections.${target}`);
+		if (target === "commands") return t("slashPanel.operations");
+		return t(ADD_PANEL_CATEGORY_TITLE_KEYS[target]);
 	};
 
 	return {

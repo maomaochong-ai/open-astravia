@@ -78,8 +78,8 @@ describe("DesignSystemDetailDialog", () => {
 		render(<DesignSystemDetailDialog system={withDemo} busy={false} onUse={() => {}} onClose={() => {}} />);
 		expect(document.body.textContent).toContain("Linear");
 		expect(document.body.textContent).toContain("Crisp dark tooling UI");
-		// 配色条来自 theme.css 的 token。
-		expect(document.body.querySelector('[title^="primary"]')).not.toBeNull();
+		// 配色条来自 theme.css 的 token；ADR-0178 起只给色块不给色号，所以不校验 title。
+		expect(document.body.querySelectorAll('span.size-7').length).toBeGreaterThan(0);
 	});
 
 	it("有 demo 时用常开滚动的真实预览", () => {

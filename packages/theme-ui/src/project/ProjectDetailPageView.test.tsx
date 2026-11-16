@@ -32,7 +32,7 @@ function renderView(overrides: Partial<ProjectDetailPageViewProps> = {}) {
 		cwd: "/workspace/project", displayName: "Project", editorFocused: false, exportable: false,
 		isDirty: false, labels, loading: false, onContentChange: handlers.change, onEditorBlur: vi.fn(),
 		onEditorFocus: vi.fn(), onExport: vi.fn(), onNewSession: handlers.start, onSave: handlers.save,
-		onShowInFolder: vi.fn(), onToggleActivity: vi.fn(), onDocumentChange: handlers.tab,
+		onShowInFolder: vi.fn(), onOpenExternal: vi.fn(), onToggleActivity: vi.fn(), onDocumentChange: handlers.tab,
 		onOpenRecentSession: handlers.open, projectTypeLabel: null, saveStatus: "idle",
 		sessionCountLabel: "2 sessions", taskCountLabel: null, textareaRef: { current: null },
 		recentSessions: [{ path: "/session/2", label: "Continue project", date: "October 14", running: true }],

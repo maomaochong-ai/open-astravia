@@ -8,31 +8,16 @@ import { isRenderableImageIcon } from "@domains/abilities/lib/ability-presentati
  * 命名刻意不叫 `Capability*`：本仓 `Capability` 是授权契约（`docs/capabilities/`），
  * 与「能往消息里加什么」是两件事；术语见 CONTEXT.md「添加面板」词条。
  */
-export type AddPanelCategory = "files" | "skills" | "connectors" | "plugins" | "apps";
+export type AddPanelCategory = "skill" | "mcp" | "plugin" | "bundle";
 
-/** 左栏的一格：收藏 / 全部 / 五个分类 / 操作。 */
-export type AddPanelTab = "favorites" | "all" | "operations" | AddPanelCategory;
+export type AddPanelTab = "favorites" | "all" | "commands" | AddPanelCategory;
 
 /**
  * 分类顺序固定：最常用的在前，最不常用的在后。
  *
  * 不按数量动态排序——同一类条目每次都要在同一位置，否则用户每次打开都要重新找。
  */
-export const ADD_PANEL_CATEGORY_ORDER: readonly AddPanelCategory[] = [
-	"files",
-	"skills",
-	"connectors",
-	"plugins",
-	"apps",
-];
-
-/**
- * 轨道上始终按 {@link ADD_PANEL_CATEGORY_ORDER} 显示五类。
- *
- * `apps` 目前没有任何条目来源（本仓没有「应用」这种能力条目，`bundle` 也不是应用），
- * 它留在轨道上、内容区显示空态。分类位置固定比「只显示有内容的那几类」更重要：
- * 后者会让同一类在两次打开之间换位置，用户每次都要重新找。
- */
+export const ADD_PANEL_CATEGORY_ORDER: readonly AddPanelCategory[] = ["skill", "mcp", "plugin", "bundle"];
 
 /**
  * 分类图标（16px 下必须彼此可辨）。
@@ -41,27 +26,25 @@ export const ADD_PANEL_CATEGORY_ORDER: readonly AddPanelCategory[] = [
  * 四宫格，一排看过去像三个相同的格子——那等于没有分类。
  */
 export const ADD_PANEL_CATEGORY_ICONS: Record<AddPanelCategory, string> = {
-	files: "icon-[solar--paperclip-linear]",
-	skills: "icon-[solar--code-linear]",
-	connectors: "icon-[solar--plug-circle-linear]",
-	plugins: "icon-[solar--box-linear]",
-	apps: "icon-[solar--widget-linear]",
+	skill: "icon-[solar--code-linear]",
+	mcp: "icon-[solar--plug-circle-linear]",
+	plugin: "icon-[solar--box-linear]",
+	bundle: "icon-[solar--widget-linear]",
 };
 
-/** 「操作」格（压缩上下文等会话操作）：与分类同档图标。 */
-export const ADD_PANEL_OPERATION_ICON = "icon-[solar--bolt-linear]";
+/** 「指令」格（压缩上下文等会话操作）：与分类同档图标。 */
+export const ADD_PANEL_COMMAND_ICON = "icon-[solar--bolt-linear]";
 
 /** 「全部」格：跨分类列出能力页有的全部条目。 */
 export const ADD_PANEL_ALL_ICON = "icon-[solar--magic-stick-3-linear]";
 
 /** 分类标题的 i18n key（与 `chat.json` 的 `slashPanel.sections.*` 对齐）。 */
-export const ADD_PANEL_CATEGORY_TITLE_KEYS: Record<AddPanelCategory, string> = {
-	files: "slashPanel.sections.files",
-	skills: "slashPanel.sections.skills",
-	connectors: "slashPanel.sections.connectors",
-	plugins: "slashPanel.sections.plugins",
-	apps: "slashPanel.sections.apps",
-};
+export const ADD_PANEL_CATEGORY_TITLE_KEYS = {
+	skill: "slashPanel.sections.skills",
+	mcp: "slashPanel.sections.connectors",
+	plugin: "slashPanel.sections.plugins",
+	bundle: "slashPanel.sections.apps",
+} as const satisfies Record<AddPanelCategory, string>;
 
 /**
  * 条目的图标可能是**两种东西**：iconify 名称（`solar:xxx`）或图片 URL / 包内相对路径。
@@ -132,8 +115,6 @@ export interface AddPanelCatalogInput {
 	readonly entries?: readonly AddPanelEntry[];
 }
 
-export const ADD_PANEL_FILE_GROUP = "actions";
-
 /** 分类内全局键：收藏、高亮、详情都按它索引。 */
 export function addPanelEntryKey(category: AddPanelCategory, id: string): string {
 	return `${category}:${id}`;
@@ -159,11 +140,10 @@ const GROUP_TITLE_KEYS: Record<string, string> = {
 };
 
 const FALLBACK_GROUP_TITLE_KEYS: Record<AddPanelCategory, string> = {
-	files: "slashPanel.groups.actions",
-	skills: "slashPanel.groups.other",
-	connectors: "slashPanel.groups.connected",
-	plugins: "slashPanel.groups.installed",
-	apps: "slashPanel.groups.mine",
+	skill: "slashPanel.groups.other",
+	mcp: "slashPanel.groups.connected",
+	plugin: "slashPanel.groups.installed",
+	bundle: "slashPanel.groups.mine",
 };
 
 function groupTitleKey(category: AddPanelCategory, groupId: string): string {
@@ -203,25 +183,12 @@ function buildSection(category: AddPanelCategory, entries: readonly AddPanelEntr
  * 左栏是固定轨道，某一类没有条目时轨道位置不能跟着消失，列表区显示空态即可。
  */
 export function buildAddPanelCatalog(input: AddPanelCatalogInput): AddPanelSection[] {
-	const files = (input.files ?? []).map<AddPanelEntry>((action) => ({
-		category: "files",
-		id: action.id,
-		key: addPanelEntryKey("files", action.id),
-		label: action.label,
-		description: action.description,
-		...splitIcon(action.icon),
-		groupId: ADD_PANEL_FILE_GROUP,
-		searchable: false,
-		fallbackIcon: ADD_PANEL_CATEGORY_ICONS.files,
-	}));
-
 	const provided = input.entries ?? [];
 	const byCategory: Record<AddPanelCategory, readonly AddPanelEntry[]> = {
-		files,
-		skills: provided.filter((entry) => entry.category === "skills"),
-		connectors: provided.filter((entry) => entry.category === "connectors"),
-		plugins: provided.filter((entry) => entry.category === "plugins"),
-		apps: provided.filter((entry) => entry.category === "apps"),
+		skill: provided.filter((entry) => entry.category === "skill"),
+		mcp: provided.filter((entry) => entry.category === "mcp"),
+		plugin: provided.filter((entry) => entry.category === "plugin"),
+		bundle: provided.filter((entry) => entry.category === "bundle"),
 	};
 
 	return ADD_PANEL_CATEGORY_ORDER.map((category) => buildSection(category, byCategory[category]));

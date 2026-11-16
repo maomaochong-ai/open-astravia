@@ -39,6 +39,7 @@ export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.El
 					// （视图要求 label 与回调同时给），设置页就只剩「检查更新」。
 					onViewCurrent={updates.onViewCurrent}
 					phase={updates.phase}
+					progress={updates.progress}
 				/>
 			}
 			updatesDetail={

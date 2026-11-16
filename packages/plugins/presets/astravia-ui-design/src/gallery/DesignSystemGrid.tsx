@@ -1,24 +1,21 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { useState } from "react";
-import { DesignSystemTileContent } from "../cards/DesignSystemTileContent";
 import { useStyleWallWindow } from "../cards/use-style-wall-window";
 import { refreshDesignCatalog, useCatalogState } from "../design-systems/index";
 import type { DesignSystem } from "../design-systems/types";
 import { getPluginCtx } from "../plugin-context";
+import { GalleryCardSkeleton } from "./GalleryCardSkeleton";
+import { GallerySystemCard } from "./GallerySystemCard";
 import { SectionHeader } from "./SectionHeader";
 
 /**
- * 侧边栏「设计」页的风格库：和项目卡片同一套宫格语言，作为页面内容的一部分往下滚。
- *
- * 位置由调用方决定——画廊空着时它排在引导语下面当首屏主角，已经有设计时排在项目宫格
- * 之后、用一条分隔线隔开。
+ * 侧边栏「设计」页的风格库：与项目卡同一套卡片语言（16:10 预览 + 两行信息、同尺寸同网格），
+ * 作为页面内容的一部分往下滚。
  *
  * 内容全部来自远端资源仓库，所以「一套都没有」是真实状态：还在拉时给骨架，拉不到时
  * 给解释和重试，绝不留一块没有说明的空白。
  *
- * 远端目录现在有八十多套，整份铺开就是八十多个 iframe 监听器加八十多段骨架动画。所以
- * 和会话页的风格库共用同一套按行窗口化与「只给悬停的那张挂 demo」的取舍，见
- * `use-style-wall-window` 与 `DesignSystemTileContent` 的 `demo` 约定。
+ * 远端目录现在有八十多套，整份铺开就是八十多段骨架动画。所以和会话页的风格库共用同一套
+ * 按行窗口化（`use-style-wall-window`）；预览是纯 token 骨架（无 iframe），没有额外挂载成本。
  */
 export interface DesignSystemGridProps {
 	/** 上方还有别的内容时画一条分隔线，避免和项目宫格糊成一片。 */
@@ -38,14 +35,12 @@ const SKELETON_COUNT = 6;
 export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystemGridProps) {
 	const { t } = useTranslation();
 	const { systems, status } = useCatalogState();
-	/** 悬停中的条目：只让它的 demo 滚动，其余保持静止。 */
-	const [hovered, setHovered] = useState<string | null>(null);
 	// 固定三列的版式，卡片随面板变窄是既定视觉，所以不按最小卡宽降列。
 	const wall = useStyleWallWindow({ total: systems.length, gap: GRID_GAP, maxColumns: GRID_COLUMNS, minCardWidth: 0 });
 
 	return (
-		<section className={divided ? "mt-8 border-t border-border/60 pt-6" : ""}>
-			<SectionHeader title={t("gallery.styles.title")} hint={t("gallery.styles.hint")} />
+		<section className={divided ? "mt-8" : ""}>
+			<SectionHeader title={t("gallery.styles.title")} />
 
 			{systems.length > 0 ? (
 				<div
@@ -58,33 +53,14 @@ export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystem
 					}}
 				>
 					{systems.slice(wall.start, wall.end).map((system) => (
-						<button
-							key={system.id}
-							type="button"
-							disabled={busy}
-							onClick={() => onPick(system)}
-							onMouseEnter={() => setHovered(system.id)}
-							onMouseLeave={() => setHovered((current) => (current === system.id ? null : current))}
-							onFocus={() => setHovered(system.id)}
-							onBlur={() => setHovered((current) => (current === system.id ? null : current))}
-							aria-label={t("gallery.styles.view", { name: system.name })}
-							className="flex aspect-[4/3] min-w-0 flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card p-2.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg disabled:opacity-40"
-						>
-							<DesignSystemTileContent
-								system={system}
-								demo={hovered === system.id}
-								demoActive={hovered === system.id}
-							/>
-						</button>
+						<GallerySystemCard key={system.id} system={system} disabled={busy} onPick={onPick} />
 					))}
 				</div>
 			) : status === "loading" ? (
 				<div className={GRID_CLASS} aria-busy="true" aria-label={t("gallery.styles.loading")}>
+					{/* 骨架与真实风格卡同构（16:10 预览 + 两行信息），数据到了原位换卡，版面不跳。 */}
 					{Array.from({ length: SKELETON_COUNT }, (_, index) => (
-						<div
-							key={`skeleton-${index}`}
-							className="aspect-[4/3] animate-pulse rounded-xl border border-border bg-accent/40"
-						/>
+						<GalleryCardSkeleton key={`skeleton-${index}`} />
 					))}
 				</div>
 			) : (

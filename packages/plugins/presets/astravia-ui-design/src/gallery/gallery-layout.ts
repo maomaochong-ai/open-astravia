@@ -7,10 +7,10 @@
  */
 
 /** 项目宫格的 CSS：改这里必须同步下面的两个常量。 */
-export const PROJECT_GRID_CLASS = "grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3";
-export const PROJECT_CARD_MIN_WIDTH = 220;
-/** gap-3 = 12px。 */
-export const PROJECT_GRID_GAP = 12;
+export const PROJECT_GRID_CLASS = "grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4";
+export const PROJECT_CARD_MIN_WIDTH = 280;
+/** gap-4 = 16px。 */
+export const PROJECT_GRID_GAP = 16;
 
 /** 首页用户资产最多铺几行，超出的收进「全部设计」列表页。 */
 export const HOME_MAX_ROWS = 3;

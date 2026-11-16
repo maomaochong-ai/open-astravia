@@ -92,6 +92,8 @@ export interface SshConnectionOptions {
 	/** 传给 ssh 子进程的额外环境变量，用于挂 askpass。 */
 	readonly env?: Readonly<Record<string, string>>;
 	readonly connectTimeoutSeconds?: number;
+	/** 是否启用 ControlMaster 连接复用。Windows 上应置 false（见 {@link buildSshArgv}）。 */
+	readonly controlMaster?: boolean;
 	/**
 	 * 诊断钩子。
 	 *
@@ -618,6 +620,7 @@ export class SshConnection {
 				controlPath: this.options.controlPath,
 				connectTimeoutSeconds: this.options.connectTimeoutSeconds,
 				requestTty: options.requestTty,
+				controlMaster: this.options.controlMaster,
 			},
 			remoteCommand,
 		);
@@ -789,7 +792,11 @@ export class SshConnection {
 	): Promise<SshProcessResult> {
 		const argv = buildSshArgv(
 			this.host,
-			{ controlPath: this.options.controlPath, connectTimeoutSeconds: this.options.connectTimeoutSeconds },
+			{
+				controlPath: this.options.controlPath,
+				connectTimeoutSeconds: this.options.connectTimeoutSeconds,
+				controlMaster: this.options.controlMaster,
+			},
 			remoteCommand,
 		);
 		const result = await this.options.runner.run({

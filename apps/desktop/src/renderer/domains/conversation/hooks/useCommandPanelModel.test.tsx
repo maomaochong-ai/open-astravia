@@ -9,8 +9,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { initI18n } from "@shared/i18n";
 import { useShortcutScope } from "@shared/shortcuts";
 import { useCommandPanelModel } from "./useCommandPanelModel";
+import { useAddPanelAbilityEntries } from "./useAddPanelAbilityEntries";
+import { useSkillList } from "./useSkillList";
+import type { SkillInfo } from "@preload/api";
 
-vi.mock("./useSkillList", () => ({ useSkillList: () => ({ items: [] }) }));
+vi.mock("./useSkillList", () => ({ useSkillList: vi.fn(() => ({ items: [] })) }));
+vi.mock("./useAddPanelAbilityEntries", () => ({ useAddPanelAbilityEntries: vi.fn(() => []) }));
 vi.mock("./useConnectorGrid", () => ({ useConnectorGrid: () => ({ items: [], columns: 4 }) }));
 vi.mock("./useSkillIconMap", () => ({ useSkillIconMap: () => new Map(), skillIconOf: () => undefined }));
 vi.mock("../components/useInputActionBarModel", () => ({
@@ -94,7 +98,7 @@ describe("useCommandPanelModel context compaction", () => {
 		expect(queueContextCompaction).not.toHaveBeenCalled();
 
 		// 切到「操作」：压缩上下文是这里的唯一一行，按下 Enter 触发。
-		act(() => result.current.viewProps.onSelectTab("operations"));
+		act(() => result.current.viewProps.onSelectTab("commands"));
 		act(() =>
 			result.current.viewProps.onPanelKeyDown({
 				key: "ArrowDown",
@@ -243,5 +247,44 @@ describe("useCommandPanelModel context compaction", () => {
 		expect(toast).toMatchObject({ variant: "error", message: "queue unavailable" });
 		if (toast) dismissToast(toast.id);
 		warn.mockRestore();
+	});
+});
+
+describe("useCommandPanelModel skill insertion", () => {
+	beforeEach(() => {
+		vi.mocked(useSkillList).mockReturnValue({ items: [], loading: false });
+		vi.mocked(useAddPanelAbilityEntries).mockReturnValue([]);
+	});
+
+	it("点击技能行按能力 id 的末段 slug 匹配原始技能并插入", () => {
+		const skill: SkillInfo = { name: "my-skill", type: "skill", description: "", source: "builtin" };
+		vi.mocked(useSkillList).mockReturnValue({ items: [skill], loading: false });
+		vi.mocked(useAddPanelAbilityEntries).mockReturnValue([
+			{
+				category: "skill",
+				id: "builtin:builtin:skill:my-skill",
+				key: "skills:builtin:builtin:skill:my-skill",
+				label: "My Skill",
+				groupId: "builtin",
+				searchable: true,
+				fallbackIcon: "icon-[solar--code-linear]",
+				kind: "skill",
+			},
+		]);
+
+		const onSelect = vi.fn();
+		const { result } = renderHook(() =>
+			useCommandPanelModel({
+				open: true,
+				onClose: vi.fn(),
+				onSelect,
+				onSelectConnector: vi.fn(),
+				filter: "/",
+			}),
+		);
+
+		act(() => result.current.viewProps.onActivateEntry("skills:builtin:builtin:skill:my-skill"));
+
+		expect(onSelect).toHaveBeenCalledWith(skill, undefined);
 	});
 });

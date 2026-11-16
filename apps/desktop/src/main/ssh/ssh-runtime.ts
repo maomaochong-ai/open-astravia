@@ -53,6 +53,9 @@ export function getSshConnectionManager(): SshConnectionManager {
 	manager ??= new SshConnectionManager({
 		runner: createNodeSshProcessRunner(),
 		controlDirectory: resolveControlDirectory(),
+		// Windows OpenSSH 不支持 Unix domain socket 语义的 ControlPath，连接复用在
+		// Windows 上关掉（每条命令独立握手），否则报 getsockname failed。
+		controlMaster: process.platform !== "win32",
 		// 同步读配置：连接可能在任意一次工具调用中途建立，异步读会让这里变成一个
 		// 需要在每个调用点 await 的入口。
 		resolveHost: (hostId) => readConfigSync().sshHosts?.find((host) => host.id === hostId),

@@ -24,8 +24,10 @@ export function getAppIconId(): AppIconId {
 /** 出厂图标走打包默认（Dock 用 icon-dock.png，自带 824 本体与边距），返回 undefined 表示「用默认」。 */
 function appIconImage(id: AppIconId): NativeImage | undefined {
 	if (id === APP_ICON_DEFAULT) return undefined;
-	// Dock 不会给 setIcon 的图片加遮罩，macOS 用自带超椭圆与边距的 -mac 版本，其余平台用全幅方形。
-	const suffix = process.platform === "darwin" ? "-mac" : "";
+	// Dock / 任务栏不会给 setIcon 的图片加遮罩，所以 macOS 与 Windows 都用自带超椭圆与
+	// 边距的 `-mac` 变体（1024 画布 + 透明边距），Windows 用全幅方形会显示成直角。
+	// 只有 Linux 桌面环境保留全幅方形：各发行版对窗口图标的圆角处理不一致。
+	const suffix = process.platform === "linux" ? "" : "-mac";
 	const image = nativeImage.createFromPath(join(buildDir, "app-icons", `${id}${suffix}.png`));
 	return image.isEmpty() ? undefined : image;
 }

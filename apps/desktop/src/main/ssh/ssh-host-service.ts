@@ -80,7 +80,10 @@ export class SshHostService {
 		const hosts = await this.list();
 		const index = hosts.findIndex((host) => host.id === hostId);
 		if (index < 0) throw new Error(`SSH host not found: ${hostId}`);
-		if (hosts.some((host) => host.id !== hostId && host.target === normalized.target)) {
+		// 只有 target 真的变了才查重。target 不变时，哪怕列表里历史遗留了另一台同 target
+		// 的主机，编辑自己也不该被挡——用户明确在更新这一台，而不是把它改成别人的地址。
+		const targetChanged = hosts[index].target !== normalized.target;
+		if (targetChanged && hosts.some((host) => host.id !== hostId && host.target === normalized.target)) {
 			throw new SshHostAlreadyExistsError(normalized.target);
 		}
 		const updated: SshHost = { id: hostId, ...normalized };

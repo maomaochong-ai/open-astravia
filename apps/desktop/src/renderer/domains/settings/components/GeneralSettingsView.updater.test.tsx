@@ -9,14 +9,19 @@
  * `useUpdateCheckerModel.current-notes.test.tsx` 单独覆盖。
  */
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { Provider, useAtomValue } from "jotai";
+import { getDefaultStore, useAtomValue } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { updaterCurrentNotesDialogOpenAtom } from "@shared/store/updater-atoms";
+import { updaterCurrentNotesDialogOpenAtom, updaterStateAtom } from "@shared/store/updater-atoms";
 import { GeneralSettingsView } from "./GeneralSettingsView";
 import type { GeneralSettingsModel } from "./useGeneralSettingsModel";
 
 vi.mock("react-i18next", () => ({
-	useTranslation: () => ({ t: (key: string) => key, i18n: { exists: () => true } }),
+	useTranslation: () => ({
+		// 只对下载文案插值 progress，其余 key 原样返回——这样能断言百分比真的透传了。
+		t: (key: string, params?: Record<string, unknown>) =>
+			key === "updaterDownloading" && params ? `downloading:${params.progress}` : key,
+		i18n: { exists: () => true },
+	}),
 }));
 
 // 代理区块要读 models.json，与本用例无关，直接短路（含它自己的数据 hook）。
@@ -105,10 +110,10 @@ afterEach(cleanup);
 describe("设置页「当前版本」这一行", () => {
 	it("同时有「查看版本介绍」与「检查更新」，点前者打开当前版本说明", async () => {
 		render(
-			<Provider>
+			<>
 				<GeneralSettingsView model={stubModel()} />
 				<NotesProbe />
-			</Provider>,
+			</>,
 		);
 
 		expect(screen.getByTestId("updater-check")).toBeTruthy();
@@ -119,5 +124,14 @@ describe("设置页「当前版本」这一行", () => {
 			fireEvent.click(notes);
 		});
 		expect(screen.getByTestId("notes-open").textContent).toBe("open");
+	});
+
+	it("下载中时「检查更新」按钮显示真实下载百分比，而不是恒为 0%", async () => {
+		getDefaultStore().set(updaterStateAtom, { phase: "downloading", progress: 0.42, currentVersion: "1.0.0" });
+		render(<GeneralSettingsView model={stubModel()} />);
+
+		const button = screen.getByTestId("updater-check");
+		expect(button.textContent).toContain("downloading:42");
+		expect(button.hasAttribute("disabled")).toBe(true);
 	});
 });

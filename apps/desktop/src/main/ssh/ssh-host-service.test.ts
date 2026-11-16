@@ -76,6 +76,36 @@ describe("SshHostService", () => {
 		expect(fixture.invalidateConnection).toHaveBeenCalledWith(host.id);
 	});
 
+	it("编辑自己且 target 不变时，即使列表里历史遗留了重复 target 也放行", async () => {
+		// 历史版本可能留下两条同 target 主机；用户编辑其中一条、只改密码不改地址时，
+		// 不应被「另一条同 target 主机」挡住——否则他永远改不了密码。
+		const fixture = createFixture({
+			sshHosts: [
+				{ id: "host-a", label: "A", target: "root@h", source: "manual" },
+				{ id: "host-b", label: "B", target: "root@h", source: "manual" },
+			],
+		});
+
+		await fixture.service.update("host-a", { label: "A", target: "root@h", authMethod: "password" });
+
+		expect(fixture.getConfig().sshHosts?.find((host) => host.id === "host-a")).toMatchObject({
+			authMethod: "password",
+		});
+	});
+
+	it("编辑自己把 target 改成另一台主机的地址时仍报冲突", async () => {
+		const fixture = createFixture({
+			sshHosts: [
+				{ id: "host-a", label: "A", target: "old", source: "manual" },
+				{ id: "host-b", label: "B", target: "root@h", source: "manual" },
+			],
+		});
+
+		await expect(fixture.service.update("host-a", { label: "A", target: "root@h" })).rejects.toBeInstanceOf(
+			SshHostAlreadyExistsError,
+		);
+	});
+
 	it("仍被项目引用的主机不能删除", async () => {
 		// 删掉的话那些项目会变成永远打不开的悬空条目，而用户在删主机时看不到这一点。
 		const fixture = createFixture();

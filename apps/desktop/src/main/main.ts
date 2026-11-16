@@ -60,6 +60,7 @@ import { getLocalRpcServerEndpointFilePath } from "./local-rpc/endpoint-file.js"
 import { type DesktopLocalRpcServerHandle, startDesktopLocalRpcServer } from "./local-rpc/server.js";
 import { getAppLogger } from "./logger.js";
 import { MEDIA_PROTOCOL_PRIVILEGE, registerMediaProtocolHandler } from "./media-protocol.js";
+import { createMemorySampler } from "./memory/memory-sampler.js";
 import { openExternalUrl } from "./open-external.js";
 import { startPetIdleGuard } from "./pet/pet-idle-guard.js";
 import { initializePetWindow } from "./pet-window.js";
@@ -452,6 +453,10 @@ if (!gotSingleLock) {
 			app.exit(exitCode);
 			return;
 		}
+
+		// 内存工作集采样：把「用久了占多少内存、哪个进程涨的」变成可导出的证据。
+		// 只在非 CLI 模式启动；CLI 是短任务且已在上方 return，不会走到这里。
+		createMemorySampler({ log: mainLog });
 
 		mainLog.info("diagnostics log", getDiagnosticsLogPath());
 		mainLog.info("ready", {

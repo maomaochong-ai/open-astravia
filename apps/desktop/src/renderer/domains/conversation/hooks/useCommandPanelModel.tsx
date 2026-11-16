@@ -14,7 +14,6 @@ import {
 import { buildCommandPanelLabels } from "../components/command-panel/command-panel-labels";
 import type {
 	CommandPanelActionItem,
-	CommandPanelFileAction,
 	CommandPanelPreviewModel,
 	CommandPanelProps,
 } from "../components/command-panel/types";
@@ -38,7 +37,6 @@ export interface CommandPanelModelInput {
 	className?: string;
 	/** 会话级操作仅在已绑定 Runtime 的聊天输入框中可用。 */
 	allowCompaction?: boolean;
-	fileActions?: readonly CommandPanelFileAction[];
 	/** 打开能力广场首页（左栏底部入口）。 */
 	onOpenAbilityPlaza?: () => void;
 }
@@ -64,7 +62,6 @@ export function useCommandPanelModel({
 	cwd,
 	className,
 	allowCompaction = true,
-	fileActions,
 	onOpenAbilityPlaza,
 }: CommandPanelModelInput): CommandPanelModel {
 	const { t } = useTranslation("chat");
@@ -120,12 +117,8 @@ export function useCommandPanelModel({
 	});
 
 	const catalog = useMemo(
-		() =>
-			buildAddPanelCatalog({
-				files: fileActions?.map((action) => ({ id: action.id, label: action.label, icon: action.icon })),
-				entries: abilityEntries,
-			}),
-		[abilityEntries, fileActions],
+		() => buildAddPanelCatalog({ entries: abilityEntries }),
+		[abilityEntries],
 	);
 
 	const searching = query.trim().length > 0;
@@ -133,7 +126,7 @@ export function useCommandPanelModel({
 		if (searching) return searchAddPanelSections(catalog, query);
 		if (tab === "favorites") return buildFavoritesSections(catalog, favorites.favorites);
 		if (tab === "all") return catalog;
-		if (tab === "operations") return [];
+		if (tab === "commands") return [];
 		const section = sectionOf(catalog, tab);
 		return section ? [section] : [];
 	}, [catalog, favorites.favorites, query, searching, tab]);
@@ -163,7 +156,7 @@ export function useCommandPanelModel({
 	}, [tab, query, normalizedFilter, searching, previewKey]);
 
 	/** 压缩上下文是「操作」分类里的一行，不再是固定头部：只有停在该分类时参与列表。 */
-	const showsOperations = tab === "operations" && operation !== undefined;
+	const showsOperations = tab === "commands" && operation !== undefined;
 	const operationOffset = showsOperations ? 1 : 0;
 	const total = visibleEntries.length + operationOffset;
 	const activeEntry =
@@ -182,15 +175,16 @@ export function useCommandPanelModel({
 	const activateEntry = useCallback(
 		(entry: AddPanelEntry) => {
 			switch (entry.category) {
-				case "files":
-					fileActions?.find((candidate) => candidate.id === entry.id)?.onSelect();
-					return;
-				case "skills": {
-					const skill = skills.find((candidate) => `${candidate.type}:${candidate.name}` === entry.id);
+				case "skill": {
+					// entry.id 是能力 id（`<source>:<sourceId>:skill:<slug>`，见 buildSkillAbilities 的
+					// abilityId / buildMarketAbilityId），不是 `${type}:${name}`。取末段 slug 与原始
+					// SkillInfo 的 name 匹配——否则点击技能行后 skills.find 永远落空、什么都不插入。
+					const slug = entry.id.split(":").pop() ?? entry.id;
+					const skill = skills.find((candidate) => candidate.name === slug);
 					if (skill) onSelect(skill, resolveIcon(skill));
 					return;
 				}
-				case "connectors": {
+				case "mcp": {
 					// 面板里的连接器 id 是能力 id（`<source>:<id>:mcp:<slug>`），要落回 mcp.json 的
 					// server 名才能插入 `@mcp:` 标记。取最后一段 slug，再用已加载的配置确认存在。
 					const slug = entry.id.split(":").pop() ?? entry.id;
@@ -207,7 +201,7 @@ export function useCommandPanelModel({
 					return;
 			}
 		},
-		[connectors, fileActions, onSelect, onSelectConnector, resolveIcon, skills],
+		[connectors, onSelect, onSelectConnector, resolveIcon, skills],
 	);
 
 	const handleSelectTab = useCallback((next: AddPanelTab) => {
@@ -249,10 +243,7 @@ export function useCommandPanelModel({
 			kind: entry.kind,
 		} as const;
 
-		if (entry.category === "files") {
-			return { ...base, meta: [] };
-		}
-		if (entry.category === "skills") {
+		if (entry.category === "skill") {
 			const identifier = entry.id.split(":").slice(1).join(":");
 			return {
 				...base,
@@ -262,7 +253,7 @@ export function useCommandPanelModel({
 				],
 			};
 		}
-		if (entry.category === "connectors") {
+		if (entry.category === "mcp") {
 			// 进到目录里的连接器都是能力页认定为「已安装且启用」的，状态恒为已连接。
 			return {
 				...base,
@@ -316,9 +307,9 @@ export function useCommandPanelModel({
 			if (key === "Tab") {
 				event.preventDefault();
 				event.stopPropagation();
-				const order: AddPanelTab[] = ["favorites", ...ADD_PANEL_CATEGORY_ORDER, "operations"];
+				const order: AddPanelTab[] = ["favorites", ...ADD_PANEL_CATEGORY_ORDER, "commands"];
 				const at = order.indexOf(tab);
-				handleSelectTab(order[(at + 1) % order.length] ?? "skills");
+				handleSelectTab(order[(at + 1) % order.length] ?? "skill");
 				return;
 			}
 			if (key === "Escape") {

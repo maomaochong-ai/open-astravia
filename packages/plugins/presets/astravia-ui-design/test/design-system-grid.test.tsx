@@ -16,17 +16,6 @@ import type { DesignSystem } from "../src/design-systems/types";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-// happy-dom 没有 IntersectionObserver；demo 预览的懒挂载需要它存在。
-class ImmediateIntersectionObserver {
-	constructor(private readonly callback: (entries: { isIntersecting: boolean }[]) => void) {}
-	observe(): void {
-		this.callback([{ isIntersecting: true }]);
-	}
-	disconnect(): void {}
-	unobserve(): void {}
-}
-vi.stubGlobal("IntersectionObserver", ImmediateIntersectionObserver);
-
 function system(id: string, name: string): DesignSystem {
 	return {
 		id,
@@ -73,11 +62,13 @@ describe("DesignSystemGrid", () => {
 		expect(document.body.textContent).toContain("Stripe");
 	});
 
-	it("跟在项目宫格之后时画分隔线，当首屏主角时不画", () => {
+	it("跟在项目宫格之后时多一层间距，当首屏主角时不加", () => {
 		render(<DesignSystemGrid divided busy={false} onPick={() => {}} />);
-		expect(document.body.querySelector("section")?.className).toContain("border-t");
-		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		// ADR-0178 起去掉分区之间的分隔线，只靠间距区分。
+		expect(document.body.querySelector("section")?.className).toContain("mt-8");
 		expect(document.body.querySelector("section")?.className).not.toContain("border-t");
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		expect(document.body.querySelector("section")?.className).not.toContain("mt-8");
 	});
 
 	it("和项目卡片用同一套宫格，不是横向滚动条", () => {
@@ -114,28 +105,8 @@ describe("DesignSystemGrid", () => {
 		]);
 	});
 
-	it("悬停点燃对应卡片的 demo 预览，移开熄灭", () => {
-		const html = "<!doctype html><html><body>demo</body></html>";
-		setDesignSystems([
-			{
-				...system("linear", "Linear"),
-				resources: [{ path: "demo.html", role: "demo", encoding: "text", content: html, bytes: html.length }],
-			},
-			system("stripe", "Stripe"),
-		]);
-		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
-		const active = (): number => document.body.querySelectorAll("[data-active]").length;
-		expect(active()).toBe(0);
-		// React 的 onMouseEnter/Leave 由委托的 mouseover/mouseout 驱动。
-		act(() => {
-			tiles()[0].dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
-		});
-		expect(active()).toBe(1);
-		act(() => {
-			tiles()[0].dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
-		});
-		expect(active()).toBe(0);
-	});
+	// 悬停 demo 预览已随 ADR-0178 移除：风格卡预览固定用纯 token 骨架（DesignSystemPreview），
+	// 不再挂 iframe demo，也不再需要「悬停才挂」的懒加载与对应状态。
 });
 
 describe("目录拿不到时的状态", () => {

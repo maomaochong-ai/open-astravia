@@ -6,6 +6,7 @@ import {
 	type SessionExecutionMode,
 	sessionExecutionModeAtom,
 } from "@shared/store/atoms";
+import { showToast } from "@shared/store/toast-atoms";
 import { useSearch } from "@tanstack/react-router";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -69,18 +70,51 @@ export function useExecutionModeSelectorModel(binding: ExecutionModeSelectorBind
 	const isRemoteProject = typeof binding.cwd === "string" && isSshProjectUri(binding.cwd);
 	const effectiveMode: SessionExecutionMode = isRemoteProject ? "full-access" : binding.mode;
 
-	useEffect(() => {
+	/**
+	 * 读取一次沙箱能力。
+	 *
+	 * `unknown` 不能当成「可用」：主进程把探测放在首帧之后（Windows 的宿主探测最长 10 秒），
+	 * 面板刚打开时读到的多半就是 `unknown`。那时可选沙箱、点了却被主进程拒绝并回滚，
+	 * 用户看到的就是「切了没反应」。所以 `unknown` 也先按不可选处理，并在弹层每次打开时重读，
+	 * 探测完成后自动放行。
+	 */
+	const readSandboxCapability = useCallback(() => {
 		void window.astravia.config.get().then((config) => {
 			const capability = config.sandbox ?? config.linuxSandbox;
-			if (capability?.status === "unavailable") {
-				const reason = capability.reason ?? "unknown_error";
-				const platform = "platform" in capability ? capability.platform : "linux";
-				setSandboxUnavailableReason(t("executionModeSelector.sandboxUnavailable", { platform, reason }));
+			const status = capability?.status ?? "unknown";
+			if (status === "available") {
+				setSandboxUnavailableReason(null);
 				return;
 			}
-			setSandboxUnavailableReason(null);
+			const reason = capability?.reason ?? (status === "unknown" ? "checking" : "unknown_error");
+			const platform = capability && "platform" in capability ? capability.platform : "linux";
+			setSandboxUnavailableReason(t("executionModeSelector.sandboxUnavailable", { platform, reason }));
 		});
 	}, [t]);
+
+	useEffect(() => {
+		readSandboxCapability();
+	}, [readSandboxCapability]);
+
+	/*
+	 * 探测是异步的：首次打开弹层时它多半还没跑完。打开即重读，并在仍是「未知」时
+	 * 短促轮询几次（Windows 宿主探测最长 10 秒），探测一落地选项就自动放行——
+	 * 否则用户得关掉再打开一次才能看到沙箱可选。
+	 */
+	useEffect(() => {
+		if (!open) return;
+		readSandboxCapability();
+		let attempts = 0;
+		const timer = window.setInterval(() => {
+			attempts += 1;
+			if (attempts > 6) {
+				window.clearInterval(timer);
+				return;
+			}
+			readSandboxCapability();
+		}, 1500);
+		return () => window.clearInterval(timer);
+	}, [open, readSandboxCapability]);
 
 	const sandboxBlockedReason = isRemoteProject
 		? t("executionModeSelector.sandboxUnavailableRemote")
@@ -118,11 +152,21 @@ export function useExecutionModeSelectorModel(binding: ExecutionModeSelectorBind
 			setIsSwitching(true);
 			try {
 				await binding.onSelectMode(nextMode);
+			} catch (error) {
+				/*
+				 * 失败必须让人看见。主进程拒绝沙箱时给的是可读原因（「windows 沙盒不可用：…」），
+				 * 之前只写 console——用户看到的是「点了又跳回去」，分不清是没权限还是系统不支持。
+				 */
+				showToast({
+					variant: "error",
+					title: t("executionModeSelector.switchFailedTitle"),
+					message: error instanceof Error ? error.message : t("executionModeSelector.switchFailedMessage"),
+				});
 			} finally {
 				setIsSwitching(false);
 			}
 		},
-		[binding, disabled, effectiveMode, sandboxBlockedReason],
+		[binding, disabled, effectiveMode, sandboxBlockedReason, t],
 	);
 
 	return {

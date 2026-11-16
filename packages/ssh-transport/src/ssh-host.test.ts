@@ -31,4 +31,23 @@ describe("密码登录", () => {
 		expect(argv.some((value) => value.startsWith("PreferredAuthentications="))).toBe(false);
 		expect(argv).not.toContain("PubkeyAuthentication=no");
 	});
+
+	it("缺省启用 ControlMaster 连接复用", () => {
+		const argv = buildSshArgv({ id: "1", label: "a", target: "h", source: "manual" }, { controlPath: "/tmp/c" });
+		expect(argv).toContain("ControlMaster=auto");
+		expect(argv).toContain("ControlPath=/tmp/c");
+		expect(argv).toContain("ControlPersist=600");
+	});
+
+	it("Windows 关闭 ControlMaster 时不再传 socket 相关选项", () => {
+		// Windows OpenSSH 不支持 Unix domain socket 语义的 ControlPath，会报 getsockname failed。
+		const argv = buildSshArgv(
+			{ id: "1", label: "a", target: "h", source: "manual" },
+			{ controlPath: "/tmp/c", controlMaster: false },
+		);
+		expect(argv).not.toContain("ControlMaster=auto");
+		expect(argv).not.toContain("ControlPath=/tmp/c");
+		expect(argv).not.toContain("ControlPersist=600");
+		expect(argv).toContain("ConnectTimeout=15");
+	});
 });

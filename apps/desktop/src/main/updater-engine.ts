@@ -8,6 +8,7 @@ import { stripReleaseNoteHeader } from "../shared/release-note-header.js";
 
 import type { InnoWindowsUpdateController } from "./inno-windows-update.js";
 import { launchMacUnsignedInstaller } from "./mac-unsigned-installer.js";
+import { releaseNotesHtmlToMarkdown } from "./release-notes-markdown.js";
 
 export interface UpdateEngineInfo {
 	version: string;
@@ -128,12 +129,14 @@ async function promoteDownloadedInstaller(updater: AppUpdater, installerPath: st
 }
 
 function normalizeReleaseNotes(releaseNotes: UpdateInfo["releaseNotes"]): string | undefined {
-	if (typeof releaseNotes === "string") return stripReleaseNoteHeader(releaseNotes) || undefined;
+	if (typeof releaseNotes === "string")
+		return stripReleaseNoteHeader(releaseNotesHtmlToMarkdown(releaseNotes)) || undefined;
 	if (!Array.isArray(releaseNotes)) return undefined;
 
 	const notes = releaseNotes
 		.map((item) => item.note)
-		.filter((note): note is string => typeof note === "string" && note.length > 0);
+		.filter((note): note is string => typeof note === "string" && note.length > 0)
+		.map(releaseNotesHtmlToMarkdown);
 	if (notes.length === 0) return undefined;
 	// 单个版本：对话框已有版本标题，去掉正文开头的「# Astravia x.y.z」。
 	// 跨多个版本时各段的标题是区分版本的唯一线索，原样保留。

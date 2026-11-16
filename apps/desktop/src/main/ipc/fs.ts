@@ -82,7 +82,12 @@ import type { ModelsConfig } from "../models/model-settings-service.js";
 import { probeModelProvider } from "../models/probe.js";
 import { refreshDesktopProxy } from "../proxy/proxy-host.js";
 import { type DesktopProxyConfigSnapshot, mergeProxyConfigPatch, redactProxyConfig } from "../proxy/proxy-settings.js";
-import { getLinuxSandboxCapability, getSandboxCapability, type SandboxCapability } from "../sandbox/capability.js";
+import {
+	getLinuxSandboxCapability,
+	getSandboxCapability,
+	initializeSandboxCapability,
+	type SandboxCapability,
+} from "../sandbox/capability.js";
 import { getDesktopShortcutService } from "../shortcuts/shortcut-service.js";
 import { getGitStatus } from "./git-status.js";
 
@@ -426,6 +431,17 @@ export function registerFsIpc(): () => void {
 	});
 
 	ipcMain.handle(CHANNELS.CONFIG_GET, async (): Promise<DesktopConfigSnapshot> => {
+		/*
+		 * 还没探测过就顺手起一次。沙箱探测是异步的（Windows 的宿主探测最长 10 秒），
+		 * 而渲染层读配置就是为了决定「沙箱能不能选」。不在这里预热，面板打开时永远读到
+		 * `unknown`——界面看着可选、点击被拒，表现为「切不了」。
+		 * `initializeSandboxCapability` 对进行中的探测做了记忆化，重复调用不会叠加进程。
+		 */
+		if (getSandboxCapability().status === "unknown") {
+			void initializeSandboxCapability().catch(() => {
+				// 探测失败会在 getSandboxCapability() 里体现为 unavailable，这里不重复处理。
+			});
+		}
 		const config = await readDesktopConfig();
 		// Ensure all known paths are authorized for file operations
 		for (const p of config.projects) allowProjectRoot(p.path);

@@ -17,22 +17,13 @@ const MAX_HEIGHT_PX = 320;
 /** 面板顶部与视口顶之间至少保留的距离（标题栏 / 窗口圆角）。 */
 const TOP_MARGIN = 16;
 /**
- * 与输入卡片之间的间隙：**0**。
+ * 与输入卡片之间的间隙：**8**。
  *
- * 面板是输入卡片「长高」出来的形态，不是浮在旁边的另一块面板——底边压过卡片上描边
- * 1px、上圆角与卡片一致，视觉上就是同一个圆角容器。用户点击「添加」时，卡片整块抬高，
- * 列表随之出现。
+ * 面板是与输入卡片**分离**的独立圆角浮层（见 ADR-0183）：四角圆角 + 四边描边 + 毛玻璃，
+ * 与模型选择器同一套浮层语言，不再「长高」压过卡片上描边。
  */
-const CARD_GAP = 0;
+const CARD_GAP = 8;
 
-/*
- * 出现方式：**只淡入，不做裁剪揭幕**。
- *
- * 早期用 `clip-path: inset()` 从上往下裁开（为了避开 height 动画的 layout 成本）。
- * 列表上百行时，每帧重新裁剪整块面板比淡入贵得多，而用户体验上的差别几乎为零：
- * 面板是输入卡片长高的结果，用户要的是「点了立刻出来」，不是一段可以欣赏的生长动画。
- * opacity 走合成层，行数多少都不影响每帧成本。
- */
 const REVEAL_HIDDEN = { opacity: 0 };
 const REVEAL_SHOWN = { opacity: 1 };
 
@@ -44,9 +35,8 @@ const REVEAL_SHOWN = { opacity: 1 };
  * - **列表**：搜索框 + 按来源分组的条目。点条目直接插入 / 执行，点行尾「详情」进预览。
  * - **预览**：整栏换成这一条的完整信息，带返回。没有动作按钮。
  *
- * 形态是**输入卡片自己长高**，不是浮层：底边压过卡片上描边 1px、上圆角与卡片一致、
- * 底色取卡片同一个 token（`--input-bar-bg`），因此换主题时一起变。用户点「添加」时，
- * 卡片整块抬高、列表从卡片里长出来。
+ * 形态是输入卡片上方的**独立圆角浮层**（与卡片分离 8px）：四角圆角 + 四边描边 + 毛玻璃，
+ * 底色取卡片同一个 token（`--input-bar-bg`），因此换主题时一起变。
  */
 export function CommandPanelView({
 	open,
@@ -175,15 +165,9 @@ export function CommandPanelView({
 					transition={transition}
 
 					className={[
-						// -inset-x-px：定位父级是卡片内容盒（已被卡片 1px 描边内缩），不外扩这 1px
-						/*
-						 * `inset-x-0`：面板左右边缘与卡片**外边界**完全重合（两者描边都是 1px）。
-						 * 之前写 `-inset-x-px`（早期面板锚在卡片内容盒里时的补偿），锚点换成
-						 * 外层容器后那 1px 补偿就多出来了，接缝处能看到半像素错位。
-						 * `bottom-[calc(100%-1px)]` 让面板底边压住卡片上描边那一行，两条竖线连成一条。
-						 * 底色用卡片同一个 token（`--input-bar-bg`），换主题自动跟随。
-						 */
-						"absolute inset-x-0 bottom-[calc(100%-1px)] z-10 flex flex-col overflow-hidden rounded-t-[20px] border border-b-0 border-border bg-input-bar-bg",
+						// 独立圆角浮层：与输入卡片分离 8px（CARD_GAP），四角圆角 + 四边描边，
+						// 底色用卡片同 token + backdrop-blur，与模型选择器同一套毛玻璃浮层语言。
+						"absolute inset-x-0 bottom-[calc(100%+8px)] z-10 flex flex-col overflow-hidden rounded-[20px] border border-border bg-input-bar-bg/85 backdrop-blur-xl",
 						className,
 					]
 						.filter(Boolean)
@@ -253,7 +237,7 @@ export function CommandPanelView({
 														? labels.emptyNoMatchHint
 														: tab === "favorites"
 															? labels.favoritesEmptyHint
-															: tab === "operations"
+															: tab === "commands"
 																? labels.operationsEmptyHint
 																: labels.emptyNoSkillsHint
 												}
@@ -261,7 +245,7 @@ export function CommandPanelView({
 										) : (
 											<AddPanelList
 												sections={sections}
-												operation={tab === "operations" ? operation : undefined}
+												operation={tab === "commands" ? operation : undefined}
 												activeKey={activeKey}
 												scrollSignal={scrollSignal}
 												favorites={favorites}

@@ -329,6 +329,9 @@ export function useProjectDetailPageModel(
 		onShowInFolder: () => {
 			void window.astravia.shell.showInFolder(decodedCwd);
 		},
+		onOpenExternal: (href) => {
+			void window.astravia.shell.openExternal(href);
+		},
 		onToggleActivity: () => setActivityOpen((o) => !o),
 	};
 }

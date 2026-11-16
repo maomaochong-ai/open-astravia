@@ -1208,11 +1208,14 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	ipcMain.handle(CHANNELS.GET_MESSAGES, async (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
+		loopLagProbe.tag("session-get-messages");
 		return runtime.getMessages(sessionId);
 	});
 
 	ipcMain.handle(CHANNELS.GET_FULL_HISTORY, async (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
+		// 完整历史可能触发整份解析 + 投影，是长会话切卡的常见同步阻塞点。
+		loopLagProbe.tag("session-get-full-history");
 		return runtime.getFullHistory(sessionId);
 	});
 
@@ -1836,6 +1839,8 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		assertNonEmptyString(path, "path");
 		const abs = resolve(path);
 		const budget = typeof tailBytes === "number" && tailBytes > 0 ? tailBytes : SESSION_PREVIEW_TAIL_BYTES;
+		// 首屏快速预览的同步读盘：打开会话时这一步决定首屏，读大文件会占主线程。
+		loopLagProbe.tag("viewer-open-tail-read");
 		return readSessionHistoryTail(abs, budget);
 	});
 

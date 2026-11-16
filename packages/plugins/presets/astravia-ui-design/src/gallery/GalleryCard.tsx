@@ -12,7 +12,7 @@ interface GalleryCardProps {
 /**
  * 一张卡：上方封面、下方 info。
  *
- * 封面区固定 4:3 并 `object-cover`：全景图是原比例存的（frame 横排时会很扁），
+ * 封面区固定 16:10 并 `object-cover`：全景图是原比例存的（frame 横排时会很扁），
  * 卡面统一比例才能排出整齐的网格，代价是很扁的全景只看得到中间一段。
  */
 export function GalleryCard({ card, onOpen, onContextMenu }: GalleryCardProps) {
@@ -27,7 +27,7 @@ export function GalleryCard({ card, onOpen, onContextMenu }: GalleryCardProps) {
 			onContextMenu={onContextMenu}
 			className="group flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg"
 		>
-			<div className="relative aspect-[4/3] w-full overflow-hidden bg-muted/40">
+			<div className="relative aspect-[16/10] w-full overflow-hidden bg-muted/40">
 				{card.coverDataUrl ? (
 					<img
 						src={card.coverDataUrl}
