@@ -85,14 +85,6 @@ export function buildModelColumns(
 		count: favoriteModels.length,
 		isFavorites: true,
 	});
-	if (favoriteModels.length > 0) {
-		providerColumns.push({
-			id: FAVORITES_COLUMN_ID,
-			label: "",
-			count: favoriteModels.length,
-			isFavorites: true,
-		});
-	}
 	for (const group of groups) {
 		providerColumns.push({
 			id: group.provider,
