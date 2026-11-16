@@ -38,8 +38,8 @@ export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystem
 	const wall = useStyleWallWindow({ total: systems.length, gap: GRID_GAP, maxColumns: GRID_COLUMNS, minCardWidth: 0 });
 
 	return (
-		<section className={divided ? "mt-8 border-t border-border/60 pt-6" : ""}>
-			<SectionHeader title={t("gallery.styles.title")} hint={t("gallery.styles.hint")} />
+		<section className={divided ? "mt-8" : ""}>
+			<SectionHeader title={t("gallery.styles.title")} />
 
 			{systems.length > 0 ? (
 				<div

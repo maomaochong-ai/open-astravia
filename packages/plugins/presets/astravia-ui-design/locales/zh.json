@@ -246,7 +246,6 @@
 	"gallery.search": "搜索设计",
 	"gallery.search.noMatch": "没有匹配的设计",
 	"gallery.styles.title": "从一套风格开始",
-	"gallery.styles.hint": "点一套风格看详情，一键开一份用它的新设计",
 	"gallery.styles.view": "查看「{{name}}」风格详情",
 	"gallery.count": "{{count}} 个项目",
 	"gallery.section.mine": "我的设计",

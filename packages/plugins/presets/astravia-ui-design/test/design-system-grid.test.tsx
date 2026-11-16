@@ -62,11 +62,13 @@ describe("DesignSystemGrid", () => {
 		expect(document.body.textContent).toContain("Stripe");
 	});
 
-	it("跟在项目宫格之后时画分隔线，当首屏主角时不画", () => {
+	it("跟在项目宫格之后时多一层间距，当首屏主角时不加", () => {
 		render(<DesignSystemGrid divided busy={false} onPick={() => {}} />);
-		expect(document.body.querySelector("section")?.className).toContain("border-t");
-		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		// ADR-0178 起去掉分区之间的分隔线，只靠间距区分。
+		expect(document.body.querySelector("section")?.className).toContain("mt-8");
 		expect(document.body.querySelector("section")?.className).not.toContain("border-t");
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		expect(document.body.querySelector("section")?.className).not.toContain("mt-8");
 	});
 
 	it("和项目卡片用同一套宫格，不是横向滚动条", () => {

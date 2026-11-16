@@ -246,7 +246,6 @@
 	"gallery.search": "Search designs",
 	"gallery.search.noMatch": "No matching design",
 	"gallery.styles.title": "Start from a style",
-	"gallery.styles.hint": "Click a style for details, then start a new design with it",
 	"gallery.styles.view": "View the {{name}} style",
 	"gallery.count": "{{count}} projects",
 	"gallery.section.mine": "My designs",
