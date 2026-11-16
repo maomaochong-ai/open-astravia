@@ -316,7 +316,9 @@ export function GalleryView() {
 			}}
 			onDrop={onDrop}
 		>
-			<div className="astravia-design-gallery-scroll flex-1 overflow-y-auto overflow-x-hidden px-5 pb-8">
+			<div className="astravia-design-gallery-scroll flex-1 overflow-y-auto overflow-x-hidden">
+				{/* 流式画布：内容收在 min(1200px,100%) 的列里，内边距随窗口收缩；窗口再窄也不横向裁切。 */}
+				<div className="mx-auto w-full max-w-[1200px] px-4 pb-8 sm:px-10 lg:px-14">
 				{view === "projects" ? (
 					// 全部设计：整页宫格，滚动到底部自动翻页。
 					<>
@@ -394,6 +396,7 @@ export function GalleryView() {
 						</div>
 					</>
 				)}
+				</div>
 			</div>
 
 
