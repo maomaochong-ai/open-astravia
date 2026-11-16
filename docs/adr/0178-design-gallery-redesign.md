@@ -2,7 +2,7 @@
 
 ## 状态
 
-已接受，待实施。范围是 `packages/plugins/presets/astravia-ui-design` 的设计画廊
+已接受，已实施。范围是 `packages/plugins/presets/astravia-ui-design` 的设计画廊
 （`src/gallery/**`，约 2500 行），不改插件对外合同与画布引擎。
 
 ## 背景
