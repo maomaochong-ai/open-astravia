@@ -8,9 +8,9 @@ vi.mock("@astravia-org/plugin-sdk", () => ({
 	}),
 }));
 
-const systems = vi.hoisted(() => ({ current: [] as Array<{ id: string; name: string }> }));
+const catalog = vi.hoisted(() => ({ systems: [] as Array<{ id: string; name: string }>, status: "ready" as "loading" | "ready" | "failed" }));
 vi.mock("../src/design-systems/index", () => ({
-	useCatalogState: () => ({ systems: systems.current, status: "ready" }),
+	useCatalogState: () => ({ systems: catalog.systems, status: catalog.status }),
 	refreshDesignCatalog: vi.fn(),
 }));
 
@@ -40,7 +40,7 @@ let host: HTMLDivElement;
 let root: Root;
 
 beforeEach(() => {
-	systems.current = [];
+	catalog.systems = [];
 	host = document.createElement("div");
 	document.body.appendChild(host);
 	root = createRoot(host);
@@ -62,7 +62,7 @@ function buttons(): HTMLButtonElement[] {
 
 describe("GalleryBanner", () => {
 	it("有风格时渲染轮播，推荐第一套的名字与摘要", () => {
-		systems.current = [system("linear", "Linear"), system("stripe", "Stripe")];
+		catalog.systems = [system("linear", "Linear"), system("stripe", "Stripe")];
 		render(<GalleryBanner onPick={() => {}} />);
 		expect(document.body.textContent).toContain("Linear");
 		expect(document.body.textContent).toContain("Linear 摘要");
@@ -73,8 +73,17 @@ describe("GalleryBanner", () => {
 		expect(document.body.querySelector("button")).toBeNull();
 	});
 
+	it("风格库还在拉时铺同高骨架，而不是整块不渲染", () => {
+		catalog.status = "loading";
+		render(<GalleryBanner onPick={() => {}} />);
+		// 骨架是 aria-hidden 的占位块，没有按钮也没有轮播点。
+		expect(document.body.querySelector("button")).toBeNull();
+		expect(document.body.querySelector(".animate-pulse")).not.toBeNull();
+		catalog.status = "ready";
+	});
+
 	it("轮播点数量等于推荐套数，且首张是当前", () => {
-		systems.current = [system("a", "A"), system("b", "B"), system("c", "C")];
+		catalog.systems = [system("a", "A"), system("b", "B"), system("c", "C")];
 		render(<GalleryBanner onPick={() => {}} />);
 		// 轮播点是带 aria-current 的按钮（3 个），CTA 按钮 1 个。
 		const dots = buttons().filter((button) => button.getAttribute("aria-current") !== null);
@@ -83,7 +92,7 @@ describe("GalleryBanner", () => {
 	});
 
 	it("点「查看详情」把当前推荐的那套交回去", () => {
-		systems.current = [system("linear", "Linear"), system("stripe", "Stripe")];
+		catalog.systems = [system("linear", "Linear"), system("stripe", "Stripe")];
 		const picked: string[] = [];
 		render(<GalleryBanner onPick={(s) => picked.push(s.id)} />);
 		const cta = buttons().find((button) => button.textContent?.includes("gallery.banner.cta"));

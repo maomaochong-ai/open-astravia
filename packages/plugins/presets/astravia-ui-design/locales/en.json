@@ -328,5 +328,6 @@
 	"newSession.styles.pick": "Use the {{name}} style",
 	"gallery.banner.kicker": "Featured style",
 	"gallery.banner.cta": "View details",
-	"gallery.banner.goto": "Go to slide {{n}}"
+	"gallery.banner.goto": "Go to slide {{n}}",
+	"gallery.section.mineEmpty": "No designs yet. Pick a style below, or use New in the header to start a blank design."
 }

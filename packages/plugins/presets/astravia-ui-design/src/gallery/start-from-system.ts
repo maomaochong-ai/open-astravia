@@ -144,18 +144,21 @@ export async function startDesignFromSystem(
 	projectName: string,
 	locale: string,
 ): Promise<StartedFromSystem> {
-	const ctx = getPluginCtx();
+	// 不在函数顶部缓存 ctx：这条链路跨多个 await（建项目 → 写资料 → 写清单），期间插件可能被
+	// 宿主重载（HMR / 重新激活），旧 capability session 会被 closeSession。最后一步跳转必须用
+	// 最新的 session，否则会报「Plugin renderer capability session is not active」。每个需要
+	// 上下文的步骤各自 `getPluginCtx()`，不把旧引用带过 await。
 	// 项目名由用户在对话框里给：他点的是风格，不是在给项目起名。
 	const { cwd } = await createDesignProject(projectName);
 	const resourcesDir = `${DESIGN_RESOURCES_DIR}/${system.id}`;
 	const written = await writeResources(system, `${cwd}/${resourcesDir}`);
 	// 清单跟着资料走：一份都没落下来就不写，免得 skill 引着 agent 去读一个空包。
 	if (written.length > 0) {
-		await ctx.fs
+		await getPluginCtx().fs
 			.writeFile(`${cwd}/${resourcesDir}/${RESOURCE_INDEX_FILE}`, buildResourceIndex(system.name, written))
 			.catch(() => {});
 	}
-	await ctx.official.navigation.open({
+	await getPluginCtx().official.navigation.open({
 		target: "new-session",
 		cwd,
 		draft: buildStyleStartDraft(system, locale),

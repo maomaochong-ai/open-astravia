@@ -1,6 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { DesignSystemPreview } from "../canvas/DesignSystemPreview";
+import { DesignSystemMark } from "../canvas/DesignSystemMark";
 import { designSystemTagline } from "../design-systems/labels";
 import { useCatalogState } from "../design-systems/index";
 import type { DesignSystem } from "../design-systems/types";
@@ -41,7 +41,7 @@ export interface GalleryBannerProps {
 
 export function GalleryBanner({ onPick }: GalleryBannerProps) {
 	const { t, locale } = useTranslation();
-	const { systems } = useCatalogState();
+	const { systems, status } = useCatalogState();
 
 	/** 推荐前 5 套风格；不足 5 套就全部，一套都没有时整块不渲染。 */
 	const slides = useMemo(() => systems.slice(0, MAX_SLIDES), [systems]);
@@ -89,7 +89,19 @@ export function GalleryBanner({ onPick }: GalleryBannerProps) {
 		return () => window.clearInterval(timer);
 	}, [slides.length, paused, active]);
 
-	if (slides.length === 0) return null;
+	if (slides.length === 0) {
+		// 风格库还在拉时铺一块同高的骨架，避免轮播加载完突然冒出、把下方内容挤下去。
+		// 拉失败 / 真为空时才整块不渲染（下方风格库会给出离线解释）。
+		if (status === "loading") {
+			return (
+				<div
+					aria-hidden
+					className="mb-[30px] h-[200px] animate-pulse overflow-hidden rounded-[18px] border border-border/50 bg-card/40"
+				/>
+			);
+		}
+		return null;
+	}
 
 	const hue = SLIDE_HUES[active % SLIDE_HUES.length] ?? SLIDE_HUES[0];
 	const featured = slides[active % slides.length] ?? slides[0]!;
@@ -126,11 +138,14 @@ export function GalleryBanner({ onPick }: GalleryBannerProps) {
 									opacity: layout.opacity,
 									transform: `translate(-50%, -50%) rotate(${layout.rotate}deg)`,
 								}}
-								className={`absolute flex items-center justify-center overflow-hidden rounded-[24%] border bg-card shadow-lg shadow-black/15 ${
+								className={`absolute flex items-center justify-center rounded-[26%] border bg-card shadow-xl shadow-black/15 ${
 									isFeatured ? "z-10 border-foreground/20 ring-4 ring-foreground/10" : "border-foreground/10"
 								}`}
 							>
-								<DesignSystemPreview system={system} className="h-full w-full" />
+								{/* 与能力页同一形态：外层圆角卡片 + 0.76 内层留白 + 品牌图标（主色块 + 首字母）。 */}
+								<div style={{ width: layout.size * 0.76, height: layout.size * 0.76 }}>
+									<DesignSystemMark system={system} />
+								</div>
 							</div>
 						);
 					})}

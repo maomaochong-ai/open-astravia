@@ -3,6 +3,7 @@ import { useStyleWallWindow } from "../cards/use-style-wall-window";
 import { refreshDesignCatalog, useCatalogState } from "../design-systems/index";
 import type { DesignSystem } from "../design-systems/types";
 import { getPluginCtx } from "../plugin-context";
+import { GalleryCardSkeleton } from "./GalleryCardSkeleton";
 import { GallerySystemCard } from "./GallerySystemCard";
 import { SectionHeader } from "./SectionHeader";
 
@@ -57,11 +58,9 @@ export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystem
 				</div>
 			) : status === "loading" ? (
 				<div className={GRID_CLASS} aria-busy="true" aria-label={t("gallery.styles.loading")}>
+					{/* 骨架与真实风格卡同构（16:10 预览 + 两行信息），数据到了原位换卡，版面不跳。 */}
 					{Array.from({ length: SKELETON_COUNT }, (_, index) => (
-						<div
-							key={`skeleton-${index}`}
-							className="aspect-[16/10] animate-pulse rounded-xl border border-border bg-accent/40"
-						/>
+						<GalleryCardSkeleton key={`skeleton-${index}`} />
 					))}
 				</div>
 			) : (

@@ -142,4 +142,39 @@ describe("startDesignFromSystem", () => {
 		expect(writeFile).not.toHaveBeenCalled();
 		expect(navigationOpen).toHaveBeenCalledOnce();
 	});
+
+	it("跨 await 期间插件被重载（session 变更）时，跳转用最新 session 而不是旧的", async () => {
+		// 复现「session is not active」的根因：旧实现把 `getPluginCtx()` 的结果在函数顶部缓存，
+		// 跨过 createProject / writeResources 两个 await 后仍用旧引用调 navigation。
+		// 这里让 createProject 中途换成新 ctx（新 session），断言跳转用的是新 ctx。
+		const navA = vi.fn(async () => ({}));
+		const navB = vi.fn(async () => ({}));
+		const createProjectSwitching = vi.fn(async (name: string) => {
+			// 模拟宿主在流程中途重载插件：换一套全新的官方 API（新 capabilitySessionId）。
+			setPluginCtx({
+				fs: { writeFile: vi.fn(async () => {}), createDirectory: vi.fn(async () => {}) },
+				official: {
+					projects: { create: vi.fn(async () => ({ path: `/w/${name}` })) },
+					navigation: { open: navB },
+				},
+			} as unknown as PluginContext);
+			return { path: `/w/${name}` };
+		});
+		setPluginCtx({
+			fs: { writeFile: vi.fn(async () => {}), createDirectory: vi.fn(async () => {}) },
+			official: {
+				projects: { create: createProjectSwitching },
+				navigation: { open: navA },
+			},
+		} as unknown as PluginContext);
+
+		await startDesignFromSystem(system([textResource("theme.css", "theme")]), "my-app", "zh");
+
+		expect(navA).not.toHaveBeenCalled();
+		expect(navB).toHaveBeenCalledWith({
+			target: "new-session",
+			cwd: "/w/my-app",
+			draft: "@skill:astravia-ui-design 请按「Linear」风格设计。我想做：",
+		});
+	});
 });

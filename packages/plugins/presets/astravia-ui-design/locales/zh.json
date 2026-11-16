@@ -328,5 +328,6 @@
 	"newSession.styles.pick": "用「{{name}}」风格",
 	"gallery.banner.kicker": "推荐风格",
 	"gallery.banner.cta": "查看详情",
-	"gallery.banner.goto": "第 {{n}} 张"
+	"gallery.banner.goto": "第 {{n}} 张",
+	"gallery.section.mineEmpty": "还没有设计，从下方风格库挑一套开工，或点页头「新建」开一份空白设计。"
 }

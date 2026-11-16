@@ -316,10 +316,14 @@ export function GalleryView() {
 						) : null}
 					</>
 				) : empty ? (
-					// 空态：Hero 换一句更具引导性的副标题，风格库紧随其后当首屏主角——
-					// 点一套风格就能开工，比对着空白画布想第一句话快。
+					// 空态也渲染「我的设计」分区：入口必须始终可见，否则用户找不到自己的设计在哪。
+					// 空态下它只是一句提示（新建 / 从风格开工），不再是「没有这一块」。
 					<>
 						<GalleryBanner onPick={setDetailSystem} />
+						<section>
+							<SectionHeader title={t("gallery.section.mine")} />
+							<p className="mb-6 text-xs text-muted-foreground">{t("gallery.section.mineEmpty")}</p>
+						</section>
 						<div>
 							<DesignSystemGrid busy={busy} onPick={setDetailSystem} />
 						</div>
