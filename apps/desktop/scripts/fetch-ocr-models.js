@@ -35,6 +35,34 @@ async function fileExistsAndNonEmpty(path) {
 	}
 }
 
+// jsDelivr 在 CI 高并发时段会偶发 502/503/504；构建不能因此随机失败，
+// 对这类瞬时 5xx 重试若干次，退避间隔逐次加长。
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+const MAX_ATTEMPTS = 4;
+
+class DownloadError extends Error {
+	constructor(message, status) {
+		super(message);
+		this.status = status;
+	}
+}
+
+async function downloadWithRetry(filename) {
+	for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+		try {
+			await download(filename);
+			return;
+		} catch (error) {
+			const status = error instanceof DownloadError ? error.status : undefined;
+			if (status !== undefined && !RETRYABLE_STATUS.has(status)) throw error;
+			if (attempt === MAX_ATTEMPTS) throw error;
+			const delayMs = 1000 * 2 ** (attempt - 1);
+			console.warn(`[ocr-models] ${filename} attempt ${attempt} failed, retrying in ${delayMs}ms`);
+			await new Promise((resolve) => setTimeout(resolve, delayMs));
+		}
+	}
+}
+
 async function download(filename) {
 	const dest = join(targetDir, filename);
 	if (await fileExistsAndNonEmpty(dest)) {
@@ -45,7 +73,7 @@ async function download(filename) {
 	console.log(`[ocr-models] fetching: ${src}`);
 	const res = await fetch(src, { redirect: "follow" });
 	if (!res.ok || !res.body) {
-		throw new Error(`Failed to download ${filename}: HTTP ${res.status}`);
+		throw new DownloadError(`Failed to download ${filename}: HTTP ${res.status}`, res.status);
 	}
 	await mkdir(dirname(dest), { recursive: true });
 	const tmp = `${dest}.part`;
@@ -59,7 +87,7 @@ async function download(filename) {
 async function main() {
 	await mkdir(targetDir, { recursive: true });
 	for (const f of FILES) {
-		await download(f);
+		await downloadWithRetry(f);
 	}
 	console.log(`[ocr-models] ready: ${targetDir}`);
 }
