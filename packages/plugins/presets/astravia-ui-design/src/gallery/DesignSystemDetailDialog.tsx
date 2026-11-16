@@ -108,16 +108,14 @@ export function DesignSystemDetailDialog({ system, busy, onUse, onClose }: Desig
 					</div>
 
 					<div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-						{/* 大图预览:有 demo 就常开自动滚动,让这页一直「活着」;没有就用 token 色板。 */}
+						{/* 通栏预览：有 demo 就常开自动滚动，让这页一直「活着」；没有就用 token 色板。 */}
 						{hasDemo ? (
 							<DesignSystemDemo system={system} active className="aspect-[16/10] rounded-xl border border-border" />
 						) : (
 							<DesignSystemPreview system={system} className="aspect-[16/10]" />
 						)}
 
-						<p className="mt-4 text-sm leading-relaxed text-foreground">{tagline}</p>
-						{blurb ? <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{blurb}</p> : null}
-
+						{/* 配色只给色块不给色号：色号是给「照抄」用的，这里只想让人一眼认出这套风格的配色气质。 */}
 						{palette.length > 0 ? (
 							<div className="mt-4">
 								<h3 className="text-xs font-medium text-muted-foreground">{t("gallery.detail.palette")}</h3>
@@ -125,7 +123,6 @@ export function DesignSystemDetailDialog({ system, busy, onUse, onClose }: Desig
 									{palette.map((entry) => (
 										<span
 											key={entry.key}
-											title={`${entry.key}: ${entry.value}`}
 											className="size-7 rounded-lg border border-border shadow-sm"
 											style={{ backgroundColor: entry.value }}
 										/>
@@ -156,10 +153,13 @@ export function DesignSystemDetailDialog({ system, busy, onUse, onClose }: Desig
 								</button>
 							) : null}
 						</dl>
+
+						<p className="mt-4 text-sm leading-relaxed text-foreground">{tagline}</p>
+						{blurb ? <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{blurb}</p> : null}
 					</div>
 
 					<div className="flex shrink-0 items-center gap-2 border-t border-border px-5 py-3">
-						<div className="flex-1" />
+						{/* 「在浏览器打开 Demo」移到页脚左侧，与右侧的「使用」分开，不再挤在取消/确认那一堆里。 */}
 						{hasDemo ? (
 							<button
 								type="button"
@@ -173,6 +173,7 @@ export function DesignSystemDetailDialog({ system, busy, onUse, onClose }: Desig
 								{t("gallery.detail.openDemo")}
 							</button>
 						) : null}
+						<div className="flex-1" />
 						<button
 							type="button"
 							disabled={busy}
