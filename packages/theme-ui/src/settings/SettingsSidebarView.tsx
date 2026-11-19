@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { type JSX, useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@astravia-org/ui";
 
 export interface SettingsSidebarChildItem {
@@ -38,6 +38,52 @@ function ChildIcon({ item }: { item: SettingsSidebarChildItem }): JSX.Element {
 	return <span className={cn(item.icon, "h-3.5 w-3.5 shrink-0")} />;
 }
 
+/** 渐隐高度：够看出「上/下还有内容」，又不吃掉整行。 */
+const FADE_SIZE = 24;
+
+type FadeEdges = { top: boolean; bottom: boolean };
+
+/**
+ * 隐藏滚动条的纵向滚动容器，用顶部/底部渐隐提示还能往哪边滚。
+ * 用 mask 而不是叠色块，换主题后不会露出色差；只在该方向真有内容时才淡出，避免无端吃掉首尾行。
+ */
+function useFadeEdges(): {
+	ref: React.RefObject<HTMLElement | null>;
+	sync: () => void;
+	maskImage: string | undefined;
+} {
+	const ref = useRef<HTMLElement | null>(null);
+	const [edges, setEdges] = useState<FadeEdges>({ top: false, bottom: false });
+
+	const sync = useCallback(() => {
+		const el = ref.current;
+		if (!el) return;
+		const top = el.scrollTop > 4;
+		const bottom = el.scrollHeight - el.scrollTop - el.clientHeight > 4;
+		setEdges((prev) => (prev.top === top && prev.bottom === bottom ? prev : { top, bottom }));
+	}, []);
+
+	// 展开/收起下级入口会改变内容高度，光靠 onScroll 追不上，连内容一起观察。
+	useEffect(() => {
+		const el = ref.current;
+		if (!el) return;
+		sync();
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(sync);
+		observer.observe(el);
+		for (const child of Array.from(el.children)) observer.observe(child);
+		return () => observer.disconnect();
+	}, [sync]);
+
+	let maskImage: string | undefined;
+	if (edges.top || edges.bottom) {
+		const start = edges.top ? `transparent, black ${FADE_SIZE}px` : "black, black";
+		const end = edges.bottom ? `black calc(100% - ${FADE_SIZE}px), transparent` : "black, black";
+		maskImage = `linear-gradient(to bottom, ${start}, ${end})`;
+	}
+	return { ref, sync, maskImage };
+}
+
 export function SettingsSidebarView({
 	activeTab,
 	betaBadgeLabel,
@@ -55,12 +101,23 @@ export function SettingsSidebarView({
 		? (tabs.find((tab) => tab.children?.some((child) => child.key === activeChildKey))?.key ?? null)
 		: null;
 
+	const { ref, sync, maskImage } = useFadeEdges();
+
 	return (
-		<div className={cn("flex shrink-0 flex-col", narrow ? "w-14" : "w-[200px]")}>
+		<div className={cn("flex min-h-0 shrink-0 flex-col", narrow ? "w-14" : "w-[200px]")}>
 			<div className={cn("drag-region", narrow ? "h-12" : "px-5 pb-2 pt-2")}>
 				{!narrow && <h1 className="text-[20px] font-bold text-foreground">{title}</h1>}
 			</div>
-			<nav className={cn("flex flex-col gap-0.5", narrow ? "px-2" : "px-2.5")}>
+			<nav
+				ref={ref}
+				onScroll={sync}
+				style={maskImage ? { maskImage, WebkitMaskImage: maskImage } : undefined}
+				// no-scrollbar：全局 overlay 滚动条规则无 layer，Tailwind 的 hidden 压不过它。
+				className={cn(
+					"no-scrollbar flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto",
+					narrow ? "px-2" : "px-2.5",
+				)}
+			>
 				{tabs.map((item) => {
 					// 窄侧栏没有文字位置，展开的清单读不出来，此时只保留「点进页面」。
 					const expandable = !narrow && (item.children?.length ?? 0) > 0;

@@ -107,4 +107,41 @@ describe("SettingsSidebarView", () => {
 		expect(onSelectTab).toHaveBeenCalledWith("general");
 		expect(screen.getByText("通用设置").closest("button")?.getAttribute("aria-expanded")).toBeNull();
 	});
+
+	it("标签超出视口时导航区可滚动、隐藏滚动条，并只在有内容的一侧渐隐", () => {
+		const { container } = render(
+			<SettingsSidebarView
+				activeTab="general"
+				betaBadgeLabel="BETA"
+				narrow={false}
+				onSelectTab={vi.fn()}
+				tabs={TABS}
+				title="设置"
+			/>,
+		);
+		const nav = container.querySelector("nav") as HTMLElement;
+		expect(nav.className).toContain("no-scrollbar");
+		expect(nav.className).toContain("overflow-y-auto");
+		// 内容未超出时不挂 mask，避免无端淡掉首尾行
+		expect(nav.style.maskImage).toBeFalsy();
+
+		const metrics = { scrollHeight: 600, clientHeight: 200, scrollTop: 0 };
+		for (const [key, value] of Object.entries(metrics)) {
+			Object.defineProperty(nav, key, { configurable: true, writable: true, value });
+		}
+		fireEvent.scroll(nav);
+		// 在顶部：只有底部渐隐
+		expect(nav.style.maskImage).toContain("black, black");
+		expect(nav.style.maskImage).toContain("transparent)");
+
+		(nav as unknown as { scrollTop: number }).scrollTop = 100;
+		fireEvent.scroll(nav);
+		expect(nav.style.maskImage).toMatch(/^linear-gradient\(to bottom, transparent, black/);
+		expect(nav.style.maskImage).toContain("calc(100% - 24px), transparent)");
+
+		(nav as unknown as { scrollTop: number }).scrollTop = 400;
+		fireEvent.scroll(nav);
+		// 到底：只有顶部渐隐
+		expect(nav.style.maskImage).toMatch(/black, black\)$/);
+	});
 });
