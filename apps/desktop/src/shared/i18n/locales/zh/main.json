@@ -6,6 +6,12 @@
 		"quit": "退出",
 		"hideToTray": "隐藏到托盘"
 	},
+	"quitConfirmation": {
+		"title": "退出 Astravia？",
+		"detail": "已保存的对话会保留，正在运行的任务将停止。",
+		"quit": "退出",
+		"cancel": "取消"
+	},
 	"menu": {
 		"app": {
 			"title": "Astravia",
