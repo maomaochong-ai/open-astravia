@@ -28,7 +28,7 @@ const COMMAND_NOT_FOUND_EXIT_CODE = 127;
 export async function runRemotePluginCommand(request: RemotePluginCommandRequest): Promise<PluginCommandRunResult> {
 	const location = parseProjectLocation(request.cwd);
 	if (location.kind !== "ssh") throw new Error(`Not a remote project path: ${request.cwd}`);
-	const connection = getSshConnection(location.hostId);
+	const connection = await getSshConnection(location.hostId);
 
 	const stdout: Uint8Array[] = [];
 	const stderr: Uint8Array[] = [];

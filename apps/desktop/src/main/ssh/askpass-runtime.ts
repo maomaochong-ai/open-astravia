@@ -3,6 +3,7 @@ import { app } from "electron";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getAppLogger } from "../logger.js";
 import { ensureAskpassAssets } from "./askpass-assets.js";
+import { resolveAskpassWindowsBinary } from "./askpass-binary.js";
 import { createSshAskpassChannel, type SshAskpassChannel } from "./askpass-server.js";
 import { askSshPromptInRenderer } from "./ssh-prompt-broker.js";
 import { SshPromptService } from "./ssh-prompt-service.js";
@@ -46,22 +47,33 @@ function getPromptService(resolveHostLabel: (hostId: string) => string): SshProm
 	return promptService;
 }
 
+/** 当前平台的 askpass 程序路径；解析不到返回 undefined。 */
+function resolveAskpassProgram(): string | undefined {
+	if (process.platform === "win32") {
+		return resolveAskpassWindowsBinary();
+	}
+	return ensureAskpassAssets(app.getPath("exe")).scriptPath;
+}
+
 /**
  * 为一次连接准备 askpass 环境变量。
  *
  * 没有这套东西时，需要口令、私钥密码、2FA 或首次主机指纹确认的连接会一直挂到超时，
  * 而且完全看不出原因——系统 `ssh` 的这些提示不读 stdin，只走 `SSH_ASKPASS`。
  */
-export function resolveAskpassEnvironment(
+export async function resolveAskpassEnvironment(
 	hostId: string,
 	resolveHostLabel: (hostId: string) => string,
-): Record<string, string> | undefined {
+): Promise<Record<string, string> | undefined> {
 	try {
 		const service = getPromptService(resolveHostLabel);
-		channel ??= createSshAskpassChannel(service.resolve);
-		const { scriptPath } = ensureAskpassAssets(app.getPath("exe"));
+		channel ??= await createSshAskpassChannel(service.resolve);
+		// Windows 的 OpenSSH 用 CreateProcessW 启动 SSH_ASKPASS，必须是 PE 可执行文件，
+		// 所以走 Go 编译的 askpass.exe；其余平台沿用运行时生成的 `.sh` + Electron Node。
+		const askpass = resolveAskpassProgram();
+		if (!askpass) return undefined;
 		return {
-			...buildAskpassEnvironment(scriptPath, process.env.DISPLAY),
+			...buildAskpassEnvironment(askpass, process.env.DISPLAY),
 			ASTRAVIA_ASKPASS_SOCKET: channel.socketPath,
 			ASTRAVIA_ASKPASS_TOKEN: channel.token,
 			ASTRAVIA_ASKPASS_HOST: hostId,

@@ -45,7 +45,7 @@ export function watchRemoteDirectory(
 	const poll = async (): Promise<void> => {
 		let nextDelay = interval;
 		try {
-			const entries = await getSshConnection(location.hostId).listDirectory(location.remotePath);
+			const entries = await (await getSshConnection(location.hostId)).listDirectory(location.remotePath);
 			const snapshot = fingerprint(entries);
 			if (previous !== undefined && previous !== snapshot && !stopped) onChange();
 			previous = snapshot;
@@ -57,9 +57,7 @@ export function watchRemoteDirectory(
 	};
 
 	const start = async (): Promise<void> => {
-		const helper = await getSshConnection(location.hostId)
-			.helper()
-			.catch(() => undefined);
+		const helper = await (await getSshConnection(location.hostId)).helper().catch(() => undefined);
 		if (stopped) return;
 		if (!helper) {
 			schedule(0);

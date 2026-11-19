@@ -39,12 +39,12 @@ import { resolveDesktopSshConnection } from "./ssh-connection-resolver.js";
  * 远程项目（cwd 是 `ssh://<hostId>/<路径>`）换成 SSH 实现，工具逻辑仍是同一份；
  * 传进去的是解析出来的远端绝对路径，而不是 URI——工具内部所有相对路径解析都基于它。
  */
-export const createDesktopCodingAgentToolEnvironment: CodingAgentToolEnvironmentFactory = (context) => {
+export const createDesktopCodingAgentToolEnvironment: CodingAgentToolEnvironmentFactory = async (context) => {
 	const location = parseProjectLocation(context.cwd);
 	if (location.kind === "ssh") {
 		const policies = createSshPathPolicies(location.remotePath);
 		return createSshCodingToolEnvironment({
-			connection: resolveDesktopSshConnection(location.hostId),
+			connection: await resolveDesktopSshConnection(location.hostId),
 			remoteCwd: location.remotePath,
 			editPathPolicy: policies.editPathPolicy,
 			writePathPolicy: policies.writePathPolicy,
@@ -76,66 +76,65 @@ export const createDesktopCodingAgentToolEnvironment: CodingAgentToolEnvironment
  * 任何作用。这里返回与工具环境同一套 SSH 实现并且**不提供** sandbox，宁可让上层在
  * 需要沙箱时失败，也不给出一个名义上开着、实际不设防的沙箱。
  */
-export const createDesktopCodingAgentSessionExecutionEnvironment: CodingAgentSessionExecutionEnvironmentFactory = (
-	context,
-) => {
-	const location = parseProjectLocation(context.cwd);
-	if (location.kind === "ssh") {
-		const policies = createSshPathPolicies(location.remotePath);
-		const environment = createSshCodingToolEnvironment({
-			connection: resolveDesktopSshConnection(location.hostId),
-			remoteCwd: location.remotePath,
-			editPathPolicy: policies.editPathPolicy,
-			writePathPolicy: policies.writePathPolicy,
-			readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
-			localReadRoots: resolveLocalReadRoots(context.agentDir),
+export const createDesktopCodingAgentSessionExecutionEnvironment: CodingAgentSessionExecutionEnvironmentFactory =
+	async (context) => {
+		const location = parseProjectLocation(context.cwd);
+		if (location.kind === "ssh") {
+			const policies = createSshPathPolicies(location.remotePath);
+			const environment = createSshCodingToolEnvironment({
+				connection: await resolveDesktopSshConnection(location.hostId),
+				remoteCwd: location.remotePath,
+				editPathPolicy: policies.editPathPolicy,
+				writePathPolicy: policies.writePathPolicy,
+				readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
+				localReadRoots: resolveLocalReadRoots(context.agentDir),
+			});
+			return {
+				registrations: environment.registrations,
+				backgroundService: environment.backgroundService,
+				// 返回一个不提供工具集的沙箱，而不是假装沙箱存在：本机的 seatbelt/bubblewrap
+				// 对远端命令毫无作用，给出「名义上开着、实际不设防」的沙箱比明确没有更危险。
+				sandbox: { createToolSet: () => undefined },
+				dispose: () => environment.dispose(),
+			};
+		}
+		const host = createDesktopNodeToolHost(context.cwd, context.agentDir);
+		const command = createNodeHostSessionCommandEnvironment({
+			cwd: context.cwd,
+			resolveShell: host.resolveShell,
+			environment: host.environment,
+			sessionEnvironment: createCodingAgentSessionCommandEnvironment(context.sessionId, context.env),
+			protectedDirectories: host.protectedCommandDirectories,
 		});
 		return {
-			registrations: environment.registrations,
-			backgroundService: environment.backgroundService,
-			// 返回一个不提供工具集的沙箱，而不是假装沙箱存在：本机的 seatbelt/bubblewrap
-			// 对远端命令毫无作用，给出「名义上开着、实际不设防」的沙箱比明确没有更危险。
-			sandbox: { createToolSet: () => undefined },
-			dispose: () => environment.dispose(),
-		};
-	}
-	const host = createDesktopNodeToolHost(context.cwd, context.agentDir);
-	const command = createNodeHostSessionCommandEnvironment({
-		cwd: context.cwd,
-		resolveShell: host.resolveShell,
-		environment: host.environment,
-		sessionEnvironment: createCodingAgentSessionCommandEnvironment(context.sessionId, context.env),
-		protectedDirectories: host.protectedCommandDirectories,
-	});
-	return {
-		registrations: [
-			...createNodeFileToolRegistrations({
-				cwd: context.cwd,
-				editPathPolicy: host.editPathPolicy,
-				writePathPolicy: host.writePathPolicy,
-				configurationSource: context.configurationSource,
-				readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
-			}),
-			...command.registrations,
-		],
-		backgroundService: command.backgroundService,
-		sandbox: {
-			createToolSet: (options) =>
-				createNodeSandboxCodingToolEnvironment({
-					...options,
+			registrations: [
+				...createNodeFileToolRegistrations({
 					cwd: context.cwd,
-					resolveShell: host.resolveShell,
-					environment: command.commandEnvironment,
-					protectedDirectories: host.protectedCommandDirectories,
 					editPathPolicy: host.editPathPolicy,
 					writePathPolicy: host.writePathPolicy,
 					configurationSource: context.configurationSource,
 					readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
 				}),
-		},
-		dispose: () => command.dispose(),
+				...command.registrations,
+			],
+			backgroundService: command.backgroundService,
+			sandbox: {
+				createToolSet: (options) =>
+					createNodeSandboxCodingToolEnvironment({
+						...options,
+						cwd: context.cwd,
+						resolveShell: host.resolveShell,
+						environment: command.commandEnvironment,
+						protectedDirectories: host.protectedCommandDirectories,
+						editPathPolicy: host.editPathPolicy,
+						writePathPolicy: host.writePathPolicy,
+						configurationSource: context.configurationSource,
+						readOptions: CODING_AGENT_READ_TOOL_OPTIONS,
+					}),
+			},
+			dispose: () => command.dispose(),
+		};
 	};
-};
 
 function createDesktopNodeToolHost(cwd: string, configuredAgentDir?: string) {
 	const agentDir = configuredAgentDir ?? getAgentDir();

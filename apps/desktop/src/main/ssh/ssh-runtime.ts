@@ -81,7 +81,7 @@ export function getSshConnectionManager(): SshConnectionManager {
 	return manager;
 }
 
-export function getSshConnection(hostId: string): SshConnection {
+export async function getSshConnection(hostId: string): Promise<SshConnection> {
 	return getSshConnectionManager().connection(hostId);
 }
 

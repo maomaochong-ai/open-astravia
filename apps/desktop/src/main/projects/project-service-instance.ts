@@ -37,7 +37,7 @@ export function getDesktopProjectService(): ProjectService {
 			const location = parseProjectLocation(path);
 			if (location.kind === "ssh") {
 				try {
-					const entry = await getSshConnection(location.hostId).stat(location.remotePath);
+					const entry = await (await getSshConnection(location.hostId)).stat(location.remotePath);
 					// 远端说「没有这个路径」时放行——与本地一致，open 允许登记还没建出来的目录。
 					return entry !== null && entry.kind !== "directory";
 				} catch {

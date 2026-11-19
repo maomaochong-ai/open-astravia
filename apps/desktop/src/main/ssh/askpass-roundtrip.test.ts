@@ -35,7 +35,7 @@ describe.skipIf(process.platform === "win32")("askpass 与 OpenSSH 的合同", (
 		// 目录名刻意带空格：生成的脚本必须正确引用路径。
 		const home = await mkdtemp(join(tmpdir(), "astravia askpass "));
 		vi.stubEnv("ASTRAVIA_HOME", home);
-		channel = createSshAskpassChannel((request) => resolver(request));
+		channel = await createSshAskpassChannel((request) => resolver(request));
 		// 传 node 而不是 electron：脚本里的 ELECTRON_RUN_AS_NODE 对 node 无害，
 		// 被测的是脚本本身的拼装与调用方式。
 		scriptPath = ensureAskpassAssets(process.execPath).scriptPath;

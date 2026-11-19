@@ -125,7 +125,7 @@ export function registerSshIpc(): () => void {
 	// 远端目录浏览器：添加远程项目时用它选目录。
 	ipcMain.handle(CHANNELS.LIST_REMOTE_DIR, async (_event, input: unknown) => {
 		const raw = (input ?? {}) as Record<string, unknown>;
-		const connection = getSshConnection(asString(raw.hostId));
+		const connection = await getSshConnection(asString(raw.hostId));
 		// 缺省从家目录开始，而不是 `/`——用户的项目几乎总在家目录下。
 		const remotePath = await connection.expandRemotePath(asString(raw.remotePath) || "~");
 		const entries = await connection.listDirectory(remotePath);
@@ -134,15 +134,15 @@ export function registerSshIpc(): () => void {
 
 	// 远端正在监听的端口：端口面板据此给出「要不要转发它」的候选。
 	ipcMain.handle(CHANNELS.LIST_LISTENING_PORTS, (_event, hostId: unknown) =>
-		getSshConnection(asString(hostId)).listListeningPorts(),
+		getSshConnection(asString(hostId)).then((c) => c.listListeningPorts()),
 	);
 
 	// 端口面板里「停掉这个服务」。pid 由界面从扫描结果里带回来，非法值交给连接层拒绝。
 	ipcMain.handle(CHANNELS.TERMINATE_PROCESS, (_event, input: unknown) => {
 		const raw = (input ?? {}) as Record<string, unknown>;
-		return getSshConnection(asString(raw.hostId)).terminateProcess(typeof raw.pid === "number" ? raw.pid : -1, {
-			force: raw.force === true,
-		});
+		return getSshConnection(asString(raw.hostId)).then((c) =>
+			c.terminateProcess(typeof raw.pid === "number" ? raw.pid : -1, { force: raw.force === true }),
+		);
 	});
 
 	ipcMain.handle(CHANNELS.LIST_FORWARDS, (_event, hostId: unknown) => {
