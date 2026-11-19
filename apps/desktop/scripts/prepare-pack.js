@@ -509,9 +509,6 @@ const sshAskpassTarget = { os: "windows", arch: "amd64" };
 // =============================================================================
 // coding-agent runtime assets (extraResources)
 // =============================================================================
-// coding-agent runtime assets (extraResources)
-// coding-agent runtime assets (extraResources)
-// =============================================================================
 //
 // The bundled main-*.js (Vite output) contains `@astravia/coding-agent`'s JS
 // but not its on-disk package tree. Stage the full dist plus metadata into
@@ -735,10 +732,6 @@ function resolveExtraResources() {
 		{
 			from: "askpass",
 			to: "askpass",
-			filter: ["**/*"],
-		},
-			from: "ssh-helper",
-			to: "ssh-helper",
 			filter: ["**/*"],
 		},
 		{
