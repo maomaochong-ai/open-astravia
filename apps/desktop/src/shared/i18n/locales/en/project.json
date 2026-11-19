@@ -169,6 +169,12 @@
 		"context": {
 			"title": "Project instructions"
 		},
+		"automations": {
+			"title": "Automations",
+			"viewAll": "View all",
+			"disabled": "Paused",
+			"neverRun": "Never run"
+		},
 		"recentSessions": {
 			"title": "Recent sessions",
 			"empty": "No sessions in this project yet",
