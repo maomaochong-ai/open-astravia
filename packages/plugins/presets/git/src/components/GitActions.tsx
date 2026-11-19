@@ -1,5 +1,5 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { Button } from "@astravia-org/ui";
+import { ButtonGroup, ButtonGroupItem } from "@astravia-org/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	aheadBehind,
@@ -168,27 +168,34 @@ export function GitActions({ root, labelled = false }: { root: string; labelled?
 
 	return (
 		<div className="flex items-center gap-2">
-			{/* 一套幽灵按钮走到底：宽面板下多显示一行文案，窄面板下只留图标。 */}
-			<div className="flex items-center gap-0.5">
-				{items.map((item) => (
-					<Button
-						key={item.kind}
-						type="button"
-						variant="ghost"
-						size="xs"
-						className="gap-1 px-1.5"
-						title={item.count ? `${item.title} (${item.count})` : item.title}
-						disabled={busy !== null}
-						onClick={item.onClick}
-					>
-						{item.icon(`h-4 w-4 ${item.count ? (item.tone ?? "") : "text-muted-foreground"} ${spin(item.kind)}`)}
-						{labelled && <span className="text-[12px] font-normal text-foreground">{item.label}</span>}
-						{item.count !== undefined && (
+			{/* 宿主按钮组：宽面板下多显示一行文案，窄面板下只留图标。 */}
+			<ButtonGroup blur={false}>
+				{items.map((item) => {
+					const count =
+						item.count !== undefined ? (
 							<span className={`text-[11px] font-semibold tabular-nums leading-none ${item.tone ?? ""}`}>{item.count}</span>
-						)}
-					</Button>
-				))}
-			</div>
+						) : null;
+					const label =
+						labelled || count ? (
+							<span className="inline-flex items-center gap-1">
+								{labelled && <span className="text-[12px] font-normal">{item.label}</span>}
+								{count}
+							</span>
+						) : undefined;
+					return (
+						<ButtonGroupItem
+							key={item.kind}
+							title={item.count ? `${item.title} (${item.count})` : item.title}
+							aria-label={item.title}
+							disabled={busy !== null}
+							onClick={item.onClick}
+							icon={item.icon(`h-4 w-4 ${item.count ? (item.tone ?? "") : "text-muted-foreground"} ${spin(item.kind)}`)}
+							label={label}
+							className={label ? "px-2" : undefined}
+						/>
+					);
+				})}
+			</ButtonGroup>
 
 			{stat.additions > 0 && (
 				<span
