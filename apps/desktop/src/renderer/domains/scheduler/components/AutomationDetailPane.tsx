@@ -37,19 +37,24 @@ export function AutomationDetailPane({ pane, onClose, onCreated }: AutomationDet
 					<>
 						{/* 三个操作合成一颗胶囊：与顶栏、详情页同一套外观。 */}
 						<ButtonGroup>
+						{/* 已禁用的自动化不该能被手动触发，隐藏而不是置灰。 */}
+						{model.enabled ? (
 							<ButtonGroupItem
 								icon={<span className="icon-[solar--play-bold] h-4 w-4" />}
+								label={<span className="hidden @[480px]:inline">{t("detail.runNow")}</span>}
 								title={t("detail.runNow")}
 								aria-label={t("detail.runNow")}
 								disabled={model.running}
 								onClick={model.onRunNow}
 							/>
+						) : null}
 							<ButtonGroupItem
 								icon={
 									<span
 										className={`${model.enabled ? "icon-[solar--pause-circle-bold]" : "icon-[solar--play-circle-bold]"} h-4 w-4`}
 									/>
 								}
+								label={<span className="hidden @[480px]:inline">{model.enabled ? t("detail.pause") : t("detail.enable")}</span>}
 								title={model.enabled ? t("detail.pause") : t("detail.enable")}
 								aria-label={model.enabled ? t("detail.pause") : t("detail.enable")}
 								onClick={model.onToggleEnabled}

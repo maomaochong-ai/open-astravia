@@ -62,9 +62,13 @@ export function AutomationPageView<FilterKey extends string>({
 	// 标题、切换、搜索与列表共用同一个容器：标题跟列表左边对齐，创建按钮跟列表右边对齐。
 	const column = cn("w-full", paneOpen ? "px-5" : "mx-auto max-w-4xl px-8");
 	return (
-		<div className="flex h-full w-full flex-1 overflow-hidden">
+		<div className="@container flex h-full w-full flex-1 overflow-hidden">
 			<section
-				className={cn("flex min-w-0 flex-col", paneOpen ? "w-[400px] shrink-0 border-r border-border/60" : "flex-1")}
+				className={cn(
+					"min-w-0 flex-col",
+					// 分屏打开且页面够宽时左右并排；窄屏下详情独占整页（关闭详情即回到列表），避免两栏互相挤压。
+					paneOpen ? "hidden w-[400px] shrink-0 border-r border-border/60 @[780px]:flex" : "flex flex-1",
+				)}
 			>
 				<div className="drag-region h-6 shrink-0" />
 				<header className={cn(column, "flex shrink-0 items-end justify-between gap-4 pb-5")}>
@@ -110,7 +114,7 @@ export function AutomationPageView<FilterKey extends string>({
 				</div>
 			</section>
 			{detailPane ? (
-				<section className="flex min-w-0 flex-1 flex-col">
+				<section className="@container flex min-w-0 flex-1 flex-col">
 					<div className="drag-region h-6 shrink-0" />
 					{detailPane}
 				</section>
