@@ -1,7 +1,11 @@
 {
 	"compilerOptions": {
 		"target": "ES2022",
-		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"lib": [
+			"ES2022",
+			"DOM",
+			"DOM.Iterable"
+		],
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 		"strict": true,
@@ -12,7 +16,16 @@
 		"skipLibCheck": true,
 		"isolatedModules": true,
 		"useDefineForClassFields": true,
-		"forceConsistentCasingInFileNames": true
+		"forceConsistentCasingInFileNames": true,
+		"jsx": "react-jsx",
+		"types": [
+			"vite/client"
+		]
 	},
-	"include": ["src", "test", "vite.config.ts", "vitest.config.ts"]
+	"include": [
+		"src",
+		"test",
+		"vite.config.ts",
+		"vitest.config.ts"
+	]
 }
