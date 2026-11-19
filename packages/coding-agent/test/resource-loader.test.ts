@@ -53,6 +53,33 @@ describe("SessionResourceRuntime", () => {
 		rmSync(tempDir, { recursive: true, force: true });
 	});
 
+	describe("通用 Agent Skill 目录开关", () => {
+		const writeAgentSkill = (root: string) => {
+			const dir = join(root, ".agents", "skills", "generic-agent-skill");
+			mkdirSync(dir, { recursive: true });
+			writeFileSync(
+				join(dir, "SKILL.md"),
+				"---\nname: generic-agent-skill\ndescription: generic\n---\nGeneric skill.",
+			);
+		};
+
+		it("includeAgentSkills 为 true 时，cwd/.agents/skills 出现在技能列表里", async () => {
+			writeAgentSkill(cwd);
+			const loader = createCodingAgentSessionResourceRuntime({ cwd, agentDir, includeAgentSkills: true });
+			await loader.reload();
+			expect(loader.getSkills().skills.map((skill) => skill.name)).toContain("generic-agent-skill");
+		});
+
+		// 回归：包资源投影此前无条件扫描祖先 `.agents/skills`，关掉开关后技能仍会以
+		// 「项目技能」身份出现在能力页与添加面板，看起来设置根本没生效。
+		it("includeAgentSkills 为 false 时，cwd/.agents/skills 不出现", async () => {
+			writeAgentSkill(cwd);
+			const loader = createCodingAgentSessionResourceRuntime({ cwd, agentDir, includeAgentSkills: false });
+			await loader.reload();
+			expect(loader.getSkills().skills.map((skill) => skill.name)).not.toContain("generic-agent-skill");
+		});
+	});
+
 	describe("reload", () => {
 		it("should initialize with empty results before reload", () => {
 			const loader = createCodingAgentSessionResourceRuntime({ cwd, agentDir });

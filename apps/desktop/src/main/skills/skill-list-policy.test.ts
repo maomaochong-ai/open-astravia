@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveSkillOrigin, shouldListSkill } from "./skill-list-policy";
+import { findOwningMarketPackageEntry, resolveSkillOrigin, shouldListSkill } from "./skill-list-policy";
 
 describe("shouldListSkill", () => {
 	it("本地来源未登记清单时直接列出，已登记则由清单控制启停", () => {
@@ -63,5 +63,47 @@ describe("resolveSkillOrigin（来源按「谁装的」判定）", () => {
 				scannedSource: "agents-user",
 			}),
 		).toEqual({ source: "agents-user", provenance: { kind: "native", scope: "agents-user" } });
+	});
+});
+
+describe("findOwningMarketPackageEntry", () => {
+	const base = "/home/me/.astravia/skills";
+	const manifest = {
+		"mattpocock-skills": { enabled: true, source: "market" },
+		"my-own-pack": { enabled: true, source: "custom" },
+	};
+
+	// 回归：组合包内的成员由扫描器报成 `user` 来源、名字不在清单里。不按包的位置归属，
+	// 它们会被当成用户自己的技能（分组跑到「我的」），包停用后也照样能插入。
+	it("包内成员（含更深层的 references 目录）归到所属市场包", () => {
+		expect(
+			findOwningMarketPackageEntry(
+				`${base}/mattpocock-skills/references/engineering/code-review/SKILL.md`,
+				base,
+				manifest,
+			),
+		).toEqual({ enabled: true, source: "market" });
+	});
+
+	it("包自身的 SKILL.md 也归该包", () => {
+		expect(findOwningMarketPackageEntry(`${base}/mattpocock-skills/SKILL.md`, base, manifest)).toEqual({
+			enabled: true,
+			source: "market",
+		});
+	});
+
+	it("只认市场安装的包：自定义包与包外文件都不归属", () => {
+		expect(findOwningMarketPackageEntry(`${base}/my-own-pack/a/SKILL.md`, base, manifest)).toBeUndefined();
+		expect(findOwningMarketPackageEntry(`${base}/loose/SKILL.md`, base, manifest)).toBeUndefined();
+	});
+
+	it("Windows 路径分隔符也能认出来", () => {
+		expect(
+			findOwningMarketPackageEntry(
+				"C:\\Users\\me\\.astravia\\skills\\mattpocock-skills\\references\\a\\SKILL.md",
+				"C:\\Users\\me\\.astravia\\skills",
+				manifest,
+			),
+		).toEqual({ enabled: true, source: "market" });
 	});
 });

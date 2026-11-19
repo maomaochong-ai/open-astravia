@@ -31,6 +31,7 @@ export interface CreateTestResourcePackageRuntimeOptions {
 	readonly resourceAccess?: ResourceAccessPort;
 	readonly files?: ResourcePackageFilePort;
 	readonly managedSkillsDir?: string;
+	readonly includeAgentSkills?: boolean;
 	readonly registry?: ResourcePackageRegistryPort;
 	readonly environment?: ResourcePackageEnvironmentPort;
 }
@@ -51,6 +52,7 @@ export function createTestResourcePackageRuntime(
 		resourceAccess: options.resourceAccess ?? host.resourceAccess,
 		files: options.files ?? host.files,
 		managedSkillsDir: options.managedSkillsDir ?? getUserSkillsDir(),
+		includeAgentSkills: options.includeAgentSkills ?? true,
 		registry: options.registry ?? host.registry,
 		environment: options.environment ?? host.environment,
 	});
@@ -86,7 +88,15 @@ export function createTestSessionResourceRuntime(
 	const agentDir = options.agentDir ?? getAgentDir();
 	const resourceAccess = options.resourceAccess ?? createNodeResourcePackageHost().resourceAccess;
 	const settings = options.settings ?? createCodingAgentNodeSettingsRuntime(cwd, agentDir);
-	const packages = options.packages ?? createTestResourcePackageRuntime({ cwd, agentDir, settings, resourceAccess });
+	const packages =
+		options.packages ??
+		createTestResourcePackageRuntime({
+			cwd,
+			agentDir,
+			settings,
+			resourceAccess,
+			includeAgentSkills: options.includeAgentSkills ?? true,
+		});
 	return createSessionResourceRuntime({
 		...options,
 		cwd,

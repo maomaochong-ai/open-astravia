@@ -82,6 +82,7 @@ export function createDesktopSessionResourceRuntime(
 		settings: options.settings,
 		...host,
 		managedSkillsDir: getUserSkillsDir(),
+		includeAgentSkills: options.includeAgentSkills ?? true,
 	});
 	const runtime = createSessionResourceRuntime({
 		...options,

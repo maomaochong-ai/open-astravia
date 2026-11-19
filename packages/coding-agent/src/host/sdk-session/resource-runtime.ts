@@ -52,6 +52,7 @@ export function createCodingAgentSdkSessionResourceRuntime(
 		settings: options.settings,
 		...host,
 		managedSkillsDir: getUserSkillsDir(),
+		includeAgentSkills: options.includeAgentSkills ?? true,
 	});
 	return createSessionResourceRuntime({
 		...options,
