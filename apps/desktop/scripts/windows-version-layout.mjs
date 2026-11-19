@@ -113,7 +113,5 @@ export default async function windowsVersionLayout(context) {
 	buildWindowsLauncher({ arch, outputPath: launcherPath, sourceDir });
 	await embedLauncherIcon(launcherPath, join(import.meta.dirname, "..", "build", "icon.ico"));
 	await createWindowsVersionLayout(context.appOutDir, version, launcherPath);
-	buildWindowsLauncher({ arch, outputPath: launcherPath, sourceDir });
-	await createWindowsVersionLayout(context.appOutDir, version, launcherPath);
 	console.log(`[windows-version-layout] staged version ${version} (${arch})`);
 }
