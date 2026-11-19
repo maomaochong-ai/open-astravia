@@ -261,7 +261,7 @@ export function usePresetProvidersSectionModel({
 				// 预设服务商全是云端 API,拉不通时启用它也没有任何模型可用;放行「非认证类失败」
 				// 会让用户以为已生效,还得自己去发现它是个空壳。面板与草稿保留,改完再点一次即可。
 				// 已下线的旧条目不在内置目录里,没有可校验的上游,只改 key 不校验。
-				const fetched = row.offline ? null : await refreshModels(row.id, key);
+				const fetched = row.offline ? null : await refreshModels(row.id, key, overrides?.baseUrl);
 				if (fetched && (fetched.error || fetched.models.length === 0)) {
 					const error = fetched.error ?? { code: "empty-models" as const };
 					notifyKeyRejected(row.displayName, error, t);
@@ -553,9 +553,10 @@ interface BaseRow {
 async function refreshModels(
 	providerId: string,
 	apiKey?: string,
+	baseUrl?: string,
 ): Promise<{ models: NonNullable<ProviderEntry["models"]>; error?: PresetError }> {
 	try {
-		return await window.astravia.models.refreshPresetModels(providerId, apiKey);
+		return await window.astravia.models.refreshPresetModels(providerId, apiKey, baseUrl);
 	} catch (err) {
 		return { models: [], error: { code: "network", detail: err instanceof Error ? err.message : String(err) } };
 	}

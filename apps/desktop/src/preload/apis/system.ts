@@ -208,8 +208,8 @@ export function createSystemApi(
 			copyApiKey: (providerId) => ipc.invoke("astravia:models:copy-api-key", providerId),
 			fetchRemote: () => ipc.invoke("astravia:models:fetch-remote"),
 			listPresets: () => ipc.invoke("astravia:models:list-presets"),
-			refreshPresetModels: (providerId, apiKey) =>
-				ipc.invoke("astravia:models:refresh-preset-models", providerId, apiKey),
+			refreshPresetModels: (providerId, apiKey, baseUrl) =>
+				ipc.invoke("astravia:models:refresh-preset-models", providerId, apiKey, baseUrl),
 			refreshPresetCatalog: () => ipc.invoke("astravia:models:refresh-preset-catalog"),
 			onPresetsUpdated: (handler) => onIpcVoidEvent(ipc, "astravia:models:presets-updated", handler),
 			probe: (ref) => ipc.invoke("astravia:models:probe", ref),

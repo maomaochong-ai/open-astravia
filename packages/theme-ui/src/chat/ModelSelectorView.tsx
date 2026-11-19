@@ -130,6 +130,8 @@ export interface ModelSelectorViewProps {
 	onReasoningSelect: (value: string) => void;
 	/** 菜单开合回调，宿主可借此在打开时刷新模型目录 */
 	onOpenChange?: (open: boolean) => void;
+	/** 搜索框右侧的刷新按钮：重拉服务商的模型列表。不传就不显示。 */
+	refresh?: { onRefresh: () => void; refreshing: boolean; label: string };
 	/** 受控开合：宿主用自己的快捷键（Cmd/Ctrl+P）打开同一面板时传这个。 */
 	open?: boolean;
 }
@@ -160,6 +162,7 @@ export function ModelSelectorView({
 	onModelSelect,
 	onReasoningSelect,
 	onOpenChange,
+	refresh,
 	open: controlledOpen,
 }: ModelSelectorViewProps): JSX.Element {
 	const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
@@ -277,7 +280,8 @@ export function ModelSelectorView({
 	 * 面板只负责把它摆进中栏——搜索与列表同宽，横向层级才对得上。
 	 */
 	const searchField = (
-		<div className="relative" onKeyDown={handleSearchKeyDown}>
+		<div className="flex items-center gap-0.5">
+			<div className="relative min-w-0 flex-1" onKeyDown={handleSearchKeyDown}>
 			<span
 				aria-hidden="true"
 				className="icon-[solar--magnifer-linear] pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground"
@@ -301,6 +305,22 @@ export function ModelSelectorView({
 					className="absolute right-1 top-1/2 inline-flex size-4 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 				>
 					<span aria-hidden="true" className="icon-[solar--close-circle-linear] size-3" />
+				</button>
+				)}
+			</div>
+			{refresh && (
+				<button
+					type="button"
+					onClick={refresh.onRefresh}
+					disabled={refresh.refreshing}
+					aria-label={refresh.label}
+					title={refresh.label}
+					className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60"
+				>
+					<span
+						aria-hidden="true"
+						className={cn("icon-[solar--refresh-linear] size-3.5", refresh.refreshing && "animate-spin")}
+					/>
 				</button>
 			)}
 		</div>
@@ -346,7 +366,8 @@ export function ModelSelectorView({
 						className={cn(
 							// 玻璃只由真正的半透明与背景模糊构成：不叠描边、高光或额外投影去「假装」透明。
 							// 深色下的边界交给基础浮层的极淡描边，这里再加一圈会变成两条边。
-							"w-auto min-w-[180px] max-w-[calc(100vw-2rem)] overflow-visible bg-background/40 p-0 backdrop-blur-2xl backdrop-saturate-150",
+							"w-auto min-w-[180px] max-w-[calc(100vw-2rem)] overflow-visible bg-background/40 p-0 backdrop-blur-2xl backdrop-saturate-150 dark:bg-background/75 dark:backdrop-brightness-50",
+							// 深色下背后若是大块白色内容，透出来会很刺眼：抬高底色不透明度并压暗背景亮度。
 							classNames?.content,
 						)}
 						// 开合交给 CSS：三栏面板每次弹出都跑一遍 spring，滚动时看着像卡了一下。
