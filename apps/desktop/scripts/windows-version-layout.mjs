@@ -3,9 +3,6 @@ import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { setTimeout } from "node:timers/promises";
-import { mkdir, readdir, rename, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { setTimeout } from "node:timers/promises";
 
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 // builder-util Arch enum: ia32=0, x64=1, arm64=3.
