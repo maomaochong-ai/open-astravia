@@ -1,4 +1,5 @@
 import { useUiZoom } from "@shared/hooks/useUiZoom";
+import { useUiZoomEnforcer } from "@shared/hooks/useUiZoomEnforcer";
 import { useEffect } from "react";
 import { measureTitlebarCenter } from "./titlebar-anchor";
 
@@ -8,7 +9,8 @@ import { measureTitlebarCenter } from "./titlebar-anchor";
  * `layoutKey` 变化代表页头形态可能变了，需要重新量一次。
  */
 export function useTitlebarAnchor(layoutKey: string, fallbackCenter?: number): void {
-	const { factor } = useUiZoom();
+	const { factor, loaded } = useUiZoom();
+	useUiZoomEnforcer(factor, loaded);
 
 	useEffect(() => {
 		document.documentElement.style.setProperty("--ui-zoom", String(factor));

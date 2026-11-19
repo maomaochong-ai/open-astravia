@@ -54,3 +54,17 @@ export function trafficLightPositionFor(centerCssPx: number, factor: number | un
 		y: Math.round(centerCssPx * normalizeUiZoomFactor(factor) - TRAFFIC_LIGHT_CENTER_OFFSET),
 	};
 }
+
+/** 渲染进程实测缩放与期望档位的容差；Chromium 内部按 zoom level 换算，会带浮点误差。 */
+const ZOOM_MISMATCH_TOLERANCE = 0.005;
+
+/** 实测缩放是否偏离期望档位，偏离就该纠正。实测值非法（取不到）时不动，避免乱写。 */
+export function uiZoomNeedsCorrection(actual: unknown, desired: number): boolean {
+	if (typeof actual !== "number" || !Number.isFinite(actual) || actual <= 0) return false;
+	return Math.abs(actual - normalizeUiZoomFactor(desired)) > ZOOM_MISMATCH_TOLERANCE;
+}
+
+/** 界面缩放的百分比文案，如 1.1 → "110%"。 */
+export function formatUiZoomPercent(factor: number): string {
+	return `${Math.round(normalizeUiZoomFactor(factor) * 100)}%`;
+}

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { ActionApprovalCenter } from "../shared/action-approval/ActionApprovalCenter";
 import { SshPromptDialog } from "../shared/components/SshPromptDialog";
+import { UiZoomHud } from "../shared/components/UiZoomHud";
 import { useAtomValue } from "jotai";
 import { initialRoutePaintedAtom } from "./initial-route-paint-state";
 
@@ -15,6 +16,7 @@ export function RootGlobalOverlays(): JSX.Element {
 			{/* Keep receiving requests while the presenter chunk is loading. */}
 			<ActionApprovalCenter />
 			<SshPromptDialog />
+			<UiZoomHud />
 			{routePainted && (
 				<Suspense fallback={null}>
 					<RootOverlayViews />
