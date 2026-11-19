@@ -199,6 +199,7 @@
         "electron-builder": "^26.8.1",
         "expect-webdriverio": "^5.7.0",
         "jsdom": "26.1.0",
+        "resedit": "^2.0.3",
         "tailwindcss": "^4.1.12",
         "typescript": "^5.9.2",
         "vite": "^7.1.7",
