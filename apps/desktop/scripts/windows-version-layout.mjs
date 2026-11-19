@@ -1,4 +1,8 @@
 import { execFileSync } from "node:child_process";
+import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { join } from "node:path";
+import { setTimeout } from "node:timers/promises";
 import { mkdir, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { setTimeout } from "node:timers/promises";
@@ -53,6 +57,32 @@ export async function createWindowsVersionLayout(appOutDir, version, launcherPat
 	await writeFile(join(appOutDir, "current.json"), `${JSON.stringify({ version })}\n`, "utf8");
 }
 
+const require = createRequire(import.meta.url);
+
+/**
+ * 给 Go 编译的启动器嵌入应用图标。
+ *
+ * 启动器（Astravia.exe）才是用户固定到任务栏的那一个 exe；Go 编译时不带图标，
+ * 任务栏会显示 Windows 通用 exe 图标。这里复用打包链路的 resedit 把 icon.ico 写入
+ * 启动器的资源段，与真正的 Electron exe 使用同一套图标。
+ */
+async function embedLauncherIcon(launcherPath, iconPath) {
+	const { Data, NtExecutable, NtExecutableResource, Resource } = require("resedit");
+	const buffer = await readFile(launcherPath);
+	const executable = NtExecutable.from(buffer);
+	const res = NtExecutableResource.from(executable);
+	const iconFile = Data.IconFile.from(await readFile(iconPath));
+	// 图标组 ID 固定 1、语言 en-US（0x409）；不存在时 replaceIconsForResource 会追加。
+	Resource.IconGroupEntry.replaceIconsForResource(
+		res.entries,
+		1,
+		0x409,
+		iconFile.icons.map((icon) => icon.data),
+	);
+	res.outputResource(executable);
+	await writeFile(launcherPath, Buffer.from(executable.generate()));
+}
+
 export function buildWindowsLauncher({ arch, outputPath, sourceDir }) {
 	const goArch = GO_ARCH_BY_ELECTRON_ARCH[arch];
 	if (!goArch) throw new Error(`[windows-version-layout] unsupported architecture: ${arch}`);
@@ -83,6 +113,9 @@ export default async function windowsVersionLayout(context) {
 	if (!arch) throw new Error(`[windows-version-layout] unsupported builder architecture: ${context.arch}`);
 	const launcherPath = join(context.appOutDir, "AstraviaLauncher.exe");
 	const sourceDir = join(import.meta.dirname, "..", "native", "windows-launcher");
+	buildWindowsLauncher({ arch, outputPath: launcherPath, sourceDir });
+	await embedLauncherIcon(launcherPath, join(import.meta.dirname, "..", "build", "icon.ico"));
+	await createWindowsVersionLayout(context.appOutDir, version, launcherPath);
 	buildWindowsLauncher({ arch, outputPath: launcherPath, sourceDir });
 	await createWindowsVersionLayout(context.appOutDir, version, launcherPath);
 	console.log(`[windows-version-layout] staged version ${version} (${arch})`);

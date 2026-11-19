@@ -1,5 +1,5 @@
 import { useUpdateCheckerModel } from "@shared/hooks/useUpdateCheckerModel";
-import { UpdateCheckerAction, UpdateCheckerDetail } from "@astravia-org/theme-ui/overlays";
+import { UpdateCheckerAction } from "@astravia-org/theme-ui/overlays";
 import { GeneralSettingsView as ThemeGeneralSettingsView } from "@astravia-org/theme-ui/settings";
 import { SETTINGS_SECTION } from "../registry";
 import { ProxySettingsSection } from "./ProxySettingsSection";
@@ -14,8 +14,6 @@ export interface GeneralSettingsViewProps {
 export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.Element {
 	const updates = useUpdateCheckerModel();
 	const proxy = useProxySettingsModel();
-	const showUpdateDetail =
-		updates.phase === "available" || updates.phase === "downloading" || updates.phase === "ready";
 
 	return (
 		<ThemeGeneralSettingsView
@@ -42,20 +40,7 @@ export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.El
 					progress={updates.progress}
 				/>
 			}
-			updatesDetail={
-				showUpdateDetail ? (
-					<UpdateCheckerDetail
-						currentVersion={updates.currentVersion}
-						labels={updates.labels}
-						latestVersion={updates.latestVersion}
-						onPrimary={updates.onPrimary}
-						onViewMore={updates.onViewMore}
-						phase={updates.phase}
-						progress={updates.progress}
-						releaseNote={updates.releaseNote}
-					/>
-				) : null
-			}
+
 			executionMode={model.executionMode}
 			onExecutionModeChange={(mode) => void model.actions.changeExecutionMode(mode)}
 			sandboxUnavailableReason={model.sandboxUnavailableReason}

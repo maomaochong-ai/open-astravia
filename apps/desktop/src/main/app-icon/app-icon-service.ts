@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { app, BrowserWindow, type NativeImage, nativeImage } from "electron";
 import { APP_ICON_DEFAULT, type AppIconId, normalizeAppIconId } from "../../shared/app-icon.js";
 import { readAppIconIdSync, updateDesktopConfig } from "../config/desktop-config-store.js";
+import { getAppLogger } from "../logger.js";
 
 export const APP_ICON_CHANGED_CHANNEL = "astravia:app-icon:changed";
 
@@ -46,6 +47,11 @@ export function applyAppIcon(): void {
 		return;
 	}
 	const fallback = nativeImage.createFromPath(join(buildDir, process.platform === "win32" ? "icon.ico" : "icon.png"));
+	// Windows 任务栏图标最终回退到打包的 exe 图标；这里如果连 icon.ico 都加载成空，
+	// 说明打包产物缺图标资源（`resources/build/icon.ico` 未落位），会显示 Electron 默认图标。
+	if (fallback.isEmpty()) {
+		getAppLogger("app-icon").warn("fallback window icon is empty", { platform: process.platform, buildDir });
+	}
 	for (const win of BrowserWindow.getAllWindows()) {
 		if (!win.isDestroyed()) win.setIcon(image ?? fallback);
 	}
