@@ -136,6 +136,12 @@ export function DesignSystemDetailDialog({ system, busy, onUse, onClose }: Desig
 								<dt>{t("gallery.detail.resources")}</dt>
 								<dd className="text-foreground">{system.resources.length}</dd>
 							</div>
+							{system.author ? (
+								<div className="flex items-center gap-1.5">
+									<dt>{t("gallery.detail.author")}</dt>
+									<dd className="text-foreground">{system.author}</dd>
+								</div>
+							) : null}
 							<div className="flex items-center gap-1.5">
 								<dt>{t("gallery.detail.license")}</dt>
 								<dd className="text-foreground">{system.license ?? "MIT"}</dd>

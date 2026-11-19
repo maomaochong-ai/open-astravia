@@ -39,6 +39,8 @@ export interface DesignSystem {
 	designMd: string;
 	/** 内容出处，写进 DESIGN.md frontmatter 的 `source:`；缺省用内置的上游地址。 */
 	source?: string;
+	/** 作者署名，取自清单条目的 `author`（或早期条目的 `origin.author`）；清单没写就没有，UI 不显示也不猜。 */
+	author?: string;
 	/** 许可标识，写进 frontmatter 的 `license:`；缺省 MIT。 */
 	license?: string;
 }
