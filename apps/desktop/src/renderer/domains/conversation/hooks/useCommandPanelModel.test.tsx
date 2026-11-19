@@ -98,7 +98,7 @@ describe("useCommandPanelModel context compaction", () => {
 		expect(queueContextCompaction).not.toHaveBeenCalled();
 
 		// 切到「操作」：压缩上下文是这里的唯一一行，按下 Enter 触发。
-		act(() => result.current.viewProps.onSelectTab("commands"));
+		act(() => result.current.viewProps.onSelectTab("operations"));
 		act(() =>
 			result.current.viewProps.onPanelKeyDown({
 				key: "ArrowDown",
@@ -257,18 +257,19 @@ describe("useCommandPanelModel skill insertion", () => {
 	});
 
 	it("点击技能行按能力 id 的末段 slug 匹配原始技能并插入", () => {
-		const skill: SkillInfo = { name: "my-skill", type: "skill", description: "", source: "builtin" };
+		const skill: SkillInfo = { name: "my-skill", type: "skill", description: "", source: "user" };
 		vi.mocked(useSkillList).mockReturnValue({ items: [skill], loading: false });
 		vi.mocked(useAddPanelAbilityEntries).mockReturnValue([
 			{
 				category: "skill",
-				id: "builtin:builtin:skill:my-skill",
-				key: "skills:builtin:builtin:skill:my-skill",
+				id: "local:local:skill:my-skill",
+				key: "skills:local:local:skill:my-skill",
 				label: "My Skill",
-				groupId: "builtin",
+				groupId: "mine",
 				searchable: true,
 				fallbackIcon: "icon-[solar--code-linear]",
 				kind: "skill",
+				insertable: true,
 			},
 		]);
 
@@ -283,8 +284,66 @@ describe("useCommandPanelModel skill insertion", () => {
 			}),
 		);
 
-		act(() => result.current.viewProps.onActivateEntry("skills:builtin:builtin:skill:my-skill"));
+		act(() => result.current.viewProps.onActivateEntry("skills:local:local:skill:my-skill"));
 
 		expect(onSelect).toHaveBeenCalledWith(skill, undefined);
+	});
+
+	// 回归：内置能力对话里本就可用，行只做展示；点击/回车都不该往输入框插东西，
+	// 方向键也不该停在它上面（停上去按回车没反应，比直接跳过更像坏了）。
+	it("内置能力行不可插入，键盘导航也跳过它", () => {
+		const builtin: SkillInfo = { name: "builtin-skill", type: "skill", description: "", source: "builtin" };
+		const mine: SkillInfo = { name: "my-skill", type: "skill", description: "", source: "user" };
+		vi.mocked(useSkillList).mockReturnValue({ items: [builtin, mine], loading: false });
+		const base = {
+			searchable: true,
+			fallbackIcon: "icon-[solar--code-linear]",
+			kind: "skill" as const,
+		};
+		vi.mocked(useAddPanelAbilityEntries).mockReturnValue([
+			{
+				...base,
+				category: "skill",
+				id: "builtin:builtin:skill:builtin-skill",
+				key: "skills:builtin:builtin:skill:builtin-skill",
+				label: "Builtin Skill",
+				groupId: "builtin",
+				insertable: false,
+			},
+			{
+				...base,
+				category: "skill",
+				id: "local:local:skill:my-skill",
+				key: "skills:local:local:skill:my-skill",
+				label: "My Skill",
+				groupId: "mine",
+				insertable: true,
+			},
+		]);
+
+		const onSelect = vi.fn();
+		const { result } = renderHook(() =>
+			useCommandPanelModel({
+				open: true,
+				onClose: vi.fn(),
+				onSelect,
+				onSelectConnector: vi.fn(),
+				filter: "/",
+			}),
+		);
+
+		// 鼠标点上来也不插入。
+		act(() => result.current.viewProps.onActivateEntry("skills:builtin:builtin:skill:builtin-skill"));
+		expect(onSelect).not.toHaveBeenCalled();
+
+		// 方向键第一格落在唯一可插入的那条上。
+		act(() => {
+			result.current.viewProps.onPanelKeyDown({
+				key: "ArrowDown",
+				preventDefault: vi.fn(),
+				stopPropagation: vi.fn(),
+			} as unknown as React.KeyboardEvent<HTMLElement>);
+		});
+		expect(result.current.viewProps.activeKey).toBe("skills:local:local:skill:my-skill");
 	});
 });

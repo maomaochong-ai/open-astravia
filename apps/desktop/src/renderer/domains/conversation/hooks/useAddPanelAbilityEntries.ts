@@ -1,4 +1,5 @@
-import { isAbilityListedInPersonal, isManuallyInstalledAbility } from "@domains/abilities/lib/ability-catalog-query";
+import { isAbilityListedInDiscover, isAbilityListedInPersonal } from "@domains/abilities/lib/ability-catalog-query";
+import { localizeMarketAbility } from "@domains/abilities/lib/ability-presentation";
 import {
 	buildBundleAbilities,
 	buildMcpAbilities,
@@ -6,9 +7,17 @@ import {
 	buildSkillAbilities,
 	type LocalAbilityState,
 } from "@domains/abilities/lib/build-ability-items";
+import { mergeAbilityCatalogs } from "@domains/abilities/lib/merge-ability-catalogs";
 import type { AbilityItem } from "@domains/abilities/types";
 import { usePluginTextResolver } from "@domains/plugins/runtime/plugin-i18n";
-import type { AbilityLedger, InstalledPlugin, InstalledSkill, McpServerConfigData, SkillInfo } from "@preload/api";
+import type {
+	AbilityLedger,
+	InstalledPlugin,
+	InstalledSkill,
+	McpServerConfigData,
+	OpenMarketplaceCatalog,
+	SkillInfo,
+} from "@preload/api";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AddPanelCategory, AddPanelEntry } from "../components/command-panel/add-panel-catalog";
@@ -23,8 +32,9 @@ import { useSkillIconMap } from "./useSkillIconMap";
  * **条目集合、名称、图标完全一致**——用户看到的「能力页有什么，这里就有什么」，
  * 不是靠两处规则写得像，而是同一份事实源。
  *
- * 取数范围只限本地安装态（不含市场目录）：面板是「往消息里插东西」，已装即可用，
- * 没有安装入口，因此不必为它拉一次市场快照。
+ * 市场目录只读本地快照（`listOpenMarketplaces`，不强制刷新）：能力页的标题 / 简介取自
+ * 市场行的本地化字段（`detail.i18n`），不传它就只能回落到清单里的英文 alias——同一个包
+ * 在能力页叫「Pocock 工程流」，面板里却成了英文名。
  */
 async function loadLocalAbilityState(): Promise<{
 	ledger: AbilityLedger;
@@ -32,16 +42,21 @@ async function loadLocalAbilityState(): Promise<{
 	skills: SkillInfo[];
 	plugins: InstalledPlugin[];
 	mcpServers: Record<string, McpServerConfigData>;
+	marketplace: OpenMarketplaceCatalog | null;
 }> {
-	const [ledger, skillManifest, skills, plugins, mcp] = await Promise.all([
+	const [ledger, skillManifest, skills, plugins, mcp, marketplace] = await Promise.all([
 		window.astravia.abilities.getLedger(),
 		window.astravia.skills.getMarketManifest(),
 		window.astravia.skills.list(),
 		window.astravia.plugins?.listAll?.() ?? Promise.resolve([]),
 		// 宿主缺 mcp 命名空间时按空配置处理：面板是「顺手插东西」的地方，不该因此崩掉。
 		window.astravia.mcp?.get?.() ?? Promise.resolve({ mcpServers: {} }),
+		// 市场快照读不到（首次启动、源未同步）时按空目录处理：面板仍能用本地安装态。
+		window.astravia.abilities
+			.listOpenMarketplaces()
+			.catch(() => null),
 	]);
-	return { ledger, skillManifest, skills, plugins, mcpServers: mcp.mcpServers ?? {} };
+	return { ledger, skillManifest, skills, plugins, mcpServers: mcp.mcpServers ?? {}, marketplace };
 }
 
 /**
@@ -61,6 +76,7 @@ export function projectAbilityEntries(
 		const category = categoryOf(item);
 		if (!category) continue;
 		const icon = item.icon ?? (item.type === "skill" ? skillIcons?.get(item.slug) : undefined);
+		const groupId = groupOf(item);
 		entries.push({
 			category,
 			id: item.id,
@@ -68,8 +84,10 @@ export function projectAbilityEntries(
 			label: item.title || item.slug,
 			description: item.description,
 			...splitIcon(icon),
-			groupId: groupOf(item),
+			groupId,
 			kind: item.type,
+			// 内置能力对话里本就可用：列出来是为了让用户看见，不给「插入」这条路。
+			insertable: groupId !== "builtin",
 			searchable: true,
 			fallbackIcon: ADD_PANEL_CATEGORY_ICONS[category],
 		});
@@ -86,37 +104,59 @@ export function projectAbilityEntries(
 /**
  * 能力类型 → 面板分类（键与能力页类型一致，见 ADR-0183）。
  *
- * `bundle`（能力套装）不映射：它的成员已经各自出现在技能/连接器/插件分类里，
- * 再以套装出现就重复了一遍；面板的套装分类因此保持空态。
+ * 四种类型各归一类：套装本身是「可以从市场装上的一件东西」，能力页也把它当独立条目，
+ * 面板不列它就会让「已安装的套装」在左栏永远是一片空白。
  */
-function categoryOf(item: AbilityItem): AddPanelCategory | undefined {
-	if (item.type === "skill") return "skill";
-	if (item.type === "mcp") return "mcp";
-	if (item.type === "plugin") return "plugin";
-	return undefined;
+function categoryOf(item: AbilityItem): AddPanelCategory {
+	return item.type;
 }
 
 /**
- * 分组：与能力页的「内置 / 市场 / 我的」判据一致。
+ * 只有技能才带 `skillSource` / `skillProvenance`（其余类型各有自己的来源字段），
+ * 联合类型上直接取会报「属性不存在」，这里收窄一次。
+ */
+type SkillAbilityItem = Extract<AbilityItem, { type: "skill" }>;
+
+function skillMeta(item: AbilityItem): Pick<SkillAbilityItem, "skillSource" | "skillProvenance"> {
+	const empty: Pick<SkillAbilityItem, "skillSource" | "skillProvenance"> = {};
+	return item.type === "skill" ? item : empty;
+}
+
+/** 是否为从市场装上来的条目（含清单里 provenance 记为 market 的技能）。 */
+function isFromMarket(item: AbilityItem): boolean {
+	if (item.fromMarket) return true;
+	if (item.origin?.kind === "github-marketplace") return true;
+	const { skillProvenance } = skillMeta(item);
+	return skillProvenance?.kind === "native" && skillProvenance.scope === "market";
+}
+
+/**
+ * 分组：与能力页的来源判据一致，但把「通用 Agent 技能」单独提出来。
  *
- * - `isBuiltin`：随 App 分发的内置能力（skill-presets、系统插件、内置 MCP 预设）；
- * - 插件贡献的技能归「插件」；
- * - 从市场装的归「市场」；
- * - 其余（用户自己的目录、通用 Agent 目录）归「我的」。
+ * - `builtin`：随 App 分发的内置能力（skill-presets、系统插件、内置 MCP 预设）；
+ * - `market`：从市场安装的能力（技能 / 连接器 / 套装 / 插件都一样看来源，不看类型——
+ *   否则市场装的连接器会落进「已连接」，「市场」视图里就少一块）；
+ * - `plugin`：插件贡献的技能；
+ * - `agents`：`~/.agents/skills`、项目 `.agents/skills` 里符合通用约定的技能。
+ *   这类技能由设置项「适配通用 Agent Skill」控制，关掉后主进程根本不会返回，
+ *   面板也就不该出现；单独成组是为了不和用户自己装的技能混在「我的」里；
+ * - `connected` / `installed` / `mine`：本地 MCP server、本地插件、用户自己的技能。
  */
 function groupOf(item: AbilityItem): string {
-	// 「内置」优先：能力页把 skill-presets、通用 Agent Skill、**系统插件**都算 Astravia 内置，
-	// 面板必须同口径——否则随 App 分发的十几个系统插件会被当成「插件」分类里的第三方扩展。
-	if (item.isBuiltin) return "builtin";
-	if (item.type === "mcp") return "connected";
+	// 「内置」优先：能力页把 skill-presets、**系统插件**、内置 MCP 预设都算 Astravia 内置，
+	// 面板必须同口径——否则随 App 分发的十几个系统插件会被当成第三方扩展。
+	// 随 App 分发的技能只有 `skillSource === "builtin"` / provenance `builtin` 这一种标记，
+	// 不认它就会全部落进「我的」，和用户自己装的技能混成一堆。
+	const { skillSource, skillProvenance } = skillMeta(item);
+	if (item.isBuiltin || skillSource === "builtin" || skillProvenance?.kind === "builtin") {
+		return "builtin";
+	}
+	if (isFromMarket(item)) return "market";
 	if (item.type === "plugin") return "installed";
+	if (item.type === "mcp") return "connected";
 	if (item.type === "bundle") return "mine";
-	if (item.skillProvenance?.kind === "provided") return "plugin";
-	// 市场安装：能力页里这部分来自市场行（`fromMarket`），面板不拉市场快照，
-	// 因此还要认清单写进 provenance 的 `market` scope。
-	if (item.fromMarket) return "market";
-	if (item.skillProvenance?.kind === "native" && item.skillProvenance.scope === "market") return "market";
-	if (item.isCustom) return "mine";
+	if (skillProvenance?.kind === "provided") return "plugin";
+	if (skillSource?.startsWith("agents-")) return "agents";
 	return "mine";
 }
 
@@ -134,7 +174,7 @@ let lastLoadAt = 0;
 const RELOAD_AFTER_MS = 5_000;
 
 export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry[] {
-	const { t } = useTranslation("settings");
+	const { t, i18n } = useTranslation("settings");
 	const trPlugin = usePluginTextResolver();
 	// 市场技能不在 skills.list() 里（它们只进 skills-manifest），图标得从市场目录补。
 	// 与命令区共用的 useSkillIconMap 有模块级缓存：命令面板已经拉过时这里零成本命中。
@@ -145,6 +185,7 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 		skills: SkillInfo[];
 		plugins: InstalledPlugin[];
 		mcpServers: Record<string, McpServerConfigData>;
+		marketplace: OpenMarketplaceCatalog | null;
 	} | null>(null);
 
 	useEffect(() => {
@@ -172,18 +213,32 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 			ledger: state.ledger,
 			mcpSetupStatus: {},
 			skillManifest: state.skillManifest,
-			// 能力页同样只把「不由台账管理」的来源当本地只读技能；这里保持一致。
-			localSkills: state.skills.filter((skill) => skill.source.startsWith("agents-") || skill.source === "builtin"),
+			/*
+			 * 技能条目：除插件贡献的技能外全收。
+			 *
+			 * 插件贡献的技能由 `buildPluginAbilities` 以插件身份呈现，在这里再列一遍就是两条；
+			 * 其余来源都要收，否则组合包（如 Pocock 工程流）内的成员技能——它们由扫描器
+			 * 报成 `user` 来源、不在清单里——会整批消失，面板只剩下那个包本身。
+			 */
+			localSkills: state.skills.filter((skill) => skill.source !== "plugin"),
 			plugins: state.plugins,
 			mcpConfig: { mcpServers: state.mcpServers },
 			oauthAuthByName: {},
 			busyIds: new Set<string>(),
 		};
-		const skills = buildSkillAbilities([], localState);
-		const mcps = buildMcpAbilities([], localState, t);
-		const plugins = buildPluginAbilities([], localState, trPlugin);
-		const bundles = buildBundleAbilities([], [...skills, ...mcps, ...plugins], localState, t);
-		const skillIcons = new Map<string, string | undefined>(state.skills.map((skill) => [skill.name, skill.icon]));
+		// 市场行按界面语言归一后再交给组装函数：标题 / 简介与能力页同一份文案。
+		const market = (state.marketplace ? mergeAbilityCatalogs([], state.marketplace.snapshots) : []).map((entry) =>
+			localizeMarketAbility(entry, i18n.language),
+		);
+		const skills = buildSkillAbilities(market, localState);
+		const mcps = buildMcpAbilities(market, localState, t);
+		const plugins = buildPluginAbilities(market, localState, trPlugin);
+		const bundles = buildBundleAbilities(market, [...skills, ...mcps, ...plugins], localState, t);
+		// 只收「清单里真有图标」的那些：把 `undefined` 也塞进表里会把同名 slug 占住，
+		// 后面市场目录的图标就再也补不进来了。
+		const skillIcons = new Map<string, string | undefined>(
+			state.skills.filter((skill) => skill.icon).map((skill) => [skill.name, skill.icon]),
+		);
 		// 市场目录的图标键是 `${type}:${slug}`，去前缀后按 slug 补进技能图标表——
 		// 否则市场装来的技能（含 bundle 成员）在面板里全落默认图，看不出谁是谁。
 		for (const [key, icon] of marketIconMap) {
@@ -192,32 +247,32 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 		}
 		return projectAbilityEntries(
 			[...skills, ...mcps, ...plugins, ...bundles].filter((item) => {
+				/*
+				 * 两条门槛都过才进面板：
+				 *
+				 * 1. **装在本地**（`installed && enabled`）——面板是「往消息里插一块已经可用的
+				 *    东西」，没装的能力插进去也没意义；
+				 * 2. **能力页会列出它**（`isAbilityListedInDiscover` / `isAbilityListedInPersonal`
+				 *    ）——否则会出现「面板里有、能力页怎么都找不到」的条目，用户只会认为识别错了。
+				 *    典型例子：`mcp.json` 里残留一个内置预置连接器，它既不是市场安装、也不是
+				 *    手动添加，能力页两个分区都不展示，面板却凭「配置里有」把它列了出来。
+				 *
+				 * 内置能力是例外：它随 App 分发、对话里本就可用，列出来只是让用户看见，
+				 * 行本身不可插入（见 `insertable`）。
+				 */
 				if (item.isBuiltin) return true;
+				if (!item.installed || !item.enabled) return false;
+				if (isAbilityListedInDiscover(item) || isAbilityListedInPersonal(item)) return true;
 				/*
-				 * 连接器：只列**用户自己的** server。
-				 *
-				 * 从市场装来的连接器（台账 origin = github-marketplace）与命中内置预置的连接器
-				 * 属于能力页的「公开」分区，个人分区里没有；把它们塞进面板就会出现
-				 * 「能力页明明没有 `Cloudflare 文档 / Cloudflare API`，面板却列了两条」。
-				 * 这里显式按这两条判定，不依赖 `isManuallyInstalledAbility` 的间接推断。
+				 * 清单里登记为市场安装的技能：能力页要等市场快照同步后才显示它，面板不必一起等。
+				 * 这类「装了但目录里暂时没有这一行」的技能是真实可用的，藏起来反而像丢了。
 				 */
-				if (item.type === "mcp") {
-					return item.installed && item.origin?.kind !== "github-marketplace" && !item.preset;
-				}
-				/*
-				 * 技能：**装了就列**，不再区分来源。
-				 *
-				 * 能力页把市场技能放在「公开」分区（因为那边有市场行），面板没有市场行，
-				 * 若照搬那条分区规则，用户从市场装的技能（如表格 / PDF 工具包）在面板里
-				 * 就完全看不到——而它们恰恰是最常用的那批。
-				 */
-				if (item.type === "skill") return item.installed;
-				// 插件与应用：与能力页个人分区口径一致（手动安装的插件）+ 内置。
-				return isAbilityListedInPersonal(item) || isManuallyInstalledAbility(item);
+				const { skillProvenance } = skillMeta(item);
+				return skillProvenance?.kind === "native" && skillProvenance.scope === "market";
 			}),
 			skillIcons,
 		);
-	}, [state, t, trPlugin, marketIconMap]);
+	}, [state, t, trPlugin, marketIconMap, i18n.language]);
 
 	useEffect(() => {
 		if (entries.length > 0) entryCache = entries;

@@ -5,6 +5,7 @@ import {
 	ADD_PANEL_CATEGORY_ICONS,
 	ADD_PANEL_CATEGORY_ORDER,
 	ADD_PANEL_COMMAND_ICON,
+	ADD_PANEL_PROVENANCE_ICONS,
 	type AddPanelCategory,
 	type AddPanelTab,
 } from "./add-panel-catalog";
@@ -131,9 +132,13 @@ export function AddPanelRail({
 				{categories.map((category) =>
 					item(category, ADD_PANEL_CATEGORY_ICONS[category], labels.categoryLabel(category)),
 				)}
+				{/* 来源视图：内置 / 市场，与「全部」同属按来源看，用间距与类型分类隔开。 */}
+				<div aria-hidden="true" className="h-1.5 shrink-0" />
+				{item("builtin", ADD_PANEL_PROVENANCE_ICONS.builtin, labels.builtin)}
+				{item("market", ADD_PANEL_PROVENANCE_ICONS.market, labels.market)}
 				{/* 操作（压缩上下文等）：与分类同一条轨道、同一档图标，靠间距分开而不是画线。 */}
 				<div aria-hidden="true" className="h-1.5 shrink-0" />
-				{item("commands", ADD_PANEL_COMMAND_ICON, labels.operations)}
+				{item("operations", ADD_PANEL_COMMAND_ICON, labels.operations)}
 			</div>
 
 			<RailStepButton

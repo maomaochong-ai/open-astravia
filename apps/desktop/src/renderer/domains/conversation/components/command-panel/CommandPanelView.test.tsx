@@ -31,11 +31,15 @@ function makeLabels(): CommandPanelLabels {
 		categoryLabel: (tab) => {
 			if (tab === "favorites") return "收藏";
 			if (tab === "all") return "全部";
-			if (tab === "commands") return "操作";
-			return { skill: "技能", mcp: "连接器", plugin: "插件", bundle: "应用" }[tab];
+			if (tab === "operations") return "操作";
+			if (tab === "builtin") return "内置";
+			if (tab === "market") return "市场";
+			return { skill: "技能", plugin: "插件", mcp: "MCP", bundle: "套装" }[tab] ?? tab;
 		},
 		groupLabel: (key) => key,
 		all: "全部",
+		builtin: "内置",
+		market: "市场",
 		categoryEmpty: (category: string) => `${category}里还没有内容`,
 		operationsEmptyHint: "当前会话还没有可用的操作",
 		emptyNoMatch: "未找到匹配项",
@@ -45,6 +49,8 @@ function makeLabels(): CommandPanelLabels {
 		favoriteAdd: "收藏",
 		favoriteRemove: "取消收藏",
 		details: "详情",
+		moreActions: "更多动作",
+		builtinHint: "内置",
 		preview: {
 			back: "返回列表",
 			sourceLabel: "来源",
@@ -66,8 +72,8 @@ const SKILL_SECTION: AddPanelSection = {
 	titleKey: "slashPanel.sections.skills",
 	groups: [
 		{
-			id: "builtin",
-			titleKey: "内置",
+			id: "mine",
+			titleKey: "我的",
 			entries: [
 				{
 					category: "skill",
@@ -75,18 +81,20 @@ const SKILL_SECTION: AddPanelSection = {
 					key: "skills:skill:code-review",
 					label: "代码审阅",
 					description: "按仓库标准审阅改动",
-					groupId: "builtin",
+					groupId: "mine",
 					searchable: true,
 					fallbackIcon: "icon-[solar--magic-stick-3-linear]",
+					insertable: true,
 				},
 				{
 					category: "skill",
 					id: "skill:diagnose",
 					key: "skills:skill:diagnose",
 					label: "缺陷诊断",
-					groupId: "builtin",
+					groupId: "mine",
 					searchable: true,
 					fallbackIcon: "icon-[solar--magic-stick-3-linear]",
+					insertable: true,
 				},
 			],
 		},
@@ -132,10 +140,10 @@ describe("CommandPanelView 两栏面板", () => {
 	it("左栏固定四类 + 收藏，点一下切分类", () => {
 		const { props } = renderPanel();
 		const tabs = screen.getAllByRole("tab");
-		// 收藏 + 全部 + 技能 / 连接器 / 插件 / 套装 + 指令：位置固定，空的也留在轨道上
-		expect(tabs).toHaveLength(7);
+		// 收藏 + 全部 + 技能/插件/MCP/套装 + 内置/市场 + 操作：位置固定，空的也留在轨道上
+		expect(tabs).toHaveLength(9);
 		expect(screen.getByRole("tab", { name: "插件" })).toBeTruthy();
-		fireEvent.click(screen.getByRole("tab", { name: "连接器" }));
+		fireEvent.click(screen.getByRole("tab", { name: "MCP" }));
 		expect(props.onSelectTab).toHaveBeenCalledWith("mcp");
 	});
 
@@ -182,14 +190,49 @@ describe("CommandPanelView 两栏面板", () => {
 		expect(props.onClosePreview).toHaveBeenCalledOnce();
 	});
 
+	// 回归：内置能力对话里本就可用，行只做展示——点击不插入，行尾给出「内置」提示。
+	it("内置能力的行不可点击，只显示提示", () => {
+		const builtinSection: AddPanelSection = {
+			category: "skill",
+			titleKey: "slashPanel.sections.skills",
+			groups: [
+				{
+					id: "builtin",
+					titleKey: "内置",
+					entries: [
+						{
+							category: "skill",
+							id: "builtin:skill:astravia-testing",
+							key: "skills:builtin:skill:astravia-testing",
+							label: "Astravia Testing",
+							groupId: "builtin",
+							searchable: true,
+							fallbackIcon: "icon-[solar--magic-stick-3-linear]",
+							insertable: false,
+						},
+					],
+				},
+			],
+		};
+		const { props } = renderPanel({ sections: [builtinSection] });
+
+		expect(screen.getByText("Astravia Testing")).toBeTruthy();
+		// 行尾提示与分组标题都写着「内置」，这里只关心行尾那个（分组标题在外层 p 里）。
+		expect(screen.getAllByText("内置").length).toBeGreaterThanOrEqual(2);
+
+		fireEvent.click(screen.getByText("Astravia Testing"));
+		expect(props.onActivateEntry).not.toHaveBeenCalled();
+	});
+
 	it("搜索无结果时显示空态而不是列表", () => {
 		renderPanel({ sections: [], activeKey: null, preview: null, searching: true });
 		expect(screen.getByText("未找到匹配项")).toBeTruthy();
 	});
 
-	it("只有一个来源分组时不出分组头，搜索态改出分类分组头", () => {
+	it("浏览态每个来源都带分组头，搜索态改出分类分组头", () => {
 		const { rerender } = renderPanel();
-		expect(screen.queryByText("内置")).toBeNull();
+		// 分组头带数量：这里的 section 只有「我的」一组，标题仍然要出现。
+		expect(screen.getByText("我的")).toBeTruthy();
 
 		rerender(
 			<CommandPanelView
@@ -220,7 +263,7 @@ describe("CommandPanelView 两栏面板", () => {
 	it("压缩上下文是「操作」分类里的一行，带真实占比圆环", () => {
 		const onSelect = vi.fn();
 		const { container } = renderPanel({
-			tab: "commands",
+			tab: "operations",
 			sections: [],
 			activeKey: null,
 			preview: null,

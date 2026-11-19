@@ -629,10 +629,10 @@
 			"selected": "{{count}} 个成员"
 		},
 		"toolbar": {
-			"addTooltip": "可添加文件、技能、连接器、插件、应用",
+			"addTooltip": "添加文件或调用指令（技能 / 插件 / MCP / 套装）",
 			"addImage": "添加图片",
 			"attachFile": "附加文件引用",
-			"add": "添加"
+			"add": "添加文件或调用指令"
 		},
 		"speech": {
 			"actions": {
@@ -1141,7 +1141,7 @@
 		"skillButtonLimitTitle": "已达技能数量上限"
 	},
 	"slashPanel": {
-		"searchPlaceholder": "搜索技能、连接器、插件、应用…",
+		"searchPlaceholder": "搜索技能、插件、MCP、套装…",
 		"clearSearch": "清空搜索",
 		"favorites": "收藏",
 		"favoritesEmpty": "还没有收藏",
@@ -1158,6 +1158,7 @@
 		"groups": {
 			"actions": "直接动作",
 			"builtin": "内置",
+			"agents": "通用 Agent",
 			"mine": "我的",
 			"project": "项目",
 			"plugin": "插件",
@@ -1192,12 +1193,12 @@
 		"emptyNoMatchHint": "换个关键词试试，或直接输入你的需求。",
 		"emptyNoSkills": "暂无可用的技能",
 		"emptyNoSkillsHint": "去能力广场安装技能后，这里就能直接调用。",
+		"moreActions": "更多动作",
 		"sections": {
-			"files": "文件",
 			"skills": "技能",
-			"connectors": "连接器",
 			"plugins": "插件",
-			"apps": "应用"
+			"mcp": "MCP",
+			"bundle": "套装"
 		},
 		"filesSection": {
 			"addFile": "添加文件",
@@ -1217,7 +1218,8 @@
 			"plugin": "插件",
 			"market": "市场"
 		},
-		"connectorsSection": "已接入"
+		"connectorsSection": "已接入",
+		"builtinHint": "内置"
 	},
 	"suggestionBubbles": {
 		"sendTooltip": "点击发送此建议"

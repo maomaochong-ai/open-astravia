@@ -42,6 +42,10 @@ export interface CommandPanelLabels extends SkillListLabels {
 	categories: string;
 	/** 左栏「全部」格：跨分类列出能力页有的全部条目。 */
 	all: string;
+	/** 左栏「内置」来源视图：随 App 分发的内置能力。 */
+	builtin: string;
+	/** 左栏「市场」来源视图：从市场安装的能力。 */
+	market: string;
 	/** 左栏「操作」格（压缩上下文等会话操作）。 */
 	operations: string;
 	/** 左栏底部「能力广场」入口。 */
@@ -61,6 +65,10 @@ export interface CommandPanelLabels extends SkillListLabels {
 	favoriteAdd: string;
 	favoriteRemove: string;
 	details: string;
+	/** 内置能力行尾的提示：说明它随 App 分发、无需插入。 */
+	builtinHint: string;
+	/** 窄屏下收纳多余动作的下拉按钮名称。 */
+	moreActions: string;
 	/** 预览页。 */
 	preview: {
 		back: string;

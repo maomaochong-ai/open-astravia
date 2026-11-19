@@ -8,16 +8,19 @@ import { isRenderableImageIcon } from "@domains/abilities/lib/ability-presentati
  * 命名刻意不叫 `Capability*`：本仓 `Capability` 是授权契约（`docs/capabilities/`），
  * 与「能往消息里加什么」是两件事；术语见 CONTEXT.md「添加面板」词条。
  */
-export type AddPanelCategory = "skill" | "mcp" | "plugin" | "bundle";
+export type AddPanelCategory = "skill" | "plugin" | "mcp" | "bundle";
 
-export type AddPanelTab = "favorites" | "all" | "commands" | AddPanelCategory;
+/** 来源视图：内置 / 市场（与「全部」同属「按来源看」的维度，不是条目类型）。 */
+export type AddPanelProvenanceTab = "builtin" | "market";
+
+export type AddPanelTab = "favorites" | "all" | "operations" | AddPanelProvenanceTab | AddPanelCategory;
 
 /**
  * 分类顺序固定：最常用的在前，最不常用的在后。
  *
  * 不按数量动态排序——同一类条目每次都要在同一位置，否则用户每次打开都要重新找。
  */
-export const ADD_PANEL_CATEGORY_ORDER: readonly AddPanelCategory[] = ["skill", "mcp", "plugin", "bundle"];
+export const ADD_PANEL_CATEGORY_ORDER: readonly AddPanelCategory[] = ["skill", "plugin", "mcp", "bundle"];
 
 /**
  * 分类图标（16px 下必须彼此可辨）。
@@ -41,10 +44,22 @@ export const ADD_PANEL_ALL_ICON = "icon-[solar--magic-stick-3-linear]";
 /** 分类标题的 i18n key（与 `chat.json` 的 `slashPanel.sections.*` 对齐）。 */
 export const ADD_PANEL_CATEGORY_TITLE_KEYS = {
 	skill: "slashPanel.sections.skills",
-	mcp: "slashPanel.sections.connectors",
 	plugin: "slashPanel.sections.plugins",
-	bundle: "slashPanel.sections.apps",
+	mcp: "slashPanel.sections.mcp",
+	bundle: "slashPanel.sections.bundle",
 } as const satisfies Record<AddPanelCategory, string>;
+
+/** 来源视图的图标：内置（仓库/盒子）与市场（店铺/货架）。 */
+export const ADD_PANEL_PROVENANCE_ICONS: Record<AddPanelProvenanceTab, string> = {
+	builtin: "icon-[solar--archive-linear]",
+	market: "icon-[solar--cart-large-2-linear]",
+};
+
+/** 来源视图的标题 key（对齐 `slashPanel.groups.*` 里已存在的「内置」「市场」）。 */
+export const ADD_PANEL_PROVENANCE_TITLE_KEYS = {
+	builtin: "slashPanel.groups.builtin",
+	market: "slashPanel.groups.market",
+} as const satisfies Record<AddPanelProvenanceTab, string>;
 
 /**
  * 条目的图标可能是**两种东西**：iconify 名称（`solar:xxx`）或图片 URL / 包内相对路径。
@@ -81,6 +96,14 @@ export interface AddPanelEntry {
 	readonly fallbackIcon: string;
 	/** 条目类型：图标兜底时用来区分「技能默认图」与「分类图」。 */
 	readonly kind?: "skill" | "mcp" | "plugin" | "bundle" | "file";
+	/**
+	 * 能否插入到消息里。
+	 *
+	 * 内置能力随 App 分发，对话里本来就直接可用——再提供一次「插入」只会让人误以为
+	 * 需要先插进去才生效。它们留在列表里是因为用户要能看见「我本来就有这些」，
+	 * 但行不响应点击、键盘导航也跳过。
+	 */
+	readonly insertable: boolean;
 }
 
 export interface AddPanelGroup {
@@ -130,6 +153,7 @@ export function addPanelEntryKey(category: AddPanelCategory, id: string): string
 const GROUP_TITLE_KEYS: Record<string, string> = {
 	actions: "slashPanel.groups.actions",
 	builtin: "slashPanel.groups.builtin",
+	agents: "slashPanel.groups.agents",
 	mine: "slashPanel.groups.mine",
 	project: "slashPanel.groups.project",
 	plugin: "slashPanel.groups.plugin",
@@ -150,24 +174,44 @@ function groupTitleKey(category: AddPanelCategory, groupId: string): string {
 	return GROUP_TITLE_KEYS[groupId] ?? FALLBACK_GROUP_TITLE_KEYS[category];
 }
 
-/** 按 groupId 分桶，保持首次出现顺序（面板不重排，避免两次打开之间换组）。 */
+/**
+ * 分组展示顺序固定：来源从「随 App 分发」到「用户自己的」。
+ *
+ * 不按条目首次出现排序——那样同一分类里「市场」和「我的」的先后会随条目名的字母序变化，
+ * 每次打开都可能换位置。
+ */
+const GROUP_ORDER: readonly string[] = [
+	"builtin",
+	"market",
+	"plugin",
+	"agents",
+	"connected",
+	"installed",
+	"project",
+	"mine",
+	"other",
+];
+
+function groupRank(groupId: string): number {
+	const index = GROUP_ORDER.indexOf(groupId);
+	return index === -1 ? GROUP_ORDER.length : index;
+}
+
+/** 按 groupId 分桶，按 {@link GROUP_ORDER} 排列（未知来源排在最后）。 */
 function groupEntries(entries: readonly AddPanelEntry[], category: AddPanelCategory): AddPanelGroup[] {
-	const order: string[] = [];
 	const buckets = new Map<string, AddPanelEntry[]>();
 	for (const entry of entries) {
-		let bucket = buckets.get(entry.groupId);
-		if (!bucket) {
-			bucket = [];
-			buckets.set(entry.groupId, bucket);
-			order.push(entry.groupId);
-		}
-		bucket.push(entry);
+		const bucket = buckets.get(entry.groupId);
+		if (bucket) bucket.push(entry);
+		else buckets.set(entry.groupId, [entry]);
 	}
-	return order.map((groupId) => ({
-		id: groupId,
-		titleKey: groupTitleKey(category, groupId),
-		entries: buckets.get(groupId) ?? [],
-	}));
+	return [...buckets.keys()]
+		.sort((left, right) => groupRank(left) - groupRank(right))
+		.map((groupId) => ({
+			id: groupId,
+			titleKey: groupTitleKey(category, groupId),
+			entries: buckets.get(groupId) ?? [],
+		}));
 }
 
 function buildSection(category: AddPanelCategory, entries: readonly AddPanelEntry[]): AddPanelSection {
@@ -209,6 +253,28 @@ export function sectionOf(
 	category: AddPanelCategory,
 ): AddPanelSection | undefined {
 	return sections.find((section) => section.category === category);
+}
+
+/**
+ * 按来源筛条目：只保留 `groupId` 等于目标来源的分组，其余丢弃。
+ *
+ * 「内置」视图 = 随 App 分发的内置能力（`groupId === "builtin"`）；
+ * 「市场」视图 = 从市场安装的能力（`groupId === "market"`）。
+ *
+ * 命中的条目并回一个分组、标题改用分类名：这个视图里「来源」已是筛选条件，
+ * 每组再标一次「市场」只会得到几个同名分组，用户反而分不清哪组是技能、哪组是插件。
+ */
+export function filterByProvenance(
+	sections: readonly AddPanelSection[],
+	provenance: AddPanelProvenanceTab,
+): AddPanelSection[] {
+	const result: AddPanelSection[] = [];
+	for (const section of sections) {
+		const entries = section.groups.filter((group) => group.id === provenance).flatMap((group) => group.entries);
+		if (entries.length === 0) continue;
+		result.push({ ...section, groups: [{ id: provenance, titleKey: section.titleKey, entries }] });
+	}
+	return result;
 }
 
 /** 收藏键 → 条目，跨分类按分类顺序重新分组；收藏里有但目录里已消失的键直接丢弃。 */
@@ -261,16 +327,16 @@ export function searchAddPanelSections(sections: readonly AddPanelSection[], que
 	return result;
 }
 
-/** 列表里的一行：分组头或条目。 */
+/** 列表里的一行：分组头或条目。分组头带条目数量。 */
 export type AddPanelRow =
-	| { readonly kind: "header"; readonly id: string; readonly label: string }
+	| { readonly kind: "header"; readonly id: string; readonly label: string; readonly count: number }
 	| { readonly kind: "entry"; readonly entry: AddPanelEntry };
 
 /**
  * 把分组拍平成行（分组头 + 条目），供列表按顺序渲染。
  *
- * 分组头规则：搜索 / 「全部」视图按分类分组（标题是分类名）；分类视图里按来源分组，
- * 来源多于一个才出标题；空分组不出现。
+ * 分组头规则：搜索 / 「全部」/ 来源视图按分类分组（标题是分类名）；分类视图里按来源分组，
+ * 标题带该组条数；空分组不出现。
  */
 export function buildAddPanelRows(
 	sections: readonly AddPanelSection[],
@@ -283,12 +349,16 @@ export function buildAddPanelRows(
 	const rows: AddPanelRow[] = [];
 	for (const section of sections) {
 		const showCategoryHeader = options.searching;
-		const showGroupHeaders = !options.searching && section.groups.length > 1;
+		// 浏览态一律出分组头：用户要靠标题上的数量判断「这一类里各来源各有多少」。
+		const showGroupHeaders = !options.searching;
+		// 分组头的数字是「这一组有几条」；搜索态按分类分组，所以是整类条数。
+		const sectionCount = section.groups.reduce((total, group) => total + group.entries.length, 0);
 		if (showCategoryHeader) {
 			rows.push({
 				kind: "header",
 				id: `category:${section.category}`,
 				label: options.categoryLabel(section.category),
+				count: sectionCount,
 			});
 		}
 		for (const group of section.groups) {
@@ -298,6 +368,7 @@ export function buildAddPanelRows(
 					kind: "header",
 					id: `group:${section.category}:${group.id}`,
 					label: options.groupLabel(group.titleKey),
+					count: group.entries.length,
 				});
 			}
 			for (const entry of group.entries) rows.push({ kind: "entry", entry });
