@@ -3,6 +3,7 @@
  *
  * 文本形态（发给模型、也是会话里持久化的那份）：
  * - skill 软引用：`@skill:名字`（名字含空白或引号时 `@skill:"名字"`）
+ * - 插件软引用：`@plugin:slug`（插件是能力包，不是一个技能）
  * - 连接器（内置 MCP）软引用：`@mcp:名字`
  * - 文件 / 目录 / 图片：`@/abs/path`（含空白时 `@"/abs/path"`）
  *
@@ -21,6 +22,11 @@ export type InputSegment =
 			meta?: string;
 	  }
 	| { kind: "skill"; name: string; alias?: string; icon?: string }
+	/**
+	 * 插件引用。插件本身不产出文本，但「用这个包干活」是明确意图：
+	 * 插入后模型看到 `@plugin:slug`，由它按需调用该插件提供的工具。
+	 */
+	| { kind: "plugin"; name: string; label?: string; icon?: string }
 	| { kind: "connector"; name: string; label?: string; iconUrl?: string }
 	| { kind: "file"; path: string; isDirectory?: boolean }
 	| { kind: "image"; path: string };

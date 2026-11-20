@@ -12,6 +12,11 @@ export function skillTokenText(name: string): string {
 	return `@skill:${quoteIfNeeded(name)}`;
 }
 
+/** 单个插件 token 的文本形式。 */
+export function pluginTokenText(name: string): string {
+	return `@plugin:${quoteIfNeeded(name)}`;
+}
+
 /** 单个连接器 token 的文本形式。 */
 export function connectorTokenText(name: string): string {
 	return `@mcp:${quoteIfNeeded(name)}`;
@@ -42,6 +47,8 @@ function segmentToText(segment: InputSegment): string {
 			return `@${segment.handle}`;
 		case "skill":
 			return skillTokenText(segment.name);
+		case "plugin":
+			return pluginTokenText(segment.name);
 		case "connector":
 			return connectorTokenText(segment.name);
 		case "file":
@@ -66,7 +73,7 @@ export interface SerializedInputSegments {
 }
 
 export type SerializedInputToken =
-	| ({ readonly kind: "skill" | "connector"; readonly name: string } & SerializedInputTokenRange)
+	| ({ readonly kind: "skill" | "plugin" | "connector"; readonly name: string } & SerializedInputTokenRange)
 	| ({
 			readonly kind: "file" | "image";
 			readonly path: string;
@@ -117,7 +124,7 @@ export function serializeInputSegments(segments: readonly InputSegment[]): Seria
 				start,
 				end: out.length,
 			});
-		} else if (segment.kind === "skill" || segment.kind === "connector") {
+		} else if (segment.kind === "skill" || segment.kind === "plugin" || segment.kind === "connector") {
 			tokens.push({ kind: segment.kind, name: segment.name, start, end: out.length });
 		} else if (segment.kind === "file" || segment.kind === "image") {
 			tokens.push({

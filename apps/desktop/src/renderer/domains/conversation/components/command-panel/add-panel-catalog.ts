@@ -96,14 +96,6 @@ export interface AddPanelEntry {
 	readonly fallbackIcon: string;
 	/** 条目类型：图标兜底时用来区分「技能默认图」与「分类图」。 */
 	readonly kind?: "skill" | "mcp" | "plugin" | "bundle" | "file";
-	/**
-	 * 能否插入到消息里。
-	 *
-	 * 内置能力随 App 分发，对话里本来就直接可用——再提供一次「插入」只会让人误以为
-	 * 需要先插进去才生效。它们留在列表里是因为用户要能看见「我本来就有这些」，
-	 * 但行不响应点击、键盘导航也跳过。
-	 */
-	readonly insertable: boolean;
 }
 
 export interface AddPanelGroup {

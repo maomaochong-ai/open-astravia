@@ -279,7 +279,6 @@ describe("useAddPanelAbilityEntries", () => {
 		await waitFor(() => {
 			const entry = result.current.find((candidate) => candidate.label === "Plugin Skill");
 			expect(entry?.category).toBe("skill");
-			expect(entry?.insertable).toBe(true);
 		}, { timeout: 5000 });
 	});
 
@@ -302,6 +301,43 @@ describe("useAddPanelAbilityEntries", () => {
 		const { result } = renderHook(() => useAddPanelAbilityEntries(true));
 		await waitFor(() => {
 			expect(result.current.some((candidate) => candidate.label === "Hidden Plugin Skill")).toBe(false);
+		}, { timeout: 5000 });
+	});
+
+	// 回归：明明是从市场装的条目，不该因为能力条目上残留 builtin 标记就归到「内置」。
+	// 来源事实优先于标记：用户装了什么来源，面板就必须如实归到那个来源。
+	it("市场安装的插件即使带 builtin 标记也归入市场", async () => {
+		setupIpc([], {
+			plugins: [
+				{
+					id: "market-plugin",
+					name: "Market Plugin",
+					enabled: true,
+					activeVersion: "1.0.0",
+					description: "from market",
+					// 系统插件才有的标记被残留在这里，用来复现「市场插件被识别成内置」。
+					source: "system",
+					permissions: [],
+					grantedPermissions: [],
+					declaredCommands: [],
+					grantedCommandNames: [],
+				},
+			],
+			ledger: {
+				"plugin:market-plugin": {
+					catalogId: "github:astravia-official:plugin:market-plugin",
+					version: "1.0.0",
+					installedAt: "2026-11-15T00:00:00.000Z",
+					origin: { kind: "github-marketplace", sourceId: "astravia-official" },
+				},
+			},
+		});
+
+		const { result } = renderHook(() => useAddPanelAbilityEntries(true));
+		await waitFor(() => {
+			const entry = result.current.find((candidate) => candidate.label === "Market Plugin");
+			expect(entry).toBeDefined();
+			expect(entry?.groupId).toBe("market");
 		}, { timeout: 5000 });
 	});
 

@@ -332,6 +332,18 @@ export const MarkdownContent = memo(function MarkdownContent({
 						/>
 					);
 				}
+				if (kind === "plugin") {
+					const plugin = inlineTokensRef.current?.getPlugin?.(value);
+					const iconUrl = plugin?.icon && !plugin.icon.startsWith("solar:") ? plugin.icon : undefined;
+					return (
+						<InlineTokenChip
+							icon={iconUrl ? undefined : "icon-[solar--widget-2-linear]"}
+							iconUrl={iconUrl}
+							label={plugin?.label ?? value}
+							title={value}
+						/>
+					);
+				}
 				if (kind === "connector") {
 					const connector = inlineTokensRef.current?.getConnector?.(value);
 					return (

@@ -39,7 +39,8 @@ export function InlineTokenChip({
 	const content = (
 		<>
 			{iconNode ? (
-				<span className="mr-1 inline-flex h-3 w-3 items-center justify-center overflow-hidden align-[-0.15em]">
+				// 圆角挂在这层容器上：图片图标铺满它并由它裁切，与面板里的圆角方框同一观感。
+				<span className="mr-1 inline-flex h-3 w-3 items-center justify-center overflow-hidden rounded-[3px] align-[-0.15em]">
 					{iconNode}
 				</span>
 			) : iconUrl ? (
@@ -47,7 +48,7 @@ export function InlineTokenChip({
 					src={iconUrl}
 					alt=""
 					draggable={false}
-					className="mr-1 inline-block h-3 w-3 rounded-sm align-[-0.15em] object-contain"
+					className="mr-1 inline-block h-3 w-3 rounded-[3px] align-[-0.15em] object-contain"
 				/>
 			) : icon ? (
 				<span className={`${icon} mr-1 inline-block h-3 w-3 align-[-0.15em]`} />

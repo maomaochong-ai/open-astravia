@@ -25,6 +25,8 @@ interface MarkdownContentProps {
 	inlineTokens?: {
 		getImageLabel: (path: string) => string;
 		getSkill?: (name: string) => { label: string; icon?: string } | undefined;
+		/** 插件的展示名与图标（`@plugin:slug`）。 */
+		getPlugin?: (name: string) => { label: string; icon?: string } | undefined;
 		annotations: readonly InlineTokenAnnotation[];
 		getMember?: (participantId: string) => { label: string; avatar?: string; meta?: string } | undefined;
 	};
@@ -66,6 +68,7 @@ export const MarkdownContent = memo(function MarkdownContent({
 						getImageLabel: inlineTokens.getImageLabel,
 						getConnector: lookupConnector,
 						...(inlineTokens.getSkill ? { getSkill: inlineTokens.getSkill } : {}),
+						...(inlineTokens.getPlugin ? { getPlugin: inlineTokens.getPlugin } : {}),
 						...(inlineTokens.getMember ? { getMember: inlineTokens.getMember } : {}),
 					}
 				: undefined,

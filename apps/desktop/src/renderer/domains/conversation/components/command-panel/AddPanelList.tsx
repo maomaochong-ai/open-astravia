@@ -42,27 +42,16 @@ function EntryRow({
 			aria-selected={active}
 			tabIndex={-1}
 			data-entry-key={entry.key}
-			// 内置能力在对话里本就可用：这一行只做说明，不响应点击，也不参与键盘导航。
-			onClick={entry.insertable ? onActivate : undefined}
-			onKeyDown={
-				entry.insertable
-					? (event) => {
-							if (event.key === "Enter" || event.key === " ") {
-								event.preventDefault();
-								onActivate();
-							}
-						}
-					: undefined
-			}
-			aria-disabled={entry.insertable ? undefined : true}
+			onClick={onActivate}
+			onKeyDown={(event) => {
+				if (event.key === "Enter" || event.key === " ") {
+					event.preventDefault();
+					onActivate();
+				}
+			}}
 			className={cn(
-				"group/entry flex h-8 items-center gap-2 rounded-md px-1.5 transition-colors",
-				entry.insertable ? "cursor-pointer" : "cursor-default",
-				active
-					? "bg-foreground/12 text-foreground"
-					: entry.insertable
-						? "text-foreground/85 hover:bg-foreground/6 hover:text-foreground"
-						: "text-muted-foreground/80",
+				"group/entry flex h-8 cursor-pointer items-center gap-2 rounded-md px-1.5 transition-colors",
+				active ? "bg-foreground/12 text-foreground" : "text-foreground/85 hover:bg-foreground/6 hover:text-foreground",
 			)}
 		>
 			<AddPanelIcon
@@ -78,9 +67,6 @@ function EntryRow({
 			<span className={cn("min-w-0 flex-1 truncate text-xs", active && "font-medium")}>{entry.label}</span>
 
 			{/* 顺序固定：详情在左、收藏在最右。收藏是行尾的持久状态，放最右才不随悬停位移。 */}
-			{!entry.insertable && (
-				<span className="shrink-0 text-[10px] text-muted-foreground/60">{labels.builtinHint}</span>
-			)}
 			<button
 				type="button"
 				tabIndex={-1}
@@ -97,8 +83,6 @@ function EntryRow({
 			>
 				<span aria-hidden="true" className="icon-[solar--info-circle-linear] size-3" />
 			</button>
-			{/* 收藏是为了「下次更快插进来」；内置行插不进来，给它收藏入口只是多一个死控件。 */}
-			{entry.insertable && (
 			<button
 				type="button"
 				tabIndex={-1}
@@ -122,7 +106,6 @@ function EntryRow({
 					className={cn("size-3.5", favorite ? "icon-[solar--star-bold]" : "icon-[solar--star-linear]")}
 				/>
 			</button>
-			)}
 		</div>
 	);
 }

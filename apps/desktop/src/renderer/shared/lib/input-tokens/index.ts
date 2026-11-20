@@ -7,6 +7,7 @@ export {
 	deriveAttachments,
 	deriveSkillNames,
 	pathTokenText,
+	pluginTokenText,
 	projectMemberMentionsToTrimmedText,
 	type SerializedInputSegments,
 	type SerializedInputToken,

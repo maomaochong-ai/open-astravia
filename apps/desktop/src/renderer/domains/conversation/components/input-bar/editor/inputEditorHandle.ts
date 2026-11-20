@@ -16,6 +16,7 @@ import {
 	$createFileTokenNode,
 	$createImageTokenNode,
 	$createMemberTokenNode,
+	$createPluginTokenNode,
 	$createSkillTokenNode,
 	ImageTokenNode,
 	MemberTokenNode,
@@ -74,6 +75,11 @@ function insert(nodes: () => LexicalNode[], options?: InsertTokenOptions): void 
 
 export function insertSkillToken(name: string, alias?: string, icon?: string, options?: InsertTokenOptions): void {
 	insert(() => [$createSkillTokenNode(name, alias, icon)], options);
+}
+
+/** 插入插件引用：插件是能力包，插入的是它本身而不是包内某个技能（见 ADR-0183）。 */
+export function insertPluginToken(name: string, label?: string, icon?: string, options?: InsertTokenOptions): void {
+	insert(() => [$createPluginTokenNode(name, label, icon)], options);
 }
 
 export function insertConnectorToken(

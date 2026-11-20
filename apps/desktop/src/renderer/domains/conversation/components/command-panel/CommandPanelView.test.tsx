@@ -50,7 +50,6 @@ function makeLabels(): CommandPanelLabels {
 		favoriteRemove: "取消收藏",
 		details: "详情",
 		moreActions: "更多动作",
-		builtinHint: "内置",
 		preview: {
 			back: "返回列表",
 			sourceLabel: "来源",
@@ -84,7 +83,6 @@ const SKILL_SECTION: AddPanelSection = {
 					groupId: "mine",
 					searchable: true,
 					fallbackIcon: "icon-[solar--magic-stick-3-linear]",
-					insertable: true,
 				},
 				{
 					category: "skill",
@@ -94,7 +92,6 @@ const SKILL_SECTION: AddPanelSection = {
 					groupId: "mine",
 					searchable: true,
 					fallbackIcon: "icon-[solar--magic-stick-3-linear]",
-					insertable: true,
 				},
 			],
 		},
@@ -213,8 +210,8 @@ describe("CommandPanelView 两栏面板", () => {
 		expect(props.onClosePreview).toHaveBeenCalledOnce();
 	});
 
-	// 回归：内置能力对话里本就可用，行只做展示——点击不插入，行尾给出「内置」提示。
-	it("内置能力的行不可点击，只显示提示", () => {
+	// 内置能力与其它条目一样可点：上游就是这么做的，点「安装技能」这类内置技能要能进输入框。
+	it("内置能力的行可以点击插入", () => {
 		const builtinSection: AddPanelSection = {
 			category: "skill",
 			titleKey: "slashPanel.sections.skills",
@@ -231,7 +228,6 @@ describe("CommandPanelView 两栏面板", () => {
 							groupId: "builtin",
 							searchable: true,
 							fallbackIcon: "icon-[solar--magic-stick-3-linear]",
-							insertable: false,
 						},
 					],
 				},
@@ -239,12 +235,8 @@ describe("CommandPanelView 两栏面板", () => {
 		};
 		const { props } = renderPanel({ sections: [builtinSection] });
 
-		expect(screen.getByText("Astravia Testing")).toBeTruthy();
-		// 行尾提示与分组标题都写着「内置」，这里只关心行尾那个（分组标题在外层 p 里）。
-		expect(screen.getAllByText("内置").length).toBeGreaterThanOrEqual(2);
-
 		fireEvent.click(screen.getByText("Astravia Testing"));
-		expect(props.onActivateEntry).not.toHaveBeenCalled();
+		expect(props.onActivateEntry).toHaveBeenCalledWith("skills:builtin:skill:astravia-testing");
 	});
 
 	it("搜索无结果时显示空态而不是列表", () => {

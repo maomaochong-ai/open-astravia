@@ -1220,8 +1220,7 @@
 			"plugin": "Plugin",
 			"market": "Market"
 		},
-		"connectorsSection": "Connected",
-		"builtinHint": "Built-in"
+		"connectorsSection": "Connected"
 	},
 	"suggestionBubbles": {
 		"sendTooltip": "Click to send this suggestion"
