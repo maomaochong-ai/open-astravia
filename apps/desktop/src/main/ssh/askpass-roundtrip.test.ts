@@ -67,6 +67,18 @@ describe.skipIf(process.platform === "win32")("askpass 与 OpenSSH 的合同", (
 		expect(resolver).toHaveBeenCalledWith(expect.objectContaining({ hostId: "h1", kind: "password" }));
 	});
 
+	// 回归：真实口令里常有 `$ # ~ % &` 这类 shell 元字符。这条链路上任何一处做了字符串
+	// 拼接或 shell 展开，都会把口令改成另一个值——表现是「密码明明是对的，却一直
+	// Permission denied」，而且看不出被改成了什么。这里断言 stdout 逐字节等于原值。
+	it("含 shell 元字符的口令原样到达 stdout，不被展开", async () => {
+		const tricky = "p$a#s~2025%w&rd'q\"<z>";
+		resolver.mockResolvedValueOnce({ ok: true, value: tricky });
+
+		const { stdout } = await invoke("me@build-01's password: ");
+
+		expect(stdout.replace(/\n$/, "")).toBe(tricky);
+	});
+
 	it("把提示原文与主机标识带给主进程", async () => {
 		const prompt = "Enter passphrase for key '/Users/me/.ssh/id_ed25519': ";
 		resolver.mockResolvedValueOnce({ ok: true, value: "pp" });
