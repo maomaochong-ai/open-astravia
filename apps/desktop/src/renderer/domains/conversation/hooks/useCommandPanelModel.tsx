@@ -19,7 +19,7 @@ import type {
 	CommandPanelProps,
 } from "../components/command-panel/types";
 import { type InputActionBarModel, useInputActionBarModel } from "../components/useInputActionBarModel";
-import { focusInputEditor, insertTextAtTrigger } from "../components/input-bar/editor/inputEditorHandle";
+import { focusInputEditor, insertPluginToken } from "../components/input-bar/editor/inputEditorHandle";
 import { useAddPanelAbilityEntries } from "./useAddPanelAbilityEntries";
 import { useAddPanelFavorites } from "./useAddPanelFavorites";
 import { COMPACTION_OPERATION_KEY, useCommandPanelCompaction } from "./useCommandPanelCompaction";
@@ -158,23 +158,14 @@ export function useCommandPanelModel({
 		setActiveIndex(-1);
 	}, [tab, query, normalizedFilter, searching, previewKey]);
 
-	/**
-	 * 键盘可达的条目：内置能力只做展示（对话里本就可用），方向键不该停在它们身上——
-	 * 停在上面按回车什么也不会发生，比直接跳过更像坏了。
-	 */
-	const activatableEntries = useMemo(
-		() => visibleEntries.filter((entry) => entry.insertable),
-		[visibleEntries],
-	);
-
 	/** 压缩上下文是「操作」分类里的一行，不再是固定头部：只有停在该分类时参与列表。 */
 	const showsOperations = tab === "operations" && operation !== undefined;
 	const operationOffset = showsOperations ? 1 : 0;
-	const total = activatableEntries.length + operationOffset;
+	const total = visibleEntries.length + operationOffset;
 	const activeEntry =
 		activeIndex < 0 || (operationOffset === 1 && activeIndex === 0)
 			? null
-			: (activatableEntries[activeIndex - operationOffset] ?? null);
+			: (visibleEntries[activeIndex - operationOffset] ?? null);
 	const activeKey =
 		activeIndex < 0
 			? null
@@ -198,14 +189,13 @@ export function useCommandPanelModel({
 				}
 				case "plugin": {
 					/*
-					 * 插件是「能力包」，不是可插入的文本单元：它自己带工具与技能，用户把插件放进来
-					 * 是让 Agent 用这个包干活。所以这里插入的是**插件引用**，而不是把它的某个技能
-					 * 顶上来——插件里通常有多个技能，替用户挑一个会让其余技能没法用（见 ADR-0183）。
-					 *
-						 * 文本形态而不做新令牌：编辑器现有的令牌都绑定到具体能力 id（技能名、MCP 名），
-					 * 插件没有对应的执行入口，伪造一个 `/插件名` 会让 Agent 去查一个不存在的技能。
+					 * 插件是能力包（工具 + 若干技能），不是一个可插入的文本单元，也不是
+					 * 「挑包里某个技能顶上来」——替用户挑一个会让其余技能失去入口
+					 * （见 ADR-0183）。这里插入的是**插件引用**：`@plugin:slug` 胶囊，
+					 * 模型据此按需调用该插件提供的工具。
 					 */
-					insertTextAtTrigger(`使用「${entry.label}」插件的能力完成：`);
+					const slug = entry.id.split(":").pop() ?? entry.id;
+					insertPluginToken(slug, entry.label, entry.iconUrl ?? entry.icon, { replaceTrigger: true });
 					focusInputEditor();
 					setPreviewKey(null);
 					return;
@@ -243,8 +233,7 @@ export function useCommandPanelModel({
 				return;
 			}
 			const entry = visibleEntries.find((candidate) => candidate.key === key);
-			// 内置行不可插入：即使有别的路径带着它的 key 进来，也不能往输入框塞东西。
-			if (entry?.insertable) activateEntry(entry);
+			if (entry) activateEntry(entry);
 		},
 		[activateEntry, operation, visibleEntries],
 	);

@@ -10,6 +10,7 @@ import { useSetAtom } from "jotai";
 import { memo, useMemo } from "react";
 import type { MouseEventHandler, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { usePluginTokenMeta } from "../../hooks/usePluginTokenMeta";
 import { useSkillTokenMeta } from "../../hooks/useSkillTokenMeta";
 import { AppshotCard } from "../AppshotCard";
 import { TextBlockView } from "../blocks/TextBlock";
@@ -36,6 +37,7 @@ export const UserMessage = memo(function UserMessage({
 	const { t } = useTranslation("chat");
 	const projection = useMemo(() => projectUserMessage(message), [message]);
 	const resolveSkillMeta = useSkillTokenMeta();
+	const resolvePluginMeta = usePluginTokenMeta();
 	const membersById = useMemo(
 		() => new Map(participants.map((participant) => [participant.id, participant])),
 		[participants],
@@ -48,6 +50,7 @@ export const UserMessage = memo(function UserMessage({
 				return index ? t("inputBar.capsule.imageBadge", { index }) : pathBasename(path);
 			},
 			getSkill: (name: string) => resolveSkillMeta("skill", name),
+			getPlugin: (name: string) => resolvePluginMeta(name),
 			getMember: (participantId: string) => {
 				const participant = membersById.get(participantId);
 				return participant
@@ -59,7 +62,14 @@ export const UserMessage = memo(function UserMessage({
 					: undefined;
 			},
 		}),
-		[membersById, projection.imageIndexByPath, projection.inlineTokenAnnotations, resolveSkillMeta, t],
+		[
+			membersById,
+			projection.imageIndexByPath,
+			projection.inlineTokenAnnotations,
+			resolvePluginMeta,
+			resolveSkillMeta,
+			t,
+		],
 	);
 	const setFilePreview = useSetAtom(filePreviewAtom);
 	const hasSettingsAssistBadge = projection.settingsAssistTabId.length > 0;

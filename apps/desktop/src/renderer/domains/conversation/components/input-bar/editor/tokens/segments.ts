@@ -16,11 +16,13 @@ import {
 	$createFileTokenNode,
 	$createImageTokenNode,
 	$createMemberTokenNode,
+	$createPluginTokenNode,
 	$createSkillTokenNode,
 	$isConnectorTokenNode,
 	$isFileTokenNode,
 	$isImageTokenNode,
 	$isMemberTokenNode,
+	$isPluginTokenNode,
 	$isSkillTokenNode,
 } from "../nodes";
 
@@ -40,6 +42,15 @@ function collect(node: LexicalNode, out: InputSegment[]): void {
 			kind: "skill",
 			name: node.getName(),
 			...(node.getAlias() ? { alias: node.getAlias() } : {}),
+			...(node.getIcon() ? { icon: node.getIcon() } : {}),
+		});
+		return;
+	}
+	if ($isPluginTokenNode(node)) {
+		out.push({
+			kind: "plugin",
+			name: node.getName(),
+			...(node.getLabel() ? { label: node.getLabel() } : {}),
 			...(node.getIcon() ? { icon: node.getIcon() } : {}),
 		});
 		return;
@@ -118,6 +129,7 @@ export function $readSelectedSegments(): InputSegment[] {
 		}
 		if (
 			$isSkillTokenNode(node) ||
+			$isPluginTokenNode(node) ||
 			$isConnectorTokenNode(node) ||
 			$isFileTokenNode(node) ||
 			$isImageTokenNode(node) ||
@@ -136,6 +148,8 @@ function segmentNodes(segment: InputSegment): LexicalNode[] {
 			return [$createMemberTokenNode(segment.memberId, segment.handle, segment.label, segment.avatar, segment.meta)];
 		case "skill":
 			return [$createSkillTokenNode(segment.name, segment.alias, segment.icon)];
+		case "plugin":
+			return [$createPluginTokenNode(segment.name, segment.label, segment.icon)];
 		case "connector":
 			// 从旧文本还原时拿不到展示名与 logo，用真实名兜底；结构化来源保留完整展示信息。
 			return [$createConnectorTokenNode(segment.name, segment.label ?? segment.name, segment.iconUrl)];

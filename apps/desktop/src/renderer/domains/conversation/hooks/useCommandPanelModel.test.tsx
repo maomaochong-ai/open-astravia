@@ -21,14 +21,14 @@ vi.mock("../components/useInputActionBarModel", () => ({
 	useInputActionBarModel: () => ({ builtins: [], items: [], actions: { toggleItem: vi.fn() } }),
 }));
 vi.mock("@shared/shortcuts", () => ({ useShortcutScope: vi.fn() }));
-// 插件插入走编辑器句柄（插一段插件引用文本）；这里只验证「插了什么」。
-const { insertTextAtTrigger } = vi.hoisted(() => ({ insertTextAtTrigger: vi.fn() }));
+// 插件插入走编辑器句柄（插一枚 `@plugin:` 令牌）；这里只验证「插了什么」。
+const { insertPluginToken } = vi.hoisted(() => ({ insertPluginToken: vi.fn() }));
 vi.mock("../components/input-bar/editor/inputEditorHandle", async (importOriginal) => ({
 	// 只覆盖插件插入用到的两个；其余（removeInputTrigger 等）保持真实导出，
 	// 否则压缩相关的用例会因为缺导出而失败。
 	...(await importOriginal<typeof import("../components/input-bar/editor/inputEditorHandle")>()),
 	focusInputEditor: vi.fn(),
-	insertTextAtTrigger,
+	insertPluginToken,
 }));
 
 initI18n();
@@ -278,7 +278,6 @@ describe("useCommandPanelModel skill insertion", () => {
 				searchable: true,
 				fallbackIcon: "icon-[solar--code-linear]",
 				kind: "skill",
-				insertable: true,
 			},
 		]);
 
@@ -298,9 +297,9 @@ describe("useCommandPanelModel skill insertion", () => {
 		expect(onSelect).toHaveBeenCalledWith(skill, undefined);
 	});
 
-	// 回归：插件是能力包，不是「挑一个技能顶上来」。点插件插入的是插件引用——
+	// 回归：插件是能力包，不是「挑一个技能顶上来」。点插件插入的是插件引用令牌——
 	// 替用户挑第一个技能会让包里其余技能没法用（见 ADR-0183）。
-	it("点击插件行插入插件引用，而不是它旗下的某个技能", () => {
+	it("点击插件行插入插件令牌，而不是它旗下的某个技能", () => {
 		const first: SkillInfo = {
 			name: "alpha",
 			alias: "Alpha",
@@ -321,7 +320,6 @@ describe("useCommandPanelModel skill insertion", () => {
 				searchable: true,
 				fallbackIcon: "icon-[solar--box-linear]",
 				kind: "plugin",
-				insertable: true,
 			},
 		]);
 
@@ -339,20 +337,18 @@ describe("useCommandPanelModel skill insertion", () => {
 		act(() => result.current.viewProps.onActivateEntry("plugin:github:astravia-official:plugin:demo-plugin"));
 
 		expect(onSelect).not.toHaveBeenCalled();
-		expect(insertTextAtTrigger).toHaveBeenCalledWith(expect.stringContaining("Demo Plugin"));
+		// 插入的是插件本身（slug），不是包里某个技能。
+		expect(insertPluginToken).toHaveBeenCalledWith("demo-plugin", "Demo Plugin", undefined, {
+			replaceTrigger: true,
+		});
 	});
 
-	// 回归：内置能力对话里本就可用，行只做展示；点击/回车都不该往输入框插东西，
-	// 方向键也不该停在它上面（停上去按回车没反应，比直接跳过更像坏了）。
-	it("内置能力行不可插入，键盘导航也跳过它", () => {
+	// 回归：内置能力（随 App 分发）与其它条目一样可插入——上游就是这么做的，
+	// 用户点「安装技能」这类内置技能要能进输入框，而不是只能看。
+	it("内置能力行可插入，并参与键盘导航", () => {
 		const builtin: SkillInfo = { name: "builtin-skill", type: "skill", description: "", source: "builtin" };
-		const mine: SkillInfo = { name: "my-skill", type: "skill", description: "", source: "user" };
-		vi.mocked(useSkillList).mockReturnValue({ items: [builtin, mine], loading: false });
-		const base = {
-			searchable: true,
-			fallbackIcon: "icon-[solar--code-linear]",
-			kind: "skill" as const,
-		};
+		vi.mocked(useSkillList).mockReturnValue({ items: [builtin], loading: false });
+		const base = { searchable: true, fallbackIcon: "icon-[solar--code-linear]", kind: "skill" as const };
 		vi.mocked(useAddPanelAbilityEntries).mockReturnValue([
 			{
 				...base,
@@ -361,16 +357,6 @@ describe("useCommandPanelModel skill insertion", () => {
 				key: "skills:builtin:builtin:skill:builtin-skill",
 				label: "Builtin Skill",
 				groupId: "builtin",
-				insertable: false,
-			},
-			{
-				...base,
-				category: "skill",
-				id: "local:local:skill:my-skill",
-				key: "skills:local:local:skill:my-skill",
-				label: "My Skill",
-				groupId: "mine",
-				insertable: true,
 			},
 		]);
 
@@ -385,18 +371,7 @@ describe("useCommandPanelModel skill insertion", () => {
 			}),
 		);
 
-		// 鼠标点上来也不插入。
 		act(() => result.current.viewProps.onActivateEntry("skills:builtin:builtin:skill:builtin-skill"));
-		expect(onSelect).not.toHaveBeenCalled();
-
-		// 方向键第一格落在唯一可插入的那条上。
-		act(() => {
-			result.current.viewProps.onPanelKeyDown({
-				key: "ArrowDown",
-				preventDefault: vi.fn(),
-				stopPropagation: vi.fn(),
-			} as unknown as React.KeyboardEvent<HTMLElement>);
-		});
-		expect(result.current.viewProps.activeKey).toBe("skills:local:local:skill:my-skill");
+		expect(onSelect).toHaveBeenCalledWith(builtin, undefined);
 	});
 });
