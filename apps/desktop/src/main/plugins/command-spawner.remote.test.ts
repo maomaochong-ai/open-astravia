@@ -5,7 +5,8 @@ import { createLoopbackSshConnection, formatLoopbackProjectUri } from "@astravia
 import { describe, expect, it, vi } from "vitest";
 
 const connection = createLoopbackSshConnection("build-01");
-vi.mock("../ssh/ssh-runtime.js", () => ({ getSshConnection: () => connection }));
+// getSshConnection 是异步的（Windows askpass 必须先 listen 才知道端口），mock 也要返回 Promise。
+vi.mock("../ssh/ssh-runtime.js", () => ({ getSshConnection: async () => connection }));
 // 端口转发经统一账本建立，而账本变化会广播给窗口：没有窗口的测试里也要有 BrowserWindow。
 vi.mock("electron", () => ({
 	webContents: { getAllWebContents: () => [] },

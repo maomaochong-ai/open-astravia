@@ -69,7 +69,7 @@ describe("usePresetProvidersSectionModel 启用 Magpie", () => {
 		const saved = saveConfig.mock.calls[0]?.[0];
 		expect(saved).toBeDefined();
 		expect(saved?.providers.magpie?.apiKey).toBe("magpie");
-		// 拉模型用的也是默认密钥，而不是空串。
-		expect(refreshPresetModels).toHaveBeenCalledWith("magpie", "magpie");
+		// 拉模型用的也是默认密钥，而不是空串；baseUrl 一并透传，本机代理端口才能被真正用到。
+		expect(refreshPresetModels).toHaveBeenCalledWith("magpie", "magpie", "http://127.0.0.1:3425/v1");
 	});
 });
