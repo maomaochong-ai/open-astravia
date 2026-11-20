@@ -21,6 +21,15 @@ vi.mock("../components/useInputActionBarModel", () => ({
 	useInputActionBarModel: () => ({ builtins: [], items: [], actions: { toggleItem: vi.fn() } }),
 }));
 vi.mock("@shared/shortcuts", () => ({ useShortcutScope: vi.fn() }));
+// 插件插入走编辑器句柄（插一段插件引用文本）；这里只验证「插了什么」。
+const { insertTextAtTrigger } = vi.hoisted(() => ({ insertTextAtTrigger: vi.fn() }));
+vi.mock("../components/input-bar/editor/inputEditorHandle", async (importOriginal) => ({
+	// 只覆盖插件插入用到的两个；其余（removeInputTrigger 等）保持真实导出，
+	// 否则压缩相关的用例会因为缺导出而失败。
+	...(await importOriginal<typeof import("../components/input-bar/editor/inputEditorHandle")>()),
+	focusInputEditor: vi.fn(),
+	insertTextAtTrigger,
+}));
 
 initI18n();
 
@@ -289,9 +298,9 @@ describe("useCommandPanelModel skill insertion", () => {
 		expect(onSelect).toHaveBeenCalledWith(skill, undefined);
 	});
 
-	// 回归：插件自身不产出文本，点它插入的是它贡献的第一个可见技能（见 ADR-0183）。
-	// 此前插件行走 `default` 分支只开预览，于是「点插件什么都不进输入框」。
-	it("点击插件行插入它贡献的第一个技能", () => {
+	// 回归：插件是能力包，不是「挑一个技能顶上来」。点插件插入的是插件引用——
+	// 替用户挑第一个技能会让包里其余技能没法用（见 ADR-0183）。
+	it("点击插件行插入插件引用，而不是它旗下的某个技能", () => {
 		const first: SkillInfo = {
 			name: "alpha",
 			alias: "Alpha",
@@ -299,20 +308,9 @@ describe("useCommandPanelModel skill insertion", () => {
 			description: "",
 			source: "plugin",
 			sourcePluginId: "demo-plugin",
-			// 插件贡献的技能默认隐藏，插件必须显式声明它在命令区可见才可插入。
 			presentation: { surfaces: { commandPalette: "visible" } },
 		};
-		const second: SkillInfo = {
-			name: "beta",
-			alias: "Beta",
-			type: "skill",
-			description: "",
-			source: "plugin",
-			sourcePluginId: "demo-plugin",
-			// 插件贡献的技能默认隐藏，插件必须显式声明它在命令区可见才可插入。
-			presentation: { surfaces: { commandPalette: "visible" } },
-		};
-		vi.mocked(useSkillList).mockReturnValue({ items: [second, first], loading: false });
+		vi.mocked(useSkillList).mockReturnValue({ items: [first], loading: false });
 		vi.mocked(useAddPanelAbilityEntries).mockReturnValue([
 			{
 				category: "plugin",
@@ -340,7 +338,8 @@ describe("useCommandPanelModel skill insertion", () => {
 
 		act(() => result.current.viewProps.onActivateEntry("plugin:github:astravia-official:plugin:demo-plugin"));
 
-		expect(onSelect).toHaveBeenCalledWith(first, undefined);
+		expect(onSelect).not.toHaveBeenCalled();
+		expect(insertTextAtTrigger).toHaveBeenCalledWith(expect.stringContaining("Demo Plugin"));
 	});
 
 	// 回归：内置能力对话里本就可用，行只做展示；点击/回车都不该往输入框插东西，

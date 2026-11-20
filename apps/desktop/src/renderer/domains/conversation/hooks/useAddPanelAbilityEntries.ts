@@ -70,7 +70,6 @@ async function loadLocalAbilityState(): Promise<{
 export function projectAbilityEntries(
 	items: readonly AbilityItem[],
 	skillIcons?: ReadonlyMap<string, string | undefined>,
-	options?: { readonly pluginsWithInsertableSkill?: ReadonlySet<string> },
 ): AddPanelEntry[] {
 	const entries: AddPanelEntry[] = [];
 	for (const item of items) {
@@ -89,10 +88,7 @@ export function projectAbilityEntries(
 			groupId,
 			kind: item.type,
 			// 内置能力对话里本就可用：列出来是为了让用户看见，不给「插入」这条路。
-			// 插件行只有在它有 `commandPalette` 可见技能时才可插入（见 ADR-0183）。
-			insertable:
-				groupId !== "builtin" &&
-				(item.type !== "plugin" || (options?.pluginsWithInsertableSkill?.has(item.slug) ?? true)),
+			insertable: groupId !== "builtin",
 			searchable: true,
 			fallbackIcon: ADD_PANEL_CATEGORY_ICONS[category],
 		});
@@ -244,13 +240,6 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 		const bundles = buildBundleAbilities(market, [...skills, ...mcps, ...plugins], localState, t);
 		// 只收「清单里真有图标」的那些：把 `undefined` 也塞进表里会把同名 slug 占住，
 		// 后面市场目录的图标就再也补不进来了。
-		// 插件行能否插入取决于「它有没有可插入的技能」：插件自身不产出文本，点它插入的是
-		// 它的第一个技能（见 ADR-0183）。没有任何 `commandPalette` 可见技能的插件只剩预览。
-		const pluginsWithInsertableSkill = new Set(
-			localState.localSkills
-				.map((skill) => skill.sourcePluginId)
-				.filter((pluginId): pluginId is string => Boolean(pluginId)),
-		);
 		const skillIcons = new Map<string, string | undefined>(
 			state.skills.filter((skill) => skill.icon).map((skill) => [skill.name, skill.icon]),
 		);
@@ -289,7 +278,6 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 				return skillProvenance?.kind === "native" && skillProvenance.scope === "market";
 			}),
 			skillIcons,
-			{ pluginsWithInsertableSkill },
 		);
 	}, [state, t, trPlugin, marketIconMap, i18n.language]);
 

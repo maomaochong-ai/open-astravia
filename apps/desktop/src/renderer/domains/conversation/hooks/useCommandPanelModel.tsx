@@ -1,4 +1,3 @@
-import { isSkillVisibleOnSurface } from "@astravia-org/capability-sdk";
 import type { SkillInfo } from "@preload/api";
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -20,6 +19,7 @@ import type {
 	CommandPanelProps,
 } from "../components/command-panel/types";
 import { type InputActionBarModel, useInputActionBarModel } from "../components/useInputActionBarModel";
+import { focusInputEditor, insertTextAtTrigger } from "../components/input-bar/editor/inputEditorHandle";
 import { useAddPanelAbilityEntries } from "./useAddPanelAbilityEntries";
 import { useAddPanelFavorites } from "./useAddPanelFavorites";
 import { COMPACTION_OPERATION_KEY, useCommandPanelCompaction } from "./useCommandPanelCompaction";
@@ -198,24 +198,16 @@ export function useCommandPanelModel({
 				}
 				case "plugin": {
 					/*
-					 * 插件自身不产出文本，能进消息的是它贡献的技能——上游同一条路：
-					 * 面板里的插件能力通过 `commandPalette` 可见的技能被插入。
-					 * 取显示名最小的那个，保证同一插件每次点都是同一件事；
-					 * 没有可见技能时退回预览（说明它提供什么、技能在哪一类）。
+					 * 插件是「能力包」，不是可插入的文本单元：它自己带工具与技能，用户把插件放进来
+					 * 是让 Agent 用这个包干活。所以这里插入的是**插件引用**，而不是把它的某个技能
+					 * 顶上来——插件里通常有多个技能，替用户挑一个会让其余技能没法用（见 ADR-0183）。
+					 *
+						 * 文本形态而不做新令牌：编辑器现有的令牌都绑定到具体能力 id（技能名、MCP 名），
+					 * 插件没有对应的执行入口，伪造一个 `/插件名` 会让 Agent 去查一个不存在的技能。
 					 */
-					const slug = entry.id.split(":").pop() ?? entry.id;
-					const provided = skills
-						.filter(
-							(skill) =>
-								skill.sourcePluginId === slug && isSkillVisibleOnSurface(skill, "commandPalette"),
-						)
-						.sort((left, right) => (left.alias ?? left.name).localeCompare(right.alias ?? right.name));
-					const primary = provided[0];
-					if (primary) {
-						onSelect(primary, resolveIcon(primary));
-						return;
-					}
-					setPreviewKey(entry.key);
+					insertTextAtTrigger(`使用「${entry.label}」插件的能力完成：`);
+					focusInputEditor();
+					setPreviewKey(null);
 					return;
 				}
 				case "mcp": {
