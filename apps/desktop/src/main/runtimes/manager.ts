@@ -35,6 +35,15 @@ const SYSTEM_PATH_SNAPSHOT = process.env.PATH ?? process.env.Path ?? "";
 
 const RUNTIME_TYPES: RuntimeType[] = ["node", "python"];
 
+/** 重新获取运行时的总尝试次数：占用通常是瞬时的，重试一次就够绝大多数场景。 */
+const RUNTIME_REINSTALL_ATTEMPTS = 3;
+
+/** 目标文件被别的进程占用时 Windows / unix 给出的错误码。 */
+export function isBusyFileError(error: unknown): boolean {
+	const code = (error as NodeJS.ErrnoException | undefined)?.code;
+	return code === "EPERM" || code === "EBUSY" || code === "ENOTEMPTY" || code === "EACCES";
+}
+
 function emptyRegistry(): RuntimeRegistryData {
 	return { version: 1, binaries: {}, systemDetection: {} };
 }
@@ -641,12 +650,33 @@ export class RuntimeManager {
 		};
 	}
 
-	/** 面板「升级/重新获取」:强制重新 seed/下载推荐版本,再刷新 env。 */
+	/**
+	 * 面板「升级/重新获取」:强制重新 seed/下载推荐版本,再刷新 env。
+	 *
+	 * Windows 上目标目录里的 `node.exe` / `python.exe` 可能正被占用（正在跑的插件子进程、
+	 * 终端、MCP server）。那时替换目录会拿到 EPERM/EBUSY，而系统错误原文对用户毫无意义。
+	 * 这里先做有限重试——占用往往只持续几百毫秒；仍失败时抛 `runtime-in-use` 标记，
+	 * 由渲染层换成「先关掉正在使用它的程序」这类可执行提示。
+	 */
 	async reinstall(type: RuntimeType): Promise<RuntimeStatus> {
 		const target = installDir(type);
-		rmSync(join(target, ".vendor-version"), { force: true });
-		const seeded = await this.seedFromVendor(type);
-		if (!seeded) await this.download(type);
+		const seed = async (): Promise<void> => {
+			rmSync(join(target, ".vendor-version"), { force: true });
+			const seeded = await this.seedFromVendor(type);
+			if (!seeded) await this.download(type);
+		};
+		for (let attempt = 0; ; attempt += 1) {
+			try {
+				await seed();
+				break;
+			} catch (err) {
+				if (!isBusyFileError(err) || attempt >= RUNTIME_REINSTALL_ATTEMPTS - 1) {
+					if (isBusyFileError(err)) throw new Error(`runtime-in-use:${type}`);
+					throw err;
+				}
+				await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+			}
+		}
 		if (this.isReady(type)) {
 			this.recordManaged(type);
 			await this.ensureNpm(type);

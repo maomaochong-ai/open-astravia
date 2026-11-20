@@ -33,6 +33,8 @@ interface SetupOptions {
 	ledger?: Record<string, unknown>;
 	/** `mcp.get()` 的结果：市场装的连接器装好后会写进这里。 */
 	mcpServers?: Record<string, unknown>;
+	/** `plugins.listAll()` 的结果：插件条目要靠它认出「已安装」。 */
+	plugins?: unknown[];
 }
 
 function setupIpc(skills: MarketSkillFixture[], options: SetupOptions = {}): void {
@@ -62,7 +64,7 @@ function setupIpc(skills: MarketSkillFixture[], options: SetupOptions = {}): voi
 				getMarketManifest: vi.fn(async () => manifest),
 				list: vi.fn(async () => options.listedSkills ?? []),
 			},
-			plugins: { listAll: vi.fn(async () => []) },
+			plugins: { listAll: vi.fn(async () => options.plugins ?? []) },
 			mcp: { get: vi.fn(async () => ({ mcpServers: options.mcpServers ?? {} })) },
 		},
 	});
@@ -253,6 +255,53 @@ describe("useAddPanelAbilityEntries", () => {
 			const mine = result.current.find((candidate) => candidate.label === "My Skill");
 			expect(agent?.groupId).toBe("agents");
 			expect(mine?.groupId).toBe("mine");
+		}, { timeout: 5000 });
+	});
+
+	// 回归：插件贡献的技能正是「插件能被插进对话」的通道（见 ADR-0183）。此前整体按
+	// `source !== "plugin"` 排除，插件只剩一行只读条目，点它什么也进不了输入框。
+	it("插件贡献的可见技能进技能分类，并且可以插入", async () => {
+		setupIpc([], {
+			listedSkills: [
+				{
+					name: "plugin-skill",
+					alias: "Plugin Skill",
+					description: "from plugin",
+					source: "plugin",
+					sourcePluginId: "demo-plugin",
+					type: "skill",
+					presentation: { surfaces: { commandPalette: "visible" } },
+				},
+			],
+		});
+
+		const { result } = renderHook(() => useAddPanelAbilityEntries(true));
+		await waitFor(() => {
+			const entry = result.current.find((candidate) => candidate.label === "Plugin Skill");
+			expect(entry?.category).toBe("skill");
+			expect(entry?.insertable).toBe(true);
+		}, { timeout: 5000 });
+	});
+
+	// 回归：插件声明为隐藏的技能不该出现在面板里（默认隐藏是插件的安全默认）。
+	it("插件声明在 commandPalette 上隐藏的技能不进面板", async () => {
+		setupIpc([], {
+			listedSkills: [
+				{
+					name: "hidden-plugin-skill",
+					alias: "Hidden Plugin Skill",
+					description: "hidden",
+					source: "plugin",
+					sourcePluginId: "demo-plugin",
+					type: "skill",
+					presentation: { surfaces: { commandPalette: "hidden" } },
+				},
+			],
+		});
+
+		const { result } = renderHook(() => useAddPanelAbilityEntries(true));
+		await waitFor(() => {
+			expect(result.current.some((candidate) => candidate.label === "Hidden Plugin Skill")).toBe(false);
 		}, { timeout: 5000 });
 	});
 

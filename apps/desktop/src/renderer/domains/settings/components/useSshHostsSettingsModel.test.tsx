@@ -173,9 +173,9 @@ describe("SSH 主机设置", () => {
 			await result.current.actions.test(host);
 		});
 
-		expect(result.current.rowMessage.h1?.tone).toBe("warning");
-		// 测试里 t 被换成了 key，参数不会进文案，能验证的就是“走了哪条路”。
-		expect(result.current.rowMessage.h1?.text).toBe("sshTestOkMissingTools");
+		// 缺工具不再另开一条提示：连上了就只报成功，否则用户会去查一台其实好好的机器。
+		expect(result.current.rowMessage.h1?.tone).toBe("success");
+		expect(result.current.rowMessage.h1?.text).toBe("sshTestOk");
 	});
 
 	it("删除主机先弹确认，用户确认后才真的删", async () => {

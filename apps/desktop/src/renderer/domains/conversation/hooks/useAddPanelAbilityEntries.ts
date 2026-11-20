@@ -1,3 +1,4 @@
+import { isSkillVisibleOnSurface } from "@astravia-org/capability-sdk";
 import { isAbilityListedInDiscover, isAbilityListedInPersonal } from "@domains/abilities/lib/ability-catalog-query";
 import { localizeMarketAbility } from "@domains/abilities/lib/ability-presentation";
 import {
@@ -214,13 +215,16 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 			mcpSetupStatus: {},
 			skillManifest: state.skillManifest,
 			/*
-			 * 技能条目：除插件贡献的技能外全收。
+			 * 技能条目按**表面可见性**收录，与上游同一判据：`commandPalette` 上可见才进列表。
 			 *
-			 * 插件贡献的技能由 `buildPluginAbilities` 以插件身份呈现，在这里再列一遍就是两条；
-			 * 其余来源都要收，否则组合包（如 Pocock 工程流）内的成员技能——它们由扫描器
-			 * 报成 `user` 来源、不在清单里——会整批消失，面板只剩下那个包本身。
+			 * 不能按来源排除插件贡献的技能——插件声明的可见技能正是「插件能被插进对话」的
+			 * 唯一通道（插件本身不产出文本，见 ADR-0183「行的一等公民」）。此前整体排除
+			 * `source !== "plugin"`，结果插件的技能一律消失，只剩一行只读的插件条目。
+			 *
+			 * 组合包（如 Pocock 工程流）内的成员技能由扫描器报成 `user` 来源、不在清单里，
+			 * 同样要收，否则它们会整批消失、面板只剩那个包本身。
 			 */
-			localSkills: state.skills.filter((skill) => skill.source !== "plugin"),
+			localSkills: state.skills.filter((skill) => isSkillVisibleOnSurface(skill, "commandPalette")),
 			plugins: state.plugins,
 			mcpConfig: { mcpServers: state.mcpServers },
 			oauthAuthByName: {},
@@ -230,7 +234,7 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 		const market = (state.marketplace ? mergeAbilityCatalogs([], state.marketplace.snapshots) : []).map((entry) =>
 			localizeMarketAbility(entry, i18n.language),
 		);
-		const skills = buildSkillAbilities(market, localState);
+		const skills = buildSkillAbilities(market, localState, "commandPalette");
 		const mcps = buildMcpAbilities(market, localState, t);
 		const plugins = buildPluginAbilities(market, localState, trPlugin);
 		const bundles = buildBundleAbilities(market, [...skills, ...mcps, ...plugins], localState, t);
@@ -268,6 +272,9 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 				 * 这类「装了但目录里暂时没有这一行」的技能是真实可用的，藏起来反而像丢了。
 				 */
 				const { skillProvenance } = skillMeta(item);
+				// 插件贡献的技能在能力页以「插件」条目呈现，自身不进两个分区；但它们在
+				// `commandPalette` 上可见时就是可插入行（见 ADR-0183），面板不能漏掉。
+				if (skillProvenance?.kind === "provided") return true;
 				return skillProvenance?.kind === "native" && skillProvenance.scope === "market";
 			}),
 			skillIcons,

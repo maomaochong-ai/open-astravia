@@ -1,7 +1,8 @@
-import { normalizeReleaseNote, type UpdateCheckerViewProps } from "@astravia-org/theme-ui/overlays";
+import type { UpdateCheckerViewProps } from "@astravia-org/theme-ui/overlays";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { openReleaseNotePreview } from "../lib/open-release-note";
 import { filePreviewAtom } from "../store/file-preview-atoms";
 import {
 	updaterCurrentNotesDialogOpenAtom,
@@ -67,18 +68,7 @@ export function useUpdateCheckerModel(): UpdateCheckerViewProps {
 					openRestartDialog(true);
 				}
 			},
-			onViewMore: () => {
-				if (!state.releaseNote) return;
-				// 同一个 releaseNote 可能是 GitHub feed 的 HTML：「查看更多」里也归一化，
-				// 否则预览页会把标签原样显示。
-				const blob = new Blob([normalizeReleaseNote(state.releaseNote)], { type: "text/markdown" });
-				const url = URL.createObjectURL(blob);
-				const versionName = state.latestVersion ? `v${state.latestVersion}` : "update";
-				setFilePreview({
-					name: `${versionName}_changelog.md`,
-					url,
-				});
-			},
+			onViewMore: () => openReleaseNotePreview(setFilePreview, state.releaseNote, state.latestVersion),
 			phase: state.phase,
 			progress: state.progress,
 			releaseNote: state.releaseNote,

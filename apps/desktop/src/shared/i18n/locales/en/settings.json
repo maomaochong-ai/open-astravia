@@ -539,6 +539,7 @@
   },
   "environmentNodeDesc": "Run JavaScript / TypeScript tools and npm packages",
   "environmentPythonDesc": "Run Python scripts and pip packages",
+  "environmentRuntimeInUse": "This runtime is in use by another process (a plugin subprocess, terminal, or MCP server is still running it). Close those first, then click Reinstall again.",
   "environmentGit": {
     "description": "Required by the Git panel and by git commands the agent runs",
     "missing": "Not installed",
@@ -2398,7 +2399,6 @@
   "sshTest": "Test connection",
   "sshTesting": "Connecting",
   "sshTestOk": "Connected ({{platform}})",
-  "sshTestOkMissingTools": "Connected ({{platform}}), but {{tools}} is missing on the remote end: features that depend on it will not work. Everything else is fine.",
   "sshTestFailed": "Could not connect. What you entered is saved — check the target and port, then try again.",
   "sshTestDetails": "Technical details",
   "sshStatusConnected": "Connected",

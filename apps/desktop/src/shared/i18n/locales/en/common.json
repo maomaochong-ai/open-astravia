@@ -40,7 +40,8 @@
 		"currentTitle": "What's New in Astravia {{version}}",
 		"currentSubtitle": "What this release brings",
 		"currentEmpty": "No notes for this version.",
-		"updateNow": "Update Now"
+		"updateNow": "Update Now",
+		"viewMore": "View more"
 	},
 	"filePreview": {
 		"showInFolder": "Show in Folder",

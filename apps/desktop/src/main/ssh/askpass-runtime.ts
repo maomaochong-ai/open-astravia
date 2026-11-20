@@ -21,7 +21,14 @@ function getPromptService(resolveHostLabel: (hostId: string) => string): SshProm
 			// 安全存储不可用（例如 Linux 上只有明文后端）时当作没有存档，改为问用户。
 			if (!vault.isAvailable() || !vault.has(ref)) return undefined;
 			try {
-				return vault.get(ref);
+				const value = vault.get(ref);
+				// 只记「有没有存档、长度多少」，不记内容：口令进了日志就等于泄漏。
+				log.info("ssh prompt answered from vault", {
+					hostId: ref.ownerId,
+					kind: ref.name,
+					length: value?.length ?? 0,
+				});
+				return value;
 			} catch (error) {
 				log.warn("failed to read stored ssh secret", error);
 				return undefined;
@@ -42,7 +49,16 @@ function getPromptService(resolveHostLabel: (hostId: string) => string): SshProm
 				log.warn("failed to drop stale ssh secret", error);
 			}
 		},
-		askUser: askSshPromptInRenderer,
+		askUser: (request) => {
+			// 「口令是被存档悄悄填进去的，还是真的问过用户」是排查登录失败的第一分叉：
+			// 存档里的旧口令会让重试永远送同一个错值。
+			log.info("ssh prompt asking user", {
+				hostId: request.hostId,
+				kind: request.kind,
+				rememberable: request.rememberable,
+			});
+			return askSshPromptInRenderer(request);
+		},
 	});
 	return promptService;
 }

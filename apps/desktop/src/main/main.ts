@@ -122,6 +122,8 @@ configureRemoteVideoEncoding(app.commandLine, process.platform, process.versions
 fixPath();
 
 const PROTOCOL = "astravia";
+/** 与 electron-builder 的 `appId`、安装器快捷方式的 AppUserModelID 保持同一值。 */
+const APP_USER_MODEL_ID = "com.astravia.desktop";
 // registerSchemesAsPrivileged 整个进程只能调用一次且须在 ready 前：
 // 所有自定义 scheme（插件、主题、应用资源、媒体流）的特权声明在此合并注册。
 protocol.registerSchemesAsPrivileged([
@@ -409,6 +411,14 @@ if (!gotSingleLock) {
 		pluginPackageOpenService?.enqueueFromArgv(argv);
 		showMainWindow();
 	});
+	/*
+	 * Windows 只在「同一 AppUserModelID」上把窗口、任务栏按钮和固定到任务栏的快捷方式
+	 * 认成同一个应用。不设时 Electron 用自己的默认 id，用户把应用固定到任务栏后，那个
+	 * 快捷方式与运行中的窗口分属两个应用，图标只能退到 Electron 的内建图（看起来像
+	 * React 图标）。安装器的 [Icons] 段写同一个 id，两边才对齐。
+	 */
+	if (process.platform === "win32") app.setAppUserModelId(APP_USER_MODEL_ID);
+
 	app.whenReady().then(async () => {
 		startupTrace.mark("app-ready");
 		if (pdfCliCommand) {

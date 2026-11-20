@@ -152,7 +152,12 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 					<MainContentFrame
 						className="app-main-frame"
 						header={pageHeader}
-						headerOverlay={workspaceViewHeader?.immersive === true || pageImmersive}
+						/*
+						 * 铺满态没有页头可浮（`header` 已是 null）。此时仍挂 overlay 会留下
+						 * `.main-content-header` 的 8px 上内边距——面板顶部就多出一条空带，
+						 * 在无边框窗口（Windows / Linux）上尤其明显。
+						 */
+						headerOverlay={!activityFocus && (workspaceViewHeader?.immersive === true || pageImmersive)}
 					>
 						<RouteContent routePending={routePending} onOpenSession={onOpenSession} />
 					</MainContentFrame>

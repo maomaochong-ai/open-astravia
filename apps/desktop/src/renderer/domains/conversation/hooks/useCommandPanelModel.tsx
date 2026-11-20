@@ -19,6 +19,7 @@ import type {
 	CommandPanelProps,
 } from "../components/command-panel/types";
 import { type InputActionBarModel, useInputActionBarModel } from "../components/useInputActionBarModel";
+import { focusInputEditor, insertTextAtTrigger } from "../components/input-bar/editor/inputEditorHandle";
 import { useAddPanelAbilityEntries } from "./useAddPanelAbilityEntries";
 import { useAddPanelFavorites } from "./useAddPanelFavorites";
 import { COMPACTION_OPERATION_KEY, useCommandPanelCompaction } from "./useCommandPanelCompaction";
@@ -195,6 +196,20 @@ export function useCommandPanelModel({
 					if (skill) onSelect(skill, resolveIcon(skill));
 					return;
 				}
+				case "plugin": {
+					/*
+					 * 插件是「能力包」，不是可插入的文本单元：它自己带工具与技能，用户把插件放进来
+					 * 是让 Agent 用这个包干活。所以这里插入的是**插件引用**，而不是把它的某个技能
+					 * 顶上来——插件里通常有多个技能，替用户挑一个会让其余技能没法用（见 ADR-0183）。
+					 *
+						 * 文本形态而不做新令牌：编辑器现有的令牌都绑定到具体能力 id（技能名、MCP 名），
+					 * 插件没有对应的执行入口，伪造一个 `/插件名` 会让 Agent 去查一个不存在的技能。
+					 */
+					insertTextAtTrigger(`使用「${entry.label}」插件的能力完成：`);
+					focusInputEditor();
+					setPreviewKey(null);
+					return;
+				}
 				case "mcp": {
 					// 面板里的连接器 id 是能力 id（`<source>:<id>:mcp:<slug>`），要落回 mcp.json 的
 					// server 名才能插入 `@mcp:` 标记。取最后一段 slug，再用已加载的配置确认存在。
@@ -206,8 +221,8 @@ export function useCommandPanelModel({
 					return;
 				}
 				default:
-					// 插件与应用没有「插入」语义（它们提供技能，不产出文本）：点行改为打开预览，
-					// 页面里说明它是什么、以及它提供的技能在哪一类。空白响应比任何反馈都差。
+					// 套装是一组能力的集合，不是可插入对象：成员技能各自有可插入的行，
+					// 点套装行打开预览，说明包里有什么、成员在哪一类（见 ADR-0183）。
 					setPreviewKey(entry.key);
 					return;
 			}
