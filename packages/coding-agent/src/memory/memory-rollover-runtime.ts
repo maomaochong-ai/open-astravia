@@ -108,8 +108,13 @@ export class CodingAgentMemoryRolloverOrchestrator implements CodingAgentMemoryR
 	}
 
 	async beforeCompaction(input: CodingAgentMemoryRolloverPreparation): Promise<void> {
+		/*
+		 * 切点落在 Turn 中间时（split turn），被摘要的是「历史 + 本轮前缀」两段：
+		 * 只读 messagesToSummarize 会在本轮刚开头就压缩的情况下拿到空数组，
+		 * 记忆刷写于是什么也收不到。
+		 */
 		await this.flushMessages({
-			messages: input.preparation.messagesToSummarize,
+			messages: [...input.preparation.messagesToSummarize, ...input.preparation.turnPrefixMessages],
 			model: input.model,
 			apiKey: input.apiKey,
 			signal: input.signal,
