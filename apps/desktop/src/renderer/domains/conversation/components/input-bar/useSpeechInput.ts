@@ -10,7 +10,11 @@ import type { SpeechInputModel } from "./types";
 
 /** 约 4 秒（每块 100ms）仍收不到任何能量，就判定麦克风没送进声音。 */
 const SILENCE_CHUNKS_BEFORE_WARNING = 40;
-/** 16k 采样下正常说话的能量远高于此；只有底噪/静音才会更低。 */
+/**
+ * 16k 采样下正常说话的能量远高于此（约 -62 dBFS），只有静音才会更低。
+ * 这是「宁漏报不误报」的取舍：值设得太高，选错输入设备带轻微底噪时首块就超阈值，
+ * 静音判定永不触发、回到无声失败；设得太低又可能把真话误判成静音。
+ */
 const SILENCE_RMS_THRESHOLD = 0.0008;
 
 const INITIAL_STATUS: SpeechInputStatus = {
@@ -33,7 +37,7 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 	 * 静音轨道——不报错、状态照常 listening，识别器拿到的全是 0，界面表现就是「点了录音
 	 * 但一个字都不出来」。这里自己看能量，超过阈值时间仍全静音就明确报错。
 	 */
-	const silenceRef = useRef({ chunks: 0, maxRms: 0 });
+	const silenceRef = useRef({ chunks: 0, maxRms: 0, warned: false });
 
 	useEffect(() => {
 		if (!buildEnabled || !isSpeechInputPlatform) return;
@@ -124,10 +128,11 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 			sessionIdRef.current = sessionId;
 			const capture = new MicrophonePcmCapture();
 			captureRef.current = capture;
-			silenceRef.current = { chunks: 0, maxRms: 0 };
+			silenceRef.current = { chunks: 0, maxRms: 0, warned: false };
 			try {
 				await capture.start((samples) => {
 					const probe = silenceRef.current;
+					if (probe.warned) return;
 					probe.chunks += 1;
 					if (probe.maxRms < SILENCE_RMS_THRESHOLD) {
 						let sum = 0;
@@ -135,6 +140,8 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 						probe.maxRms = Math.max(probe.maxRms, Math.sqrt(sum / samples.length));
 						// 够久仍然全静音：不是「还没开口」，是根本收不到声音。
 						if (probe.chunks >= SILENCE_CHUNKS_BEFORE_WARNING && probe.maxRms < SILENCE_RMS_THRESHOLD) {
+							// 只报一次：stop 后 worklet 可能还有一两块已在队列里，未设防会重复弹 toast。
+							probe.warned = true;
 							void stop();
 							setStatus((current) => ({ ...current, phase: "error", errorCode: "microphone-silent" }));
 							showToast({

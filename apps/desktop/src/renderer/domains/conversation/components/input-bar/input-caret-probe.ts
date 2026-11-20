@@ -67,7 +67,9 @@ export function installCaretProbe(options: {
 	const enabled = options.enabled ?? isCaretProbeEnabled;
 	const onPointerDown = (event: PointerEvent): void => {
 		if (!enabled()) return;
-		if (!(event.target instanceof Node) || !options.root.contains(event.target)) return;
+		if (!(event.target instanceof Element) || !options.root.contains(event.target)) return;
+		// event.target 是 getter，instanceof 收窄穿不过下面的 rAF 闭包，先捕到局部变量。
+		const targetElement = event.target;
 		const { clientX, clientY } = event;
 		// 让这一次点击走完默认行为（聚焦、放置光标）之后再判断它有没有生效。
 		window.requestAnimationFrame(() => {
@@ -75,7 +77,7 @@ export function installCaretProbe(options: {
 			if (isEditorFocused(editor)) return;
 			const report: CaretProbeReport = {
 				hit: describeElement(document.elementFromPoint(clientX, clientY)),
-				target: describeElement(event.target as Element),
+				target: describeElement(targetElement),
 				editorFocused: false,
 				activeElement: describeElement(document.activeElement),
 			};

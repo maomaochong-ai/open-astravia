@@ -157,7 +157,7 @@
 ### 验证（本轮）
 
 - `useAddPanelAbilityEntries.test.tsx`：插件贡献的可见技能进「插件」分组并可插入；插件无可见
-  技能时该行 `insertable=false`。
+  技能时该行不产出可插入的技能条目（只留插件行本身，插入 `@plugin:slug` 引用）。
 - `useCommandPanelModel.test.tsx`：点插件行插入插件引用而非旗下技能。
 
 ### 验证
@@ -171,4 +171,4 @@
 - `CommandPanelView.test.tsx`：浏览态出分组头、搜索态改出分类头；
 - 实机（开关关闭）：技能视图「内置 2 / 市场 46」，套装「市场 2」，MCP「市场 1」，
   市场视图按分类分「技能 46 / 插件 9 / MCP 1 / 套装 2」，`.agents/skills` 里的 16 个技能不再出现；
-  内置行 `aria-disabled=true`、点击不插入、方向键跳过（实测点击后输入框仍为空）。
+  内置行与其它条目一样可插入（见追加决策 8）。
