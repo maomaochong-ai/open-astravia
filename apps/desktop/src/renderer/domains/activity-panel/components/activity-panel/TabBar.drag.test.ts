@@ -5,7 +5,39 @@ import { act, createElement, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("motion/react", () => ({ motion: { span: () => null } }));
+/*
+ * 指示器是一个 `motion.span`。此前把它整体 mock 成 `() => null`，于是这些用例里
+ * 指示器根本不存在，断言 `[data-active-tab-indicator]` / `[data-connected-tab-outline]`
+ * 必然落空——测的其实是 mock 而不是组件。
+ *
+ * 这里改成「透传成一个普通 span」：只丢掉动画专属属性（它们是 motion 的私有约定，
+ * 透到 DOM 上只会变成非法 attribute 警告），结构、data-* 与 className 原样落地。
+ */
+vi.mock("motion/react", async () => {
+	const { createElement } = await import("react");
+	const MOTION_ONLY = new Set([
+		"initial",
+		"animate",
+		"exit",
+		"transition",
+		"layout",
+		"layoutId",
+		"layoutDependency",
+		"whileHover",
+		"whileTap",
+		"whileFocus",
+		"whileDrag",
+		"variants",
+	]);
+	const span = ({ children, ...props }: Record<string, unknown>) => {
+		const domProps: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(props)) {
+			if (!MOTION_ONLY.has(key)) domProps[key] = value;
+		}
+		return createElement("span", domProps, children as never);
+	};
+	return { motion: { span } };
+});
 
 class ResizeObserverStub {
 	disconnect(): void {}
