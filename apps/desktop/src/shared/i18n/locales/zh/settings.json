@@ -539,6 +539,7 @@
   },
   "environmentNodeDesc": "运行 JavaScript / TypeScript 工具与 npm 包",
   "environmentPythonDesc": "运行 Python 脚本与 pip 包",
+  "environmentRuntimeInUse": "这个运行时正被其他程序占用（插件子进程、终端或 MCP 服务仍在运行它）。请先关闭用到它的终端与插件，再点一次「重新获取」。",
   "environmentGit": {
     "description": "Git 面板和 Agent 执行 git 命令都依赖它",
     "missing": "未安装",
