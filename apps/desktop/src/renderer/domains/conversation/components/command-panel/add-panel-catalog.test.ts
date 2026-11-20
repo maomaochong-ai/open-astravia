@@ -28,8 +28,6 @@ function entry(
 		groupId,
 		searchable: true,
 		fallbackIcon: "icon-[solar--magic-stick-3-linear]",
-		// 与投影层同一条规则：内置能力只展示、不插入。
-		insertable: groupId !== "builtin",
 		...overrides,
 	};
 }

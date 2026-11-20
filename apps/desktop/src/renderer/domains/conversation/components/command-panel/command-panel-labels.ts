@@ -41,7 +41,6 @@ export function buildCommandPanelLabels(t: TFunction<"chat">): CommandPanelLabel
 		favoriteAdd: t("slashPanel.favoriteAdd"),
 		favoriteRemove: t("slashPanel.favoriteRemove"),
 		details: t("slashPanel.details"),
-		builtinHint: t("slashPanel.builtinHint"),
 		moreActions: t("slashPanel.moreActions"),
 		preview: {
 			back: t("slashPanel.preview.back"),

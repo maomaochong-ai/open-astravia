@@ -87,8 +87,6 @@ export function projectAbilityEntries(
 			...splitIcon(icon),
 			groupId,
 			kind: item.type,
-			// 内置能力对话里本就可用：列出来是为了让用户看见，不给「插入」这条路。
-			insertable: groupId !== "builtin",
 			searchable: true,
 			fallbackIcon: ADD_PANEL_CATEGORY_ICONS[category],
 		});
@@ -149,10 +147,15 @@ function groupOf(item: AbilityItem): string {
 	// 随 App 分发的技能只有 `skillSource === "builtin"` / provenance `builtin` 这一种标记，
 	// 不认它就会全部落进「我的」，和用户自己装的技能混成一堆。
 	const { skillSource, skillProvenance } = skillMeta(item);
+	/*
+	 * 来源事实优先于标记：明明是从市场装的条目，不该因为能力条目上残留了 builtin 标记
+	 * （例如插件 source 被归一成 system、或技能来自包内自带图标）就归到「内置」。
+	 * 反过来，「内置」只用于确实随 App 分发的条目。
+	 */
+	if (isFromMarket(item)) return "market";
 	if (item.isBuiltin || skillSource === "builtin" || skillProvenance?.kind === "builtin") {
 		return "builtin";
 	}
-	if (isFromMarket(item)) return "market";
 	if (item.type === "plugin") return "installed";
 	if (item.type === "mcp") return "connected";
 	if (item.type === "bundle") return "mine";
@@ -261,9 +264,10 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 				 *    典型例子：`mcp.json` 里残留一个内置预置连接器，它既不是市场安装、也不是
 				 *    手动添加，能力页两个分区都不展示，面板却凭「配置里有」把它列了出来。
 				 *
-				 * 内置能力是例外：它随 App 分发、对话里本就可用，列出来只是让用户看见，
-				 * 行本身不可插入（见 `insertable`）。
+				 * 内置能力是例外：随 App 分发、装好即在，不再要求它出现在能力页的两个分区里。
 				 */
+				// 市场来的条目一律放行，不看残留的 builtin 标记。
+				if (isFromMarket(item)) return true;
 				if (item.isBuiltin) return true;
 				if (!item.installed || !item.enabled) return false;
 				if (isAbilityListedInDiscover(item) || isAbilityListedInPersonal(item)) return true;

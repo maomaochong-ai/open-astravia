@@ -136,8 +136,15 @@ export function AddPanelRail({
 				<div aria-hidden="true" className="h-1.5 shrink-0" />
 				{item("builtin", ADD_PANEL_PROVENANCE_ICONS.builtin, labels.builtin)}
 				{item("market", ADD_PANEL_PROVENANCE_ICONS.market, labels.market)}
-				{/* 操作（压缩上下文等）：与分类同一条轨道、同一档图标，靠间距分开而不是画线。 */}
-				<div aria-hidden="true" className="h-1.5 shrink-0" />
+			</div>
+
+			{/*
+			 * 「操作」钉在轨道底部，不进滚动容器：它是「压缩上下文」这类会话操作的唯一入口，
+			 * 排在滚动列表末尾时会被滚出视野，用户看到的就是「自动压缩不见了」。
+			 * 与上面的分类同一档图标，靠间距分开而不是画线。
+			 */}
+			<div aria-hidden="true" className="mx-auto h-1.5 w-6 shrink-0" />
+			<div className="flex shrink-0 flex-col items-center pb-1">
 				{item("operations", ADD_PANEL_COMMAND_ICON, labels.operations)}
 			</div>
 

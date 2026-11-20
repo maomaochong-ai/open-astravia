@@ -65,8 +65,6 @@ export interface CommandPanelLabels extends SkillListLabels {
 	favoriteAdd: string;
 	favoriteRemove: string;
 	details: string;
-	/** 内置能力行尾的提示：说明它随 App 分发、无需插入。 */
-	builtinHint: string;
 	/** 窄屏下收纳多余动作的下拉按钮名称。 */
 	moreActions: string;
 	/** 预览页。 */
