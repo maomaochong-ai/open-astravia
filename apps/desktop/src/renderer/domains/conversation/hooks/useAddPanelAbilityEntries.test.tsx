@@ -260,7 +260,7 @@ describe("useAddPanelAbilityEntries", () => {
 
 	// 回归：插件贡献的技能正是「插件能被插进对话」的通道（见 ADR-0183）。此前整体按
 	// `source !== "plugin"` 排除，插件只剩一行只读条目，点它什么也进不了输入框。
-	it("插件贡献的可见技能进技能分类，并且可以插入", async () => {
+	it("插件贡献的可见技能进技能分类，且自成「插件提供」组", async () => {
 		setupIpc([], {
 			listedSkills: [
 				{
@@ -279,6 +279,8 @@ describe("useAddPanelAbilityEntries", () => {
 		await waitFor(() => {
 			const entry = result.current.find((candidate) => candidate.label === "Plugin Skill");
 			expect(entry?.category).toBe("skill");
+			// 不能并进「插件」组：那一组放的是插件条目本身，两者混在一起就分不清了。
+			expect(entry?.groupId).toBe("provided");
 		}, { timeout: 5000 });
 	});
 
@@ -301,6 +303,60 @@ describe("useAddPanelAbilityEntries", () => {
 		const { result } = renderHook(() => useAddPanelAbilityEntries(true));
 		await waitFor(() => {
 			expect(result.current.some((candidate) => candidate.label === "Hidden Plugin Skill")).toBe(false);
+		}, { timeout: 5000 });
+	});
+
+	// 合同：市场目录里的**未安装**行也带 `fromMarket = true`，来源判断不可取代「装没装」。
+	// 两层（投影与筛选）都必须先过安装门槛，否则面板会列出用户根本没装的能力。
+	it("市场目录里未安装的条目不会出现在面板里", async () => {
+		setupIpc([], {
+			marketplace: {
+				sources: [],
+				failedSourceIds: [],
+				abilities: [],
+				snapshots: [
+					{
+						sourceId: "astravia-official",
+						repository: "maomaochong-ai/astravia-design-templates",
+						marketplaceVersion: "2026.11.15-18",
+						syncedAt: "2026-11-15T00:00:00.000Z",
+						stale: false,
+						source: {
+							id: "astravia-official",
+							name: "Astravia 官方市场",
+							repository: "maomaochong-ai/astravia-design-templates",
+							ref: "main",
+							enabled: true,
+							autoUpdate: true,
+							builtin: true,
+						},
+						abilities: [
+							{
+								slug: "never-installed",
+								type: "skill",
+								name: "Never Installed",
+								description: "",
+								version: "1.0.0",
+								license: "MIT",
+								author: "Astravia",
+								icon: "",
+								category: "",
+								tags: [],
+								sha256: "",
+								configVersion: 1,
+								origin: { kind: "github-marketplace", sourceId: "astravia-official" },
+								listed: true,
+								config: {},
+							},
+						],
+					},
+				],
+			},
+		});
+
+		const { result } = renderHook(() => useAddPanelAbilityEntries(true));
+		await waitFor(() => {
+			expect(result.current.some((entry) => entry.label === "Never Installed")).toBe(false);
 		}, { timeout: 5000 });
 	});
 

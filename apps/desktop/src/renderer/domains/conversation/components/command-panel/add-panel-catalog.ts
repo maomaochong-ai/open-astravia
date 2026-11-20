@@ -149,6 +149,7 @@ const GROUP_TITLE_KEYS: Record<string, string> = {
 	mine: "slashPanel.groups.mine",
 	project: "slashPanel.groups.project",
 	plugin: "slashPanel.groups.plugin",
+	provided: "slashPanel.groups.provided",
 	market: "slashPanel.groups.market",
 	connected: "slashPanel.groups.connected",
 	installed: "slashPanel.groups.installed",
@@ -176,6 +177,7 @@ const GROUP_ORDER: readonly string[] = [
 	"builtin",
 	"market",
 	"plugin",
+	"provided",
 	"agents",
 	"connected",
 	"installed",
@@ -269,21 +271,26 @@ export function filterByProvenance(
 	return result;
 }
 
-/** 收藏键 → 条目，跨分类按分类顺序重新分组；收藏里有但目录里已消失的键直接丢弃。 */
+/**
+ * 收藏键 → 条目，**按分类**重新分组；收藏里有但目录里已消失的键直接丢弃。
+ *
+ * 不能沿用原目录的来源分组（内置 / 市场 / 我的）：收藏是一份跨来源的清单，按来源分组会
+ * 得到多个同名小标题（例如两组都叫「内置」），用户既不知道每组属于技能还是插件，也看不出
+ * 条目之间是什么关系。这里每个分类只剩一组，标题就是分类名。
+ */
 export function buildFavoritesSections(
 	sections: readonly AddPanelSection[],
 	favorites: readonly string[],
 ): AddPanelSection[] {
 	if (favorites.length === 0) return [];
 	const wanted = new Set(favorites);
-	return sections
-		.map((section) => ({
-			...section,
-			groups: section.groups
-				.map((group) => ({ ...group, entries: group.entries.filter((entry) => wanted.has(entry.key)) }))
-				.filter((group) => group.entries.length > 0),
-		}))
-		.filter((section) => section.groups.length > 0);
+	const result: AddPanelSection[] = [];
+	for (const section of sections) {
+		const entries = section.groups.flatMap((group) => group.entries).filter((entry) => wanted.has(entry.key));
+		if (entries.length === 0) continue;
+		result.push({ ...section, groups: [{ id: section.category, titleKey: section.titleKey, entries }] });
+	}
+	return result;
 }
 
 function normalize(value: string): string {

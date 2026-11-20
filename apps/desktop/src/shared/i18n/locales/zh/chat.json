@@ -644,10 +644,12 @@
 				"stopping": "正在完成语音识别…"
 			},
 			"errors": {
-				"unsupported": "语音输入目前仅支持 Windows x64",
+				"unsupported": "当前平台没有内置离线语音识别，仅 Windows x64 与 macOS 可用",
 				"missing": "安装包中缺少语音模型，请重新安装应用",
 				"integrity": "安装包中的语音模型不完整，请重新安装应用",
-				"recognizer": "语音识别启动失败，点击重试"
+				"recognizer": "语音识别启动失败，点击重试",
+				"microphone": "麦克风未授权。请在系统设置的隐私里允许 Astravia 使用麦克风后重试",
+				"title": "语音输入不可用"
 			}
 		},
 		"contextMenu": {
@@ -1165,7 +1167,8 @@
 			"market": "市场",
 			"connected": "已接入",
 			"installed": "已安装",
-			"other": "其他"
+			"other": "其他",
+			"provided": "插件提供"
 		},
 		"preview": {
 			"back": "返回列表",
@@ -1187,7 +1190,8 @@
 			"queued": "已加入队列，将在当前回复完成后压缩",
 			"compacting": "正在压缩上下文",
 			"errorTitle": "无法压缩上下文",
-			"errorMessage": "加入压缩队列失败，请重试"
+			"errorMessage": "加入压缩队列失败，请重试",
+			"needsSession": "需要先开始一段对话"
 		},
 		"emptyNoMatch": "未找到匹配项",
 		"emptyNoMatchHint": "换个关键词试试，或直接输入你的需求。",
@@ -1221,7 +1225,8 @@
 		"connectorsSection": "已接入"
 	},
 	"suggestionBubbles": {
-		"sendTooltip": "点击发送此建议"
+		"sendTooltip": "点击发送此建议",
+		"editTooltip": "填进输入框再编辑"
 	},
 	"textPreview": {
 		"characterUnit": "字符",

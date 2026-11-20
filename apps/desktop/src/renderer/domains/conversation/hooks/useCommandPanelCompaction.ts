@@ -63,7 +63,22 @@ export function useCommandPanelCompaction({
 	}, [activeSession, contextRing?.isCompacting, onClose, queued, queueing, t]);
 
 	return useMemo<CommandPanelOperationItem | undefined>(() => {
-		if (!enabled || !activeSession || !matches || eligibility.status === "ineligible") return undefined;
+		if (!enabled || !matches || eligibility.status === "ineligible") return undefined;
+		/*
+		 * 还没有会话时不再整行隐藏：那会让「操作」分类变成一片空白，用户看到的是
+		 * 「压缩上下文消失了」，而不是「现在还不能用」。改为给一行禁用的说明，
+		 * 点不动也知道原因。
+		 */
+		if (!activeSession) {
+			return {
+				id: COMPACTION_OPERATION_KEY,
+				label: t("slashPanel.compaction.label"),
+				description: t("slashPanel.compaction.needsSession"),
+				contextRing: null,
+				disabled: true,
+				onSelect: () => undefined,
+			};
+		}
 		// `contextRing.percent` 已经是 0–100 的进度口径；取整走与压缩环提示相同的格式化，
 		// 否则同一份用量会在两个地方显示成不同数字。
 		const percent = contextRing ? formatUsagePercent(contextRing.percent) : null;
