@@ -75,17 +75,6 @@ export async function createSshAskpassChannel(
 	// 监听失败（目录不可写、端口被占等）不该让整个应用崩掉；此时远程连接会因为拿不到口令而失败，
 	// 错误会带着 ssh 自己的信息浮出来。
 	server.on("error", () => {});
-	if (isWindows) {
-		// TCP 端口由系统异步分配，必须等 listening 事件后 server.address() 才有值。
-		await new Promise<void>((resolveListening) => {
-			server.listen(0, "127.0.0.1", () => resolveListening());
-		});
-	} else {
-		server.listen(socketPath);
-	}
-	// 监听失败（目录不可写、端口被占等）不该让整个应用崩掉；此时远程连接会因为拿不到口令而失败，
-	// 错误会带着 ssh 自己的信息浮出来。
-	server.on("error", () => {});
 
 	const address = (() => {
 		if (!isWindows) return socketPath;

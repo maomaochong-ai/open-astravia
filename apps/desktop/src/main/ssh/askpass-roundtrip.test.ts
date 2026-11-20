@@ -88,14 +88,19 @@ describe.skipIf(process.platform === "win32")("askpass 与 OpenSSH 的合同", (
 		expect(request.round).toBeGreaterThan(0);
 	});
 
-	it("确认类提示：同意即退出 0，且不往 stdout 写东西", async () => {
+	it("确认类提示：同意即以 0 退出，并把 yes 写到 stdout", async () => {
 		resolver.mockResolvedValueOnce({ ok: true });
 
 		const { stdout } = await invoke("Are you sure you want to continue connecting (yes/no)?", {
 			SSH_ASKPASS_PROMPT: "confirm",
 		});
 
-		expect(stdout).toBe("");
+		/*
+		 * 只有退出码不够。OpenSSH 在 host-key 确认里读的是 askpass 的**标准输出**且要求
+		 * 内容是 `yes`；只 exit 0 不写 stdout 时它照旧报 `Host key verification failed`。
+		 * 这条结论是拿真 ssh 做 A/B 得出的：写 yes → known_hosts 被写入，不写 → 失败。
+		 */
+		expect(stdout.trim()).toBe("yes");
 		expect(resolver).toHaveBeenCalledWith(expect.objectContaining({ kind: "confirm" }));
 	});
 
