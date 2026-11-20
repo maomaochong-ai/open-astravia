@@ -1,3 +1,4 @@
+import { isSkillVisibleOnSurface } from "@astravia-org/capability-sdk";
 import type { SkillInfo } from "@preload/api";
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -195,6 +196,28 @@ export function useCommandPanelModel({
 					if (skill) onSelect(skill, resolveIcon(skill));
 					return;
 				}
+				case "plugin": {
+					/*
+					 * 插件自身不产出文本，能进消息的是它贡献的技能——上游同一条路：
+					 * 面板里的插件能力通过 `commandPalette` 可见的技能被插入。
+					 * 取显示名最小的那个，保证同一插件每次点都是同一件事；
+					 * 没有可见技能时退回预览（说明它提供什么、技能在哪一类）。
+					 */
+					const slug = entry.id.split(":").pop() ?? entry.id;
+					const provided = skills
+						.filter(
+							(skill) =>
+								skill.sourcePluginId === slug && isSkillVisibleOnSurface(skill, "commandPalette"),
+						)
+						.sort((left, right) => (left.alias ?? left.name).localeCompare(right.alias ?? right.name));
+					const primary = provided[0];
+					if (primary) {
+						onSelect(primary, resolveIcon(primary));
+						return;
+					}
+					setPreviewKey(entry.key);
+					return;
+				}
 				case "mcp": {
 					// 面板里的连接器 id 是能力 id（`<source>:<id>:mcp:<slug>`），要落回 mcp.json 的
 					// server 名才能插入 `@mcp:` 标记。取最后一段 slug，再用已加载的配置确认存在。
@@ -206,8 +229,8 @@ export function useCommandPanelModel({
 					return;
 				}
 				default:
-					// 插件与应用没有「插入」语义（它们提供技能，不产出文本）：点行改为打开预览，
-					// 页面里说明它是什么、以及它提供的技能在哪一类。空白响应比任何反馈都差。
+					// 套装是一组能力的集合，不是可插入对象：成员技能各自有可插入的行，
+					// 点套装行打开预览，说明包里有什么、成员在哪一类（见 ADR-0183）。
 					setPreviewKey(entry.key);
 					return;
 			}

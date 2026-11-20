@@ -118,7 +118,16 @@ function terms(...values: Array<string | undefined | string[]>): string[] {
 
 // ─── skill ───
 
-export function buildSkillAbilities(market: MarketAbility[], state: LocalAbilityState): SkillAbility[] {
+/**
+ * @param surface 可见性判定用的界面表面。能力页用 `abilityCatalog`（插件贡献的技能默认隐藏，
+ * 由插件条目统一呈现）；对话区的添加面板用 `commandPalette`——那是上游「插件能被插进消息」
+ * 的唯一通道，插件显式声明可见的技能要作为可插入行出现（见 ADR-0183）。
+ */
+export function buildSkillAbilities(
+	market: MarketAbility[],
+	state: LocalAbilityState,
+	surface: "abilityCatalog" | "commandPalette" = "abilityCatalog",
+): SkillAbility[] {
 	const { ledger, skillManifest, localSkills, busyIds } = state;
 	const items: SkillAbility[] = [];
 	const seen = new Set<string>();
@@ -214,7 +223,7 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 	// `~/.agents/skills` 里用户自己放的、插件贡献的都是本地来源，不能算 Astravia 内置。
 	for (const skill of localSkills) {
 		if (claimedNames.has(`${skill.type}:${skill.name}`)) continue;
-		if (!isSkillVisibleOnSurface(skill, "abilityCatalog")) continue;
+		if (!isSkillVisibleOnSurface(skill, surface)) continue;
 		const isBuiltin = skill.source === "builtin";
 		const source = isBuiltin ? BUILTIN_SOURCE : LOCAL_SOURCE;
 		const id = abilityId(skill.type, skill.name, source);

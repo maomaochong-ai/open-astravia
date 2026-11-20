@@ -90,7 +90,10 @@ function EntryRow({
 					event.stopPropagation();
 					onOpenPreview();
 				}}
-				className="hidden size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-foreground/10 hover:text-foreground group-hover/entry:inline-flex group-focus-within/entry:inline-flex"
+				// 一直挂着、只切透明度：`hidden` ↔ `inline-flex` 会在 hover 时改变行内宽度，
+				// 文字被挤动一次，看起来就像「悬停时长出一个框」。同时显式去掉描边与轮廓，
+				// 避免图标类没解析出来时露出一个带边框的空方块。
+				className="inline-flex size-5 shrink-0 items-center justify-center rounded border-0 text-muted-foreground opacity-0 outline-none transition-opacity focus-visible:opacity-100 hover:bg-foreground/10 hover:text-foreground group-hover/entry:opacity-100 group-focus-within/entry:opacity-100"
 			>
 				<span aria-hidden="true" className="icon-[solar--info-circle-linear] size-3" />
 			</button>
@@ -107,10 +110,11 @@ function EntryRow({
 					onToggleFavorite();
 				}}
 				className={cn(
-					"size-5 shrink-0 items-center justify-center rounded hover:bg-foreground/10",
+					"inline-flex size-5 shrink-0 items-center justify-center rounded border-0 outline-none transition-opacity hover:bg-foreground/10",
+					// 同上：常驻占位、只切透明度，收藏后无需 hover 也一直可见。
 					favorite
-						? "inline-flex text-amber-400"
-						: "hidden text-muted-foreground group-hover/entry:inline-flex group-focus-within/entry:inline-flex",
+						? "text-amber-400 opacity-100"
+						: "text-muted-foreground opacity-0 group-hover/entry:opacity-100 group-focus-within/entry:opacity-100",
 				)}
 			>
 				<span

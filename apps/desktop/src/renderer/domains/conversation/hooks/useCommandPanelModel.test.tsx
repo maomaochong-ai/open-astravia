@@ -289,6 +289,60 @@ describe("useCommandPanelModel skill insertion", () => {
 		expect(onSelect).toHaveBeenCalledWith(skill, undefined);
 	});
 
+	// 回归：插件自身不产出文本，点它插入的是它贡献的第一个可见技能（见 ADR-0183）。
+	// 此前插件行走 `default` 分支只开预览，于是「点插件什么都不进输入框」。
+	it("点击插件行插入它贡献的第一个技能", () => {
+		const first: SkillInfo = {
+			name: "alpha",
+			alias: "Alpha",
+			type: "skill",
+			description: "",
+			source: "plugin",
+			sourcePluginId: "demo-plugin",
+			// 插件贡献的技能默认隐藏，插件必须显式声明它在命令区可见才可插入。
+			presentation: { surfaces: { commandPalette: "visible" } },
+		};
+		const second: SkillInfo = {
+			name: "beta",
+			alias: "Beta",
+			type: "skill",
+			description: "",
+			source: "plugin",
+			sourcePluginId: "demo-plugin",
+			// 插件贡献的技能默认隐藏，插件必须显式声明它在命令区可见才可插入。
+			presentation: { surfaces: { commandPalette: "visible" } },
+		};
+		vi.mocked(useSkillList).mockReturnValue({ items: [second, first], loading: false });
+		vi.mocked(useAddPanelAbilityEntries).mockReturnValue([
+			{
+				category: "plugin",
+				id: "github:astravia-official:plugin:demo-plugin",
+				key: "plugin:github:astravia-official:plugin:demo-plugin",
+				label: "Demo Plugin",
+				groupId: "market",
+				searchable: true,
+				fallbackIcon: "icon-[solar--box-linear]",
+				kind: "plugin",
+				insertable: true,
+			},
+		]);
+
+		const onSelect = vi.fn();
+		const { result } = renderHook(() =>
+			useCommandPanelModel({
+				open: true,
+				onClose: vi.fn(),
+				onSelect,
+				onSelectConnector: vi.fn(),
+				filter: "/",
+			}),
+		);
+
+		act(() => result.current.viewProps.onActivateEntry("plugin:github:astravia-official:plugin:demo-plugin"));
+
+		expect(onSelect).toHaveBeenCalledWith(first, undefined);
+	});
+
 	// 回归：内置能力对话里本就可用，行只做展示；点击/回车都不该往输入框插东西，
 	// 方向键也不该停在它上面（停上去按回车没反应，比直接跳过更像坏了）。
 	it("内置能力行不可插入，键盘导航也跳过它", () => {
