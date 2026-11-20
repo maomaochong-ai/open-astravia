@@ -248,6 +248,8 @@
 	"gallery.detail.aria": "「{{name}}」风格详情",
 	"gallery.detail.palette": "配色",
 	"gallery.detail.resources": "资源",
+	"gallery.detail.author": "作者",
+	"gallery.detail.license": "许可",
 	"gallery.detail.license": "许可",
 	"gallery.detail.source": "查看来源",
 	"gallery.detail.openDemo": "在浏览器打开 Demo",

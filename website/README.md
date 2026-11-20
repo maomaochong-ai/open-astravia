@@ -1,88 +1,90 @@
 # 星轨 Astravia 官网
 
-官网源码（纯 TypeScript 静态站）。产品与下载信息以仓库根 [README.md](../README.md) 为准。
+官网源码。产品与下载信息以仓库根 [README.md](../README.md) 为准。
 
 ## 技术栈
 
-- [Vite 7](https://vite.dev) + TypeScript：所有源码均为 `.ts`，无运行时依赖、无框架
+- **Vite 7 + React 19 + TypeScript**：四个页面是组件，不是四份 HTML
+- 客户端路由（History API）：一个 `index.html` 渲染 `/`、`/features`、`/download`、`/about`
+- 样式集中在 `src/style.css`，用 CSS 变量做主题与尺度；没有 CSS 框架
 - 构建产物输出到 `website/dist`（仓库根 `.gitignore` 已忽略 `dist/`，不入库）
+
+## 路由
+
+| 路径 | 页面 | 内容 |
+| --- | --- | --- |
+| `/` | `pages/home.tsx` | 首屏、隐私承诺、真实任务走查、技能与插件生态、知识库、FAQ、收尾 CTA |
+| `/features` | `pages/features.tsx` | Work / Coding 两个场景：四条日常事务、多形态回答、批量任务、能力广场、内置 Git、插件生态、并行工作流、主动澄清、工具箱 |
+| `/download` | `pages/download.tsx` | 居中首屏推荐产物、其他版本、桌面三平台、手机端安装、安装说明 |
+| `/about` | `pages/about.tsx` | 关于页：四个编号段落 + 截图带 + 收尾 CTA |
+| 文档 | 外链 | `https://docs.astravia.dev` |
+
+路由表、标题与描述集中在 `src/app/router.ts`；新增页面要同时登记 `ROUTES`（运行时校验）与
+`vite.config.ts` 的 `ROUTES`（开发与预览服务器回落）。
 
 ## 常用命令
 
 ```bash
-bun install        # 安装依赖（vite + typescript）
+bun install        # 安装依赖
 bun run dev        # 本地开发（http://localhost:5173）
 bun run build      # 生产构建 → dist/
 bun run preview    # 本地预览构建产物（http://localhost:4173）
-bun run typecheck  # tsc --noEmit 类型检查
+bun run typecheck  # tsc --noEmit
+bun run test       # 组件渲染契约 + 资源守卫
 ```
 
 ## 目录结构
 
-```
+```text
 website/
-├── index.html          # 首页（全部文案与结构，单页静态标记）
-├── vite.config.ts      # 构建配置（outDir: dist）
-├── tsconfig.json
-├── public/             # 原样复制的静态资源
-│   ├── app/            # 首屏深浅两版应用截图
-│   ├── community/      # 社群二维码与海报
-│   ├── download/       # 下载区块的服务商图标
-│   ├── fonts/          # Hanken Grotesk 变量字体 + IBM Plex Mono 400/500
-│   ├── plugins/        # 11 个预装插件图标
-│   ├── favicon*.png    # 圆角图标（32 / 512）
-│   ├── apple-touch-icon.png
-│   ├── banner-rounded.png  # 导航与页脚品牌图（圆角）
-│   ├── banner.png      # og:image
-│   └── robots.txt
-└── src/
-    ├── main.ts         # 交互装配：导航、主题、滚动显现、工作台视图、下载区、FAQ
-    ├── download-links.ts / download-target.ts   # 按系统与芯片选产物
-    ├── mobile-install.ts                        # 手机端入口
-    ├── external-links.ts                        # 外链统一新窗口
-    └── style.css       # 设计令牌与全部样式
+├── index.html          # 唯一入口：主题预设 + <div id="root">
+├── vite.config.ts      # React 插件、单入口构建、无扩展名路由回落
+├── public/             # 原样复制的静态资源（截图、二维码、插件图标、字体）
+├── src/
+│   ├── main.tsx        # 挂载 + 按路由选页面
+│   ├── app/
+│   │   ├── router.ts   # 路由表、标题描述、navigate、useRoutePath
+│   │   ├── theme.ts    # 深浅主题（localStorage + 系统偏好）
+│   │   ├── ui.tsx      # Link / ExternalLink / 图标集 / 滚动显现
+│   │   └── layout.tsx  # 页头（胶囊导航）、页脚（链接 + 社群二维码）
+│   ├── pages/          # home / features / download / about
+│   ├── lib/            # 下载平台解析、手机端链接（纯函数，便于单测）
+│   └── style.css       # 设计令牌与全部样式
+└── test/               # 渲染契约、路由、资源守卫
 ```
 
-## 素材
-
-首屏是一对应用截图，靠 `data-theme` 切换：深色 `public/app/app-dark.webp`、浅色 `public/app/app-light.webp`，均为 2400 宽、同一代界面。渲染时给 `width` / `height`，比例与原图一致（1.6），所以不会拉伸变形。
-
-图标必须是圆角版：`favicon.png`（512）、`favicon-32.png`、`apple-touch-icon.png`（180）都由原图加圆角遮罩导出；导航与页脚的品牌小图用 `banner-rounded.png`。直角图标在浏览器标签页上会显得很硬，不要换回未裁切的方图。
-
-`public/plugins/` 的 11 个图标对应仓库 `packages/plugins/presets/` 的预装插件；那边增删插件时这里同步。
-
-## 资源与选择器的守卫
-
-`test/no-zombie-assets.test.ts` 会把三类僵尸钉成失败：
-
-- `public/` 下存在没有任何引用的文件（构建期不报错，会一直跟着部署包上线）
-- 样式表里有类选择器没有任何元素在用，或页面里的类既无样式也不是脚本钩子
-- 页面里的 id 既不被脚本引用，也不是导航锚点或 SVG defs
-
-新增或删除资源时直接跑 `bun run test`，不用手工翻目录。
+新增页面：在 `pages/` 加组件 → 在 `router.ts` 的 `ROUTES` / `ROUTE_META` 登记 → 在 `main.tsx` 加分支 →
+在 `vite.config.ts` 的 `ROUTES` 同步。
 
 ## 设计参考
 
-- 视觉语言：深色优先（`#000` 底 + 近白正文），冷色半透明描边 `rgba(214,235,253,.10)`，16px 卡片圆角，四周一圈极淡环境光而不是投影
+- 视觉语言：深色优先（`#0a0a0a` 底 + 近白正文），冷色半透明描边，卡片圆角 10–18px，四周一圈极淡环境光
+- 字阶：H1 52px / H2 36px / 小标题 14px，字重 600，行高 1.12；正文 16px / 28px
 - 字体：标题 Hanken Grotesk（变量字重 300–800），代码与数字 IBM Plex Mono，两者都随包提供
-- 动效克制：滚动显现 14px 位移动画、同容器按 60ms 错层；视图切换 0.42s；`prefers-reduced-motion` 下全部关闭
-- 官网文案不得出现任何竞品名称或「基于某产品改造」「源于某产品」等表述（见下文品牌叙事）
+- 动效克制：滚动显现 14px 位移；分段切换只做 0.16s 淡入；`prefers-reduced-motion` 下全部关闭
+- 主题切换不做颜色过渡（半透明表面逐层插值会闪白）
 
 ## 内容维护
 
-- **新增/修改区块**：直接改 `index.html`，交互类效果在 `src/main.ts`，样式在 `src/style.css`
-- **工作台三视图**：`data-view` 与 `data-stage-view` 一一配对，切换由 `initWorkbenchTabs()` 处理；新增一块要同时补 tab、面板和 `role`/`aria-controls`
-- **主题**：`data-theme` 走 `light` / `dark` 两个令牌组，首屏截图与社群海报都按主题换图（`applyAppShot` / `applyCommunityPosters`）
-- **品牌叙事（重要）**：官网**不得出现**任何竞品名称或「基于某产品改造」「源于 / 复用某产品」等表述，也不得把产品定位为任何现有产品的衍生。星轨定位为**独立自研**产品，文案一律按自研叙事撰写（如「独立自研」「自主设计」「不依赖既有产品代码」）。FAQ 中涉及与其他产品关系的回答同样按此口径，不承认基于任何竞品改造。仅可作为内部设计参考，不得写进官网文案
-- **升级版本号**（发版后）：**由 `desktop-release` 自动完成**——`publish-website` job 在 R2 上传成功后跑 `node scripts/release/bump-website-version.mjs --version <新版本>`，改齐 5 个文件（`index.html` 里下载相关的链接与版本标签、`src/download-links.ts` 的 `DOWNLOAD_VERSION`、`package.json` 的 `version`、`test/download-target.test.ts` 与 `test/download-entry.test.ts` 的 `VERSION` 常量），推 `release/website-v<版本>` 分支并开一个到 `dev` 的 PR，再从该分支部署站点。只有手工补发时才需要自己跑这个脚本（`--check` 可校对当前是否对齐），改完在 `website/` 目录跑 `bun run test`
-- **下载链接**：三平台按钮与「其他版本」列表都指向 R2 直链 `https://dl.astravia.dev/app/v<版本>/<产物名>`，所以官网版本号必须在 `upload-release-to-r2.yml` 把该版本产物上传完成后再改，否则链接 404。`desktop-release` 的 `publish-r2 → publish-website → deploy-website` 就是按这个顺序串的，不要拆开；手工补发时同样先跑 R2 再改版本号。细节见 [docs/deploy/launch/installer-r2-distribution.md](../docs/deploy/launch/installer-r2-distribution.md) 第 4 节
+- **文案**：改对应页面里的数据常量（如 `pages/home.tsx` 的 `JOURNEY` / `FAQ` / `PROMISES`），不要散落在 JSX 里
+- **分段切换**：页面内用 `useState` 控制，只切内容不换路由；新增分段要同时更新可访问属性（`role="tab"` / `aria-selected`）
+- **品牌叙事（重要）**：官网**不得出现**任何竞品名称或「基于某产品改造」「源于 / 复用某产品」等表述。星轨定位为独立自研产品。这条由 `test/site-sections.test.ts` 的品牌口径用例守着
+- **主题**：`app/theme.ts` 写 `data-theme`，样式里用两套令牌；截图与社群海报按主题换图
+- **升级版本号**（发版后）：由 `desktop-release` 自动跑 `scripts/release/bump-website-version.mjs`，改齐 4 个文件
+  （`src/pages/download.tsx` 的 `DOWNLOAD_VERSION` 与产物链接、`package.json` 的 `version`、
+  `test/download-target.test.ts` 的 `VERSION`）。只有手工补发时才需要自己跑（`--check` 可校对）
+- **下载链接**：指向 R2 直链 `https://dl.astravia.dev/app/v<版本>/<产物名>`，必须在产物上传完成后再改版本号，
+  否则链接 404。顺序见 [docs/deploy/launch/installer-r2-distribution.md](../docs/deploy/launch/installer-r2-distribution.md) 第 4 节
 
 ## 部署
 
- 静态站，产物目录为 `website/dist`。Cloudflare Pages：连接仓库后构建命令 `cd website && bun install && bun run build`，输出目录 `website/dist`（详见 [docs/deploy/launch/cloudflare-setup-checklist.md](../docs/deploy/launch/cloudflare-setup-checklist.md)）。
+静态产物目录为 `website/dist`，但**需要托管方把未知路径回落到 `index.html`**（SPA 必须）。
+Cloudflare Pages：构建命令 `cd website && bun install && bun run build`，输出目录 `website/dist`；
+在 Pages 里配置 `/*  /index.html  200` 的重写规则，或直接在 `dist` 里放 `_redirects`（当前构建脚本尚未生成）。
+详见 [docs/deploy/launch/cloudflare-setup-checklist.md](../docs/deploy/launch/cloudflare-setup-checklist.md)。
 
 ## 质量
 
-- `bun run test`：8 个测试文件（DOM 契约 + 资源守卫 `test/no-zombie-assets.test.ts`）
+- `bun run test`：组件渲染后的结构契约、路由表、下载链接一致性、资源与类名守卫
 - `bun run typecheck`：本地类型检查
-- 仓库根 `bun run check`：Biome 已纳入 `website/` 的 TS/CSS/HTML（见根 `biome.json`）
+- 仓库根 `bun run check`

@@ -22,19 +22,21 @@ import {
  */
 export function createProjectResourceAccess(
 	local: NodeResourceAccess,
-	resolveConnection: (hostId: string) => SshConnection,
+	resolveConnection: (hostId: string) => Promise<SshConnection>,
 ): NodeResourceAccess {
-	const remote = (path: string): { connection: SshConnection; location: SshProjectLocation } | undefined => {
+	const remote = async (
+		path: string,
+	): Promise<{ connection: SshConnection; location: SshProjectLocation } | undefined> => {
 		if (!isSshProjectUri(path)) return undefined;
 		const location = parseProjectLocation(path);
 		if (location.kind !== "ssh") return undefined;
-		return { connection: resolveConnection(location.hostId), location };
+		return { connection: await resolveConnection(location.hostId), location };
 	};
 
 	return {
 		files: {
 			async stat(path, options) {
-				const target = remote(path);
+				const target = await remote(path);
 				if (!target) return local.files.stat(path, options);
 				// 跟随符号链接：发现逻辑问的是「这里有没有一个能读的文件 / 目录」。
 				const entry = await target.connection.stat(target.location.remotePath, options?.signal, {
@@ -48,13 +50,13 @@ export function createProjectResourceAccess(
 				};
 			},
 			async readText(path, options) {
-				const target = remote(path);
+				const target = await remote(path);
 				if (!target) return local.files.readText(path, options);
 				const bytes = await target.connection.readFile(target.location.remotePath, options?.signal);
 				return new TextDecoder().decode(bytes);
 			},
 			async readDirectory(path, options) {
-				const target = remote(path);
+				const target = await remote(path);
 				if (!target) return local.files.readDirectory(path, options);
 				const entries = await target.connection.listDirectory(target.location.remotePath, options?.signal);
 				return entries.map((entry) => ({
@@ -64,7 +66,7 @@ export function createProjectResourceAccess(
 				}));
 			},
 			async realPath(path, options) {
-				const target = remote(path);
+				const target = await remote(path);
 				if (!target) return local.files.realPath(path, options);
 				const resolved = await target.connection.realPath(target.location.remotePath, options?.signal);
 				return formatSshProjectUri(target.location.hostId, resolved);

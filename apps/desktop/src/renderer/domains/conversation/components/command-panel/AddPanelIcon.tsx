@@ -34,7 +34,7 @@ export function AddPanelIcon({
 	readonly type?: "skill" | "mcp" | "plugin" | "bundle" | "file";
 	/** 外层方框（尺寸与底色在各视图不同）。 */
 	readonly boxClassName?: string;
-	/** 图标本身的尺寸。 */
+	/** 矢量图标（iconify / 兜底图标）的尺寸；图片图标按方框铺满。 */
 	readonly className?: string;
 }): JSX.Element {
 	const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
@@ -57,7 +57,9 @@ export function AddPanelIcon({
 					loading="lazy"
 					decoding="async"
 					onError={() => setBrokenUrl(imageUrl)}
-					className={cn("object-contain", className)}
+					// 图片按方框铺满、由方框圆角裁切：给图片单独缩成小方块时四角是直角，
+					// 一排看过去像「没做圆角」，与能力页的图标语言也不一致。
+					className="h-full w-full object-contain"
 				/>
 			) : iconifyName ? (
 				<SkillTypeIcon icon={iconifyName} className={cn("text-muted-foreground", className)} />

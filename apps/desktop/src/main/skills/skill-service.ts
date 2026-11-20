@@ -25,7 +25,7 @@ import { readDesktopConfig } from "../config/desktop-config-store.js";
 import { getAppLanguage } from "../i18n/index.js";
 import { getAppLogger } from "../logger.js";
 import { listPlugins, pluginAgentContributionService } from "../plugins/plugin-catalog.js";
-import { resolveSkillOrigin, shouldListSkill } from "./skill-list-policy.js";
+import { findOwningMarketPackageEntry, resolveSkillOrigin, shouldListSkill } from "./skill-list-policy.js";
 import { buildPluginSkillSources, findPluginSkillSource, resolvePluginSkillPresentation } from "./skill-provenance.js";
 
 const skillsLog = getAppLogger("skills");
@@ -171,7 +171,8 @@ export class SkillService {
 		const listed = skills
 			.filter((skill) => {
 				if (isBuiltinSkillFile(skill.filePath)) return builtinManifest[skill.name]?.enabled ?? false;
-				const entry = manifest[skill.name];
+				// 组合包内的成员技能不在清单里，按包的位置归到所属包（见 findOwningMarketPackageEntry）。
+				const entry = manifest[skill.name] ?? findOwningMarketPackageEntry(skill.filePath, skillsBaseDir, manifest);
 				// 过滤也要看清单里的真实来源：扫描器只报目录类型（通常 `path`），
 				// 拿它判断「市场装的技能是否停用」会漏掉停用状态。
 				return shouldListSkill({ name: skill.name, source: entry?.source ?? skill.source }, entry);
@@ -179,7 +180,9 @@ export class SkillService {
 			.map((skill): ListedSkill => {
 				const isBuiltin = isBuiltinSkillFile(skill.filePath);
 				const builtinEntry = isBuiltin ? builtinManifest[skill.name] : undefined;
+				// 自己的清单条目负责展示文案；`owner` 只是组合包成员的归属，只决定来源 / 启停 / 分组。
 				const entry = isBuiltin ? undefined : manifest[skill.name];
+				const owner = entry ? undefined : findOwningMarketPackageEntry(skill.filePath, skillsBaseDir, manifest);
 				const pluginSource = isBuiltin ? undefined : findPluginSkillSource(skill.filePath, pluginSources);
 				const sourcePlugin = pluginSource ? pluginById.get(pluginSource.pluginId) : undefined;
 				const presentation =
@@ -224,7 +227,7 @@ export class SkillService {
 					...resolveSkillOrigin({
 						builtin: isBuiltin,
 						...(pluginSource ? { pluginId: pluginSource.pluginId } : {}),
-						manifestEntry: entry,
+						manifestEntry: entry ?? owner,
 						scannedSource: skill.source,
 						...(skill.provenance ? { scannedProvenance: skill.provenance } : {}),
 					}),

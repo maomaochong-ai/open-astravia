@@ -472,6 +472,41 @@ for (const target of SSH_HELPER_TARGETS) {
 }
 
 // =============================================================================
+// ssh-askpass: Windows askpass helper (extraResources)
+// =============================================================================
+//
+// Windows OpenSSH 用 CreateProcessW 启动 SSH_ASKPASS，必须是 PE 可执行文件；
+// 这里把 Go 编译的 askpass.exe 收进 Resources/askpass/，由 resolveAskpassWindowsBinary
+// 解析。只有 windows-amd64 一个目标——它是本机运行的程序，不是上传到远端的 helper。
+// macOS/Linux 打包也顺带产出（体积很小），但运行时不会用到。
+
+const sshAskpassDir = join(projectRoot, "..", "ssh-askpass");
+console.log("[prepare-pack] cross-building ssh-askpass...");
+const stagedSshAskpassDir = join(buildStageDir, "askpass");
+rmSync(stagedSshAskpassDir, { recursive: true, force: true });
+const sshAskpassTarget = { os: "windows", arch: "amd64" };
+{
+	const outputDir = join(stagedSshAskpassDir, `${sshAskpassTarget.os}-${sshAskpassTarget.arch}`);
+	const outputPath = join(outputDir, "astravia-ssh-askpass.exe");
+	mkdirSync(outputDir, { recursive: true });
+	console.log(`  -> ${outputPath}`);
+	try {
+		execFileSync(
+			process.platform === "win32" ? "go.exe" : "go",
+			["build", "-trimpath", "-ldflags", "-s -w", "-o", outputPath, "./cmd/astravia-ssh-askpass"],
+			{
+				cwd: sshAskpassDir,
+				env: { ...process.env, CGO_ENABLED: "0", GOARCH: sshAskpassTarget.arch, GOOS: sshAskpassTarget.os },
+				stdio: "inherit",
+			},
+		);
+	} catch (err) {
+		console.error("[prepare-pack] ssh-askpass cross-build failed");
+		throw err;
+	}
+}
+
+// =============================================================================
 // coding-agent runtime assets (extraResources)
 // =============================================================================
 //
@@ -692,6 +727,11 @@ function resolveExtraResources() {
 		{
 			from: "ssh-helper",
 			to: "ssh-helper",
+			filter: ["**/*"],
+		},
+		{
+			from: "askpass",
+			to: "askpass",
 			filter: ["**/*"],
 		},
 		{

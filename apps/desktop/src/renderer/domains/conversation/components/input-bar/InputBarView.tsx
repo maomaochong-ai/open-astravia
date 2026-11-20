@@ -136,7 +136,7 @@ export function InputBarView({ model, className, classNames, children }: InputBa
 					</PerfSendProfiler>
 				) : null}
 
-				<MessageInput.Root focused={model.isFocused} topConnected={commands?.slashOpen ?? false}>
+				<MessageInput.Root focused={model.isFocused}>
 					<MessageInput.Surface
 						asChild
 						className={[surface?.rootClassName, classNames?.card].filter(Boolean).join(" ")}
@@ -145,8 +145,6 @@ export function InputBarView({ model, className, classNames, children }: InputBa
 							{...model.dropZone}
 							style={{
 								opacity: model.hasSession ? 1 : 0.55,
-								// 面板与卡片是同一个容器：展开时卡片上描边让位给面板的描边，接缝才不会出现双线。
-								...(commands?.slashOpen ? { borderTopColor: "transparent" } : null),
 							}}
 						>
 							<ThemedInputBarBackground />

@@ -14,6 +14,8 @@ import {
 import { readConfigSync, updateDesktopConfig } from "../config/desktop-config-store.js";
 
 export const UI_ZOOM_CHANGED_CHANNEL = "astravia:ui-zoom:changed";
+/** 快捷键触发的缩放：主窗口据此在右上角短暂提示当前档位（滑块拖动不触发）。 */
+export const UI_ZOOM_HUD_CHANNEL = "astravia:ui-zoom:hud";
 
 let currentFactor: number | undefined;
 let mainContents: WebContents | undefined;
@@ -72,12 +74,19 @@ export async function setUiZoomFactor(value: unknown): Promise<number> {
 	return next;
 }
 
+/** 快捷键缩放后让主窗口提示当前档位；已到最大/最小档、比例没变时也提示，让用户知道到头了。 */
+async function setUiZoomFromShortcut(value: number): Promise<number> {
+	const applied = await setUiZoomFactor(value);
+	if (mainContents && !mainContents.isDestroyed()) mainContents.send(UI_ZOOM_HUD_CHANNEL, applied);
+	return applied;
+}
+
 export function stepUiZoom(direction: 1 | -1): Promise<number> {
-	return setUiZoomFactor(stepUiZoomFactor(getUiZoomFactor(), direction));
+	return setUiZoomFromShortcut(stepUiZoomFactor(getUiZoomFactor(), direction));
 }
 
 export function resetUiZoom(): Promise<number> {
-	return setUiZoomFactor(UI_ZOOM_DEFAULT);
+	return setUiZoomFromShortcut(UI_ZOOM_DEFAULT);
 }
 
 /** 窗口创建时用：中线还没上报就是兜底值，上报后渲染进程会再校正。 */

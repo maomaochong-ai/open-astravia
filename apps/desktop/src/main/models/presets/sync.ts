@@ -182,15 +182,23 @@ function isSnapshot(catalog: ModelsDevCatalog | null): boolean {
  *
  * apiKey 缺省时读 models.json 里已保存的 key(手动刷新场景)。
  */
-export async function refreshPresetModels(providerId: string, apiKey?: string): Promise<PresetModelsResult> {
-	const def = getPresetProvider(providerId);
-	if (!def) return { models: [], error: { code: "unknown-provider", params: { provider: providerId } } };
+export async function refreshPresetModels(
+	providerId: string,
+	apiKey?: string,
+	baseUrl?: string,
+): Promise<PresetModelsResult> {
+	const preset = getPresetProvider(providerId);
+	if (!preset) return { models: [], error: { code: "unknown-provider", params: { provider: providerId } } };
 
 	let key = apiKey?.trim();
-	if (!key) {
-		const config = await getDesktopModelSettingsService().getConfig();
-		key = config.providers[providerId]?.apiKey?.trim();
+	let url = baseUrl?.trim();
+	if (!key || !url) {
+		const saved = (await getDesktopModelSettingsService().getConfig()).providers[providerId];
+		key = key || saved?.apiKey?.trim();
+		// 用户改过地址（如 Magpie 换端口）时以已保存的为准，否则回到内置默认。
+		url = url || saved?.baseUrl?.trim();
 	}
+	const def = url ? { ...preset, baseUrl: url } : preset;
 	if (!key) return { models: [], error: { code: "missing-key" } };
 
 	const controller = new AbortController();
@@ -236,7 +244,11 @@ export async function syncAdoptedPresets(): Promise<void> {
 	const results = await Promise.all(
 		ids.map(async (id) => {
 			const templateId = config.providers[id]?.templateId ?? id;
-			const result = await refreshPresetModels(templateId, config.providers[id]?.apiKey);
+			const result = await refreshPresetModels(
+				templateId,
+				config.providers[id]?.apiKey,
+				config.providers[id]?.baseUrl,
+			);
 			return { id, result };
 		}),
 	);

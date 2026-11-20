@@ -990,6 +990,8 @@
 			"no": "不支持"
 		},
 		"fewerProviders": "收起",
+		"refresh": "刷新",
+		"refreshFailed": "刷新失败",
 		"visionBadge": "vision",
 		"favoritesHeader": "收藏",
 		"favoritesEmpty": "还没有收藏的模型",

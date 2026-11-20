@@ -122,3 +122,14 @@ export function expandAutomationGroupRows<View extends GroupableRowView>(
 	}
 	return rows;
 }
+
+/**
+ * 项目详情页「最近会话」要排除的自动化产物：只有「每次新建会话」产生的会话（含已置顶的）
+ * 归「自动化」栏；same-session 的固定会话用户会接着聊，仍算普通会话。
+ */
+export function isAutomationOutputSession(
+	sessionPath: string,
+	links: ReadonlyMap<string, AutomationSessionLink>,
+): boolean {
+	return links.get(sessionPath)?.mode === "new-session";
+}

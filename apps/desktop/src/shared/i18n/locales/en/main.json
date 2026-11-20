@@ -6,6 +6,12 @@
 		"quit": "Quit",
 		"hideToTray": "Hide to Tray"
 	},
+	"quitConfirmation": {
+		"title": "Quit Astravia?",
+		"detail": "Saved conversations will be here when you return. Running tasks will stop.",
+		"quit": "Quit",
+		"cancel": "Cancel"
+	},
 	"menu": {
 		"app": {
 			"title": "Astravia",

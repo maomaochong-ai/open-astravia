@@ -14,9 +14,10 @@ export interface SshConnectionManagerOptions {
 	 * 传给 ssh 子进程的额外环境变量。
 	 *
 	 * 按 hostId 生成而不是全局共享一份：askpass 要靠环境变量知道这次提示属于哪台主机，
-	 * 才能取对凭据、也才能在弹窗里说清是谁在要口令。
+	 * 才能取对凭据、也才能在弹窗里说清是谁在要口令。异步：Windows 的 askpass 回传通道
+	 * 要在 loopback 上先监听出一个端口才能写出地址。
 	 */
-	readonly resolveEnv?: (hostId: string) => Readonly<Record<string, string>> | undefined;
+	readonly resolveEnv?: (hostId: string) => Promise<Readonly<Record<string, string>> | undefined>;
 	/** 是否启用 ControlMaster 连接复用。Windows 上传 false（见 {@link buildSshArgv}）。 */
 	readonly controlMaster?: boolean;
 	/** 远端 helper 的部署方式，透传给每条连接。不给就始终走 `ssh exec`。 */
@@ -49,7 +50,7 @@ export class SshConnectionManager {
 	 * 主机不存在时抛而不是返回 null：调用点全是「对远程项目做一次操作」，拿不到连接
 	 * 只能是失败，返回空值只会让调用方多写一条本不该存在的回退分支。
 	 */
-	connection(hostId: string): SshConnection {
+	async connection(hostId: string): Promise<SshConnection> {
 		const existing = this.connections.get(hostId);
 		if (existing) return existing;
 		const host = this.options.resolveHost(hostId);
@@ -59,7 +60,7 @@ export class SshConnectionManager {
 		const connection = new SshConnection(host, {
 			runner: this.options.runner,
 			controlPath: buildControlPath(this.options.controlDirectory, hostId),
-			env: this.options.resolveEnv?.(hostId),
+			env: await this.options.resolveEnv?.(hostId),
 			onTrace: this.options.onTrace,
 			helper: this.options.helper,
 			controlMaster: this.options.controlMaster,
@@ -72,7 +73,7 @@ export class SshConnectionManager {
 	async probe(hostId: string, signal?: AbortSignal): Promise<SshConnectionStatus> {
 		this.setStatus(hostId, "connecting");
 		try {
-			await this.connection(hostId).probePlatform(signal);
+			await (await this.connection(hostId)).probePlatform(signal);
 			this.setStatus(hostId, "connected");
 		} catch {
 			// 探测失败只说明「现在问不到」，不代表远端不存在或已关机。

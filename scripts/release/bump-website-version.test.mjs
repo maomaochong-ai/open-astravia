@@ -7,17 +7,15 @@ import { WEBSITE_VERSION_FILES, bumpWebsiteVersion, readWebsiteVersion } from ".
 const roots = [];
 
 const fixtures = {
-	"website/index.html": [
-		'<a href="https://dl.astravia.dev/app/v0.5.65/Astravia-0.5.65-arm64.dmg" class="dl">',
-		'  <span class="dl__version">v0.5.65 · DMG</span>',
-		"</a>",
+	"website/src/pages/download.tsx": [
+		'export const DOWNLOAD_VERSION = "0.5.65";',
+		'<a href="https://dl.astravia.dev/app/v0.5.65/Astravia-0.5.65-arm64.dmg">dmg</a>',
+		'<span>v0.5.65 · DMG</span>',
 		'<a href="https://dl.astravia.dev/app/v0.5.65/astravia_0.5.65_amd64.deb">deb</a>',
 		"",
 	].join("\n"),
-	"website/src/download-links.ts": 'export const DOWNLOAD_VERSION = "0.5.65";\n',
 	"website/package.json": '{\n\t"name": "astravia-website",\n\t"version": "0.5.65"\n}\n',
 	"website/test/download-target.test.ts": 'const VERSION = "0.5.65";\nexport { VERSION };\n',
-	"website/test/download-entry.test.ts": 'const VERSION = "0.5.65";\nexport { VERSION };\n',
 };
 
 function fixtureRoot(overrides = {}) {
@@ -53,7 +51,7 @@ describe("website download version", () => {
 			expect(read(root, file)).not.toContain("0.5.65");
 		}
 		// 下载链接的目录和产物名都要跟着改，否则按钮指向不存在的对象。
-		expect(read(root, "website/index.html")).toContain(
+		expect(read(root, "website/src/pages/download.tsx")).toContain(
 			"https://dl.astravia.dev/app/v0.5.66/Astravia-0.5.66-arm64.dmg",
 		);
 		expect(readWebsiteVersion(root)).toBe("0.5.66");
@@ -82,14 +80,12 @@ describe("website download version", () => {
 	// 0.5.64 是 0.5.64-4 的前缀：首页里带后缀的版本说明官网同时引用了两个版本，停下来人工判断。
 	it("refuses when the page references another version", () => {
 		const root = fixtureRoot({
-			"website/src/download-links.ts": 'export const DOWNLOAD_VERSION = "0.5.64";\n',
 			"website/package.json": '{\n\t"version": "0.5.64"\n}\n',
 			"website/test/download-target.test.ts": 'const VERSION = "0.5.64";\nexport { VERSION };\n',
-			"website/test/download-entry.test.ts": 'const VERSION = "0.5.64";\nexport { VERSION };\n',
-			"website/index.html": '<a href="https://dl.astravia.dev/app/v0.5.64-4/a.dmg">dmg</a>\n',
+			"website/src/pages/download.tsx": 'export const DOWNLOAD_VERSION = "0.5.64";\n<a href="https://dl.astravia.dev/app/v0.5.64-4/a.dmg">dmg</a>\n',
 		});
 		expect(() => bumpWebsiteVersion({ version: "0.5.66", root })).toThrow(
-			/website\/index\.html references other versions \(0\.5\.64-4\)/,
+			/website\/src\/pages\/download\.tsx references other versions \(0\.5\.64-4\)/,
 		);
 	});
 

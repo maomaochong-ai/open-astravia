@@ -990,6 +990,8 @@
 			"no": "Not supported"
 		},
 		"fewerProviders": "Collapse",
+		"refresh": "Refresh",
+		"refreshFailed": "Refresh failed",
 		"visionBadge": "vision",
 		"favoritesHeader": "Favorites",
 		"favoritesEmpty": "No favorite models yet",

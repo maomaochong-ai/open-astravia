@@ -629,10 +629,10 @@
 			"selected": "{{count}} members"
 		},
 		"toolbar": {
-			"addTooltip": "Add files, skills, connectors, plugins, or apps",
+			"addTooltip": "Add a file or call a command (skill / plugin / MCP / bundle)",
 			"addImage": "Add image",
 			"attachFile": "Attach file reference",
-			"add": "Add"
+			"add": "Add file or command"
 		},
 		"speech": {
 			"actions": {
@@ -1143,7 +1143,7 @@
 		"skillButtonLimitTitle": "Skill limit reached"
 	},
 	"slashPanel": {
-		"searchPlaceholder": "Search skills, connectors, plugins, apps…",
+		"searchPlaceholder": "Search skills, plugins, MCP, bundles…",
 		"clearSearch": "Clear search",
 		"favorites": "Favorites",
 		"favoritesEmpty": "No favorites yet",
@@ -1160,6 +1160,7 @@
 		"groups": {
 			"actions": "Direct actions",
 			"builtin": "Built-in",
+			"agents": "Agent skills",
 			"mine": "Mine",
 			"project": "Project",
 			"plugin": "Plugins",
@@ -1194,12 +1195,12 @@
 		"emptyNoMatchHint": "Try another keyword, or just type your request.",
 		"emptyNoSkills": "No skills available",
 		"emptyNoSkillsHint": "Install a skill from the ability market to call it here.",
+		"moreActions": "More actions",
 		"sections": {
-			"files": "Files",
 			"skills": "Skills",
-			"connectors": "Connectors",
 			"plugins": "Plugins",
-			"apps": "Apps"
+			"mcp": "MCP",
+			"bundle": "Bundle"
 		},
 		"filesSection": {
 			"addFile": "Add file",
@@ -1219,7 +1220,8 @@
 			"plugin": "Plugin",
 			"market": "Market"
 		},
-		"connectorsSection": "Connected"
+		"connectorsSection": "Connected",
+		"builtinHint": "Built-in"
 	},
 	"suggestionBubbles": {
 		"sendTooltip": "Click to send this suggestion"

@@ -14,8 +14,6 @@ export interface GeneralSettingsViewProps {
 export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.Element {
 	const updates = useUpdateCheckerModel();
 	const proxy = useProxySettingsModel();
-	const showUpdateDetail =
-		updates.phase === "available" || updates.phase === "downloading" || updates.phase === "ready";
 
 	return (
 		<ThemeGeneralSettingsView
@@ -42,20 +40,27 @@ export function GeneralSettingsView({ model }: GeneralSettingsViewProps): JSX.El
 					progress={updates.progress}
 				/>
 			}
+
+			/*
+			 * 详情卡片是下载 / 重启**唯一**的入口——更新对话框目前没有挂载点，所以这张卡片
+			 * 不能被当成「重复的残留」删掉：上一版就删过一次，结果是用户看到「有新版本」
+			 * 却没有按钮可点，Linux 打包 E2E 直接卡在 updater-detail 不出现。
+			 *
+			 * 用户当时真正抱怨的两件事在这里分别处理：不传 releaseNote，卡片里不再出现
+			 * md 说明预览；下载进度只由顶部按钮表达，不在两处各显示一次。
+			 */
 			updatesDetail={
-				showUpdateDetail ? (
-					<UpdateCheckerDetail
-						currentVersion={updates.currentVersion}
-						labels={updates.labels}
-						latestVersion={updates.latestVersion}
-						onPrimary={updates.onPrimary}
-						onViewMore={updates.onViewMore}
-						phase={updates.phase}
-						progress={updates.progress}
-						releaseNote={updates.releaseNote}
-					/>
-				) : null
+				<UpdateCheckerDetail
+					currentVersion={updates.currentVersion}
+					labels={updates.labels}
+					latestVersion={updates.latestVersion}
+					onPrimary={updates.onPrimary}
+					onViewMore={updates.onViewMore}
+					phase={updates.phase}
+					progress={updates.progress}
+				/>
 			}
+
 			executionMode={model.executionMode}
 			onExecutionModeChange={(mode) => void model.actions.changeExecutionMode(mode)}
 			sandboxUnavailableReason={model.sandboxUnavailableReason}

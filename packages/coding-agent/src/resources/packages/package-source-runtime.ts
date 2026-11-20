@@ -32,6 +32,8 @@ export interface ResourcePackageRuntimeOptions {
 	resourceAccess: ResourceAccessPort;
 	files: ResourcePackageFilePort;
 	managedSkillsDir: string;
+	/** 是否扫描通用 Agent Skill 目录（`~/.agents/skills`、祖先目录 `.agents/skills`）。 */
+	includeAgentSkills?: boolean;
 	registry: ResourcePackageRegistryPort;
 	environment: ResourcePackageEnvironmentPort;
 }
@@ -69,7 +71,12 @@ class DefaultResourcePackageRuntime implements ResourcePackageRuntime {
 			options.resourceAccess,
 			options.files,
 		);
-		this.projector = new ResourceProjector(this.locations, options.resourceAccess, options.managedSkillsDir);
+		this.projector = new ResourceProjector(
+			this.locations,
+			options.resourceAccess,
+			options.managedSkillsDir,
+			options.includeAgentSkills ?? true,
+		);
 	}
 
 	setProgressListener(listener: ResourcePackageProgressListener | undefined): void {

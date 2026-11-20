@@ -43,7 +43,7 @@ export interface PortForwardConnection {
 }
 
 export interface SshPortForwardServiceOptions {
-	readonly connect: (hostId: string) => PortForwardConnection;
+	readonly connect: (hostId: string) => Promise<PortForwardConnection>;
 	/** 本机端口上是否已经有人在听。 */
 	readonly isLocalPortBusy?: (port: number) => Promise<boolean>;
 	/** 由系统分配一个空闲的本机端口。 */
@@ -114,7 +114,7 @@ export class SshPortForwardService {
 			status: "active",
 			createdAt: Date.now(),
 		};
-		await this.options.connect(request.hostId).forwardPort(localPort, remotePort);
+		await (await this.options.connect(request.hostId)).forwardPort(localPort, remotePort);
 		this.forwards.set(key, forward);
 		this.startHealthChecks();
 		this.changed();
@@ -129,7 +129,7 @@ export class SshPortForwardService {
 	 */
 	private async remap(existing: PortForward, localPort: number): Promise<PortForward> {
 		await this.claimLocalPort(localPort);
-		const connection = this.options.connect(existing.hostId);
+		const connection = await this.options.connect(existing.hostId);
 		await connection.forwardPort(localPort, existing.remotePort);
 		const next: PortForward = { ...existing, localPort, status: "active", error: undefined };
 		this.forwards.set(forwardKey(existing.hostId, existing.remotePort), next);
@@ -147,8 +147,7 @@ export class SshPortForwardService {
 		this.stopHealthChecksWhenIdle();
 		this.changed();
 		// 撤不掉不该拖累调用方：转发会随 master 一起消失，而账本已经清了。
-		await this.options
-			.connect(hostId)
+		await (await this.options.connect(hostId))
 			.cancelPortForward(forward.localPort, forward.remotePort)
 			.catch(() => undefined);
 	}
@@ -193,7 +192,7 @@ export class SshPortForwardService {
 		this.forwards.set(key, { ...forward, status: "reconnecting", error: undefined });
 		this.changed();
 		try {
-			await this.options.connect(forward.hostId).forwardPort(forward.localPort, forward.remotePort);
+			await (await this.options.connect(forward.hostId)).forwardPort(forward.localPort, forward.remotePort);
 			// 期间用户可能已经撤掉了它；那时不要把它复活。
 			if (!this.forwards.has(key)) return;
 			this.forwards.set(key, { ...forward, status: "active", error: undefined });

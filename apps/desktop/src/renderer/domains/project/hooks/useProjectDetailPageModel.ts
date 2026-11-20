@@ -1,10 +1,12 @@
 import type { ProjectDetailPageViewProps } from "@astravia-org/theme-ui/project";
+import { useScheduledTasks } from "@domains/scheduler/hooks/useScheduledTasks";
 import { newSessionTarget } from "@shared/app-shell/new-session-route";
 import { isMac } from "@shared/lib/platform";
 import { pathBasename } from "@shared/lib/utils";
 import { useShortcutScope } from "@shared/shortcuts";
 import {
 	activityPanelOpenAtom,
+	automationSessionLinksAtom,
 	batchProjectsAtom,
 	confirmDialogAtom,
 	isPersonalModeAtom,
@@ -16,6 +18,7 @@ import {
 	runningTaskIdsAtom,
 	type SessionInfo,
 	scheduledTasksAtom,
+	selectedTaskIdAtom,
 	sessionDisplayLabel,
 	sessionsMapAtom,
 } from "@shared/store/atoms";
@@ -23,6 +26,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { isAutomationOutputSession } from "../services/automation-session-groups";
 import { resolveSessionOpenTarget } from "./session-open-target";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -164,6 +168,13 @@ export function useProjectDetailPageModel(
 	const runningPaths = useAtomValue(runningSessionPathsAtom);
 	const runningTaskIds = useAtomValue(runningTaskIdsAtom);
 	const scheduledTasks = useAtomValue(scheduledTasksAtom);
+	// 任务列表只在自动化页等处才会载入；详情页直接进来时 atom 还是空的，得自己拉一次。
+	const { refreshTasks } = useScheduledTasks();
+	useEffect(() => {
+		void refreshTasks();
+	}, [refreshTasks]);
+	const automationLinks = useAtomValue(automationSessionLinksAtom);
+	const setSelectedTaskId = useSetAtom(selectedTaskIdAtom);
 	useEffect(() => {
 		if (!decodedCwd) return;
 		setActiveDocument("AGENTS.md");
@@ -189,6 +200,8 @@ export function useProjectDetailPageModel(
 	const recentSessions: ProjectDetailPageViewProps["recentSessions"] = useMemo(
 		() =>
 			sessions
+				// 「每次新建会话」的自动化产物归「自动化」栏；same-session 的固定会话用户会接着聊，仍算会话。
+				.filter((session) => !isAutomationOutputSession(session.path, automationLinks))
 				.filter((session) => resolveSessionOpenTarget([session], session.path) !== "unavailable")
 				.slice()
 				.sort((a, b) => {
@@ -205,13 +218,35 @@ export function useProjectDetailPageModel(
 					running: runningPaths.has(session.path),
 					pinned: pinnedSessions.has(session.path),
 				})),
-		[sessions, dateLocale, runningPaths, pinnedSessions],
+		[sessions, dateLocale, runningPaths, pinnedSessions, automationLinks],
+	);
+	const projectTasks = useMemo(
+		() => scheduledTasks.filter((task) => task.runTarget.projectCwd === decodedCwd),
+		[scheduledTasks, decodedCwd],
+	);
+	const automations: ProjectDetailPageViewProps["automations"] = useMemo(
+		() =>
+			projectTasks
+				.slice()
+				.sort((a, b) => {
+					const runA = Number(runningTaskIds.has(a.id));
+					const runB = Number(runningTaskIds.has(b.id));
+					if (runA !== runB) return runB - runA;
+					if (a.enabled !== b.enabled) return Number(b.enabled) - Number(a.enabled);
+					return (b.lastRunAt ?? 0) - (a.lastRunAt ?? 0);
+				})
+				.slice(0, 5)
+				.map((task) => ({
+					id: task.id,
+					name: task.name,
+					date: task.lastRunAt ? formatDate(task.lastRunAt, dateLocale) : null,
+					disabled: !task.enabled,
+					running: runningTaskIds.has(task.id),
+				})),
+		[projectTasks, runningTaskIds, dateLocale],
 	);
 	const runningSessionCount = sessions.reduce((count, session) => count + Number(runningPaths.has(session.path)), 0);
-	const runningTaskCount = scheduledTasks.reduce(
-		(count, task) => count + Number(task.runTarget.projectCwd === decodedCwd && runningTaskIds.has(task.id)),
-		0,
-	);
+	const runningTaskCount = projectTasks.reduce((count, task) => count + Number(runningTaskIds.has(task.id)), 0);
 
 	const handleExportProject = useCallback(() => {
 		setConfirm({
@@ -256,6 +291,7 @@ export function useProjectDetailPageModel(
 		onModeChange: setMode,
 		theme,
 		recentSessions,
+		automations,
 		runningSessionCount,
 		runningTaskCount,
 		batchProject,
@@ -291,6 +327,10 @@ export function useProjectDetailPageModel(
 			startFirst: t("detail.recentSessions.startFirst"),
 			running: t("detail.runtime.runningSessions", { count: runningSessionCount }),
 			runningTasks: t("detail.runtime.runningTasks", { count: runningTaskCount }),
+			automationsTitle: t("detail.automations.title"),
+			automationsViewAll: t("detail.automations.viewAll"),
+			automationsDisabled: t("detail.automations.disabled"),
+			automationsNeverRun: t("detail.automations.neverRun"),
 			contextTitle: t("detail.context.title"),
 			claudeHint: t("detail.claudeMdHint"),
 			previewMode: t("detail.previewMode"),
@@ -315,6 +355,13 @@ export function useProjectDetailPageModel(
 			} else {
 				void onOpenSession(decodedCwd, path);
 			}
+		},
+		onOpenAutomation: (taskId: string) => {
+			setSelectedTaskId(taskId);
+			void navigate({ to: "/automation" });
+		},
+		onOpenAllAutomations: () => {
+			void navigate({ to: "/automation" });
 		},
 		onContentChange: setContent,
 		onEditorBlur: () => setEditorFocused(false),

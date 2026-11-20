@@ -172,7 +172,7 @@ export function FileTreeView({
 
 	// The rename draft lives here, not in the row: Virtuoso recycles rows that scroll out of
 	// the overscan window, and a row-local draft would be lost (or committed) on that unmount.
-	const [renameDraft, setRenameDraft] = useState<{ path: string; value: string; caret: number } | null>(null);
+	const [renameDraft, setRenameDraft] = useState<{ path: string; value: string } | null>(null);
 	const [renameError, setRenameError] = useState<{ path: string; message: string } | null>(null);
 	useEffect(() => {
 		setRenameError(null);
@@ -183,25 +183,14 @@ export function FileTreeView({
 		const row = rowsRef.current.find((candidate) => candidate.type === "entry" && candidate.entry.path === renamingPath);
 		const name = row?.type === "entry" ? row.entry.name : "";
 		setRenameDraft((prev) =>
-			prev?.path === renamingPath ? prev : { path: renamingPath, value: name, caret: name.length },
+			prev?.path === renamingPath ? prev : { path: renamingPath, value: name },
 		);
 	}, [renamingPath]);
 	const handleRenameValueChange = useCallback(
 		(value: string) => {
 			if (!renamingPath) return;
 			setRenameError(null);
-			setRenameDraft((prev) => ({ path: renamingPath, value, caret: prev?.path === renamingPath ? prev.caret : value.length }));
-		},
-		[renamingPath],
-	);
-	/**
-	 * 光标位置单独走一条回调：只更新 caret，不碰 value，避免每次移动光标都把组件树按新值重渲染。
-	 * 行被虚拟列表回收后重新挂载时，靠它把光标放回原处。
-	 */
-	const handleRenameCaretChange = useCallback(
-		(caret: number) => {
-			if (!renamingPath) return;
-			setRenameDraft((prev) => (prev?.path === renamingPath && prev.caret !== caret ? { ...prev, caret } : prev));
+			setRenameDraft({ path: renamingPath, value });
 		},
 		[renamingPath],
 	);
@@ -211,7 +200,7 @@ export function FileTreeView({
 			if (message) {
 				// 保留输入框与草稿，把错误留在行内，用户改完可直接再次提交。
 				setRenameError({ path: oldPath, message });
-				setRenameDraft({ path: oldPath, value: newName, caret: newName.length });
+				setRenameDraft({ path: oldPath, value: newName });
 				return;
 			}
 			setRenameError(null);
@@ -348,10 +337,8 @@ export function FileTreeView({
 				isFocused={focusedPath === row.entry.path}
 				isRenaming={renamingPath === row.entry.path}
 				renameValue={renameDraft?.path === row.entry.path ? renameDraft.value : undefined}
-				renameCaret={renameDraft?.path === row.entry.path ? renameDraft.caret : null}
 				renameError={renameError?.path === row.entry.path ? renameError.message : null}
 				onRenameValueChange={handleRenameValueChange}
-				onRenameCaretChange={handleRenameCaretChange}
 				decoration={getDecoration?.(row.entry)}
 				dragEntries={dragEntries}
 				onToggleDir={onToggleDir}

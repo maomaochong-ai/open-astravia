@@ -43,6 +43,25 @@ describe("parseRemoteCatalog", () => {
 		expect(result?.rejected).toEqual([]);
 	});
 
+	it("带出 author，顶层优先、回落 origin.author，没写就没有，不拿别的字段冒充", () => {
+		const authored = parseRemoteCatalog(
+			catalog([entry({ origin: { type: "curated", author: "  Grok Bot ", upstream: "https://example.com/u" } })]),
+			BASE,
+		);
+		expect(authored?.systems[0]?.author).toBe("Grok Bot");
+		const topLevel = parseRemoteCatalog(catalog([entry({ author: "Ada" })]), BASE);
+		expect(topLevel?.systems[0]?.author).toBe("Ada");
+		const both = parseRemoteCatalog(
+			catalog([entry({ author: "Ada", origin: { type: "curated", author: "Grok Bot" } })]),
+			BASE,
+		);
+		expect(both?.systems[0]?.author).toBe("Ada");
+		const anonymous = parseRemoteCatalog(catalog([entry()]), BASE);
+		expect(anonymous?.systems[0]?.author).toBeUndefined();
+		const bogus = parseRemoteCatalog(catalog([entry({ origin: { type: "curated", author: 42 } })]), BASE);
+		expect(bogus?.systems[0]?.author).toBeUndefined();
+	});
+
 	it.each([
 		["顶层不是对象", "nope"],
 		["schemaVersion 不认识", { schemaVersion: 2, templates: [entry()] }],

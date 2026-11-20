@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	formatUiZoomPercent,
 	normalizeUiZoomFactor,
 	parseTitlebarCenter,
 	stepUiZoomFactor,
@@ -7,6 +8,7 @@ import {
 	trafficLightPositionFor,
 	UI_ZOOM_DEFAULT,
 	UI_ZOOM_STEPS,
+	uiZoomNeedsCorrection,
 	uiZoomStepIndex,
 } from "./ui-zoom.js";
 
@@ -57,5 +59,31 @@ describe("macOS 红绿灯位置", () => {
 		expect(parseTitlebarCenter(Number.NaN)).toBeUndefined();
 		expect(parseTitlebarCenter("28")).toBeUndefined();
 		expect(parseTitlebarCenter(null)).toBeUndefined();
+	});
+});
+
+describe("uiZoomNeedsCorrection", () => {
+	it("实测与档位一致（含 Chromium 的浮点误差）时不纠正", () => {
+		expect(uiZoomNeedsCorrection(1.1, 1.1)).toBe(false);
+		expect(uiZoomNeedsCorrection(1.1000000001, 1.1)).toBe(false);
+	});
+
+	it("实测偏离档位就纠正：显示 110% 实际却是 100% 或 90%", () => {
+		expect(uiZoomNeedsCorrection(1, 1.1)).toBe(true);
+		expect(uiZoomNeedsCorrection(0.9, 1.1)).toBe(true);
+	});
+
+	it("取不到有效实测值时不动，避免乱写", () => {
+		for (const bad of [undefined, null, Number.NaN, 0, -1, "1.1"]) {
+			expect(uiZoomNeedsCorrection(bad, 1.1)).toBe(false);
+		}
+	});
+});
+
+describe("formatUiZoomPercent", () => {
+	it("按档位输出百分比，浮点误差不外露", () => {
+		expect(formatUiZoomPercent(1.1)).toBe("110%");
+		expect(formatUiZoomPercent(0.75)).toBe("75%");
+		expect(formatUiZoomPercent(1.5000001)).toBe("150%");
 	});
 });

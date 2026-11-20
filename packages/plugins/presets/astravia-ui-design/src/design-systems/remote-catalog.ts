@@ -145,6 +145,8 @@ function parseEntry(raw: unknown, repoRootUrl: string): DesignSystem | null {
 
 	const origin = isRecord(raw.origin) ? raw.origin : null;
 	const upstream = origin ? shortText(origin.upstream) : null;
+	// 清单里署名有两处写法：条目顶层 `author`（上游生成器带出的）和 `origin.author`（早期条目）。
+	const author = shortText(raw.author) ?? (origin ? shortText(origin.author) : null);
 
 	return {
 		id,
@@ -157,6 +159,7 @@ function parseEntry(raw: unknown, repoRootUrl: string): DesignSystem | null {
 		designMd,
 		tagline: localizedText(raw.tagline),
 		source: upstream ?? undefined,
+		author: author ?? undefined,
 		license: shortText(raw.license) ?? undefined,
 	};
 }

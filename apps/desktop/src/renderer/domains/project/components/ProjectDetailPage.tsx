@@ -68,6 +68,7 @@ function ProjectDetailPageContent(): JSX.Element {
 			saveStatus={model.saveStatus}
 			sessionCountLabel={model.sessionCountLabel}
 			recentSessions={model.recentSessions}
+			automations={model.automations}
 			runningSessionCount={model.runningSessionCount}
 			runningTaskCount={model.runningTaskCount}
 			activeDocument={model.activeDocument}
@@ -76,6 +77,8 @@ function ProjectDetailPageContent(): JSX.Element {
 			theme={model.theme}
 			onDocumentChange={model.onDocumentChange}
 			onOpenRecentSession={model.onOpenRecentSession}
+			onOpenAutomation={model.onOpenAutomation}
+			onOpenAllAutomations={model.onOpenAllAutomations}
 			taskCountLabel={model.taskCountLabel}
 			textareaRef={model.textareaRef}
 		/>

@@ -7,6 +7,7 @@ import {
 	type AddPanelTab,
 	buildAddPanelCatalog,
 	buildFavoritesSections,
+	filterByProvenance,
 	flattenAddPanelSections,
 	searchAddPanelSections,
 	sectionOf,
@@ -126,7 +127,8 @@ export function useCommandPanelModel({
 		if (searching) return searchAddPanelSections(catalog, query);
 		if (tab === "favorites") return buildFavoritesSections(catalog, favorites.favorites);
 		if (tab === "all") return catalog;
-		if (tab === "commands") return [];
+		if (tab === "builtin" || tab === "market") return filterByProvenance(catalog, tab);
+		if (tab === "operations") return [];
 		const section = sectionOf(catalog, tab);
 		return section ? [section] : [];
 	}, [catalog, favorites.favorites, query, searching, tab]);
@@ -155,14 +157,23 @@ export function useCommandPanelModel({
 		setActiveIndex(-1);
 	}, [tab, query, normalizedFilter, searching, previewKey]);
 
+	/**
+	 * 键盘可达的条目：内置能力只做展示（对话里本就可用），方向键不该停在它们身上——
+	 * 停在上面按回车什么也不会发生，比直接跳过更像坏了。
+	 */
+	const activatableEntries = useMemo(
+		() => visibleEntries.filter((entry) => entry.insertable),
+		[visibleEntries],
+	);
+
 	/** 压缩上下文是「操作」分类里的一行，不再是固定头部：只有停在该分类时参与列表。 */
-	const showsOperations = tab === "commands" && operation !== undefined;
+	const showsOperations = tab === "operations" && operation !== undefined;
 	const operationOffset = showsOperations ? 1 : 0;
-	const total = visibleEntries.length + operationOffset;
+	const total = activatableEntries.length + operationOffset;
 	const activeEntry =
 		activeIndex < 0 || (operationOffset === 1 && activeIndex === 0)
 			? null
-			: (visibleEntries[activeIndex - operationOffset] ?? null);
+			: (activatableEntries[activeIndex - operationOffset] ?? null);
 	const activeKey =
 		activeIndex < 0
 			? null
@@ -217,7 +228,8 @@ export function useCommandPanelModel({
 				return;
 			}
 			const entry = visibleEntries.find((candidate) => candidate.key === key);
-			if (entry) activateEntry(entry);
+			// 内置行不可插入：即使有别的路径带着它的 key 进来，也不能往输入框塞东西。
+			if (entry?.insertable) activateEntry(entry);
 		},
 		[activateEntry, operation, visibleEntries],
 	);
@@ -307,7 +319,8 @@ export function useCommandPanelModel({
 			if (key === "Tab") {
 				event.preventDefault();
 				event.stopPropagation();
-				const order: AddPanelTab[] = ["favorites", ...ADD_PANEL_CATEGORY_ORDER, "commands"];
+				// 轨道顺序：收藏 → 全部 → 技能/插件/MCP/套装 → 内置/市场 → 操作。
+				const order: AddPanelTab[] = ["favorites", "all", ...ADD_PANEL_CATEGORY_ORDER, "builtin", "market", "operations"];
 				const at = order.indexOf(tab);
 				handleSelectTab(order[(at + 1) % order.length] ?? "skill");
 				return;

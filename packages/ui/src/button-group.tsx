@@ -107,7 +107,12 @@ export function ButtonGroupItem({
 				"data-[active]:bg-foreground/[0.1]",
 				"[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
 				hasLabel ? "px-3" : "w-8",
-				// 相邻两项之间的细分隔线：画在后一项左缘，不占布局宽度。
+				// 相邻两项之间的细分隔线：画在后一项的左缘，不占布局宽度。
+				// 伪元素必须对每一项都绝对定位（第一项直接隐藏）：下面的 active 规则会让任何项
+				// 生成 ::before，若它留在文档流里，第一项 active 时就成了 flex 子项，和 gap 一起把图标推偏。
+				"before:pointer-events-none before:absolute before:-left-px before:top-1/2 before:h-3.5 before:w-px before:-translate-y-1/2 before:bg-foreground/15 first:before:hidden",
+				// 选中项的底色贴着分隔线：它自己的左线与右邻项的左线一起隐藏。
+				"data-[active]:before:opacity-0 [[data-active]+&]:before:opacity-0",
 				"not-first:before:pointer-events-none not-first:before:absolute not-first:before:-left-px not-first:before:top-1/2 not-first:before:h-3.5 not-first:before:w-px not-first:before:-translate-y-1/2 not-first:before:bg-foreground/15",
 				// 选中项的底色贴着分隔线：它自己的左线与右邻项的左线一起隐藏。
 				"data-[active]:before:opacity-0 [[data-active]+&]:before:opacity-0",

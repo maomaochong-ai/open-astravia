@@ -1,5 +1,6 @@
 import { cn } from "@astravia-org/ui/utils";
 import { ButtonGroup, ButtonGroupItem } from "@astravia-org/ui/button-group";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@astravia-org/ui";
 import { ThemeSurface } from "@astravia-org/theme-ui/appearance/ThemeSurface";
 import { ContextRingView } from "@astravia-org/theme-ui/chat/ContextRingView";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -23,6 +24,9 @@ const TOP_MARGIN = 16;
  * 与模型选择器同一套浮层语言，不再「长高」压过卡片上描边。
  */
 const CARD_GAP = 8;
+
+/** 窄输入区（容器宽度，非视口）下动作条最多平铺的动作数；超出的收进「更多」下拉。 */
+const NARROW_INLINE_ACTIONS = 2;
 
 const REVEAL_HIDDEN = { opacity: 0 };
 const REVEAL_SHOWN = { opacity: 1 };
@@ -65,6 +69,9 @@ export function CommandPanelView({
 	const reduceMotion = useReducedMotion();
 	const transition = reduceMotion ? { duration: 0 } : PANEL_REVEAL_TRANSITION;
 	const searchInputRef = useRef<HTMLInputElement>(null);
+	// 恰好 3 个时平铺也放得下；多于 3 个才把第 3 个起折进「更多」。
+	const hasOverflow = actions.length > NARROW_INLINE_ACTIONS + 1;
+	const overflowActions = hasOverflow ? actions.slice(NARROW_INLINE_ACTIONS) : [];
 	/**
 	 * 揭幕完成前只渲染前若干行。
 	 *
@@ -237,7 +244,7 @@ export function CommandPanelView({
 														? labels.emptyNoMatchHint
 														: tab === "favorites"
 															? labels.favoritesEmptyHint
-															: tab === "commands"
+															: tab === "operations"
 																? labels.operationsEmptyHint
 																: labels.emptyNoSkillsHint
 												}
@@ -245,7 +252,7 @@ export function CommandPanelView({
 										) : (
 											<AddPanelList
 												sections={sections}
-												operation={tab === "commands" ? operation : undefined}
+												operation={tab === "operations" ? operation : undefined}
 												activeKey={activeKey}
 												scrollSignal={scrollSignal}
 												favorites={favorites}
@@ -261,14 +268,17 @@ export function CommandPanelView({
 									</>
 								)}
 								{actions.length > 0 && (
-									<ToolRow leftLabel={labels.hints.scrollToolsLeft} rightLabel={labels.hints.scrollToolsRight}>
+									<div className="no-scrollbar flex shrink-0 items-center overflow-x-auto px-3 pb-2 pt-1">
 										<ButtonGroup blur={false} shape="square">
-											{actions.map((action) => (
+											{actions.map((action, index) => (
 												<ButtonGroupItem
 													key={action.id}
 													active={action.active}
 													onClick={action.onToggle}
 													title={action.label}
+													className={
+														hasOverflow && index >= NARROW_INLINE_ACTIONS ? "hidden @[32rem]:inline-flex" : undefined
+													}
 													icon={
 														action.icon ? (
 															<span className="flex size-4 items-center justify-center">{action.icon}</span>
@@ -277,8 +287,34 @@ export function CommandPanelView({
 													label={action.label}
 												/>
 											))}
+											{hasOverflow ? (
+												<DropdownMenu>
+													<DropdownMenuTrigger asChild>
+														<ButtonGroupItem
+															className="@[32rem]:hidden"
+															active={overflowActions.some((action) => action.active)}
+															title={labels.moreActions}
+															aria-label={labels.moreActions}
+															icon={<span className="icon-[solar--menu-dots-bold] size-4" />}
+														/>
+													</DropdownMenuTrigger>
+													<DropdownMenuContent align="end" side="top" data-command-panel-keep-open="true">
+														{overflowActions.map((action) => (
+															<DropdownMenuItem key={action.id} onSelect={action.onToggle}>
+																{action.icon ? (
+																	<span className="flex size-4 shrink-0 items-center justify-center">{action.icon}</span>
+																) : null}
+																<span className="min-w-0 flex-1 truncate">{action.label}</span>
+																{action.active ? (
+																	<span className="icon-[solar--check-circle-bold] size-4 shrink-0 text-primary" />
+																) : null}
+															</DropdownMenuItem>
+														))}
+													</DropdownMenuContent>
+												</DropdownMenu>
+											) : null}
 										</ButtonGroup>
-									</ToolRow>
+									</div>
 								)}
 							</div>
 						</div>
@@ -286,121 +322,6 @@ export function CommandPanelView({
 				</motion.div>
 			)}
 		</AnimatePresence>
-	);
-}
-
-/**
- * 工具行。
- *
- * 一排插件/内置动作经常比面板宽。触控板可以两指横扫，但**台式机与不带触控板的笔记本
- * 只能靠拖滚动条**——而这里为了观感把滚动条藏了。因此行尾常驻一对左右切换按钮，
- * 点一下走一个按钮的宽度（逐格切换才看得见走到哪）。到顶/到底时按钮降到半透明表示
- * 那个方向没有了，位置不变，不会让整排胶囊跳动。
- */
-function ToolRow({
-	children,
-	leftLabel,
-	rightLabel,
-}: {
-	readonly children: React.ReactNode;
-	readonly leftLabel: string;
-	readonly rightLabel: string;
-}): JSX.Element {
-	const scrollerRef = useRef<HTMLDivElement>(null);
-	const [edges, setEdges] = useState({ left: false, right: false });
-
-	const sync = (): void => {
-		const el = scrollerRef.current;
-		if (!el) return;
-		const left = el.scrollLeft > 1;
-		const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
-		setEdges((previous) => (previous.left === left && previous.right === right ? previous : { left, right }));
-	};
-
-	useEffect(() => {
-		const el = scrollerRef.current;
-		if (!el) return;
-		sync();
-		el.addEventListener("scroll", sync, { passive: true });
-		const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(sync);
-		observer?.observe(el);
-		return () => {
-			el.removeEventListener("scroll", sync);
-			observer?.disconnect();
-		};
-	}, []);
-
-	/** 逐格切换：一次走一个按钮的宽度（按钮 28 + 间距 6），位置与顺序都看得见。 */
-	const scrollBy = (direction: -1 | 1): void => {
-		const el = scrollerRef.current;
-		if (!el) return;
-		el.scrollBy({ left: direction * 34, behavior: "smooth" });
-	};
-
-	return (
-		/*
-		 * 左箭头在行首、右箭头在行尾：一左一右夹住可滚区，方向与位置一致（左箭头向左、
-		 * 右箭头向右）。左内边距 6px 让**左箭头的左缘**与列表行内图标的左缘重合
-		 * （实测同为 477）。箭头用单箭头，与左栏上下切换同一套 `alt-arrow-*`。
-		 */
-		/*
-		 * 分隔线在**下沿**：工具行是面板的最后一行，它下面紧接输入区。线在上面会把
-		 * 列表最后一项和工具行切开（看着像列表被截断），线在下面才表达「面板到此为止」。
-		 */
-		<div className="flex shrink-0 items-center gap-1 border-b border-border/30 pl-3 pr-1.5 pb-1.5 pt-1">
-			<ScrollButton direction="left" label={leftLabel} disabled={!edges.left} onClick={() => scrollBy(-1)} />
-			<div
-				ref={scrollerRef}
-				className="no-scrollbar flex min-w-0 flex-1 items-center overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent)]"
-			>
-				{children}
-			</div>
-			<ScrollButton direction="right" label={rightLabel} disabled={!edges.right} onClick={() => scrollBy(1)} />
-		</div>
-	);
-}
-
-/**
- * 工具行的左右切换按钮。
- *
- * **常显**：只在溢出时才出现等于让无触控板的用户不知道这里还能翻。到底/到顶时降到
- * 半透明表示「这个方向没有了」，尺寸与位置不变。图标用双箭头，与左栏的上下切换同族。
- */
-function ScrollButton({
-	direction,
-	label,
-	disabled,
-	onClick,
-}: {
-	readonly direction: "left" | "right";
-	readonly label: string;
-	readonly disabled: boolean;
-	readonly onClick: () => void;
-}): JSX.Element {
-	return (
-		<button
-			type="button"
-			aria-label={label}
-			title={label}
-			disabled={disabled}
-			onClick={onClick}
-			/*
-			 * 与条目行里的图标盒**同尺寸同圆角**（24×24 / 4px）：它是那一列图标的延续，
-			 * 尺寸差 8px 时左缘虽然对齐，视觉重心却偏右，看起来像没对齐。
-			 */
-			className={cn(
-				"flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors",
-				disabled ? "cursor-default opacity-40" : "hover:bg-foreground/8 hover:text-foreground",
-			)}
-		>
-			<span
-				aria-hidden="true"
-				className={cn(
-					"size-3.5",
-					direction === "left" ? "icon-[solar--alt-arrow-left-linear]" : "icon-[solar--alt-arrow-right-linear]",
-				)}
-			/>
-		</button>
 	);
 }
 

@@ -36,6 +36,14 @@ export class ResourceProjector {
 		private readonly locations: ResourcePackageLocations,
 		private readonly resourceAccess: ResourceAccessPort,
 		private readonly managedSkillsDir: string,
+		/**
+		 * 是否扫描 `~/.agents/skills` 与祖先目录里的 `.agents/skills`。
+		 *
+		 * 通用 Agent Skill 目录由设置项「适配通用 Agent Skill」控制；这里必须和
+		 * 技能加载器同口径，否则关掉开关后这些技能仍会作为「项目技能」出现在能力页
+		 * 与添加面板里，和用户自己装的技能混在一起，看起来像没生效。
+		 */
+		private readonly includeAgentSkills = true,
 	) {}
 
 	createAccumulator(): ResourceAccumulator {
@@ -281,7 +289,9 @@ export class ResourceProjector {
 			"skills",
 			Promise.all([
 				collectAutoSkillEntries(discoveryOptions, projectDirs.skills),
-				collectAncestorAgentSkillEntries(discoveryOptions, this.locations.cwd),
+				this.includeAgentSkills
+					? collectAncestorAgentSkillEntries(discoveryOptions, this.locations.cwd)
+					: Promise.resolve([]),
 			]).then(([skills, ancestors]) => [...skills, ...ancestors]),
 			projectMetadata,
 			projectSettings.skills ?? [],

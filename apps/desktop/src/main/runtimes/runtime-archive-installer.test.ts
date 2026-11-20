@@ -29,7 +29,7 @@ describe("installRuntimeArchive", () => {
 		});
 		expect(archive.status, archive.stderr || archive.stdout).toBe(0);
 
-		const targetDirectory = join(testRoot, "managed", "22.22.2");
+		const targetDirectory = join(testRoot, "managed", "22.23.5");
 		await mkdir(targetDirectory, { recursive: true });
 		await writeFile(join(targetDirectory, "stale"), "stale", "utf8");
 
@@ -42,26 +42,26 @@ describe("installRuntimeArchive", () => {
 
 		await expect(readFile(join(targetDirectory, "bin", "tool"), "utf8")).resolves.toBe("new-runtime");
 		await expect(readFile(join(targetDirectory, "stale"), "utf8")).rejects.toThrow();
-		await expect(readdir(join(testRoot, "managed"))).resolves.toEqual(["22.22.2"]);
+		await expect(readdir(join(testRoot, "managed"))).resolves.toEqual(["22.23.5"]);
 	});
 
 	it.runIf(process.platform === "win32")("extracts the Node ZIP format used by Windows releases", async () => {
 		const sourceRoot = join(testRoot, "source");
-		const sourceRuntime = join(sourceRoot, "node-v22.22.2-win-x64");
+		const sourceRuntime = join(sourceRoot, "node-v22.23.5-win-x64");
 		await mkdir(sourceRuntime, { recursive: true });
 		await writeFile(join(sourceRuntime, "node.exe"), "node-runtime", "utf8");
 
 		const archivePath = join(testRoot, "node.zip");
-		const archive = spawnSync("tar", ["-a", "-cf", archivePath, "-C", sourceRoot, "node-v22.22.2-win-x64"], {
+		const archive = spawnSync("tar", ["-a", "-cf", archivePath, "-C", sourceRoot, "node-v22.23.5-win-x64"], {
 			encoding: "utf8",
 		});
 		expect(archive.status, archive.stderr || archive.stdout).toBe(0);
 
-		const targetDirectory = join(testRoot, "managed", "22.22.2");
+		const targetDirectory = join(testRoot, "managed", "22.23.5");
 		await installRuntimeArchive({
 			archivePath,
 			archiveType: "zip",
-			innerDirectory: "node-v22.22.2-win-x64",
+			innerDirectory: "node-v22.23.5-win-x64",
 			targetDirectory,
 		});
 

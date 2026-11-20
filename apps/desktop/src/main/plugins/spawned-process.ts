@@ -44,7 +44,7 @@ export async function allocateRemotePort(projectUri: string): Promise<number> {
 	const script =
 		"const s=require('net').createServer();" +
 		"s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>{process.stdout.write(String(p))})})";
-	const result = await getSshConnection(location.hostId).exec(`node -e ${quote(script)}`, {
+	const result = await (await getSshConnection(location.hostId)).exec(`node -e ${quote(script)}`, {
 		cwd: location.remotePath,
 		onStdout: (chunk) => chunks.push(chunk),
 	});
@@ -170,13 +170,15 @@ function startRemoteProcess(options: SpawnProcessOptions, projectUri: string): S
 	// 逐个参数加引号：参数来自插件，里面的空格、引号和 `$` 都必须按字面量到达命令。
 	const command = [options.file, ...options.args].map(quote).join(" ");
 	getSshConnection(location.hostId)
-		.exec(command, {
-			cwd: location.remotePath,
-			env: options.env,
-			onStdout: emit,
-			onStderr: emit,
-			signal: controller.signal,
-		})
+		.then((connection) =>
+			connection.exec(command, {
+				cwd: location.remotePath,
+				env: options.env,
+				onStdout: emit,
+				onStderr: emit,
+				signal: controller.signal,
+			}),
+		)
 		.then(
 			(result) => settle(result.exitCode, null),
 			(error: unknown) => {

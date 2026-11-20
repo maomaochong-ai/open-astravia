@@ -18,7 +18,7 @@ export function createRemotePtyBackendFactory(): RemoteTerminalBackendFactory {
 			if (location.kind !== "ssh") {
 				throw new Error(`remote terminal requires an ssh:// cwd, got ${options.cwd}`);
 			}
-			const connection = getSshConnection(location.hostId);
+			const connection = await getSshConnection(location.hostId);
 			const session = await connection.openPty({
 				cwd: location.remotePath,
 				cols: options.cols,

@@ -32,8 +32,8 @@ const QRBindTimeout = 8 * time.Minute
 // as a QR image (terminal ASCII via qrterminal, or PNG via go-qrcode).
 // WeChat scanning the resulting image reads the URL and follows the bind.
 type QRCode struct {
-	Token      string    // opaque, used to poll status
-	ImgContent string    // URL the QR encodes
+	Token      string // opaque, used to poll status
+	ImgContent string // URL the QR encodes
 	IssuedAt   time.Time
 }
 

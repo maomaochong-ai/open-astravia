@@ -5,6 +5,7 @@ import {
 	buildAddPanelCatalog,
 	buildAddPanelRows,
 	buildFavoritesSections,
+	filterByProvenance,
 	flattenAddPanelSections,
 	searchAddPanelSections,
 	sectionOf,
@@ -18,14 +19,17 @@ function entry(
 	label: string,
 	overrides: Partial<AddPanelEntry> = {},
 ): AddPanelEntry {
+	const groupId = overrides.groupId ?? (category === "plugin" ? "installed" : "mine");
 	return {
 		category,
 		id,
 		key: `${category}:${id}`,
 		label,
-		groupId: category === "plugin" ? "installed" : "mine",
+		groupId,
 		searchable: true,
 		fallbackIcon: "icon-[solar--magic-stick-3-linear]",
+		// 与投影层同一条规则：内置能力只展示、不插入。
+		insertable: groupId !== "builtin",
 		...overrides,
 	};
 }
@@ -50,7 +54,8 @@ describe("buildAddPanelCatalog", () => {
 
 	it("条目只按分类落位，分类模块不重排、不再推断来源", () => {
 		const sections = catalog();
-		expect(sectionOf(sections, "skill")?.groups.map((group) => group.id)).toEqual(["builtin", "mine", "market"]);
+		// 分组顺序固定（内置 → 市场 → 我的），不随条目名的字母序变化。
+		expect(sectionOf(sections, "skill")?.groups.map((group) => group.id)).toEqual(["builtin", "market", "mine"]);
 		expect(sectionOf(sections, "mcp")?.groups.map((group) => group.id)).toEqual(["connected"]);
 		expect(sectionOf(sections, "bundle")).toBeDefined();
 		expect(sectionOf(sections, "bundle")?.groups).toHaveLength(0);
@@ -59,8 +64,8 @@ describe("buildAddPanelCatalog", () => {
 	it("分组标题按 groupId 解析：同一分类里的「内置」与「已安装」不会都标成已安装", () => {
 		const plugins = sectionOf(catalog(), "plugin")?.groups ?? [];
 		expect(plugins.map((group) => group.titleKey)).toEqual([
-			"slashPanel.groups.installed",
 			"slashPanel.groups.builtin",
+			"slashPanel.groups.installed",
 		]);
 	});
 
@@ -85,7 +90,7 @@ describe("splitIcon", () => {
 describe("searchAddPanelSections", () => {
 	it("跨分类命中，按分类顺序分组", () => {
 		const result = searchAddPanelSections(catalog(), "飞书");
-		expect(result.map((section) => section.category)).toEqual(["mcp", "plugin"]);
+		expect(result.map((section) => section.category)).toEqual(["plugin", "mcp"]);
 	});
 
 	it("空搜索词返回原目录", () => {
@@ -112,14 +117,48 @@ describe("buildFavoritesSections", () => {
 describe("buildAddPanelRows", () => {
 	const labels = { categoryLabel: (category: string) => category, groupLabel: (key: string) => key };
 
-	it("分类视图：来源多于一个才出分组头", () => {
+	it("分类视图：每个来源都出分组头，并带该组条目数", () => {
 		const skills = catalog().filter((section) => section.category === "skill");
 		const rows = buildAddPanelRows(skills, { searching: false, ...labels });
-		expect(rows.filter((row) => row.kind === "header")).toHaveLength(3);
+		const headers = rows.filter((row) => row.kind === "header");
+		expect(headers).toHaveLength(3);
 		expect(rows.filter((row) => row.kind === "entry")).toHaveLength(3);
+		expect(headers.every((row) => row.kind === "header" && row.count === 1)).toBe(true);
 	});
 
-	it("单个来源分组时不出分组头", () => {
+	// 回归：分组头只写名字时，用户看不出「市场」里有几条、「我的」里有几条。
+	it("分组头和分类头都带上条目数量", () => {
+		const skills = catalog().filter((section) => section.category === "skill");
+		const rows = buildAddPanelRows(skills, { searching: false, ...labels });
+		const headers = rows.filter(
+			(row): row is Extract<(typeof rows)[number], { kind: "header" }> => row.kind === "header",
+		);
+		const countOf = (titleKey: string) => headers.find((row) => row.label === titleKey)?.count;
+		// ENTRIES 里技能按来源分三组：builtin 1 / mine 1 / market 1
+		expect(countOf("slashPanel.groups.builtin")).toBe(1);
+		expect(countOf("slashPanel.groups.mine")).toBe(1);
+		expect(countOf("slashPanel.groups.market")).toBe(1);
+
+		const searchRows = buildAddPanelRows(catalog(), { searching: true, ...labels });
+		const skillHeader = searchRows.find((row) => row.kind === "header" && row.label === "skill");
+		expect(skillHeader && skillHeader.kind === "header" ? skillHeader.count : undefined).toBe(3);
+	});
+
+	it("来源视图按分类成组：标题是分类名，不再重复标同一个来源", () => {
+		const market = filterByProvenance(catalog(), "market");
+		const rows = buildAddPanelRows(market, { searching: false, ...labels });
+		const headers = rows.filter(
+			(row): row is Extract<(typeof rows)[number], { kind: "header" }> => row.kind === "header",
+		);
+		// 标题沿用分类的 i18n key（测试里的 groupLabel 直接回传 key）
+		expect(headers.map((row) => row.label)).toEqual(["slashPanel.sections.skills"]);
+		expect(headers[0]?.count).toBe(1);
+		// 内置视图同样只留下自己那一条
+		const builtin = filterByProvenance(catalog(), "builtin");
+		expect(builtin.flatMap((section) => section.groups.flatMap((group) => group.entries))).toHaveLength(2);
+	});
+
+	it("单个来源也出分组头，标题带数量", () => {
 		const sections = buildAddPanelCatalog({ entries: [entry("skill", "only", "唯一", { groupId: "builtin" })] });
 		const rows = buildAddPanelRows(
 			sections.filter((section) => section.category === "skill"),
@@ -128,8 +167,22 @@ describe("buildAddPanelRows", () => {
 				...labels,
 			},
 		);
-		expect(rows).toHaveLength(1);
-		expect(rows[0]?.kind).toBe("entry");
+		expect(rows).toHaveLength(2);
+		expect(rows[0]?.kind).toBe("header");
+		expect(rows[0]?.kind === "header" ? rows[0].count : undefined).toBe(1);
+		expect(rows[1]?.kind).toBe("entry");
+	});
+
+	// 回归：分组顺序此前按条目名的字母序首次出现，同一分类里的来源会随内容换位置。
+	it("分组顺序固定：内置 → 市场 → 我的", () => {
+		const sections = buildAddPanelCatalog({
+			entries: [
+				entry("skill", "skill:z", "Z", { groupId: "mine" }),
+				entry("skill", "skill:a", "A", { groupId: "market" }),
+				entry("skill", "skill:b", "B", { groupId: "builtin" }),
+			],
+		}).filter((section) => section.category === "skill");
+		expect(sections[0]?.groups.map((group) => group.id)).toEqual(["builtin", "market", "mine"]);
 	});
 
 	it("搜索 / 全部视图按分类分组：标题是分类名", () => {
@@ -137,6 +190,6 @@ describe("buildAddPanelRows", () => {
 		const headers = rows
 			.filter((row) => row.kind === "header")
 			.map((row) => (row.kind === "header" ? row.label : ""));
-		expect(headers).toEqual(["skill", "mcp", "plugin", "bundle"]);
+		expect(headers).toEqual(["skill", "plugin", "mcp", "bundle"]);
 	});
 });

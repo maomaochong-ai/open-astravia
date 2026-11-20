@@ -1,6 +1,6 @@
 import type { SshConnection } from "@astravia/ssh-transport";
 
-export type DesktopSshConnectionResolver = (hostId: string) => SshConnection;
+export type DesktopSshConnectionResolver = (hostId: string) => Promise<SshConnection>;
 
 let resolver: DesktopSshConnectionResolver | undefined;
 
@@ -20,7 +20,7 @@ export function setDesktopSshConnectionResolver(next: DesktopSshConnectionResolv
  * 没注册就抛，**绝不**退回本地执行：本机很可能存在同名路径，本地执行会对着完全
  * 不同的仓库给出看起来成功的答案，而用户不会察觉（执行边界）。
  */
-export function resolveDesktopSshConnection(hostId: string): SshConnection {
+export async function resolveDesktopSshConnection(hostId: string): Promise<SshConnection> {
 	if (!resolver) {
 		throw new Error(
 			`No SSH connection provider is registered; refusing to run a remote project on the local machine (host: ${hostId}).`,

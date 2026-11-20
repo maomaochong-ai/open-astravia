@@ -67,27 +67,3 @@ export function resolveMobileInstall(
 		meta: "在手机上打开本页可自动识别",
 	};
 }
-
-/**
- * 把链接与「你当前用的是哪一端」写进页面。
- * 桌面访问时两块都给出来，不替用户选——他可能只是想发链接给别人。
- */
-export function initMobileInstall(options: MobileInstallOptions = {}): void {
-	const platform = resolveMobilePlatform(navigator.userAgent);
-
-	// 桌面访问时 Android 那块改成提示语：他看的是电脑屏幕，点下去只会在电脑上落一个 APK。
-	const androidTarget = resolveMobileInstall(platform === "desktop" ? "desktop" : "android", options);
-
-	const apply = (key: "ios" | "android") => {
-		const target = key === "ios" ? resolveMobileInstall("ios", options) : androidTarget;
-		const link = document.getElementById(key === "ios" ? "mobIosHref" : "mobAndroidHref");
-		const meta = document.getElementById(key === "ios" ? "mobIosMeta" : "mobAndroidMeta");
-		if (link instanceof HTMLAnchorElement) link.href = target.href;
-		if (meta) meta.textContent = target.meta;
-		const card = document.querySelector<HTMLElement>(`[data-mob="${key}"]`);
-		card?.classList.toggle("is-detected", platform === key);
-	};
-
-	apply("ios");
-	apply("android");
-}

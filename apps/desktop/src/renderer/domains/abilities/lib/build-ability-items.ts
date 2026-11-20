@@ -490,6 +490,26 @@ function toPluginPermissions(values: string[] | undefined): PluginPermission[] {
 	return (values ?? []) as PluginPermission[];
 }
 
+/**
+ * 插件显示名兜底。manifest 的 name 绝大多数是 `%key%` NLS 占位符，trPlugin 会解析；
+ * 个别插件把 name 写成了字面量（如英文缩写），此时 trPlugin 原样返回，但插件自带的
+ * locales 里有 `plugin.name` 的完整翻译。这里兜底用翻译，避免面板里显示成缩写。
+ */
+function resolvePluginName(
+	slug: string,
+	rawName: string | undefined,
+	plugin: InstalledPlugin | null,
+	trPlugin: PluginTextResolver,
+): string {
+	const resolved = trPlugin(slug, rawName, plugin ?? undefined);
+	if (resolved && resolved === rawName && plugin && rawName && !rawName.includes("%")) {
+		const catalog = plugin.locales?.[plugin.defaultLocale ?? "zh"] ?? {};
+		const localized = catalog["plugin.name"] ?? catalog.name;
+		if (localized) return localized;
+	}
+	return resolved;
+}
+
 export function buildPluginAbilities(
 	market: MarketAbility[],
 	state: LocalAbilityState,
@@ -514,7 +534,8 @@ export function buildPluginAbilities(
 		// manifest 的 name/description 可能是 `%key%` NLS 占位符，必须过 catalog 解析。
 		// 已装插件一律用它自带的 catalog：注册表只有已启用且加载成功的插件，刚装完（默认未启用）
 		// 查不到就会把裸 key 显示成名字。
-		const title = trPlugin(slug, installedPlugin?.name ?? entry?.name, installedPlugin ?? undefined) || slug;
+		const rawName = installedPlugin?.name ?? entry?.name;
+		const title = resolvePluginName(slug, rawName, installedPlugin, trPlugin) || slug;
 		const description = trPlugin(
 			slug,
 			installedPlugin?.description ?? entry?.description,

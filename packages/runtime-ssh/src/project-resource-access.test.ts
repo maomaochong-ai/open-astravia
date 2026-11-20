@@ -9,7 +9,7 @@ import { createProjectResourceAccess } from "./project-resource-access.js";
 function createAccess() {
 	const connection = createLoopbackSshConnection();
 	const requestedHosts: string[] = [];
-	const access = createProjectResourceAccess(createNodeResourceAccess(), (hostId) => {
+	const access = createProjectResourceAccess(createNodeResourceAccess(), async (hostId) => {
 		requestedHosts.push(hostId);
 		return connection;
 	});

@@ -310,6 +310,32 @@ func TestTransport_StartDispatchesInboundAndCapturesContextToken(t *testing.T) {
 	}
 }
 
+// startTransport 后台跑一次 Start，并在测试结束时取消上下文、等它真正返回。
+//
+// 不等就跑 TempDir 清理，会和传输层仍在进行的写盘撞车（"directory not empty"），
+// 发布流水线因此偶发失败过一次。
+func startTransport(t *testing.T, tr *Transport, ctx context.Context, cancel context.CancelFunc, h *captureHandler) (stop func()) {
+	t.Helper()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		tr.Start(ctx, h) //nolint:errcheck
+	}()
+	var once sync.Once
+	stop = func() {
+		once.Do(func() {
+			cancel()
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				t.Errorf("Start did not return after cancel")
+			}
+		})
+	}
+	t.Cleanup(stop)
+	return stop
+}
+
 func TestTransport_DropsNonTextAndEmptyFromUserID(t *testing.T) {
 	tr, fake, _ := newBoundTransport(t)
 	// 1. message with no from_user_id (dropped)
@@ -340,8 +366,7 @@ func TestTransport_DropsNonTextAndEmptyFromUserID(t *testing.T) {
 
 	h := newCaptureHandler()
 	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	go tr.Start(ctx, h) //nolint:errcheck
+	startTransport(t, tr, ctx, cancel, h)
 
 	h.wait(t, 1)
 	got := h.snapshot()
@@ -405,8 +430,7 @@ func TestTransport_QuotedReplyFormatting(t *testing.T) {
 
 	h := newCaptureHandler()
 	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	go tr.Start(ctx, h) //nolint:errcheck
+	startTransport(t, tr, ctx, cancel, h)
 
 	h.wait(t, 1)
 	got := h.snapshot()[0].Text
@@ -431,8 +455,7 @@ func TestTransport_SendMessageUsesContextTokenAndIncrementsQuota(t *testing.T) {
 
 	h := newCaptureHandler()
 	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	go tr.Start(ctx, h) //nolint:errcheck
+	startTransport(t, tr, ctx, cancel, h)
 
 	h.wait(t, 1)
 
@@ -575,13 +598,12 @@ func TestTransport_CursorPersisted(t *testing.T) {
 
 	h := newCaptureHandler()
 	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	go tr.Start(ctx, h) //nolint:errcheck
+	stop := startTransport(t, tr, ctx, cancel, h)
 	h.wait(t, 1)
 
 	// Wait one more loop iter so the post-dispatch cursor save lands.
 	time.Sleep(150 * time.Millisecond)
-	cancel()
+	stop()
 
 	// Reopen and confirm the cursor was persisted.
 	store, err := newStateStore(statePath)

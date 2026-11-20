@@ -92,7 +92,7 @@ export function GitPanel(): JSX.Element {
 
 	return (
 		<div className="flex h-full flex-col">
-			<div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-3">
+			<div className="flex h-9 shrink-0 items-center justify-between px-3">
 				{state.kind === "ready" ? (
 					<div className="flex items-center rounded-md bg-muted/60 p-0.5 text-[11px] font-medium">
 						<button type="button" onClick={() => setView("changes")} className={seg(view === "changes")}>

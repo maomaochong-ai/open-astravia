@@ -35,7 +35,7 @@ const EMPTY: Omit<SshHostProbeResult, "ok" | "error"> = {
  */
 export async function probeSshHost(hostId: string, signal?: AbortSignal): Promise<SshHostProbeResult> {
 	try {
-		const connection = getSshConnection(hostId);
+		const connection = await getSshConnection(hostId);
 		const platform = await connection.probePlatform(signal);
 		const result = await connection.exec(
 			[

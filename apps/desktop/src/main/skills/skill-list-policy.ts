@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type { SkillProvenance } from "@astravia-org/capability-sdk";
 
 interface SkillManifestState {
@@ -62,4 +63,29 @@ export function resolveSkillOrigin(input: {
 		source: scannedSource,
 		provenance: scannedProvenance ?? { kind: "native", scope: scannedSource },
 	};
+}
+
+/**
+ * 组合包成员的归属：返回包含该文件的「已安装市场包」的清单条目。
+ *
+ * 像 Pocock 工程流这种一包多技能的包，安装后包内 `references/<分组>/<技能>/SKILL.md` 会被
+ * 扫描器当成独立 Skill。它们自己的名字不在清单里，按名字查会落成「用户目录」来源：分组跑到
+ * 「我的」、包被停用后成员仍然可插入。成员只是包的一部分，因此按**文件位置**归到所属包，
+ * 来源 / 启停 / 分组全部跟着包走。
+ *
+ * 只认 `source === "market"` 的包：用户自己搭的多技能目录不属于任何安装渠道。
+ */
+export function findOwningMarketPackageEntry(
+	filePath: string,
+	baseDir: string,
+	manifest: Record<string, SkillManifestState>,
+): SkillManifestState | undefined {
+	// 路径分隔符两套都可能出现（扫描结果来自实际文件系统），统一后再比较。
+	const normalize = (value: string): string => value.replace(/\\/g, "/").replace(/\/+$/, "");
+	const target = normalize(filePath);
+	for (const [name, entry] of Object.entries(manifest)) {
+		if (entry.source !== "market") continue;
+		if (target.startsWith(`${normalize(join(baseDir, name))}/`)) return entry;
+	}
+	return undefined;
 }

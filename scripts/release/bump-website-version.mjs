@@ -2,9 +2,9 @@
 
 /**
  * 官网下载入口的版本号：`apps/desktop/package.json` 的 version 是事实源，
- * `website/` 里的 5 处副本由本脚本对齐。
+ * `website/` 里的 3 处副本由本脚本对齐。
  *
- * 为什么要有脚本：`index.html` 的下载链接指向 R2 直链 `app/v<version>/<产物名>`，
+ * 为什么要有脚本：下载页里的产物链接指向 R2 直链 `app/v<version>/<产物名>`，
  * 漏改任何一行都会让官网挂出 404 的下载按钮；手工数「共 14 处」不可靠。
  */
 
@@ -17,25 +17,21 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-\d+)?$/;
 const DOWNLOAD_VERSION_PATTERN = /DOWNLOAD_VERSION = "([^"]+)"/;
 
-/** 官网里所有带版本号的文件：链接与标签、下载常量、包版本、两个测试的期望值。 */
+/** 官网里所有带版本号的文件：下载页的链接与标签、下载常量、包版本、解析测试的期望值。 */
 export const WEBSITE_VERSION_FILES = [
-	"website/index.html",
-	"website/src/download-links.ts",
+	"website/src/pages/download.tsx",
 	"website/package.json",
 	"website/test/download-target.test.ts",
-	"website/test/download-entry.test.ts",
 ];
 
-/** 除首页外的四个文件都有一个明确的版本字段，改前逐一对账，不靠全文替换碰运气。 */
+/** 除下载页外的三个文件都有一个明确的版本字段，改前逐一对账，不靠全文替换碰运气。 */
 const VERSION_FIELDS = {
-	"website/src/download-links.ts": DOWNLOAD_VERSION_PATTERN,
 	"website/package.json": /"version": "([^"]+)"/,
 	"website/test/download-target.test.ts": /const VERSION = "([^"]+)"/,
-	"website/test/download-entry.test.ts": /const VERSION = "([^"]+)"/,
 };
 
 /**
- * 首页没有单一字段：下载链接与版本标签都写成 `v<版本>`，按这个形状扫描。
+ * 下载页没有单一字段：下载链接与版本标签都写成 `v<版本>`，按这个形状扫描。
  * 不能扫裸版本号——内联 SVG 的 path 数据里全是 `2.01.37` 这类坐标。
  */
 const VERSION_LITERAL_PATTERN = /v(\d+\.\d+\.\d+(?:-\d+)?)/g;
@@ -46,11 +42,11 @@ function assertVersion(version) {
 	}
 }
 
-/** 官网当前对外宣称的版本，取自 `src/download-links.ts` 的 `DOWNLOAD_VERSION`。 */
+/** 官网当前对外宣称的版本，取自 `src/pages/download.tsx` 的 `DOWNLOAD_VERSION`。 */
 export function readWebsiteVersion(root = repositoryRoot) {
-	const source = readFileSync(join(root, "website/src/download-links.ts"), "utf8");
+	const source = readFileSync(join(root, "website/src/pages/download.tsx"), "utf8");
 	const match = source.match(DOWNLOAD_VERSION_PATTERN);
-	if (!match) throw new Error("Could not read DOWNLOAD_VERSION from website/src/download-links.ts");
+	if (!match) throw new Error("Could not read DOWNLOAD_VERSION from website/src/pages/download.tsx");
 	return match[1];
 }
 

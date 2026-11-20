@@ -64,13 +64,7 @@ export function ChatHeaderPanelAction({
 			aria-label={title}
 			active={open}
 			onClick={onClick}
-			// inline-block + origin-center：水平翻转的 transform 只在非 inline 元素上生效，
-			// 并固定围绕中心翻转，否则图标在毛玻璃按钮里会视觉性右偏。
-			icon={
-				<span className="flex size-4 items-center justify-center">
-					<span className="icon-[solar--sidebar-minimalistic-linear] inline-block origin-center -scale-x-100 text-[14px]" />
-				</span>
-			}
+			icon={<span className="icon-[solar--sidebar-minimalistic-linear] -scale-x-100 text-[14px]" />}
 		/>
 	);
 }

@@ -85,9 +85,6 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 		`${pageLayout}:${narrow}:${sidebarCollapsed}:${activityFocus}:${workspaceViewHeader?.immersive === true || pageImmersive}`,
 		titlebarFallbackCenter,
 	);
-	useTitlebarAnchor(
-		`${pageLayout}:${narrow}:${sidebarCollapsed}:${workspaceViewHeader?.immersive === true || pageImmersive}`,
-	);
 
 	const ensureSidebarVisible = useCallback(() => {
 		if (narrow) actions.openOverlay();

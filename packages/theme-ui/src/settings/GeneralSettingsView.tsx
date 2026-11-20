@@ -45,7 +45,8 @@ export interface GeneralSettingsViewProps {
 	/** 与 App 引导同构：description + 右侧 action；有更新时 detail 挂在行下。 */
 	readonly updatesDescription: string;
 	readonly updatesAction: ReactNode;
-	readonly updatesDetail: ReactNode;
+	/** 更新详情卡片（版本号 + 下载/重启 + 更新内容预览）；不传则不渲染，更新内容由对话框承载。 */
+	readonly updatesDetail?: ReactNode;
 	readonly executionMode: string;
 	readonly onExecutionModeChange: (mode: string) => void;
 	readonly sandboxUnavailableReason: string | null;

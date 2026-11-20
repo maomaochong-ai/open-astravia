@@ -21,6 +21,8 @@ const ASKPASS_ENTRY_SOURCE = `#!/usr/bin/env node
 // 由 Astravia 运行时生成，手工修改会在下次启动时被覆盖。
 //
 // OpenSSH 把提示文本作为 argv[2] 传进来，期待答案打到 stdout。确认类提示（首次主机
+// 指纹核对）同样读 stdout 的 "yes"，不是只看退出码——实测只 exit 0 不写 "yes" 会得到
+// Host key verification failed。
 // 指纹核对）不看 stdout，只看退出码：0 视为「是」，非 0 视为「否」。
 const net = require("node:net");
 
@@ -46,11 +48,15 @@ let settled = false;
 function finish(code, answer) {
 	if (settled) return;
 	settled = true;
-	if (typeof answer === "string" && answer.length > 0) process.stdout.write(answer + "\\n");
+	// 确认类提示（首次主机指纹核对）读 stdout 的 "yes"，不是只看退出码。空 value 只出现在
+	// confirm 场景（密码/私钥密码一定有值），ok 时补 "yes"，拒绝时 exit 1 已足够。
+	if (code === 0) {
+		const text = typeof answer === "string" && answer.length > 0 ? answer : "yes";
+		process.stdout.write(text + "\\n");
+	}
 	socket.destroy();
 	process.exit(code);
 }
-
 socket.on("connect", () => {
 	socket.write(JSON.stringify({ token, hostId, prompt, promptEnv, round }) + "\\n");
 });

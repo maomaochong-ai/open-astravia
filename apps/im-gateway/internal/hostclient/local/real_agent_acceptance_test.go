@@ -62,7 +62,7 @@ func TestRealAgent_IMToolLoopAndResume(t *testing.T) {
 		HandshakeTimeout: 30 * time.Second,
 		CloseTimeout:     15 * time.Second,
 		ExtraEnv: map[string]string{
-			"NO_COLOR":               "1",
+			"NO_COLOR":                  "1",
 			"ASTRAVIA_CODING_AGENT_DIR": agentDir,
 			"ASTRAVIA_PACKAGE_DIR":      packageDir,
 		},

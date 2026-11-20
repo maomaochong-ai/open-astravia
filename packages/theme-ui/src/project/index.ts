@@ -56,6 +56,7 @@ export type {
 } from "./ProjectContextMenuView";
 export { ProjectContextMenuView } from "./ProjectContextMenuView";
 export type {
+	ProjectDetailAutomation,
 	ProjectDetailPageViewLabels,
 	ProjectDetailPageViewProps,
 	ProjectDetailSaveStatus,

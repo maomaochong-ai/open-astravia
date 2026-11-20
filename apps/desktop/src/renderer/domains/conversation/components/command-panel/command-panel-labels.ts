@@ -1,5 +1,5 @@
 import type { TFunction } from "i18next";
-import { ADD_PANEL_CATEGORY_TITLE_KEYS, type AddPanelTab } from "./add-panel-catalog";
+import { ADD_PANEL_CATEGORY_TITLE_KEYS, ADD_PANEL_PROVENANCE_TITLE_KEYS, type AddPanelTab } from "./add-panel-catalog";
 import type { CommandPanelLabels } from "./types";
 
 /**
@@ -12,7 +12,8 @@ export function buildCommandPanelLabels(t: TFunction<"chat">): CommandPanelLabel
 	const categoryLabel = (target: AddPanelTab): string => {
 		if (target === "favorites") return t("slashPanel.favorites");
 		if (target === "all") return t("slashPanel.all");
-		if (target === "commands") return t("slashPanel.operations");
+		if (target === "operations") return t("slashPanel.operations");
+		if (target === "builtin" || target === "market") return t(ADD_PANEL_PROVENANCE_TITLE_KEYS[target]);
 		return t(ADD_PANEL_CATEGORY_TITLE_KEYS[target]);
 	};
 
@@ -24,6 +25,8 @@ export function buildCommandPanelLabels(t: TFunction<"chat">): CommandPanelLabel
 		favoritesEmptyHint: t("slashPanel.favoritesEmptyHint"),
 		categories: t("slashPanel.categories"),
 		all: t("slashPanel.all"),
+		builtin: t("slashPanel.groups.builtin"),
+		market: t("slashPanel.groups.market"),
 		operations: t("slashPanel.operations"),
 		openAbilityPlaza: t("slashPanel.openAbilityPlaza"),
 		categoryLabel,
@@ -38,6 +41,8 @@ export function buildCommandPanelLabels(t: TFunction<"chat">): CommandPanelLabel
 		favoriteAdd: t("slashPanel.favoriteAdd"),
 		favoriteRemove: t("slashPanel.favoriteRemove"),
 		details: t("slashPanel.details"),
+		builtinHint: t("slashPanel.builtinHint"),
+		moreActions: t("slashPanel.moreActions"),
 		preview: {
 			back: t("slashPanel.preview.back"),
 			sourceLabel: t("slashPanel.preview.sourceLabel"),

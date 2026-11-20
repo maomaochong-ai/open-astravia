@@ -68,7 +68,7 @@ const HIDDEN_FILES = new Set([".DS_Store", "Thumbs.db", "desktop.ini"]);
 export async function readRemoteDirectory(uri: string): Promise<FsEntry[]> {
 	assertRemotePathWithinProject(uri);
 	const { hostId, remotePath } = split(uri);
-	const entries = await getSshConnection(hostId).listDirectory(remotePath);
+	const entries = await (await getSshConnection(hostId)).listDirectory(remotePath);
 	const results: FsEntry[] = [];
 	for (const entry of entries) {
 		if (HIDDEN_FILES.has(entry.name) || entry.name.startsWith(".")) continue;
@@ -92,7 +92,7 @@ export async function readRemoteDirectory(uri: string): Promise<FsEntry[]> {
 export async function statRemotePath(uri: string): Promise<FsStatResult | null> {
 	assertRemotePathWithinProject(uri);
 	const { hostId, remotePath } = split(uri);
-	const entry = await getSshConnection(hostId).stat(remotePath);
+	const entry = await (await getSshConnection(hostId)).stat(remotePath);
 	if (!entry) return null;
 	return {
 		size: entry.sizeBytes,
@@ -106,7 +106,7 @@ export async function statRemotePath(uri: string): Promise<FsStatResult | null> 
 export async function readRemoteEditableTextFile(uri: string): Promise<FsEditableTextSnapshot> {
 	assertRemotePathWithinProject(uri);
 	const { hostId, remotePath } = split(uri);
-	const connection = getSshConnection(hostId);
+	const connection = await getSshConnection(hostId);
 	const entry = await connection.stat(remotePath);
 	if (!entry) throw new Error(FS_EDITABLE_TEXT_ERROR.NOT_FILE);
 	if (entry.kind === "directory") throw new Error(FS_EDITABLE_TEXT_ERROR.NOT_FILE);
@@ -129,7 +129,7 @@ export async function saveRemoteEditableTextFile(
 ): Promise<FsSaveEditableTextResult> {
 	assertRemotePathWithinProject(uri);
 	const { hostId, remotePath } = split(uri);
-	const connection = getSshConnection(hostId);
+	const connection = await getSshConnection(hostId);
 	// 覆盖前重新读一遍算修订号：这是「别人动过没有」的唯一依据，不能用打开时的快照。
 	const current = Buffer.from(await connection.readFile(remotePath));
 	const currentRevision = getFileRevision(current);
@@ -153,25 +153,26 @@ export async function saveRemoteEditableTextFile(
 export function openRemotePreviewSource(uri: string): PreviewFileSource {
 	assertRemotePathWithinProject(uri);
 	const { hostId, remotePath } = split(uri);
-	const connection = getSshConnection(hostId);
 	return {
 		path: remotePath,
 		stat: async () => {
+			const connection = await getSshConnection(hostId);
 			// 跟随符号链接：预览的是链接指向的内容。
 			const entry = await connection.stat(remotePath, undefined, { followSymlinks: true });
 			return entry
 				? { size: entry.sizeBytes, isFile: entry.kind === "file", modifiedAt: entry.modifiedAtSeconds * 1000 }
 				: null;
 		},
-		read: async () => Buffer.from(await connection.readFile(remotePath)),
-		readHead: async (byteCount) => Buffer.from(await connection.readFileHead(remotePath, byteCount)),
+		read: async () => Buffer.from(await (await getSshConnection(hostId)).readFile(remotePath)),
+		readHead: async (byteCount) =>
+			Buffer.from(await (await getSshConnection(hostId)).readFileHead(remotePath, byteCount)),
 	};
 }
 
 export async function writeRemoteFile(uri: string, content: Buffer): Promise<void> {
 	assertRemotePathWithinProject(uri);
 	const { hostId, remotePath } = split(uri);
-	const connection = getSshConnection(hostId);
+	const connection = await getSshConnection(hostId);
 	await connection.makeDirectory(posix.dirname(remotePath));
 	await connection.writeFile(remotePath, content);
 }
@@ -182,7 +183,7 @@ export async function renameRemotePath(oldUri: string, newUri: string): Promise<
 	const from = split(oldUri);
 	const to = split(newUri);
 	assertSameHost(from.hostId, to.hostId);
-	await getSshConnection(from.hostId).rename(from.remotePath, to.remotePath);
+	await (await getSshConnection(from.hostId)).rename(from.remotePath, to.remotePath);
 }
 
 export async function deleteRemotePath(uri: string): Promise<void> {
@@ -190,7 +191,7 @@ export async function deleteRemotePath(uri: string): Promise<void> {
 	// 项目根本身不能从文件树里删：那等于远程执行 rm -rf <项目>。
 	if (allowedRemoteRoots.has(normalizeRemoteUri(uri))) throw new Error("Refusing to delete the project root");
 	const { hostId, remotePath } = split(uri);
-	await getSshConnection(hostId).remove(remotePath);
+	await (await getSshConnection(hostId)).remove(remotePath);
 }
 
 export async function moveRemotePath(sourceUri: string, destinationDirectoryUri: string): Promise<void> {
@@ -202,14 +203,14 @@ export async function moveRemotePath(sourceUri: string, destinationDirectoryUri:
 	const target = posix.join(destination.remotePath, posix.basename(source.remotePath));
 	// 本机实现用 rename，目标已存在时会覆盖文件、对非空目录报错；远端的 mv 会把源**移进**
 	// 同名目录里。两边行为对不齐，干脆在目标已存在时拒绝。
-	if (await getSshConnection(source.hostId).stat(target)) throw new Error(FILE_EXPLORER_ENTRY_EXISTS_ERROR);
-	await getSshConnection(source.hostId).rename(source.remotePath, target);
+	if (await (await getSshConnection(source.hostId)).stat(target)) throw new Error(FILE_EXPLORER_ENTRY_EXISTS_ERROR);
+	await (await getSshConnection(source.hostId)).rename(source.remotePath, target);
 }
 
 export async function createRemoteDirectory(uri: string): Promise<void> {
 	assertRemotePathWithinProject(uri);
 	const { hostId, remotePath } = split(uri);
-	await getSshConnection(hostId).makeDirectory(remotePath);
+	await (await getSshConnection(hostId)).makeDirectory(remotePath);
 }
 
 export async function createRemoteEntry(
@@ -226,7 +227,7 @@ export async function createRemoteEntry(
 	if (posix.dirname(targetPath) !== normalizeRemotePath(remotePath)) {
 		throw new Error("FILE_EXPLORER_INVALID_ENTRY_NAME:path-separator");
 	}
-	const connection = getSshConnection(hostId);
+	const connection = await getSshConnection(hostId);
 	if ((await connection.createEntry(targetPath, kind)) === "exists") throw new Error(FILE_EXPLORER_ENTRY_EXISTS_ERROR);
 	const entry = await connection.stat(targetPath);
 	return {
@@ -250,7 +251,7 @@ export async function listRemoteFilesRecursive(
 ): Promise<FsFileRef[]> {
 	assertRemotePathWithinProject(rootUri);
 	const { hostId, remotePath } = split(rootUri);
-	const entries = await getSshConnection(hostId).listRecursiveEntries(remotePath, options);
+	const entries = await (await getSshConnection(hostId)).listRecursiveEntries(remotePath, options);
 	return entries.map((entry) => ({
 		name: posix.basename(entry.relPath),
 		path: formatSshProjectUri(hostId, posix.join(remotePath, entry.relPath)),
@@ -278,7 +279,7 @@ export interface RemoteMediaSource {
 export async function openRemoteMediaSource(uri: string): Promise<RemoteMediaSource | null> {
 	assertRemotePathWithinProject(uri);
 	const { hostId, remotePath } = split(uri);
-	const connection = getSshConnection(hostId);
+	const connection = await getSshConnection(hostId);
 	const entry = await connection.stat(remotePath, undefined, { followSymlinks: true });
 	if (!entry || entry.kind !== "file") return null;
 	return {

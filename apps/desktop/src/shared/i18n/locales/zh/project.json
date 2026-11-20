@@ -176,6 +176,12 @@
 		"emptyFileTitle": "尚未编写 {{file}}",
 		"emptyFileHint": "切到编辑模式即可创建并保存此指令文件。",
 		"startEditing": "开始编写",
+		"automations": {
+			"title": "自动化",
+			"viewAll": "查看全部",
+			"disabled": "已停用",
+			"neverRun": "尚未运行"
+		},
 		"recentSessions": {
 			"title": "最近与置顶会话",
 			"empty": "该项目下还没有会话记录",

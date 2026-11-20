@@ -34,7 +34,7 @@ describe("远端端口转发的账本", () => {
 
 	function createService(): SshPortForwardService {
 		return new SshPortForwardService({
-			connect: () => connection,
+			connect: async () => connection,
 			isLocalPortBusy: async (port) => busyPorts.has(port),
 			allocateLocalPort: async () => 52341,
 			onChanged: () => {
@@ -224,7 +224,7 @@ describe("远端端口转发的账本", () => {
 			// 探测本机端口本身是异步的：那一次等待里撤掉的条目不能再进重建。
 			let resolveProbe: ((busy: boolean) => void) | undefined;
 			const service = new SshPortForwardService({
-				connect: () => connection,
+				connect: async () => connection,
 				isLocalPortBusy: (port) =>
 					resolveProbe === undefined && port === 3000
 						? Promise.resolve(false)
