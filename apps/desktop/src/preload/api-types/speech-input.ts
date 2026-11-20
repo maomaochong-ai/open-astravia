@@ -5,7 +5,8 @@ export type SpeechInputErrorCode =
 	| "bundled-model-missing"
 	| "bundled-model-invalid"
 	| "recognizer-start-failed"
-	| "recognizer-failed";
+	| "recognizer-failed"
+	| "microphone-denied";
 
 export interface SpeechInputStatus {
 	supported: boolean;

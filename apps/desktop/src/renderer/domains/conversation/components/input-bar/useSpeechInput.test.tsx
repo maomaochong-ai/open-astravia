@@ -11,9 +11,11 @@ const mocks = vi.hoisted(() => ({
 	focusInputEditor: vi.fn(),
 	captureStart: vi.fn(),
 	captureStop: vi.fn(),
+	showToast: vi.fn(),
 }));
 
 vi.mock("@shared/lib/platform", () => ({ isSpeechInputPlatform: true }));
+vi.mock("@shared/store/toast-atoms", () => ({ showToast: mocks.showToast }));
 vi.mock("@/shared/feature-flags", () => ({
 	isSpeechInputBuildEnabled: () => mocks.speechInputBuildEnabled,
 }));
@@ -101,13 +103,18 @@ describe("useSpeechInput", () => {
 		expect(mocks.focusInputEditor).toHaveBeenCalledOnce();
 	});
 
-	it("disables voice input when the packaged model is unavailable", async () => {
+	// 回归：缺模型时按钮此前被设为禁用。禁用后点击不会触发任何回调，用户点它毫无反应，
+	// 分不清是麦克风坏了还是功能没做。现在保持可点，由 toggle 弹出缺失原因。
+	it("keeps voice input clickable when the packaged model is unavailable, and reports why", async () => {
 		vi.mocked(speechInput.getStatus).mockResolvedValue(UNAVAILABLE_STATUS);
 		const { result } = renderHook(() => useSpeechInput(true));
 
-		await waitFor(() => expect(result.current.disabled).toBe(true));
-		expect(result.current.statusText).toBe("inputBar.speech.errors.missing");
+		await waitFor(() => expect(result.current.statusText).toBe("inputBar.speech.errors.missing"));
+		expect(result.current.disabled).toBe(false);
 		act(() => result.current.onToggle());
+		expect(mocks.showToast).toHaveBeenCalledWith(
+			expect.objectContaining({ message: "inputBar.speech.errors.missing" }),
+		);
 		expect(speechInput.start).not.toHaveBeenCalled();
 	});
 });

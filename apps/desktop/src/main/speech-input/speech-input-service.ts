@@ -5,6 +5,7 @@ import { app, utilityProcess } from "electron";
 import type { SpeechInputEvent, SpeechInputStatus } from "../../preload/api-types/speech-input.js";
 import { isSpeechInputBuildEnabled } from "../../shared/feature-flags.js";
 import { getAppLogger } from "../logger.js";
+import { ensureMicrophoneAccess } from "./media-permissions.js";
 import { BUNDLED_ZIPFORMER_MODEL, resolveSpeechModelPaths } from "./model-catalog.js";
 import { SpeechModelManager } from "./model-manager.js";
 import { isSpeechHostEvent, type SpeechHostCommand, type SpeechHostEvent } from "./protocol.js";
@@ -131,6 +132,13 @@ export class SpeechInputService {
 		if (this.activeSessionId) return { sessionId: this.activeSessionId };
 		const status = await this.modelManager.getStatus();
 		if (status.phase !== "ready") throw new Error("Speech recognition model is not ready");
+
+		// 系统层麦克风授权要先拿到：macOS 上缺这一步 getUserMedia 会直接失败，
+		// 而那时识别宿主已经在加载模型，用户只会看到「转了一圈什么都没出来」。
+		if (!(await ensureMicrophoneAccess())) {
+			this.publishTransient("error", "microphone-denied");
+			throw new Error("Microphone access denied");
+		}
 
 		this.publishTransient("loading");
 		try {

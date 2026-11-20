@@ -1,5 +1,6 @@
 import type { SpeechInputErrorCode, SpeechInputStatus } from "@preload/api";
 import { isSpeechInputPlatform } from "@shared/lib/platform";
+import { showToast } from "@shared/store/toast-atoms";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { isSpeechInputBuildEnabled } from "@/shared/feature-flags";
@@ -49,6 +50,24 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 		};
 	}, [buildEnabled]);
 
+	const errorText = useCallback(
+		(code?: SpeechInputErrorCode): string => {
+			switch (code) {
+				case "bundled-model-invalid":
+					return t("inputBar.speech.errors.integrity");
+				case "bundled-model-missing":
+					return t("inputBar.speech.errors.missing");
+				case "unsupported-platform":
+					return t("inputBar.speech.errors.unsupported");
+				case "microphone-denied":
+					return t("inputBar.speech.errors.microphone");
+				default:
+					return t("inputBar.speech.errors.recognizer");
+			}
+		},
+		[t],
+	);
+
 	const stop = useCallback(async (): Promise<void> => {
 		const sessionId = sessionIdRef.current;
 		sessionIdRef.current = null;
@@ -73,7 +92,18 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 				readyStatus = await window.astravia.speechInput.getStatus();
 				setStatus(readyStatus);
 			}
-			if (readyStatus.phase !== "ready") return;
+			if (readyStatus.phase !== "ready") {
+				/*
+				 * 以前这里直接 return：按钮看着能点，点下去毫无反应，用户只能猜是麦克风坏了
+				 * 还是功能没做。现在把原因说出来（缺模型 / 模型损坏 / 平台不支持 / 麦克风被拒）。
+				 */
+				showToast({
+					variant: "error",
+					title: t("inputBar.speech.errors.title"),
+					message: errorText(readyStatus.errorCode),
+				});
+				return;
+			}
 
 			const { sessionId } = await window.astravia.speechInput.start();
 			sessionIdRef.current = sessionId;
@@ -97,26 +127,15 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 				phase: "error",
 				errorCode: "recognizer-start-failed",
 			}));
+			showToast({
+				variant: "error",
+				title: t("inputBar.speech.errors.title"),
+				message: t("inputBar.speech.errors.recognizer"),
+			});
 		} finally {
 			busyRef.current = false;
 		}
-	}, [buildEnabled, enabled, status, stop]);
-
-	const errorText = useCallback(
-		(code?: SpeechInputErrorCode): string => {
-			switch (code) {
-				case "bundled-model-invalid":
-					return t("inputBar.speech.errors.integrity");
-				case "bundled-model-missing":
-					return t("inputBar.speech.errors.missing");
-				case "unsupported-platform":
-					return t("inputBar.speech.errors.unsupported");
-				default:
-					return t("inputBar.speech.errors.recognizer");
-			}
-		},
-		[t],
-	);
+	}, [buildEnabled, enabled, errorText, status, stop, t]);
 
 	return useMemo(() => {
 		const titleByPhase: Record<SpeechInputStatus["phase"], string> = {
@@ -137,8 +156,11 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 		return {
 			visible: buildEnabled && isSpeechInputPlatform,
 			active: status.phase === "listening",
-			disabled:
-				!enabled || status.phase === "unavailable" || status.phase === "loading" || status.phase === "stopping",
+			/*
+			 * `unavailable` 不设为禁用：禁用后点击不会触发任何反馈，用户无法知道是缺模型。
+			 * 这些状态交给 toggle 弹提示说明原因。
+			 */
+			disabled: !enabled || status.phase === "loading" || status.phase === "stopping",
 			title: titleByPhase[status.phase],
 			statusText,
 			onToggle: () => void toggle(),
