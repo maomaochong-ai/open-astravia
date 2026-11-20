@@ -14,6 +14,7 @@ import type {
 import {
 	type CompactionSettings,
 	estimateContextTokens,
+	estimateTokens,
 	getCompactThreshold,
 	planCompactionKeepTokens,
 	prepareCompaction,
@@ -88,12 +89,22 @@ export class CodingAgentAutomaticCompactionStrategy {
 		const settings =
 			this.options.memoryRollover?.adjustCompactionSettings(baseSettings, contextWindow) ?? baseSettings;
 		// 保留段按窗口缩放，并把上一次压缩的实测结果反馈进来：压完仍贴着阈值时收紧。
-		const keepTokens = planCompactionKeepTokens({
+		const plannedKeepTokens = planCompactionKeepTokens({
 			contextWindow,
 			settings,
 			previousKeepTokens: this.lastKeepPlan?.keepTokens,
 			previousTokensAfterCompaction: this.lastKeepPlan?.tokensAfter,
 		});
+		/*
+		 * 计划值来自比例与下限推导，可能大于真实消息内容——此时切点只能退回整段历史，
+		 * 压缩一次也压不出去（阈值越过了却什么都没发生）。用户自己配置的保留量一旦
+		 * 超过全部内容，那是「整段都留着」的明确意图，保持原样。
+		 */
+		const contentTokens = input.messages.reduce((total, message) => total + estimateTokens(message), 0);
+		const keepTokens =
+			settings.keepRecentTokens < contentTokens
+				? Math.min(plannedKeepTokens, Math.max(1, Math.floor(contentTokens / 2)))
+				: plannedKeepTokens;
 		const compactionSettings: CompactionSettings =
 			keepTokens === settings.keepRecentTokens ? settings : { ...settings, keepRecentTokens: keepTokens };
 		if (reason === "assistant_error" && input.triggeringAssistantMessage) {

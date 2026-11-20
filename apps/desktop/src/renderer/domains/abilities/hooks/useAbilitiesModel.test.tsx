@@ -329,8 +329,9 @@ it("renders abilities in a flat grid by default when ENABLE_ABILITY_CATEGORIES i
 	const view = render(<AbilitiesPageView model={result.current} />);
 	expect(screen.queryByRole("heading", { name: "CategoryA" })).toBeNull();
 	expect(screen.queryByRole("heading", { name: "CategoryB" })).toBeNull();
-	expect(screen.getByText("Skill A")).toBeTruthy();
-	expect(screen.getByText("Skill B")).toBeTruthy();
+	// 卡片标题是 h3；banner 也会展示同一件能力（用 p），所以按标题层级断言，避免与 banner 撞名。
+	expect(screen.getByRole("heading", { level: 3, name: "Skill A" })).toBeTruthy();
+	expect(screen.getByRole("heading", { level: 3, name: "Skill B" })).toBeTruthy();
 	view.unmount();
 });
 

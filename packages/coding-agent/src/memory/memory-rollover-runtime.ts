@@ -108,8 +108,14 @@ export class CodingAgentMemoryRolloverOrchestrator implements CodingAgentMemoryR
 	}
 
 	async beforeCompaction(input: CodingAgentMemoryRolloverPreparation): Promise<void> {
+		/*
+		 * 切点落在 Turn 中间时（split turn），本轮前缀仍会留在新会话里继续用，不该写进
+		 * 长期记忆；但本轮刚开头就触发压缩时历史段是空的——那时前缀就是唯一被丢弃的
+		 * 内容，不刷写等于什么都没记下来。所以只在历史段为空时回退到前缀。
+		 */
+		const discarded = input.preparation.messagesToSummarize;
 		await this.flushMessages({
-			messages: input.preparation.messagesToSummarize,
+			messages: discarded.length > 0 ? discarded : input.preparation.turnPrefixMessages,
 			model: input.model,
 			apiKey: input.apiKey,
 			signal: input.signal,

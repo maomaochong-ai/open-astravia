@@ -280,13 +280,13 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 							: { customInstructions: queuedOperation.customInstructions, reportObservation },
 						signal,
 					);
-					await reportObservation({
-						type: "compaction.end",
-						success: true,
-						reason: "manual",
-						tokensBefore: compactionResult.tokensBefore,
-						source: "runtime-core",
-					});
+					/*
+					 * 成功不必在这里播报：committer 落的 `context.compacted` 会被映射成
+					 * `compaction.end`，那是「压缩真的写进了会话」的唯一时点。这里再发一次
+					 * 就是两条同名事件，UI 与宿主都会收到重复的结束信号。
+					 * 失败仍由这里播报——提交没发生，就没有可映射的持久事件。
+					 */
+					void compactionResult;
 				} catch (error) {
 					await reportObservation({
 						type: "compaction.end",
