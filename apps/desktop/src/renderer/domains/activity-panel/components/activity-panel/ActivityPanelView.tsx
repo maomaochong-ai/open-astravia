@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useDockedContentReady } from "../../hooks/useDockedContentReady";
 import { useDockedOutlet } from "../../hooks/useDockedOutlet";
 import { useActivityTabMaximize } from "../../hooks/useActivityTabMaximize";
+import { resolveActivityPanelTopInset } from "./top-inset";
 import { FullScreenToggleButton } from "../FullScreenToggleButton";
 import { PluginTabPicker } from "../PluginTabPicker";
 import { ActivityTabContextMenu } from "./ActivityTabContextMenu";
@@ -83,6 +84,11 @@ export function ActivityPanelView({
 	// 铺满时页头与侧边栏都已让位，面板顶栏从窗口第一像素开始，会盖住 macOS 红绿灯。
 	// 这里让出红绿灯那一截空白，并把它做成拖拽区：铺满后没有顶栏可拖了。
 	const macTrafficLightGutter = isMaximized && isMac;
+	/*
+	 * 铺满态面板贴窗口顶：macOS 必须让出红绿灯高度（系统绘制、不占布局），否则页签与
+	 * 面板上分割线正好压在圆点下方；Windows / Linux 必须给 0，多给就是一条空带。
+	 */
+	const topInset = resolveActivityPanelTopInset({ isMac, isMaximized });
 	const fullScreenToggle = renderDockedPanel ? (
 		<FullScreenToggleButton isFullScreen={isMaximized} onToggle={fullScreen.toggle} />
 	) : null;
@@ -101,15 +107,17 @@ export function ActivityPanelView({
 				<ActivityPanelPrimitive.Header
 					className={[
 						macTrafficLightGutter ? "pl-[78px]" : "",
-						// 铺满时面板顶栏贴窗口第一像素：去掉 Header 默认的 pt-3，否则 tab
-						// 顶部离屏幕顶有 12px 空隙（Windows 上尤其明显）。
+						// 铺满时去掉 Header 默认的 pt-3，再由下面的 topInset 精确给值：
+						// macOS 让红绿灯、Windows / Linux 贴 0。
 						isMaximized ? "pt-0" : "",
 					]
 						.filter(Boolean)
 						.join(" ") || undefined}
+					style={topInset > 0 ? { paddingTop: topInset } : undefined}
 				>
 					{macTrafficLightGutter ? (
-						<div aria-hidden className="drag-region absolute inset-y-0 left-0 w-[78px]" />
+						// 拖拽区高度跟顶栏走，不铺满整块面板：`inset-y-0` 会把内容顶部也盖住。
+						<div aria-hidden className="drag-region absolute top-0 left-0 w-[78px]" style={{ height: topInset || undefined }} />
 					) : null}
 					{tabBar}
 					{fullScreenToggle}
