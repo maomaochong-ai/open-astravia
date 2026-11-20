@@ -5,9 +5,11 @@ import { MessageInput } from "@astravia-org/theme-ui/chat/MessageInputView";
 import { InputBarContextMenuView } from "@astravia-org/theme-ui/chat/InputBarContextMenuView";
 import { InputBarPlaceholder } from "@astravia-org/theme-ui/chat/InputBarPlaceholder";
 import { BottomPanelPillsView } from "@astravia-org/theme-ui/bottom-panel/BottomPanelView";
+import { installCaretProbe, isCaretProbeEnabled } from "./input-caret-probe";
 import { useDelayedUnmount } from "@astravia-org/theme-ui/shared/useDelayedUnmount";
 import { AnimatePresence, motion } from "motion/react";
 import { createPortal } from "react-dom";
+import { useEffect, useRef } from "react";
 import { ActionButtonBar } from "../ActionButtonBar";
 import { AtPanel } from "../AtPanel";
 import { CommandPanel } from "../command-panel/CommandPanel";
@@ -44,9 +46,17 @@ export function InputBarView({ model, className, classNames, children }: InputBa
 	);
 	// 附件胶囊区折叠动画播完（200ms）后再卸载内容，动画本身是纯 CSS grid 过渡。
 	const renderCapsules = useDelayedUnmount(model.hasCapsules, 220);
+	const rootRef = useRef<HTMLDivElement>(null);
+	// 取证探针默认不安装：只有显式打开开关时才挂监听，生产环境成本为零。
+	useEffect(() => {
+		const root = rootRef.current;
+		if (!root || !isCaretProbeEnabled()) return;
+		return installCaretProbe({ root });
+	}, []);
 
 	return (
 		<div
+			ref={rootRef}
 			className={["relative px-2 pb-3 pt-1 sm:px-4 sm:pb-4", className, classNames?.root]
 				.filter(Boolean)
 				.join(" ")}
