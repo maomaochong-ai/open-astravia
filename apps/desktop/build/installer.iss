@@ -67,8 +67,10 @@ Source: "{#SourceDir}\versions\{#AppVersion}\*"; DestDir: "{code:GetUpdateVersio
 Source: "{#SourceDir}\versions\{#AppVersion}\resources\app.asar"; DestDir: "{code:GetUpdateVersionDirectory}\resources"; Flags: ignoreversion nocompression; Check: IsBackgroundUpdate
 
 [Icons]
-Name: "{group}\Astravia"; Filename: "{app}\Astravia.exe"; Check: IsNotBackgroundUpdate
-Name: "{autodesktop}\Astravia"; Filename: "{app}\Astravia.exe"; Tasks: desktopicon; Check: IsNotBackgroundUpdate
+; AppUserModelID 必须与应用内 app.setAppUserModelId 一致：不写时固定到任务栏的快捷方式
+; 与运行中的窗口分属两个应用，任务栏只能显示 Electron 的内建图标。
+Name: "{group}\Astravia"; Filename: "{app}\Astravia.exe"; AppUserModelID: "com.astravia.desktop"; Check: IsNotBackgroundUpdate
+Name: "{autodesktop}\Astravia"; Filename: "{app}\Astravia.exe"; AppUserModelID: "com.astravia.desktop"; Tasks: desktopicon; Check: IsNotBackgroundUpdate
 
 [Registry]
 Root: HKCU; Subkey: "Software\Classes\astravia"; ValueType: string; ValueName: ""; ValueData: "URL:Astravia Protocol"; Flags: uninsdeletekey; Check: IsNotBackgroundUpdate
