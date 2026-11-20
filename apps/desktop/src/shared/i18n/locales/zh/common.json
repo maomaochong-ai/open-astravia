@@ -40,7 +40,8 @@
 		"currentTitle": "Astravia {{version}} 版本介绍",
 		"currentSubtitle": "这一版带来了什么",
 		"currentEmpty": "暂无这个版本的介绍。",
-		"updateNow": "立即更新"
+		"updateNow": "立即更新",
+		"viewMore": "查看更多"
 	},
 	"filePreview": {
 		"showInFolder": "在文件夹中显示",

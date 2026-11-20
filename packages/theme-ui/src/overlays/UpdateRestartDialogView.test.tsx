@@ -43,6 +43,38 @@ describe("UpdateRestartDialogView", () => {
 		expect(html).toMatch(/<li[^>]*>/);
 	});
 
+	// 回归：对话框里的说明按卡片高度裁切，长版本到此为止；没有这条入口，
+	// 用户只能读到前面几条，与设置页卡片的行为也对不上。
+	it("给出 onViewMore 时渲染「查看更多」入口", () => {
+		const withMore = renderToStaticMarkup(
+			<UpdateRestartDialogView
+				bannerSrc={undefined}
+				closeLabel="关闭"
+				onClose={() => {}}
+				onViewMore={() => {}}
+				overlayRef={createRef<HTMLDivElement>()}
+				releaseNote="## 新增\n\n- 一条改动"
+				title="发现新版本"
+				viewMoreLabel="查看更多"
+				visible
+			/>,
+		);
+		expect(withMore).toContain("查看更多");
+
+		const withoutMore = renderToStaticMarkup(
+			<UpdateRestartDialogView
+				bannerSrc={undefined}
+				closeLabel="关闭"
+				onClose={() => {}}
+				overlayRef={createRef<HTMLDivElement>()}
+				releaseNote="## 新增\n\n- 一条改动"
+				title="发现新版本"
+				visible
+			/>,
+		);
+		expect(withoutMore).not.toContain("查看更多");
+	});
+
 	it("没有正文时显示占位文案", () => {
 		const html = renderToStaticMarkup(
 			<UpdateRestartDialogView

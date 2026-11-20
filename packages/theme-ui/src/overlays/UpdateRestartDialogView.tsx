@@ -26,6 +26,13 @@ export interface UpdateRestartDialogViewProps {
 	readonly emptyText?: string;
 	readonly closeLabel: string;
 	readonly onClose: () => void;
+	/**
+	 * 「查看更多」：正文是完整发布说明时，这条按钮把它交给文件预览读全文。
+	 *
+	 * 对话框里的说明按卡片高度裁切，长版本（几十条改动）到此为止；没有这条入口，
+	 * 用户就只能看到前面几条，和设置页卡片的行为也对不上。
+	 */
+	readonly onViewMore?: () => void;
 	readonly overlayRef: RefObject<HTMLDivElement | null>;
 	/** 底部唯一的悬浮按钮；省略时不显示底栏，只能用右上角的关闭按钮离开。 */
 	readonly primary?: UpdateRestartDialogAction;
@@ -34,6 +41,8 @@ export interface UpdateRestartDialogViewProps {
 	readonly subtitle?: string;
 	readonly title: string;
 	readonly visible: boolean;
+	/** 「查看更多」的文案；缺省时按「查看更多」渲染。 */
+	readonly viewMoreLabel?: string;
 	/** 正文正在加载（版本介绍从磁盘读取时）。 */
 	readonly loading?: boolean;
 }
@@ -48,12 +57,14 @@ export function UpdateRestartDialogView({
 	emptyText,
 	loading = false,
 	onClose,
+	onViewMore,
 	overlayRef,
 	primary,
 	releaseNote,
 	status,
 	subtitle,
 	title,
+	viewMoreLabel,
 	visible,
 }: UpdateRestartDialogViewProps): JSX.Element {
 	// 滚动后才显示顶部渐隐，初始位置横幅完整露出。
@@ -126,6 +137,18 @@ export function UpdateRestartDialogView({
 												<div className="markdown-body text-[13px] leading-[1.6] break-words text-muted-foreground">
 													<ReleaseNoteMarkdown>{releaseNote}</ReleaseNoteMarkdown>
 												</div>
+												{onViewMore && (
+													<div className="mt-2 flex justify-start">
+														<button
+															type="button"
+															onClick={onViewMore}
+															className="inline-flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-[12px] font-medium text-primary transition-colors hover:bg-muted/50 hover:underline"
+														>
+															<span>{viewMoreLabel ?? "View more"}</span>
+															<span className="icon-[mdi--chevron-right] h-3.5 w-3.5" />
+														</button>
+													</div>
+												)}
 											</div>
 										)}
 										{loading && (
