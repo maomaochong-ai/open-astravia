@@ -649,7 +649,8 @@
 				"integrity": "The bundled speech model is incomplete. Reinstall the app",
 				"recognizer": "Speech recognition failed to start. Click to retry",
 				"microphone": "Microphone access is not granted. Allow Astravia in your system privacy settings, then try again",
-				"title": "Voice input is unavailable"
+				"title": "Voice input is unavailable",
+				"silent": "No sound is reaching the microphone. Check system microphone permission, the selected input device, and whether another app is using it"
 			}
 		},
 		"contextMenu": {

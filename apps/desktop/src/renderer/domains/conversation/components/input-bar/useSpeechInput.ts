@@ -8,6 +8,11 @@ import { MicrophonePcmCapture } from "../../services/microphone-pcm-capture";
 import { clearSpeechText, focusInputEditor, replaceSpeechText } from "./editor/inputEditorHandle";
 import type { SpeechInputModel } from "./types";
 
+/** 约 4 秒（每块 100ms）仍收不到任何能量，就判定麦克风没送进声音。 */
+const SILENCE_CHUNKS_BEFORE_WARNING = 40;
+/** 16k 采样下正常说话的能量远高于此；只有底噪/静音才会更低。 */
+const SILENCE_RMS_THRESHOLD = 0.0008;
+
 const INITIAL_STATUS: SpeechInputStatus = {
 	supported: false,
 	phase: "unsupported",
@@ -21,6 +26,14 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 	const captureRef = useRef<MicrophonePcmCapture | null>(null);
 	const sessionIdRef = useRef<string | null>(null);
 	const busyRef = useRef(false);
+	/**
+	 * 静音探测：录音期间累计块数与最大能量。
+	 *
+	 * 麦克风被系统拒绝、选错输入设备或被别的程序独占时，`getUserMedia` 仍会返回一条
+	 * 静音轨道——不报错、状态照常 listening，识别器拿到的全是 0，界面表现就是「点了录音
+	 * 但一个字都不出来」。这里自己看能量，超过阈值时间仍全静音就明确报错。
+	 */
+	const silenceRef = useRef({ chunks: 0, maxRms: 0 });
 
 	useEffect(() => {
 		if (!buildEnabled || !isSpeechInputPlatform) return;
@@ -61,6 +74,8 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 					return t("inputBar.speech.errors.unsupported");
 				case "microphone-denied":
 					return t("inputBar.speech.errors.microphone");
+				case "microphone-silent":
+					return t("inputBar.speech.errors.silent");
 				default:
 					return t("inputBar.speech.errors.recognizer");
 			}
@@ -109,8 +124,28 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 			sessionIdRef.current = sessionId;
 			const capture = new MicrophonePcmCapture();
 			captureRef.current = capture;
+			silenceRef.current = { chunks: 0, maxRms: 0 };
 			try {
-				await capture.start((samples) => window.astravia.speechInput.pushAudio(sessionId, samples));
+				await capture.start((samples) => {
+					const probe = silenceRef.current;
+					probe.chunks += 1;
+					if (probe.maxRms < SILENCE_RMS_THRESHOLD) {
+						let sum = 0;
+						for (const value of samples) sum += value * value;
+						probe.maxRms = Math.max(probe.maxRms, Math.sqrt(sum / samples.length));
+						// 够久仍然全静音：不是「还没开口」，是根本收不到声音。
+						if (probe.chunks >= SILENCE_CHUNKS_BEFORE_WARNING && probe.maxRms < SILENCE_RMS_THRESHOLD) {
+							void stop();
+							setStatus((current) => ({ ...current, phase: "error", errorCode: "microphone-silent" }));
+							showToast({
+								variant: "error",
+								title: t("inputBar.speech.errors.title"),
+								message: t("inputBar.speech.errors.silent"),
+							});
+						}
+					}
+					window.astravia.speechInput.pushAudio(sessionId, samples);
+				});
 			} catch {
 				captureRef.current = null;
 				sessionIdRef.current = null;
