@@ -34,6 +34,13 @@ export function SshPromptDialog(): JSX.Element | null {
 	const respond = useCallback(
 		(ok: boolean) => {
 			if (!request) return;
+			/*
+			 * 非确认类提示必须有值。表单里只有一个输入框，浏览器会在回车时直接提交表单，
+			 * 绕开「提交」按钮的 disabled —— 空口令就这样被送给 OpenSSH，表现是
+			 * 「Permission denied, please try again.」连来两次，看起来像密码错了。
+			 * 这里把空值挡在本地，让用户继续输入。
+			 */
+			if (ok && request.kind !== "confirm" && value.length === 0) return;
 			window.astravia.ssh.respondToPrompt({
 				id: request.id,
 				ok,
@@ -66,6 +73,7 @@ export function SshPromptDialog(): JSX.Element | null {
 					<form
 						onSubmit={(event) => {
 							event.preventDefault();
+							// 空值由 respond 统一挡下，那里是唯一出口。
 							respond(true);
 						}}
 					>

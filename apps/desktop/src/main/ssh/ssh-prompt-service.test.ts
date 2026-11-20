@@ -36,6 +36,38 @@ describe("SSH 交互提示", () => {
 		expect(fixture.askUser).not.toHaveBeenCalled();
 	});
 
+	// 回归：错口令在一轮里被识破后，重开应用或再点一次测试连接就是新的一轮。若还先去试
+	// 那条已知错误的口令，每次连接都要多失败一次认证（OpenSSH 的 MaxAuthTries 会计数），
+	// 正确的口令反而可能被拒。进程内记住「已拒绝」，直到用户存下新口令。
+	it("被拒绝过的存档口令不再交回给下一次连接", async () => {
+		const fixture = createFixture({ stored: { "h1:password": "stale" } });
+
+		await fixture.service.resolve(passwordRequest);
+		await fixture.service.resolve(passwordRequest);
+		expect(fixture.stored.has("h1:password")).toBe(false);
+
+		// 新的一轮（不同 round）：直接问用户，不再先送一次错口令。
+		const nextRound = { ...passwordRequest, round: 9090 };
+		await expect(fixture.service.resolve(nextRound)).resolves.toEqual({ ok: true, value: "typed" });
+		expect(fixture.askUser).toHaveBeenCalledTimes(2);
+	});
+
+	it("用户存下新口令后，存档重新可用", async () => {
+		const fixture = createFixture({
+			stored: { "h1:password": "stale" },
+			answer: { ok: true, value: "fresh", remember: true },
+		});
+
+		await fixture.service.resolve(passwordRequest);
+		await fixture.service.resolve(passwordRequest);
+		expect(fixture.stored.get("h1:password")).toBe("fresh");
+
+		await expect(fixture.service.resolve({ ...passwordRequest, round: 9091 })).resolves.toEqual({
+			ok: true,
+			value: "fresh",
+		});
+	});
+
 	it("同一轮再次被问说明存档是错的：改问用户并删掉失效记录", async () => {
 		// OpenSSH 密码错了会连问三次。每次都把同一个错密码递回去，用户只会看到卡住然后
 		// 失败，完全看不出是存的密码过期了。

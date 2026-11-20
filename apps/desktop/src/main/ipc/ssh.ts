@@ -1,6 +1,7 @@
 import type { SshHostInput } from "@astravia/ssh-transport";
 import { ipcMain } from "electron";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
+import { getAppLogger } from "../logger.js";
 import { getSshPortForwardService } from "../ssh/port-forward-service.js";
 import { probeSshHost } from "../ssh/ssh-host-probe.js";
 import { SshHostRebindError } from "../ssh/ssh-host-service.js";
@@ -58,11 +59,21 @@ function syncHostPassword(hostId: string, authMethod: unknown, password: unknown
 	if (typeof password === "string" && password.length > 0) {
 		try {
 			vault.put(ref, password, { kind: "password", consumer: "ssh" });
-		} catch {
-			// 安全存储不可用时存不下口令；主机本身已登记，连接时会改为当场询问。
+		} catch (error) {
+			/*
+			 * 安全存储不可用时存不下口令：主机本身已登记，连接时会改为当场询问，功能不失。
+			 * 但这必须留下痕迹——否则用户「明明填了口令」，下次连接还要再输一遍，而界面上
+			 * 找不到任何解释。
+			 */
+			log.warn("failed to persist ssh host password; connection will prompt again", {
+				hostId,
+				reason: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 }
+
+const log = getAppLogger("ssh-ipc");
 
 export function registerSshIpc(): () => void {
 	ipcMain.handle(CHANNELS.LIST_HOSTS, async () => {

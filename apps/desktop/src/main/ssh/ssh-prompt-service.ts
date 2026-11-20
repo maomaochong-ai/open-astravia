@@ -58,6 +58,15 @@ export function sshCredentialRef(hostId: string, kind: SshPromptKind): Credentia
 export class SshPromptService {
 	/** 已经用过存档凭据的轮次，值是这条标记的过期时刻。 */
 	private readonly usedStored = new Map<string, number>();
+	/**
+	 * 被服务端拒绝过的存档凭据（`hostId:kind`）。
+	 *
+	 * 同一轮里第二次追问会把它删掉，这已经覆盖了「这一次连接」。但用户重开应用或再点一次
+	 * 测试连接就是新的一轮：若还先去试那条已知错误的口令，每次都要多失败一次，而
+	 * OpenSSH 的 `MaxAuthTries` 会计数——错口令先耗掉一次机会，正确口令反而可能被拒。
+	 * 所以在进程内记住「这条存档已被拒绝」，直到用户存下新口令为止。
+	 */
+	private readonly rejectedStored = new Set<string>();
 
 	constructor(private readonly dependencies: SshPromptServiceDependencies) {}
 
@@ -68,14 +77,16 @@ export class SshPromptService {
 		const now = (this.dependencies.now ?? Date.now)();
 		this.pruneExpired(now);
 
-		if (rememberable && !this.usedStored.has(key)) {
+		const rejectedKey = `${request.hostId}:${request.kind}`;
+		if (rememberable && !this.usedStored.has(key) && !this.rejectedStored.has(rejectedKey)) {
 			const stored = this.dependencies.readStoredSecret(ref);
 			if (stored !== undefined) {
 				this.usedStored.set(key, now + ROUND_TTL_MS);
 				return { ok: true, value: stored };
 			}
-		} else if (rememberable) {
+		} else if (rememberable && this.usedStored.has(key)) {
 			// 同一轮里又问了一次，说明刚才那条存档是错的。留着它只会让下次连接重复失败一遍。
+			this.rejectedStored.add(rejectedKey);
 			this.dependencies.removeStoredSecret(ref);
 		}
 
@@ -90,6 +101,8 @@ export class SshPromptService {
 
 		if (rememberable && answer.remember === true && answer.value !== undefined) {
 			this.dependencies.writeStoredSecret(ref, answer.value);
+			// 用户给了新口令：之前那条「已拒绝」的结论作废。
+			this.rejectedStored.delete(rejectedKey);
 			// 用户刚给的值这轮已经用掉了，别再从存档里取第二次。
 			this.usedStored.set(key, now + ROUND_TTL_MS);
 		}
