@@ -147,6 +147,29 @@ describe("CommandPanelView 两栏面板", () => {
 		expect(props.onSelectTab).toHaveBeenCalledWith("mcp");
 	});
 
+	// 回归：动作条此前按容器宽度划分（宽容器全平铺、`更多` 被容器查询隐藏），而这一行是
+	// 横向滚动的——非触控屏上第 3 个起的动作既滚不到也没有「更多」可点。
+	it("动作条固定平铺 2 个，其余进常驻的「更多」", () => {
+		const actions = [
+			{ id: "knowledge", label: "知识检索", active: false, onToggle: vi.fn() },
+			{ id: "plan", label: "计划模式", active: false, onToggle: vi.fn() },
+			{ id: "goal", label: "目标模式", active: true, onToggle: vi.fn() },
+		];
+		renderPanel({ actions });
+
+		// 前两个在动作条里，第三个只在菜单里。
+		expect(screen.getByText("知识检索")).toBeTruthy();
+		expect(screen.getByText("计划模式")).toBeTruthy();
+		expect(screen.queryByText("目标模式")).toBeNull();
+
+		// 「更多」常驻：不再被容器查询隐藏（此前宽容器下它 `@[32rem]:hidden`，条目够不着）。
+		const more = screen.getByRole("button", { name: "更多动作 (1)" });
+		expect(more.className).not.toContain("@[32rem]:hidden");
+		// 动作条本身也不横向滚动：溢出必须靠「更多」，不能靠滚。
+		const row = more.closest('[role="group"]')?.parentElement;
+		expect(row?.className ?? "").not.toContain("overflow-x-auto");
+	});
+
 	it("行只有名字，点行即插入、点星标只收藏、点详情只开预览", () => {
 		const { props } = renderPanel();
 		const rows = screen.getAllByRole("option");

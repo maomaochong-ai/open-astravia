@@ -5,6 +5,7 @@ import { ThemeSurface } from "@astravia-org/theme-ui/appearance/ThemeSurface";
 import { ContextRingView } from "@astravia-org/theme-ui/chat/ContextRingView";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { splitActionRow } from "./action-row-layout";
 import { AddPanelList } from "./AddPanelList";
 import { AddPanelPreviewView } from "./AddPanelPreviewView";
 import { AddPanelRail } from "./AddPanelRail";
@@ -25,8 +26,6 @@ const TOP_MARGIN = 16;
  */
 const CARD_GAP = 8;
 
-/** 窄输入区（容器宽度，非视口）下动作条最多平铺的动作数；超出的收进「更多」下拉。 */
-const NARROW_INLINE_ACTIONS = 2;
 
 const REVEAL_HIDDEN = { opacity: 0 };
 const REVEAL_SHOWN = { opacity: 1 };
@@ -69,9 +68,13 @@ export function CommandPanelView({
 	const reduceMotion = useReducedMotion();
 	const transition = reduceMotion ? { duration: 0 } : PANEL_REVEAL_TRANSITION;
 	const searchInputRef = useRef<HTMLInputElement>(null);
-	// 恰好 3 个时平铺也放得下；多于 3 个才把第 3 个起折进「更多」。
-	const hasOverflow = actions.length > NARROW_INLINE_ACTIONS + 1;
-	const overflowActions = hasOverflow ? actions.slice(NARROW_INLINE_ACTIONS) : [];
+	/*
+	 * 固定平铺前 2 个、其余进「更多」，不按容器宽度动态划分。
+	 *
+	 * 此前是「宽度够就全平铺、`更多` 由容器查询隐藏」，而这一行是横向滚动的：非触控屏
+	 * 笔记本上既滚不到右侧也没有「更多」可点，第 3 个起的动作直接够不着。
+	 */
+	const actionRow = splitActionRow(actions);
 	/**
 	 * 揭幕完成前只渲染前若干行。
 	 *
@@ -268,17 +271,14 @@ export function CommandPanelView({
 									</>
 								)}
 								{actions.length > 0 && (
-									<div className="no-scrollbar flex shrink-0 items-center overflow-x-auto px-3 pb-2 pt-1">
+									<div className="flex shrink-0 items-center px-3 pb-2 pt-1">
 										<ButtonGroup blur={false} shape="square">
-											{actions.map((action, index) => (
+											{actionRow.inline.map((action) => (
 												<ButtonGroupItem
 													key={action.id}
 													active={action.active}
 													onClick={action.onToggle}
 													title={action.label}
-													className={
-														hasOverflow && index >= NARROW_INLINE_ACTIONS ? "hidden @[32rem]:inline-flex" : undefined
-													}
 													icon={
 														action.icon ? (
 															<span className="flex size-4 items-center justify-center">{action.icon}</span>
@@ -287,19 +287,23 @@ export function CommandPanelView({
 													label={action.label}
 												/>
 											))}
-											{hasOverflow ? (
+											{actionRow.hasOverflow ? (
 												<DropdownMenu>
 													<DropdownMenuTrigger asChild>
 														<ButtonGroupItem
-															className="@[32rem]:hidden"
-															active={overflowActions.some((action) => action.active)}
+															// 收起项仍在生效：触发钮上打点，避免「开了但看不见」。
+															active={actionRow.hiddenActiveCount > 0}
 															title={labels.moreActions}
-															aria-label={labels.moreActions}
+															aria-label={
+																actionRow.hiddenActiveCount > 0
+																	? `${labels.moreActions} (${actionRow.hiddenActiveCount})`
+																	: labels.moreActions
+															}
 															icon={<span className="icon-[solar--menu-dots-bold] size-4" />}
 														/>
 													</DropdownMenuTrigger>
 													<DropdownMenuContent align="end" side="top" data-command-panel-keep-open="true">
-														{overflowActions.map((action) => (
+														{actionRow.overflow.map((action) => (
 															<DropdownMenuItem key={action.id} onSelect={action.onToggle}>
 																{action.icon ? (
 																	<span className="flex size-4 shrink-0 items-center justify-center">{action.icon}</span>
