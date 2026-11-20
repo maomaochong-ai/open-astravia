@@ -99,6 +99,16 @@ export const KEEP_RECENT_WINDOW_CAP_PERCENT = 20;
 /** 保留段下限：再往下削就只剩系统提示与摘要，压缩换不回任何上下文空间。 */
 export const COMPACTION_KEEP_TOKENS_FLOOR = 2_000;
 
+/**
+ * 下限最多能占窗口的百分比。
+ *
+ * 下限是「别把尾巴削得没用」的绝对值，但它对 1k / 2k 窗口等于「整窗都留」：
+ * 阈值越过了，切点却只能退回整段历史，压缩一次也压不动——用户看到的是
+ * 「上下文一直涨、压缩从不发生」，直到 provider 报溢出。占窗口过大时退回
+ * 纯比例口径，让这类小窗口至少还能压缩。
+ */
+export const KEEP_FLOOR_MAX_WINDOW_PERCENT = 30;
+
 export interface CompactionKeepPlanInput {
 	readonly contextWindow: number;
 	readonly settings: CompactionSettings;
@@ -132,7 +142,11 @@ export function planCompactionKeepTokens(input: CompactionKeepPlanInput): number
 			? base
 			: previousKeep - (previousAfter - target);
 
-	return Math.max(COMPACTION_KEEP_TOKENS_FLOOR, Math.floor(Math.min(base, budget)));
+	const keepFloor =
+		(COMPACTION_KEEP_TOKENS_FLOOR * 100) / contextWindow <= KEEP_FLOOR_MAX_WINDOW_PERCENT
+			? COMPACTION_KEEP_TOKENS_FLOOR
+			: 0;
+	return Math.max(keepFloor, Math.floor(Math.min(base, budget)));
 }
 
 /**
