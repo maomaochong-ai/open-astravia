@@ -187,10 +187,15 @@ export function ModelSelectorView({
 		? (triggerRef.current?.closest<HTMLElement>('[data-slot="drawer-content"], [data-slot="dialog-content"]') ??
 			undefined)
 		: undefined;
-	// 当前模型已收藏时默认停在收藏栏：用户常用它就说明它比某个服务商更近。
-	const initialProviderId =
-		selectedModel && favorites.includes(selectedModel) ? FAVORITES_COLUMN_ID : undefined;
-
+	// 打开时停在哪一列决定了 reveal 能否按 key 定位到当前模型。只有「收藏栏」或「选中模型所在
+	// 的服务商」两列里找得到它——若 fallback 到第一个服务商，而当前模型在别的服务商，reveal 按
+	// key 找不到就放弃定位，列表停在无关的列里（「再打开不对焦到当前模型」的根因）。
+	const initialProviderId = selectedModel
+		? favorites.includes(selectedModel)
+			? FAVORITES_COLUMN_ID
+			: (groups.find((group) => group.models.some((model) => model.key === selectedModel))?.provider ??
+					undefined)
+		: undefined;
 
 	const handleOpenChange = useCallback(
 		(nextOpen: boolean) => {

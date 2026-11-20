@@ -118,6 +118,37 @@ describe("模型选择菜单打开时的定位", () => {
 		expect(spacerHeight()).toBeLessThan(SELECTED_INDEX * ROW_HEIGHT + 1);
 	}, 20_000);
 
+	it("选中模型不在第一个服务商时，打开后切到它所在的服务商列", () => {
+		// 两个服务商各 120 个模型，当前模型在第二个服务商的第 80 行。
+		// 修复前 initialProviderId 只认收藏，否则回落 undefined → 面板停在第一个服务商，
+		// reveal 在 primary 的列表里找不到 secondary/model-80，直接放弃定位。
+		const multiGroups: ModelSelectorProviderGroup[] = [
+			{
+				provider: "primary",
+				label: "Primary",
+				models: Array.from({ length: MODELS_PER_PROVIDER }, (_, index) => ({
+					key: `primary/model-${index}`,
+					provider: "primary",
+					modelId: `model-${index}`,
+					displayName: `Model ${index}`,
+				})),
+			},
+			{
+				provider: "secondary",
+				label: "Secondary",
+				models: Array.from({ length: MODELS_PER_PROVIDER }, (_, index) => ({
+					key: `secondary/model-${index}`,
+					provider: "secondary",
+					modelId: `model-${index}`,
+					displayName: `Model ${index}`,
+				})),
+			},
+		];
+		renderView({ groups: multiGroups, selectedModel: `secondary/model-${SELECTED_INDEX}` });
+
+		expect(mountedKeys()).toContain(`secondary/model-${SELECTED_INDEX}`);
+	});
+
 	it("搜索框按 ↓ 把焦点移到列表第一行，而不是被吞掉", () => {
 		renderView();
 
