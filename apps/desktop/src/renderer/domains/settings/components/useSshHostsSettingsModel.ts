@@ -203,18 +203,15 @@ export function useSshHostsSettingsModel(): SshHostsSettingsModel {
 			});
 			try {
 				const outcome = classifyProbe(await window.astravia.ssh.testHost(host.id));
-				// 连上了就报告连上了，但缺 git / rg 要单独说一句：那时候项目能建、文件能读写，
-				// 只是版本控制和搜索不可用。报成失败会让用户去查一台其实好好的机器，
-				// 而完全不提会让他在工具报错时以为是本地出了问题。
+				/*
+				 * 连上了就只说成功。缺 git / rg 时此前会附加一句「相关功能会不可用」——实测这类
+				 * 提示被读成「连接有问题」，用户会回头排查一台其实好好的机器；而缺什么工具本来
+				 * 就会在真正用到时由工具自己报错。这里只保留「连接成功（平台）」。
+				 */
 				const message: SshHostRowMessage =
 					outcome.kind === "failed"
 						? { tone: "error", text: t("sshTestFailed"), details: outcome.details }
-						: outcome.kind === "ok-missing-tools"
-							? {
-									tone: "warning",
-									text: t("sshTestOkMissingTools", { platform: outcome.platform, tools: outcome.tools }),
-								}
-							: { tone: "success", text: t("sshTestOk", { platform: outcome.platform }) };
+						: { tone: "success", text: t("sshTestOk", { platform: outcome.platform }) };
 				setRowMessage((previous) => ({ ...previous, [host.id]: message }));
 			} catch (error) {
 				setRowMessage((previous) => ({

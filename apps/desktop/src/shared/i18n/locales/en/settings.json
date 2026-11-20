@@ -2399,7 +2399,6 @@
   "sshTest": "Test connection",
   "sshTesting": "Connecting",
   "sshTestOk": "Connected ({{platform}})",
-  "sshTestOkMissingTools": "Connected ({{platform}}), but {{tools}} is missing on the remote end: features that depend on it will not work. Everything else is fine.",
   "sshTestFailed": "Could not connect. What you entered is saved — check the target and port, then try again.",
   "sshTestDetails": "Technical details",
   "sshStatusConnected": "Connected",

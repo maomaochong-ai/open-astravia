@@ -2398,7 +2398,6 @@
   "sshTest": "测试连接",
   "sshTesting": "连接中",
   "sshTestOk": "连接成功（{{platform}}）",
-  "sshTestOkMissingTools": "连接成功（{{platform}}），但远端缺少 {{tools}}：相关功能会不可用，其余功能正常。",
   "sshTestFailed": "无法连接。已填写的配置已保存，检查连接目标和端口后可以再试一次。",
   "sshTestDetails": "技术详情",
   "sshStatusConnected": "已连接",
