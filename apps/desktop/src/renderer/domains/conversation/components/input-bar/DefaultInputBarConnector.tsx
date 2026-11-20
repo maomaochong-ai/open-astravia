@@ -194,8 +194,13 @@ export const DefaultInputBarConnector = memo(function DefaultInputBarConnector(p
 			onConnectorSelect: trigger.handleConnectorSelect,
 			onAtClose: trigger.handleAtClose,
 			onAtSelect: trigger.handleAtSelect,
-				onOpen: trigger.handlePlusClick,
-				allowCompaction: Boolean(session.activeSession),
+			onOpen: trigger.handlePlusClick,
+			/*
+			 * 传「宿主支持压缩」而不是「此刻有会话」：没有会话时由 hook 给一行禁用的说明。
+			 * 传 Boolean(activeSession) 会让「操作」分类在新会话页面整格空白，用户看到的
+			 * 是「压缩入口不见了」。
+			 */
+			allowCompaction: true,
 			},
 		drawerItems,
 		drawerActiveTab: trigger.drawerActiveTab,

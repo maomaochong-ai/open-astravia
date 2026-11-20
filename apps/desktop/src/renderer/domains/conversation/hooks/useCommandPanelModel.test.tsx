@@ -127,7 +127,7 @@ describe("useCommandPanelModel context compaction", () => {
 		expect(onClose).toHaveBeenCalledOnce();
 	});
 
-	it("未绑定 Runtime 时不显示会话级压缩操作", () => {
+	it("宿主不允许会话级操作时不出现压缩条目", () => {
 		const { result } = renderHook(() =>
 			useCommandPanelModel({
 				open: true,
@@ -140,6 +140,25 @@ describe("useCommandPanelModel context compaction", () => {
 		);
 
 		expect(result.current.viewProps.operation).toBeUndefined();
+	});
+
+	// 回归：「操作」分类在没有会话时曾整行消失，面板里那格变成空白，用户看到的是
+	// 「压缩上下文不见了」。现在给一行禁用的说明，点不动也知道原因。
+	it("允许压缩但还没有会话时，仍给出禁用的压缩说明行", () => {
+		// 默认 store 会被前面的用例留下会话，这里必须显式清掉才能复现「新会话」。
+		getDefaultStore().set(activeSessionAtom, null);
+		const { result } = renderHook(() =>
+			useCommandPanelModel({
+				open: true,
+				onClose: vi.fn(),
+				onSelect: vi.fn(),
+				onSelectConnector: vi.fn(),
+				filter: "/",
+			}),
+		);
+
+		expect(result.current.viewProps.operation).toMatchObject({ disabled: true });
+		expect(result.current.viewProps.operation?.description).toBeTruthy();
 	});
 
 	it("复用输入框装配的动作，让目标模式与计划模式出现在同一动作区", () => {
@@ -184,7 +203,7 @@ describe("useCommandPanelModel context compaction", () => {
 		expect(onToggleGoal).toHaveBeenCalledOnce();
 	});
 
-	it("新会话没有可压缩上下文时不展示压缩操作", () => {
+	it("新会话没有可压缩上下文时仍给出禁用的压缩说明行", () => {
 		const store = getDefaultStore();
 		store.set(activeSessionAtom, null);
 		store.set(contextUsageAtom, null);
@@ -199,7 +218,8 @@ describe("useCommandPanelModel context compaction", () => {
 			}),
 		);
 
-		expect(result.current.viewProps.operation).toBeUndefined();
+		// 整行消失会让「操作」分类变成空白格；给一行禁用说明，用户点不动也知道原因。
+		expect(result.current.viewProps.operation).toMatchObject({ disabled: true });
 	});
 
 	it("已有压缩条目时禁用操作，避免连续点击重复排队", () => {

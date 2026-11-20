@@ -142,6 +142,22 @@ describe("buildAddPanelRows", () => {
 		expect(skillHeader && skillHeader.kind === "header" ? skillHeader.count : undefined).toBe(3);
 	});
 
+	// 回归：收藏此前沿用原目录的来源分组，于是同一分类下会冒出多个同名小标题
+	// （两组都叫「内置」），用户既分不清属于技能还是插件，也看不出条目之间的关系。
+	it("收藏按分类成组：同分类只出一组，标题是分类名", () => {
+		const sections = catalog();
+		const all = flattenAddPanelSections(sections);
+		// 一组里含多个来源的条目时才复现得出来：内置项 + 我的项都属于「技能」。
+		const skillKeys = all.filter((entry) => entry.category === "skill").map((entry) => entry.key);
+		expect(skillKeys.length).toBeGreaterThanOrEqual(2);
+
+		const favorites = buildFavoritesSections(sections, skillKeys);
+		const skillSection = favorites.find((section) => section.category === "skill");
+		expect(skillSection?.groups).toHaveLength(1);
+		expect(skillSection?.groups[0]?.titleKey).toBe("slashPanel.sections.skills");
+		expect(skillSection?.groups[0]?.entries).toHaveLength(skillKeys.length);
+	});
+
 	it("来源视图按分类成组：标题是分类名，不再重复标同一个来源", () => {
 		const market = filterByProvenance(catalog(), "market");
 		const rows = buildAddPanelRows(market, { searching: false, ...labels });

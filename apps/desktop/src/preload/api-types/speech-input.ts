@@ -5,7 +5,10 @@ export type SpeechInputErrorCode =
 	| "bundled-model-missing"
 	| "bundled-model-invalid"
 	| "recognizer-start-failed"
-	| "recognizer-failed";
+	| "recognizer-failed"
+	| "microphone-denied"
+	/** 麦克风已打开但一直是静音：多为系统权限被拒、选错输入设备或设备被占用。 */
+	| "microphone-silent";
 
 export interface SpeechInputStatus {
 	supported: boolean;

@@ -6,6 +6,8 @@ import { useTranslation } from "react-i18next";
 export interface SuggestionBubblesModel {
 	suggestions: string[];
 	sendTooltip: string;
+	/** 「编辑」按钮的提示：把建议填进输入框再改。 */
+	editTooltip: string;
 }
 
 export function useSuggestionBubblesModel(): SuggestionBubblesModel {
@@ -20,5 +22,6 @@ export function useSuggestionBubblesModel(): SuggestionBubblesModel {
 	return {
 		suggestions,
 		sendTooltip: t("suggestionBubbles.sendTooltip"),
+		editTooltip: t("suggestionBubbles.editTooltip"),
 	};
 }

@@ -644,10 +644,13 @@
 				"stopping": "Finishing speech recognition…"
 			},
 			"errors": {
-				"unsupported": "Voice input currently requires Windows x64",
+				"unsupported": "Offline speech input is not bundled for this platform (Windows x64 and macOS only)",
 				"missing": "The speech model is missing from this installation. Reinstall the app",
 				"integrity": "The bundled speech model is incomplete. Reinstall the app",
-				"recognizer": "Speech recognition failed to start. Click to retry"
+				"recognizer": "Speech recognition failed to start. Click to retry",
+				"microphone": "Microphone access is not granted. Allow Astravia in your system privacy settings, then try again",
+				"title": "Voice input is unavailable",
+				"silent": "No sound is reaching the microphone. Check system microphone permission, the selected input device, and whether another app is using it"
 			}
 		},
 		"contextMenu": {
@@ -1167,7 +1170,8 @@
 			"market": "Market",
 			"connected": "Connected",
 			"installed": "Installed",
-			"other": "Other"
+			"other": "Other",
+			"provided": "From plugins"
 		},
 		"preview": {
 			"back": "Back to list",
@@ -1189,7 +1193,8 @@
 			"queued": "Queued and will run after the current response",
 			"compacting": "Compacting context",
 			"errorTitle": "Couldn't compact context",
-			"errorMessage": "Couldn't queue context compaction. Try again."
+			"errorMessage": "Couldn't queue context compaction. Try again.",
+			"needsSession": "Start a conversation first"
 		},
 		"emptyNoMatch": "No matches found",
 		"emptyNoMatchHint": "Try another keyword, or just type your request.",
@@ -1223,7 +1228,8 @@
 		"connectorsSection": "Connected"
 	},
 	"suggestionBubbles": {
-		"sendTooltip": "Click to send this suggestion"
+		"sendTooltip": "Click to send this suggestion",
+		"editTooltip": "Put it in the composer to edit"
 	},
 	"textPreview": {
 		"characterUnit": "chars",

@@ -74,8 +74,9 @@ export function projectAbilityEntries(
 	const entries: AddPanelEntry[] = [];
 	for (const item of items) {
 		if (!item.installed || !item.enabled) continue;
-		const category = categoryOf(item);
-		if (!category) continue;
+		// 分类＝能力类型本身（见 ADR-0183）：四种类型各归一类，套装也是独立分类，
+		// 不列它会让「已安装的套装」在左栏永远是一片空白。
+		const category: AddPanelCategory = item.type;
 		const icon = item.icon ?? (item.type === "skill" ? skillIcons?.get(item.slug) : undefined);
 		const groupId = groupOf(item);
 		entries.push({
@@ -98,16 +99,6 @@ export function projectAbilityEntries(
 		if (!unique.has(dedupeKey)) unique.set(dedupeKey, entry);
 	}
 	return [...unique.values()].sort((left, right) => left.label.localeCompare(right.label));
-}
-
-/**
- * 能力类型 → 面板分类（键与能力页类型一致，见 ADR-0183）。
- *
- * 四种类型各归一类：套装本身是「可以从市场装上的一件东西」，能力页也把它当独立条目，
- * 面板不列它就会让「已安装的套装」在左栏永远是一片空白。
- */
-function categoryOf(item: AbilityItem): AddPanelCategory {
-	return item.type;
 }
 
 /**
@@ -159,7 +150,9 @@ function groupOf(item: AbilityItem): string {
 	if (item.type === "plugin") return "installed";
 	if (item.type === "mcp") return "connected";
 	if (item.type === "bundle") return "mine";
-	if (skillProvenance?.kind === "provided") return "plugin";
+	// 插件贡献的技能在「技能」分类里自成一组：与「插件」分类里的插件条目不是一回事，
+	// 两组都叫「插件」会让用户分不清一个是插件、一个是用它提供的技能。
+	if (skillProvenance?.kind === "provided") return "provided";
 	if (skillSource?.startsWith("agents-")) return "agents";
 	return "mine";
 }
@@ -266,10 +259,11 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 				 *
 				 * 内置能力是例外：随 App 分发、装好即在，不再要求它出现在能力页的两个分区里。
 				 */
-				// 市场来的条目一律放行，不看残留的 builtin 标记。
-				if (isFromMarket(item)) return true;
-				if (item.isBuiltin) return true;
+				// 装在本地且已启用，是**先决条件**：市场目录里的未安装行 `fromMarket` 也是 true，
+				// 任何「来源放行」都必须排在它后面，否则面板会把没装的能力一起列出来。
 				if (!item.installed || !item.enabled) return false;
+				// 来源只影响分组，不影响出现与否：市场装的、内置的都该列出来。
+				if (item.isBuiltin || isFromMarket(item)) return true;
 				if (isAbilityListedInDiscover(item) || isAbilityListedInPersonal(item)) return true;
 				/*
 				 * 清单里登记为市场安装的技能：能力页要等市场快照同步后才显示它，面板不必一起等。
