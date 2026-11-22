@@ -130,6 +130,10 @@ export function useWechatBindDialogModel({
 		bindTimerRef.current = null;
 	}, []);
 
+	// 卸载时也要收定时器：对话框可能被路由切走而不是「关闭」，否则超时回调会对着
+	// 已卸载的组件 setState（React 18 不报错，但会白白跑一次状态机）。
+	useEffect(() => clearBindTimer, [clearBindTimer]);
+
 	const startBind = useCallback(async () => {
 		setState({ phase: "starting", qrAttempt: 0 });
 		const unsub = await window.astravia.im.wechat.subscribeBind((event: ImWechatBindEvent) => {
