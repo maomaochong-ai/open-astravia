@@ -89,9 +89,12 @@ const TAB_GAP = 4;
 const TAB_ITEM_CLASS =
 	// 胶囊不带可见描边：页签贴在内容卡片上沿，描边会与卡片边框叠成一条双线，
 	// 看上去像两个不同半径的圆角撞在一起。选中态只靠背景块区分（与参考界面一致）。
-	// `border` 保留成透明：宽度与测量层一致，去掉它会让切换时抖 2px。
+	// `border` 保留（宽度与测量层一致，去掉会让切换时抖 2px），但**不在这里写颜色**：
+	// 共享类里写 `border-transparent`，选中态再加 `border-border`，两个同类工具类会互相覆盖，
+	// 结果就是选中页签永远没有边框——这正是「标签没有和面板一样的边框线」的原因。
+	// 颜色统一交给两处各自决定（实测层不需要颜色）。
 	// 文字降到 13px：14px 粗体在 8px 圆角里显得拥挤，参考界面也是小一号。
-	"flex h-8 min-w-[72px] max-w-[160px] select-none items-center gap-1.5 whitespace-nowrap rounded-t-md border border-b-0 border-transparent pl-3 text-[13px] font-medium leading-none";
+	"flex h-8 min-w-[72px] max-w-[160px] select-none items-center gap-1.5 whitespace-nowrap rounded-t-md border border-b-0 pl-3 text-[13px] font-medium leading-none";
 const FILE_DRAG_HOVER_DELAY_MS = 300;
 
 function isFileDrag(event: ReactDragEvent<HTMLElement>): boolean {
