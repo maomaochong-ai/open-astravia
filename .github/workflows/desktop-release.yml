@@ -297,6 +297,30 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/install-bun-dependencies
 
+      # Windows 签名：配置了凭据就签（智能应用控制 / SmartScreen 对未签名包会拦），
+      # 没配置就产出免签名包——免签名是本项目的支持路径，不做强制。
+      # 需要强制时在仓库变量里设 ASTRAVIA_REQUIRE_WINDOWS_SIGNATURE=1。
+      - name: Configure Windows signing
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          SECRET_WINDOWS_CERTIFICATE_PFX_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_PFX_BASE64 }}
+          SECRET_WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          REQUIRE_WINDOWS_SIGNATURE: ${{ vars.ASTRAVIA_REQUIRE_WINDOWS_SIGNATURE }}
+        run: |
+          set -u
+          if [ -n "${SECRET_WINDOWS_CERTIFICATE_PFX_BASE64:-}" ] && [ -n "${SECRET_WINDOWS_CERTIFICATE_PASSWORD:-}" ]; then
+            echo "WIN_CSC_LINK=${SECRET_WINDOWS_CERTIFICATE_PFX_BASE64}" >> "${GITHUB_ENV}"
+            echo "WIN_CSC_KEY_PASSWORD=${SECRET_WINDOWS_CERTIFICATE_PASSWORD}" >> "${GITHUB_ENV}"
+            echo "ASTRAVIA_REQUIRE_WINDOWS_SIGNATURE=1" >> "${GITHUB_ENV}"
+            echo "Using Windows signing certificate from repository secrets."
+          elif [ "${REQUIRE_WINDOWS_SIGNATURE:-}" = "1" ]; then
+            echo "::error::ASTRAVIA_REQUIRE_WINDOWS_SIGNATURE=1 但缺少签名凭据（WINDOWS_CERTIFICATE_PFX_BASE64 / WINDOWS_CERTIFICATE_PASSWORD）。见 docs/deploy/windows-code-signing.md" >&2
+            exit 1
+          else
+            echo "::warning::未配置 Windows 签名凭据，产出免签名安装包；首次运行仍可能被 SmartScreen 提示「仍要运行」。"
+          fi
+
       - name: Install Linux packaging dependencies
         if: runner.os == 'Linux'
         run: |

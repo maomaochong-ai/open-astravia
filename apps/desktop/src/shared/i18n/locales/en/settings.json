@@ -231,6 +231,9 @@
   "permissions": "Permissions",
   "generalDescription": "Editor theme, language, proxy, update channel, and workspace.",
   "workspaceDescription": "New projects will be created in this directory",
+  "workspaceSaveFailedTitle": "Workspace not saved",
+  "workspaceSaveFailedMessage": "The new folder could not be written to your settings, so the workspace stays where it was. Check that the folder exists and is writable, then try again.",
+  "workspaceSaveFailedConfirm": "OK",
   "reset": "Reset",
   "sandbox": {
     "title": "Default sandbox mode",

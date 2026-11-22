@@ -231,6 +231,9 @@
   "permissions": "权限",
   "generalDescription": "编辑器主题、语言、代理、更新通道和工作区。",
   "workspaceDescription": "新建项目时将在此目录下创建对应的项目文件夹",
+  "workspaceSaveFailedTitle": "工作区未保存",
+  "workspaceSaveFailedMessage": "新目录未能写入配置，工作区保持原来的路径。请确认该目录存在且可写后重试。",
+  "workspaceSaveFailedConfirm": "知道了",
   "reset": "恢复默认",
   "sandbox": {
     "title": "默认沙盒状态",
