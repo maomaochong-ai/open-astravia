@@ -173,31 +173,18 @@ describe("TabBar pointer drag", () => {
 			render(false);
 			const indicator = container.querySelector("[data-active-tab-indicator]");
 			expect(indicator).not.toBeNull();
-			// 指示器盖住按钮的 1px 透明边框，否则轮廓整体下移一像素压到卡片内容上。
-			expect(indicator?.className).toContain("-inset-x-px");
-			expect(indicator?.className).toContain("-top-px");
-
-			const svg = indicator?.querySelector("svg[data-connected-tab-outline]");
-			expect(svg).not.toBeNull();
-			const paths = [...(svg?.querySelectorAll("path") ?? [])];
-			// 一条填充 + 一条描边，共用同一份几何。
-			expect(paths).toHaveLength(2);
-			expect(paths[0]?.getAttribute("stroke")).toBe("none");
-			expect(paths[0]?.getAttribute("d")).toContain("Z");
-			const stroke = paths[1];
-			expect(stroke?.getAttribute("fill")).toBe("none");
-			expect(stroke?.getAttribute("stroke-width")).toBe("1");
-			expect(stroke?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
-			const d = stroke?.getAttribute("d") ?? "";
-			// 两端都是凹形连接角（sweep=0），收尾落在卡片描边中心。
-			expect(d.startsWith("M 0 34 A 8 8 0 0 0 8 26")).toBe(true);
+			// 指示器盖住按钮的 1px 透明边框：用 -inset-px 拉回边框盒，背景块才不会偏出一像素。
+			expect(indicator?.className).toContain("-inset-px");
+			// 激活态是一块独立的圆角胶囊，不再与下方卡片拼接（也不再画 SVG 轮廓）。
+			expect(indicator?.className).toContain("rounded-lg");
+			expect(indicator?.querySelector("svg")).toBeNull();
 
 			// 未选中的页签不画轮廓。
 			expect(container.querySelectorAll("[data-active-tab-indicator]")).toHaveLength(1);
 
-			// 可关闭的页签同样成立（关闭按钮不参与轮廓）。
+			// 可关闭的页签同样成立（关闭按钮不参与背景块）。
 			render(true);
-			expect(container.querySelector("[data-connected-tab-outline]")).not.toBeNull();
+			expect(container.querySelector("[data-active-tab-indicator]")).not.toBeNull();
 		} finally {
 			vi.restoreAllMocks();
 		}

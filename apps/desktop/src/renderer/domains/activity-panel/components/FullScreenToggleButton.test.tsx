@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -18,7 +18,7 @@ describe("FullScreenToggleButton", () => {
 
 		expect(button.getAttribute("aria-label")).toBe("tabPicker.enterFullScreen");
 		expect(button.getAttribute("aria-pressed")).toBe("false");
-		expect(button.innerHTML).toContain("icon-[solar--maximize-square-linear]");
+		expect(button.innerHTML).toContain("icon-[mdi--arrow-expand]");
 
 		fireEvent.click(button);
 
@@ -31,7 +31,7 @@ describe("FullScreenToggleButton", () => {
 
 		expect(button.getAttribute("aria-label")).toBe("tabPicker.exitFullScreen");
 		expect(button.getAttribute("aria-pressed")).toBe("true");
-		expect(button.innerHTML).toContain("icon-[solar--minimize-square-linear]");
-		expect(button.innerHTML).not.toContain("icon-[solar--maximize-square-linear]");
+		expect(button.innerHTML).toContain("icon-[mdi--arrow-collapse]");
+		expect(button.innerHTML).not.toContain("icon-[mdi--arrow-expand]");
 	});
 });

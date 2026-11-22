@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+﻿import { useTranslation } from "react-i18next";
 
 export interface FullScreenToggleButtonProps {
 	/** 活动面板是否已经铺满内容区。 */
@@ -36,8 +36,8 @@ export function FullScreenToggleButton({
 			<span
 				className={
 					isFullScreen
-						? "icon-[solar--minimize-square-linear] h-4 w-4"
-						: "icon-[solar--maximize-square-linear] h-4 w-4"
+						? "icon-[mdi--arrow-collapse] h-4 w-4"
+						: "icon-[mdi--arrow-expand] h-4 w-4"
 				}
 			/>
 		</button>

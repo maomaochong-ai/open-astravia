@@ -3,7 +3,6 @@ import {
 	useCallback,
 	useEffect,
 	useId,
-	useLayoutEffect,
 	useRef,
 	useState,
 	type JSX,
@@ -12,7 +11,6 @@ import {
 	type ReactNode,
 	type RefObject,
 } from "react";
-import { createConnectedTabOutlineGeometry } from "./connected-tab-outline";
 import { hasReachedTabDragDistance, moveTabKey } from "./tab-drag";
 
 function cn(...parts: Array<string | false | null | undefined>): string {
@@ -89,7 +87,7 @@ const ROW_PADDING_RIGHT = 12;
  * 测量层量到的宽度也与真实页签一致。
  */
 const TAB_ITEM_CLASS =
-	"flex h-8 min-w-[72px] max-w-[160px] select-none items-center gap-1.5 whitespace-nowrap rounded-t-lg border border-b-0 pl-3 text-[14px] font-medium leading-none";
+	"flex h-8 min-w-[72px] max-w-[160px] select-none items-center gap-1.5 whitespace-nowrap rounded-lg border pl-3 text-[14px] font-medium leading-none";
 const FILE_DRAG_HOVER_DELAY_MS = 300;
 
 function isFileDrag(event: ReactDragEvent<HTMLElement>): boolean {
@@ -133,12 +131,10 @@ function sameKeys<T>(a: T[], b: T[]): boolean {
 }
 
 /**
- * 激活页签的轮廓：与内容卡片连成一体的一整块同色区域 + 只显三边的描边。
+ * 激活页签的背景：一块独立的圆角胶囊。
  *
- * 描边与填充来自同一条几何（见 `createConnectedTabOutlineGeometry`），所以两侧的
- * 凹形连接角不可能与竖线错开——这也是之前用几个带 `border` 的盒子拼接时反复出
- * 现断口、凸块与台阶的根本原因。描边再叠 `vectorEffect="non-scaling-stroke"`，
- * 页面缩放或窗口 DPI 变化时线宽恒为 1px，不会被拉细到断续。
+ * 旧实现用 SVG 把页签与下方内容卡片连成一体（两倒凹形连接角 + 三边描边）。
+ * 改成圆角胶囊后不再与卡片拼接，两层结构反而成为负担：只要一个带描边的圆角矩形。
  */
 function ActiveTabIndicator({
 	layoutId,
@@ -147,67 +143,15 @@ function ActiveTabIndicator({
 	layoutId: string;
 	suppressLayoutAnimation: boolean;
 }): JSX.Element {
-	const indicatorRef = useRef<HTMLSpanElement>(null);
-	const [tabWidth, setTabWidth] = useState(0);
-
-	// 宽度必须在绘制前量到。拖动面板时指示器会暂时关掉布局动画，若这时把节点拆掉重建，
-	// 宽度状态会回到 0，而 ResizeObserver 在尺寸不再变化时不一定再回调，三边轮廓就再也画不出来。
-	useLayoutEffect(() => {
-		const indicator = indicatorRef.current;
-		if (!indicator) return;
-		const updateWidth = (): void => {
-			const nextWidth = indicator.offsetWidth;
-			setTabWidth((currentWidth) => (currentWidth === nextWidth ? currentWidth : nextWidth));
-		};
-		updateWidth();
-		if (typeof ResizeObserver === "undefined") return;
-		const observer = new ResizeObserver(updateWidth);
-		observer.observe(indicator);
-		return () => observer.disconnect();
-	}, []);
-
-	const geometry = tabWidth > 0 ? createConnectedTabOutlineGeometry(tabWidth) : null;
-
-	const content = (
-		<>
-			{geometry && (
-				<svg
-					viewBox={`0 0 ${geometry.width} ${geometry.height}`}
-					aria-hidden
-					className="absolute top-0 overflow-visible fill-muted stroke-border"
-					data-connected-tab-outline
-					shapeRendering="geometricPrecision"
-					style={{
-						height: geometry.height,
-						left: -geometry.offsetX,
-						width: geometry.width,
-					}}
-				>
-					<path d={geometry.fillPath} stroke="none" />
-					<path
-						d={geometry.outlinePath}
-						fill="none"
-						strokeLinecap="square"
-						strokeLinejoin="round"
-						strokeWidth="1"
-						vectorEffect="non-scaling-stroke"
-					/>
-				</svg>
-			)}
-		</>
-	);
-	// 页签按钮带 1px 透明边框，绝对定位默认贴的是 padding box；用负偏移拉回边框盒，
-	// 否则轮廓整体下移 1px，下探量会多出一像素压到内容卡片上。
+	// 页签按钮带 1px 透明边框，绝对定位默认贴的是 padding box；用负偏移拉回边框盒。
 	const indicatorProps = {
 		"aria-hidden": true,
-		className: "pointer-events-none absolute -inset-x-px -top-px -bottom-px rounded-t-lg bg-muted",
+		className: "pointer-events-none absolute -inset-px rounded-lg border border-border bg-card",
 		"data-active-tab-indicator": true,
 	};
 
-	// 始终用同一个节点。拖动面板宽度时只关掉 layoutId，避免换成另一种元素后轮廓宽度被清掉。
 	return (
 		<motion.span
-			ref={indicatorRef}
 			layoutId={suppressLayoutAnimation ? undefined : `tabbar-active-${layoutId}`}
 			transition={
 				suppressLayoutAnimation
@@ -215,9 +159,7 @@ function ActiveTabIndicator({
 					: { type: "spring", stiffness: 480, damping: 36, mass: 0.8 }
 			}
 			{...indicatorProps}
-		>
-			{content}
-		</motion.span>
+		/>
 	);
 }
 
