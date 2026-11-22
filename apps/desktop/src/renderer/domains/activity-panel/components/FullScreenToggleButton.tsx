@@ -1,4 +1,4 @@
-﻿import { useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
 
 export interface FullScreenToggleButtonProps {
 	/** 活动面板是否已经铺满内容区。 */
