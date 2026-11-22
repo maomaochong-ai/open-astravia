@@ -550,10 +550,12 @@ export class ImHost {
 		// 崩溃 / 被停掉而缺席，startWechatBind 只写一条 warn 日志，帧没人收、二维码
 		// 永远不来，对话框就停在加载中。先确保它真的在跑，拉不起来就把原因回给界面。
 		if (!this.manager.getCurrentChild()) {
-			try {
-				await this.startSidecar();
-			} catch (error) {
-				return { ok: false, error: `微信 sidecar 启动失败：${String(error)}` };
+			// startSidecar 内部吞掉异常并写进 statusStore.lastError，所以不靠 catch：
+			// 拉完仍然没有子进程，就把那条具体原因（如二进制缺失）回给界面。
+			await this.startSidecar();
+			if (!this.manager.getCurrentChild()) {
+				const reason = this.statusStore.get().lastError;
+				return { ok: false, error: reason ? `微信 sidecar 启动失败：${reason}` : "微信 sidecar 未能启动" };
 			}
 		}
 

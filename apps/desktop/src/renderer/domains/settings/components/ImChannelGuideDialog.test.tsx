@@ -27,6 +27,18 @@ describe("ImChannelGuideDialog", () => {
 		expect(screen.getByText("brew install signal-cli")).toBeDefined();
 	});
 
+	/*
+	 * 底栏不能带 DialogFooter 自带的 `-mx-6 -mb-6`：这层 DialogContent 是 `p-0`，
+	 * 负外边距没人抵消，底栏会被拉出面板、按钮底边裁成半截（Windows 上实测）。
+	 */
+	it("页脚抵消负外边距，按钮不会被裁", () => {
+		// Dialog 走 Portal：节点在 document.body 里，不在 render 返回的 container 里。
+		render(<ImChannelGuideDialog transport="telegram" onClose={() => {}} />);
+		const footer = document.querySelector("[data-slot='dialog-footer']");
+		expect(footer?.className).toContain("mx-0");
+		expect(footer?.className).toContain("mb-0");
+	});
+
 	it("点关闭回调上抛", async () => {
 		const onClose = vi.fn();
 		render(<ImChannelGuideDialog transport="telegram" onClose={onClose} />);

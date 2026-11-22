@@ -2,7 +2,7 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { POLL_INTERVAL_MS, useSandboxAvailability } from "./useSandboxAvailability";
+import { POLL_INTERVAL_MS, resetSandboxAvailabilityForTest, useSandboxAvailability } from "./useSandboxAvailability";
 
 /**
  * 设置页与模型选择器共用这一份判定，所以「探测未完成」与「真的不可用」必须给出不同结论：
@@ -25,6 +25,8 @@ function capability(status: string, extra: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+	// 状态在模块级：每个用例都从「刚启动、还没探测」开始，否则上一条的结论会漏过来。
+	resetSandboxAvailabilityForTest();
 	vi.clearAllMocks();
 	Object.defineProperty(window, "astravia", {
 		configurable: true,
@@ -33,6 +35,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	resetSandboxAvailabilityForTest();
 	vi.useRealTimers();
 });
 
@@ -104,8 +107,7 @@ describe("useSandboxAvailability", () => {
 
 	/*
 	 * 超时会停掉轮询，但「重新打开弹层」必须能把它再拉起来。
-	 * 轮询 effect 的依赖是 [status, read]，status 在探测未完成时恒为 unknown，
-	 * 只重置计时不重建 effect 的话，轮询就再也起不来了——用户看到「一直是灰的」。
+	 * 轮询只在无结论时进行，停掉之后没有状态变化可依赖，只能由 refresh 显式重启。
 	 */
 	it("超时停掉轮询后，refresh 能重新拉起它", async () => {
 		vi.useFakeTimers();
@@ -128,5 +130,27 @@ describe("useSandboxAvailability", () => {
 			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 2);
 		});
 		expect(mocks.configGet.mock.calls.length).toBeGreaterThan(readsAfterBudget);
+	});
+
+	/*
+	 * 设置页与模型选择器可能同时挂载。状态与定时器都在模块级：
+	 * 两个订阅者只该产生一路轮询，而不是一人一个 1.5 秒的定时器。
+	 */
+	it("多个订阅者共用同一个轮询，不会重复读配置", async () => {
+		vi.useFakeTimers();
+		mocks.configGet.mockResolvedValue(capability("unknown"));
+
+		renderHook(() => useSandboxAvailability());
+		renderHook(() => useSandboxAvailability());
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+		const afterMount = mocks.configGet.mock.calls.length;
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 2 + 100);
+		});
+		// 两路各自跑两次会多 4 次；共享后只多 2 次。
+		expect(mocks.configGet.mock.calls.length - afterMount).toBeLessThanOrEqual(2);
 	});
 });

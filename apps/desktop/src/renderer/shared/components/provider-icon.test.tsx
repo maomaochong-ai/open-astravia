@@ -5,8 +5,11 @@ import { afterEach, describe, expect, it } from "vitest";
 
 afterEach(cleanup);
 
+// 与 theme-ui 的 PROVIDER_ICONS 键一一对应：新增供应商图标时必须同步这里，
+// 否则这条用例会报「数量不一致」。magpie 是内置本机代理的图标（0190f4dfc 引入）。
 const PROVIDER_SYMBOLS = [
 	"claude",
+	"magpie",
 	"openai",
 	"gemini",
 	"deepseek",

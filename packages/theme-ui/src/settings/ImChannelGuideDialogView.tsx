@@ -115,7 +115,12 @@ export function ImChannelGuideDialogView({
 					))}
 				</div>
 
-				<DialogFooter className="shrink-0 border-t border-border px-6 py-4">
+				{/*
+				 * `mx-0 mb-0` 必需：DialogFooter 自带 `-mx-6 -mb-6`（用于抵消 DialogContent 的
+				 * p-6 让底栏贴边）。这层 DialogContent 是 `p-0`，负外边距没人抵消，底栏就会被
+				 * 往下拉 24px、超出 `overflow-hidden`，按钮底边被裁成半截——Windows 上实测如此。
+				 */}
+				<DialogFooter className="mx-0 mb-0 shrink-0 border-t border-border px-6 py-4">
 					<Button variant="primary" onClick={onClose}>
 						{labels.close}
 					</Button>
