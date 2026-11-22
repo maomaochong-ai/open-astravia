@@ -50,7 +50,9 @@ describe("activity panel todo tab", () => {
 		expect(meta.result.current).toMatchObject({ label: "activityPanel.tabs.todo", badge: 1 });
 	});
 
-	it("展示当前清单，并可以从面板直接清空", async () => {
+	// 这条要挂载整个面板并等两轮 atom 回流；与其他文件并行跑满时 5s 默认上限不够，
+	// 单独跑只用 2.5s。给显式余量，避免把「慢」当成「坏」。
+	it("展示当前清单，并可以从面板直接清空", { timeout: 20_000 }, async () => {
 		store.set(
 			todoItemsBySessionAtom,
 			todoMap({
