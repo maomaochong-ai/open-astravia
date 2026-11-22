@@ -6,11 +6,11 @@ export interface ActivityPanelFrameProps extends ComponentPropsWithoutRef<"div">
 	children: ReactNode;
 	contentClassName?: string;
 	/**
-	 * 左上角是否切直角。
+	 * 面板左上角改用小圆角。
 	 *
-	 * 标签栏在面板上方时，第一个标签的左沿压在面板左边框上、自己占住左上角；
-	 * 面板再画 12px 圆角，两个不同半径的角就会在同一个点上打架。
-	 * 没有标签栏（如铺满态）时仍保留圆角。
+	 * 标签栏与面板左边框留有间距时，这个角会露在第一个标签左侧；原来 12px 的大圆角
+	 * 在这种矮行高下显得过重，换成 6px，与标签自身的 `rounded-t-md` 同档。
+	 * 没有标签栏（如铺满态）时仍用 12px。
 	 */
 	flushTopLeft?: boolean;
 }
@@ -27,7 +27,7 @@ export function ActivityPanelFrame({
 			className={cn(
 				// 只留左边、上边的描边；右边和底边贴内容区。左上角看有无标签占位。
 				"relative z-10 flex min-h-0 flex-1 flex-col overflow-visible border-l border-t border-border bg-muted",
-				flushTopLeft ? "rounded-tl-none" : "rounded-tl-xl",
+				flushTopLeft ? "rounded-tl-md" : "rounded-tl-xl",
 				className,
 			)}
 			data-theme-surface-root="activity.panel"

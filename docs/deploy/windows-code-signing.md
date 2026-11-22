@@ -65,7 +65,7 @@ Inno Setup 生成安装包
 ```powershell
 # 查看签名与时间戳
 signtool verify /pa /v apps/desktop/release/win-unpacked/Astravia.exe
-Get-AuthenticodeSignature apps/desktop/release/Astravia-0.5.101-win-x64.exe | Format-List Status, SignerCertificate
+Get-AuthenticodeSignature apps/desktop/release/Astravia-0.6.1-win-x64.exe | Format-List Status, SignerCertificate
 ```
 
 `Status` 应为 `Valid`；`TimeStamperCertificate` 非空表示时间戳已写入。

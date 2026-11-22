@@ -75,8 +75,13 @@ export interface TabBarProps<T extends string> {
 	onTabContextMenu?: (key: T, point: { x: number; y: number }) => void;
 }
 
-/** 行的左右内边距。左侧必须为 0：页签左沿要与内容面板的左边框对在一条线上。 */
-const ROW_PADDING_LEFT = 0;
+/**
+ * 行的左右内边距。
+ *
+ * 左侧留 8px：第一个标签的左沿不再压在面板左边框上，面板的左上小圆角才露得出来，
+ * 标签也不会贴着窗口边。该值必须与行上的 `pl-2` 一致，否则溢出收纳会算错可用宽度。
+ */
+const ROW_PADDING_LEFT = 8;
 const ROW_PADDING_RIGHT = 12;
 /** 页签之间的间隔（`gap-1`）：胶囊之间需要真实空隙，不能靠内边距冒充。 */
 const TAB_GAP = 4;
@@ -547,7 +552,7 @@ export function TabBar<T extends string>({
 			<div
 				ref={setRowRef}
 				role="tablist"
-				className="-mb-px flex h-8 items-end gap-1 overflow-visible pl-0 pr-3"
+				className="-mb-px flex h-8 items-end gap-1 overflow-visible pl-2 pr-3"
 			>
 				{visibleItems.map(({ key, label, icon, badge, removable }) => {
 					const active = value === key;
