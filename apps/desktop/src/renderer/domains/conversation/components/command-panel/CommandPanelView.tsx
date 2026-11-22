@@ -15,7 +15,12 @@ import type { CommandPanelProps } from "./types";
 /**
  * 面板高度：与模型选择器同一量级。两栏（轨道 + 列表/预览）比三栏窄，窄窗口更从容。
  */
-const MAX_HEIGHT_PX = 320;
+/**
+ * 面板最高高度：与模型选择器的 `h-[min(340px,60vh)]` 对齐，两块弹层切换时不跳高。
+ */
+const MAX_HEIGHT_PX = 340;
+/** 高度上限同时受视口限制，与模型选择器的 60vh 同口径。 */
+const MAX_VIEWPORT_RATIO = 0.6;
 /** 面板顶部与视口顶之间至少保留的距离（标题栏 / 窗口圆角）。 */
 const TOP_MARGIN = 16;
 /**
@@ -100,7 +105,12 @@ export function CommandPanelView({
 			// 参考点是「卡片上沿」：面板绝对定位在同一个 relative 容器里，bottom 100% 就是容器上沿。
 			const anchorTop = anchor.parentElement?.getBoundingClientRect().top ?? anchor.getBoundingClientRect().top;
 			const available = anchorTop - CARD_GAP - TOP_MARGIN;
-			setMaxHeight(Math.max(180, Math.min(MAX_HEIGHT_PX, available)));
+			// 不能为了防止「太矮」而强行撑高：旧代码的 Math.max(180, …) 会在空间不足时
+			// 把面板撑到 180px 以上，超出部分直接被窗口上沿裁掉，插件条目就看不到了。
+			// 这里只做双向收窄：不高于模型选择器的量级，也不高于实际可用空间；剩下的交给
+			// 列表自己的 overflow-y 滚动。
+			const ceiling = Math.min(MAX_HEIGHT_PX, Math.floor(window.innerHeight * MAX_VIEWPORT_RATIO));
+			setMaxHeight(Math.max(0, Math.min(ceiling, Math.floor(available))));
 		};
 		measure();
 		window.addEventListener("resize", measure);
