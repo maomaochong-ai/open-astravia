@@ -1,12 +1,27 @@
+/** 与行高一致（`h-8`）。 */
 const TAB_HEIGHT = 32;
-const TAB_RADIUS = 8;
-const JOIN_RADIUS = 8;
 /**
- * 向下盖住内容卡片那条 1px 描边所需的深度。
- * 取 2 而不是 1：描边在亚像素缩放后占 0.9～1.1px，只下探 1px 时填充边缘会与描边
- * 上沿重合，卡片线仍从激活页签中间穿过去；再深就会压到卡片内容上。
+ * 页签顶部圆角。与按钮上的 `rounded-t-md`、面板上的 `rounded-tl-md` 同档（6px）：
+ * 三处半径一旦不一致，接缝处就会露出一个能看出来的钝角。
  */
-const FRAME_OVERLAP = 2;
+const TAB_RADIUS = 6;
+/**
+ * 页签底部的凹形连接角（向下张开、把页签接到面板上）。
+ *
+ * 它向外伸展的宽度就是这个值；因此行左侧内边距必须 ≥ 面板左上圆角 + 本值，
+ * 否则弧线末端会落在面板的曲线段上，衔接处会出现一个折点。
+ */
+const JOIN_RADIUS = 6;
+/**
+ * 描边收尾落在卡片上边框的**中心线**上（页签高 32 + 半个 1px 描边）。
+ * 落在上沿时，弧线末端与卡片线之间会露出一段同色的细缝，看上去就是断开的。
+ */
+const BASELINE_Y = TAB_HEIGHT + 0.5;
+/**
+ * 填充比描边再往下探的距离：整个 1px 上边框必须被盖住，否则激活页签中间会穿过一条线。
+ * 填到描边下沿（+1px）再留 0.5px 余量。
+ */
+const FILL_DEPTH = 1.5;
 
 export interface ConnectedTabOutlineGeometry {
 	fillPath: string;
@@ -29,9 +44,7 @@ export function createConnectedTabOutlineGeometry(tabWidth: number): ConnectedTa
 	const tabLeft = JOIN_RADIUS;
 	const tabRight = tabLeft + normalizedTabWidth;
 	const outerRight = tabRight + JOIN_RADIUS;
-	// 收尾落在卡片描边**中心**而不是描边上沿：描边本身有 1px 厚，落在上沿时
-	// 弧线末端与描边之间会露出一段同色的缝，看上去就是断开的。
-	const baselineY = TAB_HEIGHT + FRAME_OVERLAP;
+	const baselineY = BASELINE_Y;
 	const shoulderY = baselineY - JOIN_RADIUS;
 	const outlinePath = [
 		`M 0 ${baselineY}`,
@@ -43,7 +56,7 @@ export function createConnectedTabOutlineGeometry(tabWidth: number): ConnectedTa
 		`V ${shoulderY}`,
 		`A ${JOIN_RADIUS} ${JOIN_RADIUS} 0 0 0 ${outerRight} ${baselineY}`,
 	].join(" ");
-	const height = TAB_HEIGHT + FRAME_OVERLAP;
+	const height = baselineY + FILL_DEPTH;
 
 	return {
 		fillPath: `${outlinePath} V ${height} H 0 Z`,

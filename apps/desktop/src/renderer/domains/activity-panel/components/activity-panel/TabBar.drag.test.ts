@@ -172,20 +172,35 @@ describe("TabBar pointer drag", () => {
 		try {
 			render(false);
 			const activeTab = container.querySelector('[role="tab"][aria-selected="true"]');
-			// 激活页签与下方面板同色、三边描边、底边不画：两者缝成一块面。
-			expect(activeTab?.className).toContain("bg-muted");
-			expect(activeTab?.className).toContain("border-border");
-			expect(activeTab?.className).toContain("border-b-0");
-			// 只剩上圆角，下沿要直着接面板。
+			// 激活态不再用按钮的底色/边框：底部两角是凹形，CSS 画不出凹角。
+			expect(activeTab?.className).toContain("border-transparent");
+			expect(activeTab?.className).not.toContain("bg-muted");
 			expect(activeTab?.className).toContain("rounded-t-md");
-			expect(activeTab?.querySelector("svg")).toBeNull();
+
+			// 轮廓由 SVG 给出：填充 + 描边两条路径，共用同一份几何。
+			const indicator = activeTab?.querySelector("[data-active-tab-indicator]");
+			expect(indicator).not.toBeNull();
+			const svg = indicator?.querySelector("svg[data-connected-tab-outline]");
+			expect(svg).not.toBeNull();
+			const paths = [...(svg?.querySelectorAll("path") ?? [])];
+			expect(paths).toHaveLength(2);
+			// 一条填充（闭合，向下盖住面板上边框）+ 一条三边描边。
+			expect(paths[0]?.getAttribute("stroke")).toBe("none");
+			expect(paths[0]?.getAttribute("d")?.endsWith("Z")).toBe(true);
+			expect(paths[1]?.getAttribute("fill")).toBe("none");
+			expect(paths[1]?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+			// 底部两角是凹弧（sweep=0），不是直角。
+			expect(paths[1]?.getAttribute("d")).toContain("A 6 6 0 0 0");
+
+			// 未选中页签不画轮廓。
+			expect(container.querySelectorAll("[data-active-tab-indicator]")).toHaveLength(1);
 
 			// 未选中页签没有底色与描边。
 			const idleTab = container.querySelector('[role="tab"][aria-selected="false"]');
 			expect(idleTab?.className).toContain("border-transparent");
 			expect(idleTab?.className).not.toContain("bg-muted ");
 
-			// 可关闭的页签同样成立（关闭按钮不参与底色）。
+			// 可关闭的页签同样成立（关闭按钮不参与轮廓）。
 			render(true);
 			expect(container.querySelector('[role="tab"][aria-selected="true"]')).not.toBeNull();
 		} finally {
@@ -218,7 +233,8 @@ describe("TabBar pointer drag", () => {
 			});
 
 			const active = container.querySelector('[role="tab"][aria-selected="true"]');
-			const content = active?.firstElementChild;
+			// 第一个子节点是轮廓层，内容层在它之后。
+			const content = active?.querySelector(":scope > span.relative");
 			expect(content?.className).toContain("relative");
 			expect(content?.className).toContain("z-10");
 			expect(content?.textContent).toContain("Alpha");
