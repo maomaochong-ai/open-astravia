@@ -27,7 +27,7 @@ export interface SandboxAvailability {
 }
 
 /** 主进程的 Windows 宿主探测最长约 10 秒；轮询到 15 秒就停，避免无休止的定时器。 */
-const POLL_INTERVAL_MS = 1_500;
+export const POLL_INTERVAL_MS = 1_500;
 const POLL_BUDGET_MS = 15_000;
 
 const KEY = "executionModeSelector.sandboxUnavailable";
@@ -38,12 +38,26 @@ export function useSandboxAvailability(): SandboxAvailability {
 	const [reason, setReason] = useState<string | null>(() => t(KEY, { platform: "unknown", reason: "checking" }));
 	const startedAtRef = useRef<number>(Date.now());
 	const mountedRef = useRef(true);
+	/**
+	 * 轮询用命令式启停，而不是「让 effect 自己重跑」。
+	 *
+	 * 轮询 effect 的依赖是 [status, read]，而 status 在探测未完成时恒为 "unknown"：
+	 * 超时预算用完、或弹层重新打开时，只靠状态无法让 effect 重跑，轮询就再也起不来，
+	 * 用户看到的是「一直是灰的，重开弹层也没用」。所以把启停抽成函数，刷新时直接调用。
+	 */
+	const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+	const stopPolling = useCallback(() => {
+		if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+		pollTimerRef.current = null;
+	}, []);
 
 	useEffect(
 		() => () => {
 			mountedRef.current = false;
+			stopPolling();
 		},
-		[],
+		[stopPolling],
 	);
 
 	const read = useCallback(async () => {
@@ -63,7 +77,24 @@ export function useSandboxAvailability(): SandboxAvailability {
 		if (!mountedRef.current) return;
 		setStatus(nextStatus);
 		setReason(nextReason);
-	}, [t]);
+		/*
+		 * 结论到手就地停轮询，而不是靠 effect 的 cleanup 停。
+		 * 实测（jsdom + 假时钟）里，状态更新后的 effect 清理时机不可靠：
+		 * 定时器会继续跳，每 1.5s 白读一次配置。既然 read 已经知道结果，就在这里停。
+		 */
+		if (nextStatus !== "unknown") stopPolling();
+	}, [stopPolling, t]);
+
+	const startPolling = useCallback(() => {
+		stopPolling();
+		pollTimerRef.current = setInterval(() => {
+			if (Date.now() - startedAtRef.current > POLL_BUDGET_MS) {
+				stopPolling();
+				return;
+			}
+			void read();
+		}, POLL_INTERVAL_MS);
+	}, [read, stopPolling]);
 
 	useEffect(() => {
 		startedAtRef.current = Date.now();
@@ -73,20 +104,15 @@ export function useSandboxAvailability(): SandboxAvailability {
 	// 只在「探测还没结论」时轮询：已有 available / unavailable 结论的机器不必反复读配置。
 	useEffect(() => {
 		if (status !== "unknown") return;
-		const timer = setInterval(() => {
-			if (Date.now() - startedAtRef.current > POLL_BUDGET_MS) {
-				clearInterval(timer);
-				return;
-			}
-			void read();
-		}, POLL_INTERVAL_MS);
-		return () => clearInterval(timer);
-	}, [status, read]);
+		return startPolling();
+	}, [status, startPolling]);
 
 	const refresh = useCallback(() => {
+		// 重置预算并重新拉起轮询：超时后会主动停，弹层重新打开时得能再开。
 		startedAtRef.current = Date.now();
+		if (status === "unknown") startPolling();
 		void read();
-	}, [read]);
+	}, [read, startPolling, status]);
 
 	return { reason, status, refresh };
 }

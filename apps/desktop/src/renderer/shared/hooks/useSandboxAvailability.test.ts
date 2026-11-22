@@ -1,8 +1,8 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useSandboxAvailability } from "./useSandboxAvailability";
+import { POLL_INTERVAL_MS, useSandboxAvailability } from "./useSandboxAvailability";
 
 /**
  * 设置页与模型选择器共用这一份判定，所以「探测未完成」与「真的不可用」必须给出不同结论：
@@ -100,5 +100,33 @@ describe("useSandboxAvailability", () => {
 		act(() => result.current.refresh());
 
 		await waitFor(() => expect(result.current.status).toBe("available"));
+	});
+
+	/*
+	 * 超时会停掉轮询，但「重新打开弹层」必须能把它再拉起来。
+	 * 轮询 effect 的依赖是 [status, read]，status 在探测未完成时恒为 unknown，
+	 * 只重置计时不重建 effect 的话，轮询就再也起不来了——用户看到「一直是灰的」。
+	 */
+	it("超时停掉轮询后，refresh 能重新拉起它", async () => {
+		vi.useFakeTimers();
+		mocks.configGet.mockResolvedValue(capability("unknown"));
+		const { result } = renderHook(() => useSandboxAvailability());
+
+		// 跑过预算：poll 自行 clearInterval。
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 12);
+		});
+		const readsAfterBudget = mocks.configGet.mock.calls.length;
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 4);
+		});
+		expect(mocks.configGet.mock.calls.length).toBe(readsAfterBudget);
+
+		// 弹层重新打开 → refresh 必须把轮询重启。
+		act(() => result.current.refresh());
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 2);
+		});
+		expect(mocks.configGet.mock.calls.length).toBeGreaterThan(readsAfterBudget);
 	});
 });
