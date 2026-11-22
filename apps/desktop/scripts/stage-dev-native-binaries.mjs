@@ -27,7 +27,16 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { copyFileSync, createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
+import {
+	copyFileSync,
+	createReadStream,
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	renameSync,
+	statSync,
+} from "node:fs";
 import { createHash } from "node:crypto";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -79,10 +88,13 @@ function sha256File(path) {
  */
 async function download(url, destination) {
 	mkdirSync(dirname(destination), { recursive: true });
+	// 先写 .part 再改名：中途失败不会留下长度看着正常、内容不完整的文件。
+	const partial = `${destination}.part`;
 	try {
-		execFileSync("curl", ["-L", "--retry", "5", "--retry-delay", "2", "--max-time", "600", "-o", destination, url], {
+		execFileSync("curl", ["-L", "--retry", "5", "--retry-delay", "2", "--max-time", "600", "-o", partial, url], {
 			stdio: "ignore",
 		});
+		renameSync(partial, destination);
 		return statSync(destination).size;
 	} catch {
 		const response = await fetch(url);
@@ -111,11 +123,19 @@ export async function stageSandboxFromRelease({ repoRoot, dryRun = false, log = 
 		throw new Error(`沙盒压缩包 SHA-256 不匹配：期望 ${pins.archiveSha256}，实际 ${archiveSha}`);
 	}
 
-	execFileSync(process.platform === "win32" ? "powershell.exe" : "pwsh", [
-		"-NoProfile",
-		"-Command",
-		`Expand-Archive -LiteralPath '${archivePath}' -DestinationPath '${extractDir}' -Force`,
-	]);
+	/*
+	 * 解压靠 PowerShell，但**不把路径拼进脚本文本**：TEMP 里若有单引号，拼接会让命令
+	 * 断裂（甚至变成任意命令）。路径走环境变量，脚本里只引用变量。
+	 */
+	execFileSync(
+		process.platform === "win32" ? "powershell.exe" : "pwsh",
+		[
+			"-NoProfile",
+			"-Command",
+			"Expand-Archive -LiteralPath $env:SANDBOX_ARCHIVE_PATH -DestinationPath $env:SANDBOX_EXTRACT_DIR -Force",
+		],
+		{ env: { ...process.env, SANDBOX_ARCHIVE_PATH: archivePath, SANDBOX_EXTRACT_DIR: extractDir } },
+	);
 
 	const manifest = JSON.parse(readFileSync(join(extractDir, "manifest.json"), "utf8"));
 	if (manifest.commit !== pins.commit) {
