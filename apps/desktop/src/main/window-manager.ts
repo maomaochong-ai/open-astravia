@@ -185,10 +185,17 @@ export async function loadMainWindow(win: BrowserWindow): Promise<void> {
  * the HWND has WS_VISIBLE cleared. A second show makes it actually visible.
  * Harmless when the launcher no longer sets HideWindow.
  */
+/** 每个窗口只做一次「双 show」：那是一次性把 SW_HIDE 痕迹拉直的兜底。 */
+const revealedWindows = new WeakSet<BrowserWindow>();
+
 export function revealMainWindow(win: BrowserWindow): void {
 	if (win.isDestroyed()) return;
 	win.show();
-	if (process.platform === "win32" && !win.isDestroyed()) {
+	// 旧实现无条件在 win32 上调两次 show()。对已可见的窗口，第二次 show 会重新激活：
+	// 用户点任务栏按钮时，窗口就在「显示 → 回任务栏 → 再显示」之间跳。
+	// 双 show 只在首次揭晓时做，之后就是一次干净的 show + focus。
+	if (process.platform === "win32" && !win.isDestroyed() && !revealedWindows.has(win)) {
+		revealedWindows.add(win);
 		win.show();
 	}
 }
