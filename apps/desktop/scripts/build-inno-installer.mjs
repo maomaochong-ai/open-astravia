@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { stringify } from "yaml";
 import { desktopVersionInfoVersion, isDesktopReleaseVersion } from "./release-version.mjs";
+import { signWindowsFiles, windowsSigningFromEnv } from "./windows-sign.mjs";
 
 const require = createRequire(import.meta.url);
 const { appBuilderPath } = require("app-builder-bin");
@@ -134,6 +135,10 @@ async function main() {
 	}
 
 	const installerPath = join(releaseDir, fileName);
+	// 安装包是用户真正双击的那一个：签名必须在 Inno 编译完成后、生成 blockmap 之前，
+	// 否则 Smart App Control 拦下的就是它（而不是里面的 exe）。
+	const signing = windowsSigningFromEnv();
+	if (signing) await signWindowsFiles([installerPath], { config: signing });
 	if (!existsSync(installerPath)) throw new Error(`[build-inno] installer not found: ${installerPath}`);
 	const blockmapPath = `${installerPath}.blockmap`;
 	const blockmapOutput = execFileSync(

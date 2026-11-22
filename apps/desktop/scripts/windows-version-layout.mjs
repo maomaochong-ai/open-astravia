@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
+import { mkdir, readdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { embedExeIcon } from "./embed-exe-icon.mjs";
+import { signWindowsFiles, windowsSigningFromEnv } from "./windows-sign.mjs";
 import { setTimeout } from "node:timers/promises";
 
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
@@ -54,30 +55,14 @@ export async function createWindowsVersionLayout(appOutDir, version, launcherPat
 	await writeFile(join(appOutDir, "current.json"), `${JSON.stringify({ version })}\n`, "utf8");
 }
 
-const require = createRequire(import.meta.url);
-
 /**
- * 给 Go 编译的启动器嵌入应用图标。
- *
- * 启动器（Astravia.exe）才是用户固定到任务栏的那一个 exe；Go 编译时不带图标，
- * 任务栏会显示 Windows 通用 exe 图标。这里复用打包链路的 resedit 把 icon.ico 写入
- * 启动器的资源段，与真正的 Electron exe 使用同一套图标。
+ * 两个 exe 都要带应用图标：根目录的启动器是用户双击/固定到任务栏的入口，`versions/`
+ * 下的 Electron 本体是快捷方式里真实被启动的那个进程。后者缺图标时，任务栏固定项
+ * 会退到 Electron 自带图（看起来像 React 图标），无论窗口 setIcon 设成了什么。
  */
-async function embedLauncherIcon(launcherPath, iconPath) {
-	const { Data, NtExecutable, NtExecutableResource, Resource } = require("resedit");
-	const buffer = await readFile(launcherPath);
-	const executable = NtExecutable.from(buffer);
-	const res = NtExecutableResource.from(executable);
-	const iconFile = Data.IconFile.from(await readFile(iconPath));
-	// 图标组 ID 固定 1、语言 en-US（0x409）；不存在时 replaceIconsForResource 会追加。
-	Resource.IconGroupEntry.replaceIconsForResource(
-		res.entries,
-		1,
-		0x409,
-		iconFile.icons.map((icon) => icon.data),
-	);
-	res.outputResource(executable);
-	await writeFile(launcherPath, Buffer.from(executable.generate()));
+export async function embedPackagedAppIcons({ appOutDir, version, iconPath, embed = embedExeIcon }) {
+	await embed(join(appOutDir, "versions", version, "Astravia.exe"), iconPath);
+	await embed(join(appOutDir, "Astravia.exe"), iconPath);
 }
 
 export function buildWindowsLauncher({ arch, outputPath, sourceDir }) {
@@ -109,9 +94,20 @@ export default async function windowsVersionLayout(context) {
 	const arch = ELECTRON_ARCH_BY_BUILDER_ARCH[context.arch];
 	if (!arch) throw new Error(`[windows-version-layout] unsupported builder architecture: ${context.arch}`);
 	const launcherPath = join(context.appOutDir, "AstraviaLauncher.exe");
+	const iconPath = join(import.meta.dirname, "..", "build", "icon.ico");
 	const sourceDir = join(import.meta.dirname, "..", "native", "windows-launcher");
 	buildWindowsLauncher({ arch, outputPath: launcherPath, sourceDir });
-	await embedLauncherIcon(launcherPath, join(import.meta.dirname, "..", "build", "icon.ico"));
 	await createWindowsVersionLayout(context.appOutDir, version, launcherPath);
-	console.log(`[windows-version-layout] staged version ${version} (${arch})`);
+	await embedPackagedAppIcons({ appOutDir: context.appOutDir, version, iconPath });
+	// 签名必须放在所有 PE 写入之后（图标/版本资源已落完），否则签名会被后续写入作废。
+	const signing = windowsSigningFromEnv();
+	if (signing) {
+		await signWindowsFiles(
+			[join(context.appOutDir, "versions", version, "Astravia.exe"), join(context.appOutDir, "Astravia.exe")],
+			{ config: signing },
+		);
+	}
+	console.log(
+		`[windows-version-layout] staged version ${version} (${arch})${signing ? "，已签名" : "，未签名"}`,
+	);
 }

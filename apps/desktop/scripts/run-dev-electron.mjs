@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import electronPath from "electron";
+import { applyDevExeIcon } from "./embed-exe-icon.mjs";
 import { resolveSystemPluginSelection } from "./stage-system-plugins.mjs";
 
 const projectRoot = join(import.meta.dirname, "..");
@@ -114,6 +115,19 @@ async function main() {
 	electronArgs.push(join(projectRoot, "dist", "main", "index.js"));
 
 	console.log(`[dev] data home: ${homePath}`);
+	// 任务栏固定项的图标取自目标 exe 的内嵌资源，不是窗口 setIcon。dev 跑的
+	// electron.exe 自带 Electron 图标，固定到任务栏后看起来像 React 图标。
+	if (process.platform === "win32") {
+		try {
+			await applyDevExeIcon({
+				exePath: electronPath,
+				iconPath: join(projectRoot, "build", "icon.ico"),
+				projectRoot,
+			});
+		} catch (error) {
+			console.warn(`[dev] 嵌入应用图标失败（不影响启动）：${error?.message ?? error}`);
+		}
+	}
 	const electronProcess = spawn(electronPath, electronArgs, {
 		cwd: projectRoot,
 		env: {
