@@ -166,6 +166,11 @@ export function CommandPanelView({
 
 	useEffect(() => {
 		if (!open) return;
+		// 只在「用户真的要在面板里找东西」时抢焦点。
+		// 斜杠命令插入后编辑器已经拿到光标，如果这里再多一次 rAF 聚焦，光标就被搜到
+		// 面板搜索框里（表现为「选完命令文字跑到搜索框」）。编辑器是 contenteditable，
+		// 它持有焦点时不抢。
+		if (document.activeElement instanceof HTMLElement && document.activeElement.isContentEditable) return;
 		// 打开就把焦点放进搜索框（模型选择器同款行为）：用户第一反应是打字。
 		// 预览态不抢焦点，否则返回列表时焦点会跳回搜索框、看着像刚打开。
 		if (preview) return;
@@ -312,7 +317,16 @@ export function CommandPanelView({
 															icon={<span className="icon-[solar--menu-dots-bold] size-4" />}
 														/>
 													</DropdownMenuTrigger>
-													<DropdownMenuContent align="end" side="top" data-command-panel-keep-open="true">
+												{/*
+												 * 高度上限 + 内部滚动：动作一多（装了多个插件时很常见），这个菜单会往上长，
+												 * 超出窗口上沿的部分直接看不到也滚不到。与模型选择器同口径限高。
+												 */}
+												<DropdownMenuContent
+													align="end"
+													side="top"
+													data-command-panel-keep-open="true"
+													className="max-h-[min(320px,60vh)] overflow-y-auto overscroll-contain"
+												>
 														{actionRow.overflow.map((action) => (
 															<DropdownMenuItem key={action.id} onSelect={action.onToggle}>
 																{action.icon ? (

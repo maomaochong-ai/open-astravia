@@ -234,6 +234,22 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 		const mcps = buildMcpAbilities(market, localState, t);
 		const plugins = buildPluginAbilities(market, localState, trPlugin);
 		const bundles = buildBundleAbilities(market, [...skills, ...mcps, ...plugins], localState, t);
+		/*
+		 * 插件与它自带的技能只占一个位置。
+		 *
+		 * 市场装的插件本身就是一个可插的能力，它自带的技能由插件按需加载，不需要在
+		 * 列表里再单列一行——否则用户看到「插件」和它的十几个技能条目，分不清该选哪个。
+		 * 例外是组合包（bundle）：它本来就以「包 + 成员」的方式运作，成员可单独插入，
+		 * 所以包在、成员也在；包没把某个技能列为成员时仍不单列。
+		 */
+		const bundleSkillSlugs = new Set<string>();
+		const bundleIds = new Set<string>();
+		for (const bundle of bundles) {
+			bundleIds.add(bundle.id);
+			for (const member of bundle.memberItems) {
+				if (member.type === "skill") bundleSkillSlugs.add(member.slug);
+			}
+		}
 		// 只收「清单里真有图标」的那些：把 `undefined` 也塞进表里会把同名 slug 占住，
 		// 后面市场目录的图标就再也补不进来了。
 		const skillIcons = new Map<string, string | undefined>(
@@ -272,7 +288,13 @@ export function useAddPanelAbilityEntries(open: boolean): readonly AddPanelEntry
 				const { skillProvenance } = skillMeta(item);
 				// 插件贡献的技能在能力页以「插件」条目呈现，自身不进两个分区；但它们在
 				// `commandPalette` 上可见时就是可插入行（见 ADR-0183），面板不能漏掉。
-				if (skillProvenance?.kind === "provided") return true;
+				if (skillProvenance?.kind === "provided") {
+					// 由普通插件提供的技能：插件条目本身已代表它，不单列。
+					// 由组合包提供的成员技能：包已把它列为成员、可单独插入，保留。
+					if (item.type === "skill" && bundleSkillSlugs.has(item.slug)) return true;
+					const providerId = skillProvenance.providerId;
+					return Boolean(providerId && bundleIds.has(providerId));
+				}
 				return skillProvenance?.kind === "native" && skillProvenance.scope === "market";
 			}),
 			skillIcons,
