@@ -1,8 +1,6 @@
-import { motion } from "motion/react";
 import {
 	useCallback,
 	useEffect,
-	useId,
 	useRef,
 	useState,
 	type JSX,
@@ -77,8 +75,8 @@ export interface TabBarProps<T extends string> {
 	onTabContextMenu?: (key: T, point: { x: number; y: number }) => void;
 }
 
-/** 行的左右内边距。左侧还要避开内容卡片的 12px 圆角。 */
-const ROW_PADDING_LEFT = 20;
+/** 行的左右内边距。左侧必须为 0：页签左沿要与内容面板的左边框对在一条线上。 */
+const ROW_PADDING_LEFT = 0;
 const ROW_PADDING_RIGHT = 12;
 /** 页签之间的间隔（`gap-1`）：胶囊之间需要真实空隙，不能靠内边距冒充。 */
 const TAB_GAP = 4;
@@ -93,7 +91,7 @@ const TAB_ITEM_CLASS =
 	// 看上去像两个不同半径的圆角撞在一起。选中态只靠背景块区分（与参考界面一致）。
 	// `border` 保留成透明：宽度与测量层一致，去掉它会让切换时抖 2px。
 	// 文字降到 13px：14px 粗体在 8px 圆角里显得拥挤，参考界面也是小一号。
-	"flex h-8 min-w-[72px] max-w-[160px] select-none items-center gap-1.5 whitespace-nowrap rounded-md border border-transparent pl-3 text-[13px] font-medium leading-none";
+	"flex h-8 min-w-[72px] max-w-[160px] select-none items-center gap-1.5 whitespace-nowrap rounded-t-md border border-b-0 border-transparent pl-3 text-[13px] font-medium leading-none";
 const FILE_DRAG_HOVER_DELAY_MS = 300;
 
 function isFileDrag(event: ReactDragEvent<HTMLElement>): boolean {
@@ -137,37 +135,12 @@ function sameKeys<T>(a: T[], b: T[]): boolean {
 }
 
 /**
- * 激活页签的背景：一块独立的圆角胶囊。
+ * 激活页签的背景由按钮自身承担（`bg-muted` + 三边描边、底边不画），不再单独画一层。
  *
- * 旧实现用 SVG 把页签与下方内容卡片连成一体（两倒凹形连接角 + 三边描边）。
- * 改成圆角胶囊后不再与卡片拼接，两层结构反而成为负担：只要一个带描边的圆角矩形。
+ * 早先是 SVG 把页签与卡片缝在一起（两倒凹形连接角），后来改过一层绝对定位底块；
+ * 两者都是为了绕开「两个盒子拼接容易出缝」的问题。实际上只要行下探 1px 盖住面板的
+ * 上边框、按钮自己上底色，缝就是直的，也不需要额外节点。
  */
-function ActiveTabIndicator({
-	layoutId,
-	suppressLayoutAnimation,
-}: {
-	layoutId: string;
-	suppressLayoutAnimation: boolean;
-}): JSX.Element {
-	// 页签按钮带 1px 透明边框，绝对定位默认贴的是 padding box；用负偏移拉回边框盒。
-	const indicatorProps = {
-		"aria-hidden": true,
-		className: "pointer-events-none absolute -inset-px rounded-md bg-muted",
-		"data-active-tab-indicator": true,
-	};
-
-	return (
-		<motion.span
-			layoutId={suppressLayoutAnimation ? undefined : `tabbar-active-${layoutId}`}
-			transition={
-				suppressLayoutAnimation
-					? { duration: 0 }
-					: { type: "spring", stiffness: 480, damping: 36, mass: 0.8 }
-			}
-			{...indicatorProps}
-		/>
-	);
-}
 
 /** 页签内容（图标 + 文字 + 小红点），真实页签与隐藏测量层共用，保证宽度一致。 */
 function TabInner({
@@ -222,7 +195,8 @@ export function TabBar<T extends string>({
 	value,
 	onChange,
 	className,
-	suppressLayoutAnimation = false,
+	// 保留参数，兼容调用方；激活底色不再做位移动画，因此这里不再读取它。
+	suppressLayoutAnimation: _suppressLayoutAnimation = false,
 	onRemove,
 	removeLabel,
 	onReorder,
@@ -234,8 +208,7 @@ export function TabBar<T extends string>({
 	activateOnFileDragHover = false,
 	onTabContextMenu,
 }: TabBarProps<T>): JSX.Element {
-	// 激活指示器在页签之间共享同一个 DOM 元素，靠 layoutId 让它从旧位置滑到新位置。
-	const layoutId = useId();
+	// 激活底色现在由按钮自身承担，不再有可共享的指示器节点，也就不需要 layoutId。
 	// 拖拽中：dragKey 为被拖动的页签，order 为拖拽过程中的临时顺序（提交前不触碰 props）
 	const [dragKey, setDragKey] = useState<T | null>(null);
 	const [order, setOrder] = useState<T[] | null>(null);
@@ -566,7 +539,13 @@ export function TabBar<T extends string>({
 	const visibleItems = overflowSet ? renderItems.filter((it) => !overflowSet.has(it.key)) : renderItems;
 	return (
 		<div className={cn("group/tabbar relative z-10 min-w-0", className)}>
-			<div ref={setRowRef} role="tablist" className="flex h-9 items-end gap-1 overflow-visible pb-1 pl-5 pr-3">
+			{/* -mb-px：整行下探 1px 盖住面板的上边框，激活页签的底色才能吃掉那一段线，
+			    与下方面板缝成一块；未选中页签是透明的，那段线照旧露出来。 */}
+			<div
+				ref={setRowRef}
+				role="tablist"
+				className="-mb-px flex h-8 items-end gap-1 overflow-visible pl-0 pr-3"
+			>
 				{visibleItems.map(({ key, label, icon, badge, removable }) => {
 					const active = value === key;
 					const isDragged = dragKey === key;
@@ -611,17 +590,20 @@ export function TabBar<T extends string>({
 								}}
 								className={cn(
 									TAB_ITEM_CLASS,
-									"w-full border-transparent",
+									"w-full",
 									canRemove ? "pr-7" : "pr-3",
 									isDragged ? "cursor-grabbing" : "cursor-pointer",
 									// 只过渡字色：背景色一起过渡时，切换瞬间会同时看到旧页签淡出、
 									// 新页签淡入两块底色，看上去就是一块矩形残影。
 									"transition-[color] duration-100",
-									active ? "text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+									// 激活页签与下方面板同色、共用同一条描边，底边不画线：它与面板是同一块面，
+									// 中间叠一道线会把两者切成两个不相干的框。
+									active
+										? "border-border bg-muted text-foreground"
+										: "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
 									fileDragHovered && !active && "text-foreground bg-primary/10",
 								)}
 							>
-								{active && <ActiveTabIndicator layoutId={layoutId} suppressLayoutAnimation={suppressLayoutAnimation} />}
 								<TabInner icon={icon} label={label} badge={badge} active={active} />
 							</button>
 							{canRemove && (

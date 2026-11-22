@@ -171,29 +171,31 @@ describe("TabBar pointer drag", () => {
 
 		try {
 			render(false);
-			const indicator = container.querySelector("[data-active-tab-indicator]");
-			expect(indicator).not.toBeNull();
-			// 指示器盖住按钮的 1px 透明边框：用 -inset-px 拉回边框盒，背景块才不会偏出一像素。
-			expect(indicator?.className).toContain("-inset-px");
-			// 激活态是一块独立的圆角胶囊，不再与下方卡片拼接（也不再画 SVG 轮廓）。
-			expect(indicator?.className).toContain("rounded-md");
-			expect(indicator?.querySelector("svg")).toBeNull();
+			const activeTab = container.querySelector('[role="tab"][aria-selected="true"]');
+			// 激活页签与下方面板同色、三边描边、底边不画：两者缝成一块面。
+			expect(activeTab?.className).toContain("bg-muted");
+			expect(activeTab?.className).toContain("border-border");
+			expect(activeTab?.className).toContain("border-b-0");
+			// 只剩上圆角，下沿要直着接面板。
+			expect(activeTab?.className).toContain("rounded-t-md");
+			expect(activeTab?.querySelector("svg")).toBeNull();
 
-			// 未选中的页签不画轮廓。
-			expect(container.querySelectorAll("[data-active-tab-indicator]")).toHaveLength(1);
+			// 未选中页签没有底色与描边。
+			const idleTab = container.querySelector('[role="tab"][aria-selected="false"]');
+			expect(idleTab?.className).toContain("border-transparent");
+			expect(idleTab?.className).not.toContain("bg-muted ");
 
-			// 可关闭的页签同样成立（关闭按钮不参与背景块）。
+			// 可关闭的页签同样成立（关闭按钮不参与底色）。
 			render(true);
-			expect(container.querySelector("[data-active-tab-indicator]")).not.toBeNull();
+			expect(container.querySelector('[role="tab"][aria-selected="true"]')).not.toBeNull();
 		} finally {
 			vi.restoreAllMocks();
 		}
 	});
 
 	/*
-	 * 激活指示器是一块绝对定位的不透明底色。内容层若不带 `relative z-10`，
-	 * 会被它整块盖住——文字还在 DOM 里，但屏幕上只剩关闭按钮。
-	 * 页签之间没有 gap，选中项的凹形连接角会伸到左右邻居身上，所以选中页签要抬一层。
+	 * 页签内容层必须是 `relative z-10`：底色由按钮自身渲染，但内容层仍需单独抬层，
+	 * 否则拖动中的半透明态（opacity-60）会先把文字压暗。
 	 */
 	it("keeps the tab label above the active indicator fill", () => {
 		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
@@ -216,13 +218,12 @@ describe("TabBar pointer drag", () => {
 			});
 
 			const active = container.querySelector('[role="tab"][aria-selected="true"]');
-			// 指示器在前，内容层在后且带 z-10：绘制顺序与层叠都要盖过那块底色。
-			const content = active?.firstElementChild?.nextElementSibling;
+			const content = active?.firstElementChild;
 			expect(content?.className).toContain("relative");
 			expect(content?.className).toContain("z-10");
 			expect(content?.textContent).toContain("Alpha");
 
-			// 选中页签抬到同层之上，否则连接角会被相邻页签切掉。
+			// 选中页签抬到同层之上：它的描边不能被相邻页签盖住。
 			const wrapper = active?.parentElement;
 			expect(wrapper?.className).toContain("z-10");
 			const idleWrapper = container.querySelector('[role="tab"][aria-selected="false"]')?.parentElement;
