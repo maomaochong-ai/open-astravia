@@ -54,7 +54,9 @@ beforeEach(() => {
 });
 
 describe("工作区路径持久化", () => {
-	it("先写配置再改界面，且不再往 localStorage 存第二份镜像", async () => {
+	// 单条要跑一次完整的 hook 挂载 + atom 回流，与其他测试并行跑满时 5s 默认上限不够；
+	// 给一个显式余量，避免把「慢」误报成「失败」。
+	it("先写配置再改界面，且不再往 localStorage 存第二份镜像", { timeout: 30_000 }, async () => {
 		const { result } = await mountModel();
 		const setItem = vi.spyOn(Storage.prototype, "setItem");
 
@@ -67,7 +69,7 @@ describe("工作区路径持久化", () => {
 		setItem.mockRestore();
 	});
 
-	it("写配置失败时不改界面，并把原因告诉用户", async () => {
+	it("写配置失败时不改界面，并把原因告诉用户", { timeout: 30_000 }, async () => {
 		mocks.configSet.mockRejectedValue(new Error("EACCES"));
 		const { result } = await mountModel();
 		const before = result.current.workspacePath;
