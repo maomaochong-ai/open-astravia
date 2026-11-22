@@ -80,6 +80,8 @@ export interface TabBarProps<T extends string> {
 /** 行的左右内边距。左侧还要避开内容卡片的 12px 圆角。 */
 const ROW_PADDING_LEFT = 20;
 const ROW_PADDING_RIGHT = 12;
+/** 页签之间的间隔（`gap-1`）：胶囊之间需要真实空隙，不能靠内边距冒充。 */
+const TAB_GAP = 4;
 /**
  * 页签盒子样式，真实页签与隐藏测量层共用一份：两处类名一旦漂移，溢出计算就会量错宽度。
  * `w-full` 不在这里：它会让测量层里每个页签都拉成最宽那个，量出来的自然是错的。
@@ -87,7 +89,11 @@ const ROW_PADDING_RIGHT = 12;
  * 测量层量到的宽度也与真实页签一致。
  */
 const TAB_ITEM_CLASS =
-	"flex h-8 min-w-[72px] max-w-[160px] select-none items-center gap-1.5 whitespace-nowrap rounded-lg border pl-3 text-[14px] font-medium leading-none";
+	// 胶囊不带可见描边：页签贴在内容卡片上沿，描边会与卡片边框叠成一条双线，
+	// 看上去像两个不同半径的圆角撞在一起。选中态只靠背景块区分（与参考界面一致）。
+	// `border` 保留成透明：宽度与测量层一致，去掉它会让切换时抖 2px。
+	// 文字降到 13px：14px 粗体在 8px 圆角里显得拥挤，参考界面也是小一号。
+	"flex h-8 min-w-[72px] max-w-[160px] select-none items-center gap-1.5 whitespace-nowrap rounded-md border border-transparent pl-3 text-[13px] font-medium leading-none";
 const FILE_DRAG_HOVER_DELAY_MS = 300;
 
 function isFileDrag(event: ReactDragEvent<HTMLElement>): boolean {
@@ -146,7 +152,7 @@ function ActiveTabIndicator({
 	// 页签按钮带 1px 透明边框，绝对定位默认贴的是 padding box；用负偏移拉回边框盒。
 	const indicatorProps = {
 		"aria-hidden": true,
-		className: "pointer-events-none absolute -inset-px rounded-lg border border-border bg-card",
+		className: "pointer-events-none absolute -inset-px rounded-md bg-muted",
 		"data-active-tab-indicator": true,
 	};
 
@@ -509,14 +515,15 @@ export function TabBar<T extends string>({
 		const row = rowRef.current;
 		const mz = measureRef.current;
 		if (!row || !mz) return;
-		// 行内没有 gap，页签之间的间距来自各自左右内边距，所以可用宽度不需要额外补偿。
-		const avail = row.clientWidth - ROW_PADDING_LEFT - ROW_PADDING_RIGHT;
+		// 页签之间有 TAB_GAP 的间隔：每个页签占用「自身宽度 + 间距」，最后一个的尾间距
+		// 在可用宽度里补回（+TAB_GAP），否则总会凭空少容纳一个。
+		const avail = row.clientWidth - ROW_PADDING_LEFT - ROW_PADDING_RIGHT + TAB_GAP;
 		const widths = new Map<string, number>();
 		for (const c of Array.from(mz.children) as HTMLElement[]) {
 			const k = c.dataset.tabkey;
 			if (k != null) widths.set(k, c.offsetWidth);
 		}
-		const widthOf = (key: T) => widths.get(key) ?? 0;
+		const widthOf = (key: T) => (widths.get(key) ?? 0) + TAB_GAP;
 		const next = computeOverflow(renderItems, value, avail, widthOf);
 		setOverflowKeys((prev) => (sameKeys(prev, next) ? prev : next));
 	}, [renderItems, value]);
@@ -559,7 +566,7 @@ export function TabBar<T extends string>({
 	const visibleItems = overflowSet ? renderItems.filter((it) => !overflowSet.has(it.key)) : renderItems;
 	return (
 		<div className={cn("group/tabbar relative z-10 min-w-0", className)}>
-			<div ref={setRowRef} role="tablist" className="flex h-8 items-end overflow-visible pl-5 pr-3">
+			<div ref={setRowRef} role="tablist" className="flex h-9 items-end gap-1 overflow-visible pb-1 pl-5 pr-3">
 				{visibleItems.map(({ key, label, icon, badge, removable }) => {
 					const active = value === key;
 					const isDragged = dragKey === key;

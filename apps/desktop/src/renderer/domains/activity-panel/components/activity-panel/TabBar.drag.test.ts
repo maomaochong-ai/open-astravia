@@ -176,7 +176,7 @@ describe("TabBar pointer drag", () => {
 			// 指示器盖住按钮的 1px 透明边框：用 -inset-px 拉回边框盒，背景块才不会偏出一像素。
 			expect(indicator?.className).toContain("-inset-px");
 			// 激活态是一块独立的圆角胶囊，不再与下方卡片拼接（也不再画 SVG 轮廓）。
-			expect(indicator?.className).toContain("rounded-lg");
+			expect(indicator?.className).toContain("rounded-md");
 			expect(indicator?.querySelector("svg")).toBeNull();
 
 			// 未选中的页签不画轮廓。
