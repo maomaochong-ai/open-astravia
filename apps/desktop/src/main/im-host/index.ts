@@ -545,12 +545,27 @@ export class ImHost {
 		}
 		// Wait briefly for the sidecar to actually be running. The
 		// SidecarManager spawn → ready handshake takes a few hundred ms.
+		//
+		// 解绑后再绑定会走到这里：sidecar 仍是 awaiting_bind，循环立刻退出；但若它因
+		// 崩溃 / 被停掉而缺席，startWechatBind 只写一条 warn 日志，帧没人收、二维码
+		// 永远不来，对话框就停在加载中。先确保它真的在跑，拉不起来就把原因回给界面。
+		if (!this.manager.getCurrentChild()) {
+			try {
+				await this.startSidecar();
+			} catch (error) {
+				return { ok: false, error: `微信 sidecar 启动失败：${String(error)}` };
+			}
+		}
+
 		const deadline = Date.now() + 5000;
 		while (Date.now() < deadline) {
 			if (this.statusStore.get().transport === "awaiting_bind" || this.config.wechat.bound) {
 				break;
 			}
 			await new Promise((r) => setTimeout(r, 100));
+		}
+		if (!this.manager.getCurrentChild()) {
+			return { ok: false, error: "微信 sidecar 未运行，无法开始扫码" };
 		}
 		this.manager.startWechatBind();
 		return { ok: true };

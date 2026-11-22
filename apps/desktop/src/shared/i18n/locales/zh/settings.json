@@ -2110,6 +2110,7 @@
   "bindFailedGeneric": "绑定失败",
   "bindCanceled": "绑定已取消",
   "bindStartFailed": "启动绑定失败",
+  "bindStartTimeout": "等待二维码超时，请重试；若反复超时，请确认微信通道的本地服务已启动。",
   "saveOk": "已启用",
   "disableOk": "已停用",
   "switchTo": "已切换到 {{channel}}",

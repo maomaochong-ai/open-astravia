@@ -116,4 +116,7 @@ agent-tools
 .tmp*
 .ai
 .scratch/
+/scratch/
+/.recon/
+.ego-scratch/
 /reports/

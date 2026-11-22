@@ -2111,6 +2111,7 @@
   "bindFailedGeneric": "Bind failed",
   "bindCanceled": "Bind cancelled",
   "bindStartFailed": "Start bind failed",
+  "bindStartTimeout": "Timed out waiting for the QR code. Try again; if it keeps timing out, check that the local WeChat channel service is running.",
   "saveOk": "Enabled",
   "disableOk": "Disabled",
   "switchTo": "Switched to {{channel}}",

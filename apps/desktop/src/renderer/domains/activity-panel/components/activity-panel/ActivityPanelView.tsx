@@ -124,7 +124,8 @@ export function ActivityPanelView({
 					{tabPicker}
 				</ActivityPanelPrimitive.Header>
 			) : null}
-			<Frame>
+			{/* 有标签栏时标签占住左上角，面板切直角才能与第一个标签拼在一条线上。 */}
+			<Frame flushTopLeft={Boolean(tabBar)}>
 				<ActivityPanelPrimitive.Body ref={model.panelRef}>
 					<div ref={registerDockedOutlet} className="flex min-h-0 flex-1 flex-col" />
 				</ActivityPanelPrimitive.Body>

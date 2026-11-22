@@ -1,5 +1,6 @@
 import { isSshProjectUri } from "@astravia/ssh-transport/project-uri";
 import { decodeNewSessionCwd } from "@shared/app-shell/new-session-route";
+import { useSandboxAvailability } from "@shared/hooks/useSandboxAvailability";
 import {
 	activeSessionAtom,
 	isStreamingAtom,
@@ -65,56 +66,16 @@ export function useExecutionModeSelectorModel(binding: ExecutionModeSelectorBind
 	const { t } = useTranslation("chat");
 	const [open, setOpen] = useState(false);
 	const [isSwitching, setIsSwitching] = useState(false);
-	const [sandboxUnavailableReason, setSandboxUnavailableReason] = useState<string | null>(null);
+	// 与设置页共用同一份可用性判定：两边各读一份快照就会出现「一边能选、一边置灰」。
+	const { reason: sandboxUnavailableReason, refresh: refreshSandbox } = useSandboxAvailability();
 	const disabled = binding.isStreaming || isSwitching;
 	const isRemoteProject = typeof binding.cwd === "string" && isSshProjectUri(binding.cwd);
 	const effectiveMode: SessionExecutionMode = isRemoteProject ? "full-access" : binding.mode;
 
-	/**
-	 * 读取一次沙箱能力。
-	 *
-	 * `unknown` 不能当成「可用」：主进程把探测放在首帧之后（Windows 的宿主探测最长 10 秒），
-	 * 面板刚打开时读到的多半就是 `unknown`。那时可选沙箱、点了却被主进程拒绝并回滚，
-	 * 用户看到的就是「切了没反应」。所以 `unknown` 也先按不可选处理，并在弹层每次打开时重读，
-	 * 探测完成后自动放行。
-	 */
-	const readSandboxCapability = useCallback(() => {
-		void window.astravia.config.get().then((config) => {
-			const capability = config.sandbox ?? config.linuxSandbox;
-			const status = capability?.status ?? "unknown";
-			if (status === "available") {
-				setSandboxUnavailableReason(null);
-				return;
-			}
-			const reason = capability?.reason ?? (status === "unknown" ? "checking" : "unknown_error");
-			const platform = capability && "platform" in capability ? capability.platform : "linux";
-			setSandboxUnavailableReason(t("executionModeSelector.sandboxUnavailable", { platform, reason }));
-		});
-	}, [t]);
-
+	// 打开弹层时重读一次：探测可能刚在后台落地，不必让用户关掉再打开。
 	useEffect(() => {
-		readSandboxCapability();
-	}, [readSandboxCapability]);
-
-	/*
-	 * 探测是异步的：首次打开弹层时它多半还没跑完。打开即重读，并在仍是「未知」时
-	 * 短促轮询几次（Windows 宿主探测最长 10 秒），探测一落地选项就自动放行——
-	 * 否则用户得关掉再打开一次才能看到沙箱可选。
-	 */
-	useEffect(() => {
-		if (!open) return;
-		readSandboxCapability();
-		let attempts = 0;
-		const timer = window.setInterval(() => {
-			attempts += 1;
-			if (attempts > 6) {
-				window.clearInterval(timer);
-				return;
-			}
-			readSandboxCapability();
-		}, 1500);
-		return () => window.clearInterval(timer);
-	}, [open, readSandboxCapability]);
+		if (open) refreshSandbox();
+	}, [open, refreshSandbox]);
 
 	const sandboxBlockedReason = isRemoteProject
 		? t("executionModeSelector.sandboxUnavailableRemote")

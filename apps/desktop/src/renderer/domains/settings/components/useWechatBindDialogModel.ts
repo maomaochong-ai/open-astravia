@@ -116,11 +116,26 @@ export function useWechatBindDialogModel({
 		};
 	}, [state.qrUrl, t]);
 
+	/**
+	 * 开始绑定，并给「一直等不到二维码」设上限。
+	 *
+	 * 解绑再绑定时，若 sidecar 没起来，宿主侧只会写一条日志，二维码永远不来；
+	 * 界面如果只依赖结果里的 ok 与事件，就会无限停在「正在生成二维码」。
+	 * 超时后切到失败态：用户能重试，也能看到具体原因。
+	 */
+	const BIND_FIRST_QR_TIMEOUT_MS = 20_000;
+	const bindTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const clearBindTimer = useCallback(() => {
+		if (bindTimerRef.current) clearTimeout(bindTimerRef.current);
+		bindTimerRef.current = null;
+	}, []);
+
 	const startBind = useCallback(async () => {
 		setState({ phase: "starting", qrAttempt: 0 });
 		const unsub = await window.astravia.im.wechat.subscribeBind((event: ImWechatBindEvent) => {
 			switch (event.kind) {
 				case "qr":
+					clearBindTimer();
 					setState((prev) => ({
 						...prev,
 						phase: "waiting",
@@ -163,15 +178,29 @@ export function useWechatBindDialogModel({
 		});
 		subUnsubRef.current = unsub;
 
+		// 超时从「发出启动请求」开始算：订阅已建、事件没来，就是宿主侧没把帧送出去。
+		clearBindTimer();
+		bindTimerRef.current = setTimeout(() => {
+			setState((prev) =>
+				prev.qrUrl || prev.phase !== "starting" ? prev : { ...prev, phase: "failed", error: t("bindStartTimeout") },
+			);
+		}, BIND_FIRST_QR_TIMEOUT_MS);
+
 		const result = await window.astravia.im.wechat.startBind();
 		if (!result.ok) {
+			clearBindTimer();
 			setState({
 				phase: "failed",
 				qrAttempt: 0,
 				error: result.error ?? t("bindStartFailed"),
 			});
 		}
-	}, [onConfirmedRefresh, onOpenChange, t]);
+	}, [clearBindTimer, onConfirmedRefresh, onOpenChange, t]);
+
+	// 关掉弹窗时一并取消超时，下次打开重新计时。
+	useEffect(() => {
+		if (!open) clearBindTimer();
+	}, [open, clearBindTimer]);
 
 	useEffect(() => {
 		if (open && !bound && state.phase === "idle") {

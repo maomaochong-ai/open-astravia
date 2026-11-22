@@ -6,6 +6,7 @@ import type {
 	NotificationEventType,
 } from "@preload/api";
 import { playNotificationSound } from "@shared/audio/notification-sound-player";
+import { useSandboxAvailability } from "@shared/hooks/useSandboxAvailability";
 import {
 	confirmDialogAtom,
 	debugModeAtom,
@@ -13,6 +14,7 @@ import {
 	sessionExecutionModeAtom,
 	workspacePathAtom,
 } from "@shared/store/atoms";
+import { showToast } from "@shared/store/toast-atoms";
 import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -97,10 +99,20 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 	const [debugMode, setDebugMode] = useAtom(debugModeAtom);
 	const [executionMode, setExecutionMode] = useAtom(sessionExecutionModeAtom);
 	const setConfirmDialog = useSetAtom(confirmDialogAtom);
-	const [sandboxUnavailableReason, setSandboxUnavailableReason] = useState<string | null>(null);
+	// 沙盒可用性统一由共享 hook 判定：设置页与模型选择器不再各读一份快照。
+	const { reason: sandboxUnavailableReason } = useSandboxAvailability();
 	const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 	const [notificationPreferences, setNotificationPreferences] = useState(DEFAULT_NOTIFICATION_PREFERENCES);
 	const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
+
+	/** 沙盒不可用的统一提示：同一句文案既做选项标题，也做点击后的 toast。 */
+	const notifySandboxUnavailable = useCallback(
+		(message: string) => {
+			// 复用既有文案键：它已经带上 reason 占位，不必为同一句话再开一个。
+			showToast({ variant: "error", title: t("executionModeChangeFailed", { reason: message }), message });
+		},
+		[t],
+	);
 
 	useEffect(() => {
 		void window.astravia.config.get().then((config) => {
@@ -109,16 +121,8 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 			const mode = config.defaultExecutionMode ?? "full-access";
 			setExecutionMode(mode);
 			localStorage.setItem("astravia-session-execution-mode", mode);
-			const capability = config.sandbox ?? config.linuxSandbox;
-			if (capability?.status === "unavailable") {
-				const reason = capability.reason ?? "unknown_error";
-				const platform = "platform" in capability ? capability.platform : "linux";
-				setSandboxUnavailableReason(t("sandboxUnavailable", { platform, reason }));
-				return;
-			}
-			setSandboxUnavailableReason(null);
 		});
-	}, [setExecutionMode, t]);
+	}, [setExecutionMode]);
 
 	/**
 	 * 先写主进程配置，写入成功后再改界面。
@@ -237,7 +241,14 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 		async (mode: string) => {
 			const nextMode = mode as SessionExecutionMode;
 			if (nextMode === executionMode) return;
-			if (nextMode === "sandbox" && sandboxUnavailableReason) return;
+			/*
+			 * 沙盒不可选时不要默默返回：用户看到的是「点了没反应」，分不清是权限、系统不支持
+			 * 还是探测还没跑完。选项本身已置灰，这里是键盘操作与程序调用时的兵底反馈。
+			 */
+			if (nextMode === "sandbox" && sandboxUnavailableReason) {
+				notifySandboxUnavailable(sandboxUnavailableReason);
+				return;
+			}
 			const previousMode = executionMode;
 			setExecutionMode(nextMode);
 			localStorage.setItem("astravia-session-execution-mode", nextMode);
@@ -248,9 +259,10 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 				setExecutionMode(previousMode);
 				localStorage.setItem("astravia-session-execution-mode", previousMode);
 				console.error("[GeneralSettings] failed to switch execution mode:", error);
+				notifySandboxUnavailable(sandboxUnavailableReason ?? String(error));
 			}
 		},
-		[executionMode, sandboxUnavailableReason, setExecutionMode],
+		[executionMode, sandboxUnavailableReason, setExecutionMode, notifySandboxUnavailable],
 	);
 
 	const startAppGuide = useCallback(() => {
