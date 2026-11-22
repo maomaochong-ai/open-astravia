@@ -30,6 +30,10 @@ func TestNewCreatesStoreAndStartsUnpaired(t *testing.T) {
 		t.Fatalf("sqlite store not created: %v", err)
 	}
 
+	// Windows keeps the sqlite file locked until the container is closed, which
+	// breaks t.TempDir() cleanup — close the store when the test ends.
+	t.Cleanup(func() { _ = tr.Close() })
+
 	handler := transport.MessageHandlerFunc(func(context.Context, transport.InboundMessage) error { return nil })
 	err = tr.Start(context.Background(), handler)
 	if !errors.Is(err, ErrNotLoggedIn) {
@@ -51,6 +55,8 @@ func TestCapabilities(t *testing.T) {
 
 func TestStopIsIdempotent(t *testing.T) {
 	tr, err := New(Options{StatePath: filepath.Join(t.TempDir(), "wa.db")})
+	// sqlite keeps the file open on Windows; release it before TempDir cleanup.
+	t.Cleanup(func() { _ = tr.Close() })
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

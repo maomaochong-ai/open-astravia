@@ -482,6 +482,12 @@ func (h *hostRuntime) handleFrame(frame any) frameAction {
 	case *hostproto.WechatLogoutFrame:
 		return h.bindFrameAction("wechat", "wechat_logout", frameAction{logout: true})
 
+	case *hostproto.WhatsappBindStartFrame:
+		return h.bindFrameAction("whatsapp", "whatsapp_bind_start", frameAction{startBind: true})
+
+	case *hostproto.WhatsappLogoutFrame:
+		return h.bindFrameAction("whatsapp", "whatsapp_logout", frameAction{logout: true})
+
 	case *hostproto.FeishuBindStartFrame:
 		return h.bindFrameAction("feishu", "feishu_bind_start", frameAction{startBind: true})
 
@@ -530,6 +536,8 @@ func bindCoordinatorKind(spec *buildSpec) string {
 		return ""
 	case spec.Wechat != nil && spec.Wechat.Enabled:
 		return "wechat"
+	case spec.Whatsapp != nil && spec.Whatsapp.Enabled:
+		return "whatsapp"
 	case spec.Feishu != nil:
 		// Feishu accepts credentials either way — typed in by hand or
 		// minted by the scan flow — so the coordinator exists whenever
@@ -554,6 +562,12 @@ func newBindCoordinator(
 	switch bindCoordinatorKind(spec) {
 	case "wechat":
 		return newWechatBindCoordinator(spec.WechatStatePath, out, emitLog, rebuildCh), "wechat"
+	case "whatsapp":
+		var allowed []string
+		if spec.Whatsapp != nil {
+			allowed = spec.Whatsapp.AllowedNumbers
+		}
+		return newWhatsappBindCoordinator(spec.WhatsappStatePath, allowed, out, emitLog, rebuildCh), "whatsapp"
 	case "feishu":
 		return newFeishuBindCoordinator(spec.Feishu, out, emitLog, rebuildCh), "feishu"
 	case "signal":

@@ -12,6 +12,7 @@ import (
 	"astravia-im-gateway/internal/transport/slack"
 	"astravia-im-gateway/internal/transport/telegram"
 	"astravia-im-gateway/internal/transport/wechat"
+	"astravia-im-gateway/internal/transport/whatsapp"
 )
 
 // hostChannel binds one InitFrame slot to its transport constructor.
@@ -43,6 +44,36 @@ var hostChannels = []hostChannel{
 					return nil, errAwaitingBind
 				}
 				return nil, fmt.Errorf("build wechat transport: %w", err)
+			}
+			return tr, nil
+		},
+	},
+	{
+		name:     "whatsapp",
+		selected: func(s *buildSpec) bool { return s.Whatsapp != nil && s.Whatsapp.Enabled },
+		build: func(s *buildSpec) (transport.Transport, error) {
+			// whatsmeow keeps the session in the sqlite store at StatePath; an empty
+			// path cannot be opened, and opening it before pairing is how we learn
+			// there is nothing to run yet.
+			if s.WhatsappStatePath == "" {
+				return nil, errors.New("whatsapp config missing statePath")
+			}
+			tr, err := whatsapp.New(whatsapp.Options{
+				StatePath:      s.WhatsappStatePath,
+				AllowedNumbers: s.Whatsapp.AllowedNumbers,
+				InboxDir:       s.ConversationCwd,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("build whatsapp transport: %w", err)
+			}
+			// New succeeds whether or not a device is paired; the host needs the
+			// awaiting_bind signal instead of a transport that fails on Start.
+			// Close before bailing out: New already opened the sqlite store, and on
+			// Windows leaving it open makes the next open of the same StatePath fail
+			// with a sharing violation — which is exactly what the pairing flow does.
+			if !tr.LoggedIn() {
+				_ = tr.Close()
+				return nil, errAwaitingBind
 			}
 			return tr, nil
 		},

@@ -162,6 +162,16 @@ func (t *Transport) LoggedIn() bool {
 	return t.client.Store.ID != nil
 }
 
+// PairedJID returns the paired account's JID ("<user>@s.whatsapp.net"), or ""
+// when the store holds no session. The host layer reports it on the bound
+// event so the desktop can show which account got linked.
+func (t *Transport) PairedJID() string {
+	if t.client.Store.ID == nil {
+		return ""
+	}
+	return t.client.Store.ID.String()
+}
+
 // PairQR runs the QR pairing flow. It emits a PairEvent with a fresh QRCode
 // each time the previous code expires, then a terminal event with Done=true
 // (credentials persisted to the store) or Err set. The returned channel is
@@ -264,6 +274,17 @@ func (t *Transport) Stop() error {
 	close(t.done)
 	t.client.Disconnect()
 	return nil
+}
+
+// Close stops the client and releases the sqlite store.
+//
+// Stop alone leaves the database handle open: on Windows that keeps the file
+// locked, so re-opening the same StatePath fails with a sharing violation.
+// The host does exactly that after a successful pairing — pairing transport
+// out, real transport in — so every throwaway transport must be Closed.
+func (t *Transport) Close() error {
+	_ = t.Stop()
+	return t.container.Close()
 }
 
 // handleMessage is the events.Message entry point: normalize, resolve media,

@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -160,6 +161,38 @@ func TestBuildHostTransport_NoSelection(t *testing.T) {
 // Enabled flag on the pairing / local-permission channels: a slot present
 // but disabled must fall through to the next candidate rather than being
 // built.
+// whatsapp 与 wechat 同样是扫码渠道：未配对时应当落到 awaiting_bind，
+// 而不是抛错、更不是「selects no transport」——那条错误的根因正是这张表漏了 whatsapp。
+func TestBuildHostTransport_WhatsappUnpairedAwaitsBind(t *testing.T) {
+	statePath := filepath.Join(t.TempDir(), "whatsapp.db")
+	spec := &buildSpec{
+		Whatsapp:          &hostproto.WhatsappConfig{Enabled: true, StatePath: statePath},
+		WhatsappStatePath: statePath,
+	}
+
+	_, err := buildHostTransport(spec)
+	if !errors.Is(err, errAwaitingBind) {
+		t.Fatalf("err = %v, want errAwaitingBind", err)
+	}
+}
+
+// 选中的 whatsapp 槽必须能构造出协调器，否则 whatsapp_bind_start 帧会被当成
+// 「channel not active」丢掉，对话框永远等不到二维码。
+func TestWhatsappCoordinatorSelectedForEnabledSlot(t *testing.T) {
+	spec := &buildSpec{Whatsapp: &hostproto.WhatsappConfig{Enabled: true, StatePath: "C:/tmp/wa.db"}}
+
+	if kind := bindCoordinatorKind(spec); kind != "whatsapp" {
+		t.Fatalf("bindCoordinatorKind = %q, want whatsapp", kind)
+	}
+	coord, kind := newBindCoordinator(spec, nil, func(string, string, map[string]any) {}, make(chan struct{}, 1))
+	if coord == nil {
+		t.Fatal("coordinator is nil for an enabled whatsapp slot")
+	}
+	if kind != "whatsapp" {
+		t.Fatalf("coordinator kind = %q, want whatsapp", kind)
+	}
+}
+
 func TestBuildHostTransport_DisabledPairingSlotsAreNotSelected(t *testing.T) {
 	spec := &buildSpec{
 		Wechat:   &hostproto.WechatConfig{Enabled: false},
