@@ -35,12 +35,10 @@ export function useAppInit(): void {
 				.then((info) => setDeployMode(info.deploy_mode))
 				.catch(console.error);
 		}
-		// Sync workspace path from config file
 		void window.astravia.config.get().then((config) => {
-			if (config.workspacePath) {
-				setWorkspacePath(config.workspacePath);
-				localStorage.setItem("astravia-workspace-path", config.workspacePath);
-			}
+			// 工作区路径只认主进程配置：不再往 localStorage 写镜像，
+			// 否则写盘失败时会出现「本次显示新路径、重启回默认」的分叉。
+			if (config.workspacePath) setWorkspacePath(config.workspacePath);
 			if (config.defaultConversationCwd) {
 				setDefaultConversationCwd(config.defaultConversationCwd);
 			}

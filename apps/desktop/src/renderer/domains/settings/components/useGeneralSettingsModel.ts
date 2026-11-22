@@ -120,22 +120,43 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 		});
 	}, [setExecutionMode, t]);
 
+	/**
+	 * 先写主进程配置，写入成功后再改界面。
+	 *
+	 * 顺序反了就是「重启后回默认」：旧实现在写盘前先改 atom 与 localStorage，主进程写失败
+	 * （路径无权限、磁盘被占用）时用户看到新路径，重启时 config 里的旧值（默认值）又会
+	 * 把本地镜像盖回去。失败时把错误弹给用户，界面保持原值。
+	 */
+	const persistWorkspace = useCallback(
+		async (nextPath: string, action: "selected" | "reset") => {
+			try {
+				// 写入成功才改界面；写失败会抛出，界面保持原值。
+				await window.astravia.config.set({ workspacePath: nextPath });
+				setWorkspacePath(nextPath);
+				recordSettingsUsage({ tab: "general", action, target: "workspace" });
+			} catch (error) {
+				console.error("[settings] workspace path not saved:", error);
+				setConfirmDialog({
+					title: t("workspaceSaveFailedTitle"),
+					message: t("workspaceSaveFailedMessage"),
+					confirmLabel: t("workspaceSaveFailedConfirm"),
+					variant: "danger",
+					onConfirm: () => {},
+				});
+			}
+		},
+		[setConfirmDialog, setWorkspacePath, t],
+	);
+
 	const selectWorkspace = useCallback(async () => {
 		const selected = await window.astravia.dialog.selectFolder();
 		if (!selected) return;
-		setWorkspacePath(selected);
-		localStorage.setItem("astravia-workspace-path", selected);
-		await window.astravia.config.set({ workspacePath: selected });
-		recordSettingsUsage({ tab: "general", action: "selected", target: "workspace" });
-	}, [setWorkspacePath]);
+		await persistWorkspace(selected, "selected");
+	}, [persistWorkspace]);
 
 	const resetWorkspace = useCallback(async () => {
-		const defaultPath = "~/.astravia/workspace";
-		setWorkspacePath(defaultPath);
-		localStorage.setItem("astravia-workspace-path", defaultPath);
-		await window.astravia.config.set({ workspacePath: defaultPath });
-		recordSettingsUsage({ tab: "general", action: "reset", target: "workspace" });
-	}, [setWorkspacePath]);
+		await persistWorkspace("~/.astravia/workspace", "reset");
+	}, [persistWorkspace]);
 
 	const toggleDebug = useCallback(
 		(checked: boolean) => {

@@ -255,7 +255,14 @@ export const defaultConversationFilterAtom = atom(
 export const sidebarCollapsedAtom = atom<boolean>(false);
 
 const DEFAULT_WORKSPACE = "~/.astravia/workspace";
-export const workspacePathAtom = atom<string>(localStorage.getItem("astravia-workspace-path") || DEFAULT_WORKSPACE);
+/**
+ * 工作区路径的**唯一**事实源是主进程的 desktop config（`workspacePath`）。
+ *
+ * 不从 localStorage 初始化：本窗口先写 localStorage、而主进程写盘失败时，会出现
+ * 「重启前显示新路径、重启后变回默认」——启动时会用 config 里的值盖掉 localStorage。
+ * 要改就改 config，并在确认写入成功后再更新这个 atom。
+ */
+export const workspacePathAtom = atom<string>(DEFAULT_WORKSPACE);
 
 export const sessionContextMenuAtom = atom<{
 	x: number;

@@ -55,6 +55,7 @@ import {
 	stagePendingSessionSend,
 	takeStagedPendingSessionSend,
 } from "../services/staged-new-session-send";
+import { resolvePendingMessageEdit } from "./pending-message-edit";
 
 interface SessionMessageSenderOptions {
 	bumpSuggestionToken: (runtimeId: string) => void;
@@ -240,7 +241,11 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 			}
 			// 最后一条用户消息重编辑：提交时先中止当前生成，再删除旧消息及其回复子树；
 			// 随后的正常 prompt 从原 parent 继续，因此不会创建会话内分支。
-			const pendingEdit = store.get(pendingMessageEditAtom);
+			// 先校验编辑态是否仍指向当前会话的最后一条用户消息：切会话或消息被替换 / 删除后
+			// 残留的 entryId 会让这次发送误删上一轮问答，甚至因替换失败而把新消息吞掉。
+			const rawPendingEdit = store.get(pendingMessageEditAtom);
+			const pendingEdit = resolvePendingMessageEdit(store.get(chatMessagesAtom), rawPendingEdit);
+			if (rawPendingEdit && !pendingEdit) store.set(pendingMessageEditAtom, null);
 			if (pendingEdit) {
 				if (store.get(isStreamingAtom)) {
 					await new Promise<void>((resolve) => {
@@ -276,12 +281,18 @@ export function useSessionMessageSender({ bumpSuggestionToken }: SessionMessageS
 				} catch (err) {
 					const message = err instanceof Error ? err.message : String(err);
 					console.error("[useSessionManager.sendMessage] replaceLastUserMessage failed:", err);
-					// 不清 pendingMessageEdit：清掉的话用户刚写好的内容就没了，他得从头再编辑一遍。
-					// 保留下来，再点一次发送即可重试。
+					// 替换失败时把文字退回输入框，并结束编辑态：留着编辑态的话，用户下一次
+					// 发送会再次尝试替换同一条消息——失败了继续失败，成功则删掉别的轮次，
+					// 而输入框里的新内容永远发不出去。
+					store.set(pendingMessageEditAtom, null);
+					if (!hasOverride) {
+						store.set(inputValueAtom, rawText);
+						store.set(inputSegmentsAtom, [...preparedInput.segments]);
+					}
 					dispatchConversationFeed({
 						type: "error.appended",
 						runtimeId: session.runtimeId,
-						message: `编辑未能应用：${message}。内容已保留，可直接重试发送。`,
+						message: `编辑未能应用：${message}。文字已退回输入框，可作为新消息发送。`,
 						timestamp: Date.now(),
 					});
 					return;

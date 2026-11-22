@@ -89,13 +89,12 @@ export function UpdateCheckerDetail({
 	labels,
 	latestVersion,
 	onPrimary,
-	onViewMore,
 	phase,
 	progress,
 	releaseNote,
 }: Pick<
 	UpdateCheckerViewProps,
-	"currentVersion" | "labels" | "latestVersion" | "onPrimary" | "onViewMore" | "phase" | "progress" | "releaseNote"
+	"currentVersion" | "labels" | "latestVersion" | "onPrimary" | "phase" | "progress" | "releaseNote"
 >): JSX.Element | null {
 	if (phase !== "available" && phase !== "downloading" && phase !== "ready") {
 		return null;
@@ -133,11 +132,7 @@ export function UpdateCheckerDetail({
 				)}
 			</div>
 			{releaseNote && (
-				<ReleaseNotePreview
-					releaseNote={releaseNote}
-					viewMoreLabel={labels.viewMore ?? "View more"}
-					onViewMore={onViewMore}
-				/>
+				<ReleaseNotePreview releaseNote={releaseNote} />
 			)}
 		</div>
 	);
@@ -148,35 +143,13 @@ const MAX_HEIGHT_PX = 240;
 
 function ReleaseNotePreview({
 	releaseNote,
-	viewMoreLabel,
-	onViewMore,
 }: {
 	readonly releaseNote: string;
-	readonly viewMoreLabel: string;
-	readonly onViewMore?: () => void;
 }): JSX.Element {
-	const innerRef = useRef<HTMLDivElement>(null);
-	const [isOverflowing, setIsOverflowing] = useState(false);
 	// 解析结果按原始文本缓存：outline 每次渲染都新建对象，会让下面的 effect 每轮重跑，
 	// 而那正是「Maximum update depth exceeded」的形状。依赖只钉在文本上。
 	const outline = useMemo(() => outlineReleaseNote(releaseNote), [releaseNote]);
 
-	useEffect(() => {
-		const el = innerRef.current;
-		if (!el) return;
-
-		// 裁切高度恒定，这里只判断内容有没有超出。测量必须跟着内容尺寸变化重跑：
-		// 面板隐藏时挂载、字体晚到、窗口缩放都会让一次性测量得出错误结论，
-		// 之后再也不重算就是长文本溢出卡片、盖住下面设置行的直接原因。
-		const measure = () => {
-			setIsOverflowing(el.getBoundingClientRect().height > MAX_HEIGHT_PX + 4);
-		};
-		measure();
-		if (typeof ResizeObserver === "undefined") return;
-		const observer = new ResizeObserver(measure);
-		observer.observe(el);
-		return () => observer.disconnect();
-	}, [outline]);
 
 	return (
 		// 外层负责「不越界」：卡片是圆角的，任何子节点都不能把自己的绘制溢出到圆角之外。
@@ -200,7 +173,7 @@ function ReleaseNotePreview({
 					overflowY: "auto",
 				}}
 			>
-				<div ref={innerRef} className="pr-1">
+				<div className="pr-1">
 					{outline.date && (
 						<div className="mb-2 text-[10.5px] tracking-wider text-muted-foreground/60">{outline.date}</div>
 					)}
@@ -226,14 +199,16 @@ function ReleaseNotePreview({
 											{itemIndex + 1}
 										</span>
 										<div className="min-w-0 flex-1">
-											{item.title ? (
-												// 每条变更只显摘要（粗体标题），完整细节交给「查看更多」。
-												// 早先这里是「标题 + 正文」两行，一屏塞不下几条，看着像把整篇发布说明搬进了卡片。
-												<div className="text-[12px] leading-snug font-medium text-foreground/90">{item.title}</div>
-											) : (
-												// 没有粗体标题的纯正文条目（旧格式或第三方 feed），正文本身就是摘要。
-												<p className="m-0 text-[11.5px] leading-relaxed">{item.body}</p>
-											)}
+							{item.title ? (
+								<>
+									<div className="text-[12px] leading-snug font-medium text-foreground/90">{item.title}</div>
+									{item.body && (
+										<p className="mt-0.5 mb-0 text-[11.5px] leading-relaxed">{item.body}</p>
+									)}
+								</>
+							) : (
+								<p className="m-0 text-[11.5px] leading-relaxed">{item.body}</p>
+							)}
 										</div>
 									</li>
 								))}
@@ -242,20 +217,6 @@ function ReleaseNotePreview({
 					))}
 				</div>
 			</div>
-			{/* 「查看更多」放在滚动框下面，不再用负 margin 盖在正文上：
-			    那是「最后几行被淡出遮住」的直接原因。 */}
-			{isOverflowing && (
-				<div className="mt-1 flex justify-center">
-					<button
-						className="inline-flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-[12px] font-medium text-primary transition-colors hover:bg-muted/50 hover:underline"
-						onClick={onViewMore}
-						type="button"
-					>
-						<span>{viewMoreLabel}</span>
-						<span className="icon-[mdi--chevron-right] h-3.5 w-3.5" />
-					</button>
-				</div>
-			)}
 		</div>
 	);
 }
@@ -277,7 +238,6 @@ export function UpdateCheckerView(props: UpdateCheckerViewProps): JSX.Element {
 				labels={props.labels}
 				latestVersion={props.latestVersion}
 				onPrimary={props.onPrimary}
-				onViewMore={props.onViewMore}
 				phase={props.phase}
 				progress={props.progress}
 				releaseNote={props.releaseNote}

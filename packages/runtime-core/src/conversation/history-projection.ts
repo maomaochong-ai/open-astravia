@@ -34,8 +34,7 @@ export function selectConversationDocumentBranch(document: ConversationDocument)
 
 export function projectConversationDocumentHistory(document: ConversationDocument): HistoryEntry[] {
 	const branch = selectConversationDocumentBranch(document);
-	const byId = new Map(document.entries.map((entry) => [entry.id, entry]));
-	const allUserEntries = document.entries.filter(isVisibleUserMessageEntry);
+	const branchIndex = createUserBranchIndex(document.entries);
 	const history: HistoryEntry[] = [];
 
 	for (const entry of branch) {
@@ -51,7 +50,7 @@ export function projectConversationDocumentHistory(document: ConversationDocumen
 				message: entry.message,
 			};
 			if (entry.message.role === "user") {
-				const branchInfo = buildUserBranch(entry, byId, allUserEntries);
+				const branchInfo = buildUserBranch(entry, branchIndex);
 				if (branchInfo) historyEntry.branch = branchInfo;
 			}
 			history.push(historyEntry);
@@ -125,18 +124,64 @@ function isTransparentTreeEntry(entry: ConversationDocumentEntry): boolean {
 function structuralParentId(
 	entry: ConversationDocumentEntry,
 	byId: ReadonlyMap<string, ConversationDocumentEntry>,
+	memo?: Map<string, string | null>,
 ): string | null {
+	const path: string[] = [];
 	let currentId = entry.parentId;
+	let result: string | null = null;
 	while (currentId) {
+		if (memo) {
+			const cached = memo.get(currentId);
+			if (cached !== undefined) {
+				result = cached;
+				break;
+			}
+			path.push(currentId);
+		}
 		const parent = byId.get(currentId);
-		if (!parent) return currentId;
-		if (!isTransparentTreeEntry(parent)) return currentId;
+		if (!parent) {
+			result = currentId;
+			break;
+		}
+		if (!isTransparentTreeEntry(parent)) {
+			result = currentId;
+			break;
+		}
 		currentId = parent.parentId;
 	}
-	return null;
+	// 链压缩：同一条透明节点链只走一次。
+	if (memo) for (const id of path) memo.set(id, result);
+	return result;
 }
 
-function isAncestorOf(
+/**
+ * 整份 history 共用一份索引。
+ *
+ * 旧实现对每条用户消息都重扫全部用户消息并逐条回溯父链，长会话（数百轮 + 多处编辑）
+ * 是 O(用户消息² × 链深)，而它跑在 Electron 主线程上；索引后单条消息的查询变成哈希查找。
+ */
+type UserBranchIndex = {
+	byId: Map<string, ConversationDocumentEntry>;
+	byBranchParent: Map<string | null, ConversationDocumentEntry[]>;
+	branchParentMemo: Map<string, string | null>;
+};
+
+function createUserBranchIndex(entries: readonly ConversationDocumentEntry[]): UserBranchIndex {
+	const byId = new Map<string, ConversationDocumentEntry>();
+	for (const entry of entries) byId.set(entry.id, entry);
+	const branchParentMemo = new Map<string, string | null>();
+	const byBranchParent = new Map<string | null, ConversationDocumentEntry[]>();
+	for (const entry of entries) {
+		if (!isVisibleUserMessageEntry(entry)) continue;
+		const key = structuralParentId(entry, byId, branchParentMemo);
+		const bucket = byBranchParent.get(key);
+		if (bucket) bucket.push(entry);
+		else byBranchParent.set(key, [entry]);
+	}
+	return { byId, byBranchParent, branchParentMemo };
+}
+
+function _isAncestorOf(
 	ancestorId: string,
 	nodeId: string,
 	byId: ReadonlyMap<string, ConversationDocumentEntry>,
@@ -149,26 +194,37 @@ function isAncestorOf(
 	return false;
 }
 
-function buildUserBranch(
-	entry: ConversationDocumentEntry,
-	byId: ReadonlyMap<string, ConversationDocumentEntry>,
-	allUserEntries: readonly ConversationDocumentEntry[],
-): HistoryMessageBranch | undefined {
-	const parentId = structuralParentId(entry, byId);
-	const candidates = allUserEntries.filter((candidate) => structuralParentId(candidate, byId) === parentId);
+function buildUserBranch(entry: ConversationDocumentEntry, index: UserBranchIndex): HistoryMessageBranch | undefined {
+	const parentId = structuralParentId(entry, index.byId, index.branchParentMemo);
+	const candidates = index.byBranchParent.get(parentId) ?? [];
 	if (candidates.length === 0) return undefined;
 	const directSiblings = candidates.filter((candidate) => candidate.parentId === entry.parentId);
-	const versions =
-		directSiblings.length > 1
-			? directSiblings
-			: candidates.filter(
-					(candidate) =>
-						!candidates.some((other) => other.id !== candidate.id && isAncestorOf(other.id, candidate.id, byId)),
-				);
+	let versions: ConversationDocumentEntry[];
+	if (directSiblings.length > 1) {
+		versions = directSiblings;
+	} else {
+		// 祖先判定只在同一个分支点的桶内做，避免对全量用户消息 O(U²) 扫描。
+		const candidateIds = new Set(candidates.map((candidate) => candidate.id));
+		versions = candidates.filter((candidate) => !hasCandidateAncestor(candidate, candidateIds, index.byId));
+	}
 	versions.sort((left, right) => new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime());
 	const siblings = versions.map((candidate) => candidate.id);
-	const index = siblings.indexOf(entry.id);
-	return index < 0 ? undefined : { siblings, index };
+	const position = siblings.indexOf(entry.id);
+	return position < 0 ? undefined : { siblings, index: position };
+}
+
+/** 沿父链向上，遇到同桶候选就说明它是后代，而不是并列版本。 */
+function hasCandidateAncestor(
+	entry: ConversationDocumentEntry,
+	candidateIds: Set<string>,
+	byId: ReadonlyMap<string, ConversationDocumentEntry>,
+): boolean {
+	let current = entry.parentId ? byId.get(entry.parentId) : undefined;
+	while (current) {
+		if (current.id !== entry.id && candidateIds.has(current.id)) return true;
+		current = current.parentId ? byId.get(current.parentId) : undefined;
+	}
+	return false;
 }
 
 function parseAssistantTurnTiming(entry: ConversationDocumentCustomEntry): AssistantTurnTiming | undefined {

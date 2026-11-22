@@ -33,7 +33,6 @@ function renderDetail(releaseNote: string): string {
 			labels={labels}
 			latestVersion="0.5.77"
 			onPrimary={() => {}}
-			onViewMore={() => {}}
 			phase="available"
 			releaseNote={releaseNote}
 		/>,
@@ -46,8 +45,6 @@ describe("UpdateCheckerDetail", () => {
 
 		expect(html).toContain(">新增<");
 		expect(html).toContain("内置浏览器可以从标签页菜单添加了");
-		// 每条只显摘要（粗体标题），冒号后的细节正文不再进入卡片。
-		expect(html).not.toContain("现在它按普通面板参与可见性解析。");
 		expect(html).not.toContain("&lt;h2&gt;");
 		expect(html).not.toContain("&lt;ul&gt;");
 	});
@@ -61,12 +58,20 @@ describe("UpdateCheckerDetail", () => {
 		expect(html).not.toContain("## ");
 	});
 
-	it("每条变更只显摘要标题，不把冒号后的细节正文铺出来", () => {
+	it("reads the whole entry inside the card: title plus its body", () => {
 		const html = renderDetail(FEED_HTML);
 
-		// 摘要（粗体标题）是单独一行；细节正文不再渲染成第二段。
+		// 标题单独一行，正文同一张卡片里展示 —— 卡片是唯一阅读位置。
 		expect(html).toMatch(/font-medium[^"]*">内置浏览器可以从标签页菜单添加了<\/div>/u);
-		expect(html).not.toContain("现在它按普通面板参与可见性解析。");
+		expect(html).toContain("现在它按普通面板参与可见性解析。");
+	});
+
+	it("has no 'view more' jump: the detail card is the whole story", () => {
+		const html = renderDetail(FEED_HTML);
+
+		// 旧卡片底部有一个「View more」外跳按钮，点开才是完整说明；用户要求删掉这个冗余入口。
+		expect(html).not.toContain("View more");
+		expect(html).not.toContain("mdi--chevron-right");
 	});
 
 	it("numbers the items and restarts the numbering for every section", () => {

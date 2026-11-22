@@ -139,26 +139,74 @@ function isTransparentTreeEntry(entry: CodingSessionEntry): boolean {
  * Walk up past transparent entries to the structural parent (assistant/user/compaction/null)
  * that defines the "edit branch point" for a user message.
  */
-function getEditBranchParentId(entry: CodingSessionEntry, byId: Map<string, CodingSessionEntry>): string | null {
+function getEditBranchParentId(
+	entry: CodingSessionEntry,
+	byId: Map<string, CodingSessionEntry>,
+	memo?: Map<string, string | null>,
+): string | null {
+	const path: string[] = [];
 	let currentId = entry.parentId;
+	let result: string | null = null;
 	while (currentId) {
+		if (memo) {
+			const cached = memo.get(currentId);
+			if (cached !== undefined) {
+				result = cached;
+				break;
+			}
+			path.push(currentId);
+		}
 		const parent = byId.get(currentId);
-		if (!parent) return currentId;
+		if (!parent) {
+			result = currentId;
+			break;
+		}
 		if (!isTransparentTreeEntry(parent)) {
-			return currentId;
+			result = currentId;
+			break;
 		}
 		currentId = parent.parentId;
 	}
-	return null;
+	// 链压缩：同一条透明节点链只走一次，长会话里的用户消息共用结果。
+	if (memo) for (const id of path) memo.set(id, result);
+	return result;
 }
 
-function isAncestorOf(ancestorId: string, nodeId: string, byId: Map<string, CodingSessionEntry>): boolean {
+function _isAncestorOf(ancestorId: string, nodeId: string, byId: Map<string, CodingSessionEntry>): boolean {
 	let cur = byId.get(nodeId);
 	while (cur?.parentId) {
 		if (cur.parentId === ancestorId) return true;
 		cur = byId.get(cur.parentId);
 	}
 	return false;
+}
+
+/**
+ * 一次建索引，供整份 history 复用。
+ *
+ * 旧实现对每个用户消息都重扫全部用户消息并逐条回溯父链，长会话（数百轮 + 多处编辑版本）
+ * 下是 O(用户消息² × 链深)，实测 4800 条条目要 90 ms 以上，全部堵在 Electron 主线程上。
+ * 这里把「用户消息 → 编辑分支父节点」预先算好并按父节点分桶，单个消息的查询变成哈希查找。
+ */
+type UserBranchIndex = {
+	byId: Map<string, CodingSessionEntry>;
+	byBranchParent: Map<string | null, CodingSessionEntry[]>;
+	branchParentMemo: Map<string, string | null>;
+};
+
+function createUserBranchIndex(allEntries: CodingSessionEntry[]): UserBranchIndex {
+	const byId = new Map<string, CodingSessionEntry>();
+	for (const entry of allEntries) byId.set(entry.id, entry);
+	const branchParentMemo = new Map<string, string | null>();
+	const byBranchParent = new Map<string | null, CodingSessionEntry[]>();
+	for (const entry of allEntries) {
+		if (!isUserMessageEntry(entry)) continue;
+		const key = getEditBranchParentId(entry, byId, branchParentMemo);
+		const bucket = byBranchParent.get(key);
+		if (bucket) bucket.push(entry);
+		else byBranchParent.set(key, [entry]);
+	}
+	return { byId, byBranchParent, branchParentMemo };
 }
 
 /**
@@ -169,32 +217,45 @@ function isAncestorOf(ancestorId: string, nodeId: string, byId: Map<string, Codi
  * and keep only "root" user messages of each alternative (not descendants of another
  * candidate).
  */
-function buildUserBranch(
-	entry: CodingSessionEntry,
-	byId: Map<string, CodingSessionEntry>,
-	allUserEntries: CodingSessionEntry[],
-): HistoryMessageBranch | undefined {
+function buildUserBranch(entry: CodingSessionEntry, index: UserBranchIndex): HistoryMessageBranch | undefined {
 	if (!isUserMessageEntry(entry)) return undefined;
 
-	const branchParentId = getEditBranchParentId(entry, byId);
-	const candidates = allUserEntries.filter((u) => getEditBranchParentId(u, byId) === branchParentId);
+	// 同一条透明节点链只走一次（索引里已缓存），这里直接拿桶。
+	const branchParentId = getEditBranchParentId(entry, index.byId, index.branchParentMemo);
+	const candidates = index.byBranchParent.get(branchParentId) ?? [];
 	if (candidates.length === 0) return undefined;
 
 	// Prefer direct same-parent siblings when available (fast path / no transparent nodes).
 	const directKey = entry.parentId;
 	const directSiblings = candidates.filter((u) => u.parentId === directKey);
-	const versions =
-		directSiblings.length > 1
-			? directSiblings
-			: candidates.filter(
-					(m) => !candidates.some((other) => other.id !== m.id && isAncestorOf(other.id, m.id, byId)),
-				);
+	let versions: CodingSessionEntry[];
+	if (directSiblings.length > 1) {
+		versions = directSiblings;
+	} else {
+		// 桶内本来就是同一分支点的候选，祖先判定在桶内进行：避免对全量用户消息做 O(U²) 扫描。
+		const candidateIds = new Set(candidates.map((candidate) => candidate.id));
+		versions = candidates.filter((candidate) => !hasCandidateAncestor(candidate, candidateIds, index.byId));
+	}
 
 	versions.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 	const siblingIds = versions.map((v) => v.id);
-	const index = siblingIds.indexOf(entry.id);
-	if (index < 0) return undefined;
-	return { siblings: siblingIds, index };
+	const position = siblingIds.indexOf(entry.id);
+	if (position < 0) return undefined;
+	return { siblings: siblingIds, index: position };
+}
+
+/** 沿父链向上，遇到同桶候选就成为它的后代（而不是并列版本）。 */
+function hasCandidateAncestor(
+	entry: CodingSessionEntry,
+	candidateIds: Set<string>,
+	byId: Map<string, CodingSessionEntry>,
+): boolean {
+	let cur = entry.parentId ? byId.get(entry.parentId) : undefined;
+	while (cur) {
+		if (cur.id !== entry.id && candidateIds.has(cur.id)) return true;
+		cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+	}
+	return false;
 }
 
 export type EntriesToHistoryOptions = {
@@ -208,14 +269,7 @@ export type EntriesToHistoryOptions = {
 /** Translate a session branch (coding-agent entries) into host HistoryEntry[]. */
 export function entriesToHistory(branch: CodingSessionEntry[], options?: EntriesToHistoryOptions): HistoryEntry[] {
 	const allEntries = options?.allEntries;
-	const byId = new Map<string, CodingSessionEntry>();
-	const allUserEntries: CodingSessionEntry[] = [];
-	if (allEntries) {
-		for (const e of allEntries) {
-			byId.set(e.id, e);
-			if (isUserMessageEntry(e)) allUserEntries.push(e);
-		}
-	}
+	const branchIndex = allEntries ? createUserBranchIndex(allEntries) : undefined;
 
 	const entries: HistoryEntry[] = [];
 	for (const entry of branch) {
@@ -228,8 +282,8 @@ export function entriesToHistory(branch: CodingSessionEntry[], options?: Entries
 					parentId: entry.parentId,
 					message: msg as Message,
 				};
-				if (allEntries && msg.role === "user") {
-					const branchInfo = buildUserBranch(entry, byId, allUserEntries);
+				if (branchIndex && msg.role === "user") {
+					const branchInfo = buildUserBranch(entry, branchIndex);
 					if (branchInfo) historyEntry.branch = branchInfo;
 				}
 				entries.push(historyEntry);
