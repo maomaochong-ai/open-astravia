@@ -15,28 +15,22 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { copyFile, mkdir, readdir, rename, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { appIconFileSuffix } from "../src/shared/app-icon.ts";
+import { APP_ICON_IDS } from "../src/shared/app-icon.ts";
 import { basename, join } from "node:path";
 
 const require = createRequire(import.meta.url);
 const { appBuilderPath } = require("app-builder-bin");
 
-export const APP_ICON_IDS = [
-	"default",
-	"coding",
-	"design",
-	"work",
-	"study",
-	"read",
-	"game",
-	"sport",
-	"cook",
-	"travel",
-	"sleep",
-];
+/*
+ * 图标 id 清单与文件名后缀不在脚本里另写一份：运行时用哪一套，打包时就用哪一套。
+ * 两处各列一遍，新增图标时必定漏一边。
+ */
+export { APP_ICON_IDS };
 
-/** 与运行时 `appIconFileSuffix()` 保持一致：Windows 用 -win 取景。 */
+/** Windows 取景的文件名：后缀由运行时同一个函数决定，不在这里写死 `-win`。 */
 export function appIconSourceName(id) {
-	return `${id}-win.png`;
+	return `${id}${appIconFileSuffix("win32")}.png`;
 }
 
 /**

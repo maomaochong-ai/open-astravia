@@ -36,7 +36,7 @@ export async function embedExeIcon(exePath, iconPath) {
 	return iconFile.icons.length;
 }
 
-export async function hashFile(path) {
+async function hashFile(path) {
 	const hash = createHash("sha256");
 	hash.update(await readFile(path));
 	return hash.digest("hex");
@@ -51,7 +51,7 @@ export function needsIconPatch(recorded, current) {
 	return recorded.exeMtimeMs !== current.exeMtimeMs || recorded.iconSha !== current.iconSha;
 }
 
-export function devIconStatePath(projectRoot) {
+function devIconStatePath(projectRoot) {
 	return join(projectRoot, "node_modules", ".cache", "astravia-dev-electron-icon.json");
 }
 
