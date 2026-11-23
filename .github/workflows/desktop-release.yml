@@ -509,7 +509,9 @@ jobs:
   # 就是这条约束，漏一步用户点下去就是 404。
   publish-r2:
     name: publish installers → R2
-    needs: [prepare, build]
+    # 等元数据作业把 Release 定稿后再拉资产：两者原本同时从 build 出发，R2 的下载
+    # 可能赶在最后一个平台的安装包传完之前，拿到 0 个匹配资产而直接失败。
+    needs: [prepare, build, publish-update-metadata]
     if: needs.prepare.outputs.should-publish == 'true' && needs.prepare.outputs.release_target == 'github' && needs.prepare.outputs.channel != 'test'
     uses: ./.github/workflows/upload-release-to-r2.yml
     with:

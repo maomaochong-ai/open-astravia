@@ -190,7 +190,9 @@ describe("Desktop release workflow contracts", () => {
 	// 任何一步重新变成人工接力，就会重新出现「页面指向上一版」或「点下去 404」。
 	it("carries a release from R2 through the website version to the deployed site", () => {
 		const r2 = jobs["publish-r2"];
-		expect(r2.needs).toEqual(["prepare", "build"]);
+		// R2 必须在 Release 定稿之后拉资产：与 build 同时出发时，最后一个平台的安装包
+		// 可能还没传完，下载步拿到 0 个资产就直接失败。
+		expect(r2.needs).toEqual(["prepare", "build", "publish-update-metadata"]);
 		expect(r2.uses).toBe("./.github/workflows/upload-release-to-r2.yml");
 		expect(r2.with.version).toBe("$" + "{{ needs.prepare.outputs.release-version }}");
 		expect(r2.secrets).toBe("inherit");

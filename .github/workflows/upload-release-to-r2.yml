@@ -148,18 +148,25 @@ jobs:
           rm -rf /tmp/astravia-release && mkdir -p /tmp/astravia-release
           cd /tmp/astravia-release
           IFS=',' read -ra GLOBS <<< "${PATTERNS}"
-          for pattern in "${GLOBS[@]}"; do
-            glob="$(echo "${pattern}" | xargs)"
-            [[ -z "${glob}" ]] && continue
-            # 手机端只要 ipa/apk，但缺签名凭据时 APK 本来就不会存在：单个 pattern
-            # 没匹配到不应该把整条上传带成失败。
-            gh release download "${TAG}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --pattern "${glob}" \
-              --clobber \
-              || echo "::warning::No asset matched ${glob}"
+          # 资产是在各平台构建末尾分批上传的，最后一个包落库前这里可能什么都拿不到。
+          # 重试几次再判失败：真正的配置错误依然会报错，只是不会被上传延迟误伤。
+          for attempt in 1 2 3 4 5; do
+            for pattern in "${GLOBS[@]}"; do
+              glob="$(echo "${pattern}" | xargs)"
+              [[ -z "${glob}" ]] && continue
+              # 手机端只要 ipa/apk，但缺签名凭据时 APK 本来就不会存在：单个 pattern
+              # 没匹配到不应该把整条上传带成失败。
+              gh release download "${TAG}" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --pattern "${glob}" \
+                --clobber \
+                || echo "::warning::No asset matched ${glob}"
+            done
+            count=$(find . -maxdepth 1 -type f | wc -l)
+            [[ "${count}" -gt 0 ]] && break
+            echo "::warning::no assets yet on ${TAG} (attempt ${attempt}/5); retrying in 20s"
+            sleep 20
           done
-          count=$(find . -maxdepth 1 -type f | wc -l)
           if [[ "${count}" -eq 0 ]]; then
             echo "::error::No release asset matched ${PATTERNS} on ${TAG}"
             exit 1
