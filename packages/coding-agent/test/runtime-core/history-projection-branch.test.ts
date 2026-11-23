@@ -1,4 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type {
+	CodingAgentCustomMessageEntry,
+	CodingAgentSessionHeader,
+	CodingAgentSessionMessageEntry,
+} from "../../src/sessions/contracts/session-entry.js";
 import { branchFromFileEntries, entriesToHistory } from "../../src/sessions/projection/session-history.js";
 
 /**
@@ -8,36 +13,71 @@ import { branchFromFileEntries, entriesToHistory } from "../../src/sessions/proj
  * 语义必须一模一样：跨「透明节点」（技能展开 / 设置变更）仍能找到同一个分支点，
  * 并列版本按时间排序，子孙分支不算并列。
  */
-const HEADER = { type: "session" as const, id: "root", timestamp: "2026-01-01T00:00:00.000Z" };
+// 会话头必须是完整的 CodingAgentSessionHeader（cwd 是必填项）：缺字段时整份数组都
+// 无法赋给 CodingAgentSessionEntry[]，类型检查会在 CI 上直接拦下。
+const HEADER: CodingAgentSessionHeader = {
+	type: "session",
+	id: "root",
+	timestamp: "2026-01-01T00:00:00.000Z",
+	cwd: "/workspace",
+};
 
-function userMessage(id: string, parentId: string | null, minute: number, text: string) {
+/** 消息条目要满足 CodingAgentSessionMessageEntry：message 必须是完整的 AgentMessage（含 timestamp）。 */
+function userMessage(
+	id: string,
+	parentId: string | null,
+	minute: number,
+	text: string,
+): CodingAgentSessionMessageEntry {
+	const at = Date.UTC(2026, 0, 1, 0, minute);
 	return {
-		type: "message" as const,
+		type: "message",
 		id,
 		parentId,
-		timestamp: new Date(Date.UTC(2026, 0, 1, 0, minute)).toISOString(),
-		message: { role: "user" as const, content: text },
+		timestamp: new Date(at).toISOString(),
+		message: { role: "user", content: text, timestamp: at },
 	};
 }
 
-function assistantMessage(id: string, parentId: string | null, minute: number) {
+function assistantMessage(id: string, parentId: string | null, minute: number): CodingAgentSessionMessageEntry {
+	const at = Date.UTC(2026, 0, 1, 0, minute);
 	return {
-		type: "message" as const,
+		type: "message",
 		id,
 		parentId,
-		timestamp: new Date(Date.UTC(2026, 0, 1, 0, minute)).toISOString(),
-		message: { role: "assistant" as const, content: `回复 ${id}` },
+		timestamp: new Date(at).toISOString(),
+		// AssistantMessage 是完整的信封：缺 api/provider/model/usage/stopReason 就不是
+		// 合法消息，哪怕只是测试夹具。
+		message: {
+			role: "assistant",
+			content: [{ type: "text", text: `回复 ${id}` }],
+			api: "anthropic-messages",
+			provider: "anthropic",
+			model: "test-model",
+			usage: {
+				input: 0,
+				output: 0,
+				cacheRead: 0,
+				cacheWrite: 0,
+				totalTokens: 0,
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+			},
+			stopReason: "stop",
+			timestamp: at,
+		},
 	};
 }
 
-function skillExpansion(id: string, parentId: string, minute: number) {
+/** 透明节点：custom_message 同样必须满足会话条目契约（含 display）。 */
+function skillExpansion(id: string, parentId: string, minute: number): CodingAgentCustomMessageEntry {
 	return {
-		type: "custom_message" as const,
+		type: "custom_message",
 		id,
 		parentId,
 		timestamp: new Date(Date.UTC(2026, 0, 1, 0, minute)).toISOString(),
 		customType: "skill_expansion",
 		content: '<skill name="demo">x</skill>',
+		display: false,
 	};
 }
 
@@ -99,17 +139,19 @@ describe("entriesToHistory branch metadata", () => {
 	});
 
 	it("keeps the same leaf when reconstructing the branch from flat entries", () => {
-		const all = [
-			HEADER,
+		// branchFromFileEntries 只接受条目（含会话头，它按 type 跳过），但 allEntries
+		// 要的是不含会话头的列表，所以两者分开传。
+		const entries = [
 			userMessage("u1", "root", 1, "原始"),
 			userMessage("u2", "root", 3, "改写"),
 			assistantMessage("a2", "u2", 4),
 		];
+		const all = [HEADER, ...entries];
 
 		const branch = branchFromFileEntries(all);
 
 		expect(branch.map((entry) => entry.id)).toEqual(["u2", "a2"]);
-		const history = entriesToHistory(branch, { allEntries: all.slice(1) });
+		const history = entriesToHistory(branch, { allEntries: entries });
 		expect(history).toHaveLength(2);
 	});
 });
