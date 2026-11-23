@@ -12,9 +12,6 @@ function section(markup: string, name: string): string {
 	return markup.slice(start, end);
 }
 
-function dataValues(html: string, attr: string): string[] {
-	return [...new Set([...html.matchAll(new RegExp(`${attr}="([^"]+)"`, "g"))].map((m) => m[1]))];
-}
 
 const home = renderPage("home");
 const features = renderPage("features");
@@ -32,6 +29,41 @@ describe("产品首页", () => {
 		);
 		expect(marks.every((index) => index >= 0)).toBe(true);
 		expect([...marks].sort((a, b) => a - b)).toEqual(marks);
+	});
+
+	it("首屏是「文字 + 吉祥物」两栏，服务商条循环滚动", () => {
+		const hero = home.slice(home.indexOf('class="hero"'), home.indexOf("你的数据。"));
+		expect(hero).toContain("/mascot/hero.webp");
+		expect(hero).toContain('class="hero__marquee-track"');
+		// 跑马灯靠两份相同清单首尾相接，缺一份就会在拼接处出现空档。
+		expect([...hero.matchAll(/class="provider-strip"/g)]).toHaveLength(2);
+	});
+
+	it("生态区中心是角色本身，左右两列分别接技能与插件", () => {
+		const html = section(home, "ecosystem");
+		expect(html).toContain('class="eco__hub reveal"');
+		expect(html).toContain("/mascot/icon.webp");
+		for (const name of ["研究", "数据智能", "自动化", "官方插件", "社区插件", "自定义插件"]) {
+			expect(html).toContain(name);
+		}
+	});
+
+	it("知识库用文件卡 + 角色，过程四步在同一块面板里", () => {
+		const html = section(home, "knowledge");
+		expect(html).toContain("/mascot/laptop.webp");
+		expect([...html.matchAll(/class="kb-card__row"/g)]).toHaveLength(5);
+		expect(html).toContain('class="kb-panel is-active"');
+	});
+
+	it("收尾用五张角色片子拼贴，并给出两个入口", () => {
+		const html = section(home, "closing");
+		expect([...html.matchAll(/class="collage__frame /g)]).toHaveLength(5);
+		for (const name of ["laptop", "headphones", "tea", "dumbbell", "sleep"]) {
+			expect(html).toContain(`/mascot/${name}.webp`);
+		}
+		expect(html).toContain("你好，我叫毛毛虫");
+		expect(html).toContain('href="/download"');
+		expect(html).toContain("github.com/maomaochong-ai/open-astravia");
 	});
 
 	it("首屏有可读的产品主张与下载入口", () => {
@@ -80,12 +112,12 @@ describe("产品首页", () => {
 });
 
 describe("功能页", () => {
-	it("Work / Coding 两个场景，默认 Work", () => {
+	it("Work / Coding 两档切换，默认 Work", () => {
 		expect(features).toContain("让 Astravia 协助你的日常工作");
-		// 两个场景按钮始终渲染，默认选中 Work。
+		// 两档按钮始终渲染，默认选中 Work。
 		expect(features).toContain(">Work</span>");
 		expect(features).toContain(">Coding</span>");
-		expect(dataValues(features, "aria-selected")).toContain("true");
+		expect(features).toMatch(/aria-selected="true"/);
 	});
 
 	it("四条日常事务都给出 mock", () => {
@@ -133,7 +165,8 @@ describe("下载页", () => {
 
 describe("关于页", () => {
 	it("是独立页面，四个编号段落都在", () => {
-		expect(about).toContain("为真实工作而生的 AI Agent");
+		expect(about).toContain("大家好，我叫毛毛虫");
+		expect(about).toContain("为真实工作而生的开源 AI Agent");
 		for (const num of ["01", "02", "03", "04"]) {
 			expect(about).toContain(`>${num}</span>`);
 		}

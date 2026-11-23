@@ -180,27 +180,16 @@ const FAQ = [
 	},
 ];
 
-/* ---------- 通用小件 ---------- */
+/** 收尾拼贴：同一只毛毛虫的几种日常。 */
+const COLLAGE = [
+	{ src: "/mascot/laptop.webp", slot: "a" },
+	{ src: "/mascot/headphones.webp", slot: "b" },
+	{ src: "/mascot/tea.webp", slot: "c" },
+	{ src: "/mascot/dumbbell.webp", slot: "d" },
+	{ src: "/mascot/sleep.webp", slot: "e" },
+];
 
-function SectionHead({
-	eyebrow,
-	title,
-	sub,
-	center,
-}: {
-	eyebrow?: string;
-	title: React.ReactNode;
-	sub?: string;
-	center?: boolean;
-}) {
-	return (
-		<header className={center ? "section-head section-head--center reveal" : "section-head reveal"}>
-			{eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
-			<h2 className="display display--md">{title}</h2>
-			{sub ? <p className="lede">{sub}</p> : null}
-		</header>
-	);
-}
+/* ---------- 通用小件 ---------- */
 
 function Window({
 	title,
@@ -236,9 +225,6 @@ function Window({
 /* ---------- 首屏 ---------- */
 
 function Hero() {
-	const { theme } = useTheme();
-	const shot = theme === "dark" ? "/app/app-dark.webp" : "/app/app-light.webp";
-
 	return (
 		<section className="hero">
 			<div className="hero__grid" aria-hidden="true" />
@@ -261,7 +247,7 @@ function Hero() {
 						<ExternalLink href="https://github.com/maomaochong-ai/open-astravia" className="link-arrow">
 							在 GitHub 上探索
 							<span>
-								<Icon.Arrow />
+								<Icon.GitHub size={14} />
 							</span>
 						</ExternalLink>
 					</div>
@@ -272,36 +258,44 @@ function Hero() {
 						<li>跨平台</li>
 					</ul>
 					<div className="hero__providers">
-						<p className="hero__providers-label">支持主流服务商与本地推理</p>
-						<ul className="provider-strip" aria-label="支持的模型服务商">
-							{PROVIDERS.map((p) => (
-								<li key={p.alt}>
-									<img src={p.src} width="26" height="26" alt={p.alt} loading="lazy" />
-								</li>
-							))}
-						</ul>
+						<div className="hero__marquee" role="group" aria-label="支持的模型服务商">
+							<div className="hero__marquee-track">
+								<ul className="provider-strip">
+									{PROVIDERS.map((p) => (
+										<li key={p.alt}>
+											<img src={p.src} width="26" height="26" alt={p.alt} loading="lazy" />
+										</li>
+									))}
+								</ul>
+								<ul className="provider-strip" aria-hidden="true">
+									{PROVIDERS.map((p) => (
+										<li key={`${p.alt}-dup`}>
+											<img src={p.src} width="26" height="26" alt="" loading="lazy" />
+										</li>
+									))}
+								</ul>
+							</div>
+						</div>
 					</div>
 				</div>
 
-				<figure className="hero__shot reveal">
-					<div className="hero__shot-glow" aria-hidden="true" />
-					<div className="hero__shot-frame">
-						<img
-							className="hero__shot-img"
-							src={shot}
-							width="2400"
-							height="1502"
-							alt="Astravia 桌面应用：左侧会话与项目导航，右侧能力与插件工作区"
-							decoding="async"
-						/>
-					</div>
+				<figure className="hero__mascot">
+					<div className="hero__mascot-spot" aria-hidden="true" />
+					<img
+						className="hero__mascot-img"
+						src="/mascot/hero.webp"
+						width="700"
+						height="1470"
+						alt="Astravia 的伙伴毛毛虫：红色绒毛、米白围领、奶油色球鞋，双手交叠站在你面前"
+						decoding="async"
+					/>
 				</figure>
 			</div>
 		</section>
 	);
 }
 
-/* ---------- 隐私 ---------- */
+/* ---------- 隐私承诺 ---------- */
 
 function Privacy() {
 	return (
@@ -321,12 +315,12 @@ function Privacy() {
 						<li className="promise reveal" key={item.title}>
 							<span className="promise__ico" aria-hidden="true">
 								<svg
-									width="17"
-									height="17"
+									width="18"
+									height="18"
 									viewBox="0 0 24 24"
 									fill="none"
 									stroke="currentColor"
-									strokeWidth="1.6"
+									strokeWidth="1.5"
 									strokeLinecap="round"
 									strokeLinejoin="round"
 								>
@@ -346,9 +340,10 @@ function Privacy() {
 /* ---------- 任务走查 ---------- */
 
 function JourneyPanel({ step }: { step: JourneyStep }) {
+	const { theme } = useTheme();
 	if (step.id === "需求") {
 		return (
-			<Window title="Astravia" dots className="window">
+			<Window title="Astravia" dots>
 				<div className="window__body window__body--home">
 					<p className="mock-h1">今天想完成什么？</p>
 					<p className="mock-sub">我可以协助你推进工作。现在要从哪里开始？</p>
@@ -423,58 +418,20 @@ function JourneyPanel({ step }: { step: JourneyStep }) {
 	}
 
 	if (step.id === "交付") {
+		const shot = theme === "dark" ? "/app/app-dark.webp" : "/app/app-light.webp";
 		return (
-			<div className="window window--split">
-				<div className="window__pane">
-					<div className="window__bar">
-						<span className="window__file">交付物</span>
-						<span className="window__tag">4 个文件</span>
-					</div>
-					<ul className="file-list">
-						<li className="file-row is-on">
-							<span className="file-ico file-ico--html">HTML</span>
-							<span className="file-name">site/index.html</span>
-							<span className="file-meta">12.4 KB</span>
-						</li>
-						<li className="file-row">
-							<span className="file-ico file-ico--css">CSS</span>
-							<span className="file-name">site/style.css</span>
-							<span className="file-meta">+318 行</span>
-						</li>
-						<li className="file-row">
-							<span className="file-ico file-ico--ts">TS</span>
-							<span className="file-name">site/main.ts</span>
-							<span className="file-meta">已修改</span>
-						</li>
-						<li className="file-row">
-							<span className="file-ico file-ico--md">MD</span>
-							<span className="file-name">site/README.md</span>
-							<span className="file-meta">2.1 KB</span>
-						</li>
-					</ul>
+			<Window title="网站草稿" tag="可审阅" dots>
+				<div className="window__body window__body--shot">
+					<img
+						className="shot-img"
+						src={shot}
+						width="2400"
+						height="1502"
+						alt="Astravia 桌面应用：左侧会话与项目导航，右侧能力与插件工作区"
+						decoding="async"
+					/>
 				</div>
-				<div className="window__pane window__pane--preview">
-					<div className="preview-bar">
-						<span>响应式预览</span>
-						<span className="preview-bar__tag">1440 × 900</span>
-					</div>
-					<div className="preview-canvas">
-						<div className="preview-canvas__bar" />
-						<div className="preview-canvas__hero">
-							<span className="preview-canvas__title" />
-							<span className="preview-canvas__line" />
-							<span className="preview-canvas__line preview-canvas__line--short" />
-							<span className="preview-canvas__btn" />
-						</div>
-						<div className="preview-canvas__grid">
-							<i />
-							<i />
-							<i />
-						</div>
-					</div>
-					<p className="preview-foot">检查通过：无横向溢出 · 对比度达标</p>
-				</div>
-			</div>
+			</Window>
 		);
 	}
 
@@ -532,38 +489,60 @@ function Journey() {
 	const [active, setActive] = useState(JOURNEY[0].id);
 	const current = JOURNEY.find((step) => step.id === active) ?? JOURNEY[0];
 
+	// 两张截图都先拉进缓存：切主题时不应该先白一帧再出图
+	useEffect(() => {
+		for (const src of ["/app/app-dark.webp", "/app/app-light.webp"]) {
+			const img = new Image();
+			img.src = src;
+		}
+	}, []);
+
 	return (
 		<section className="band" data-section="journey">
-			<div className="wrap">
-				<SectionHead eyebrow="在 Astravia 中完成一个真实任务" title={<>看见工作如何<br />向前推进</>} />
+			<div className="journey-glow" aria-hidden="true" />
+			<div className="wrap journey">
+				<div className="journey__rail">
+					<p className="eyebrow">在 Astravia 中完成一个真实任务</p>
+					<h2 className="display display--md journey__title">
+						看见工作如何在
+						<br />
+						Astravia 中向前推进
+					</h2>
 
-				<div className="journey">
-					<div className="journey__steps" role="tablist" aria-orientation="vertical" aria-label="任务步骤">
-						{JOURNEY.map((step) => (
-							<button
-								key={step.id}
-								className={step.id === active ? "step-card is-active reveal" : "step-card reveal"}
-								type="button"
-								role="tab"
-								aria-selected={step.id === active}
-								onClick={() => setActive(step.id)}
-							>
-								<span className="step-card__num">{step.num}</span>
-								<span className="step-card__title">{step.title}</span>
-								<span className="step-card__desc">{step.desc}</span>
-								<span className="step-card__chip">
-									<Icon.Check />
-									<em>{step.chipLabel}</em>
-									{step.chipText}
-								</span>
-							</button>
-						))}
-					</div>
+					<ol className="journey__steps" role="tablist" aria-orientation="vertical" aria-label="任务步骤">
+						{JOURNEY.map((step) => {
+							const on = step.id === active;
+							return (
+								<li className={on ? "journey__item is-active" : "journey__item"} key={step.id}>
+									<span className="journey__dot" aria-hidden="true" />
+									<button
+										className={on ? "step-card is-active" : "step-card"}
+										type="button"
+										role="tab"
+										aria-selected={on}
+										onClick={() => setActive(step.id)}
+									>
+										<span className="step-card__num">{step.num}</span>
+										<span className="step-card__title">{step.title}</span>
+										<span className="step-card__desc">{step.desc}</span>
+										<span className="step-card__chip">
+											<em>{step.chipLabel}</em>
+											<span>
+												<Icon.Check />
+												{step.chipText}
+											</span>
+										</span>
+									</button>
+								</li>
+							);
+						})}
+					</ol>
+				</div>
 
-					<div className="journey__stage">
-						<div className="stage-panel is-active" key={current.id}>
-							<JourneyPanel step={current} />
-						</div>
+				<div className="journey__stage">
+					<div className="journey__stage-glow" aria-hidden="true" />
+					<div className="stage-panel" key={current.id}>
+						<JourneyPanel step={current} />
 					</div>
 				</div>
 			</div>
@@ -573,6 +552,18 @@ function Journey() {
 
 /* ---------- 技能与插件生态 ---------- */
 
+const SKILL_NODES = [
+	["research", "研究", "网页检索、分析与摘要"],
+	["data", "数据智能", "查询、可视化与洞察提取"],
+	["auto", "自动化", "工作流、调度与动作执行"],
+];
+
+const PLUGIN_NODES = [
+	["official", "官方插件", "由 Astravia 构建并维护"],
+	["community", "社区插件", "来自社区的开源扩展"],
+	["custom", "自定义插件", "用 SDK 构建你自己的扩展"],
+];
+
 function Ecosystem() {
 	return (
 		<section className="band" data-section="ecosystem">
@@ -580,7 +571,7 @@ function Ecosystem() {
 				<div className="eco">
 					<div className="eco__intro reveal">
 						<p className="eyebrow">技能与插件生态</p>
-						<h2 className="display display--md">
+						<h2 className="display display--md eco__title">
 							天生可扩展。
 							<br />
 							边界由你定义。
@@ -588,55 +579,107 @@ function Ecosystem() {
 						<p className="lede">Astravia 与你一起成长。构建自定义技能，用插件扩展能力，并连接你依赖的工具。</p>
 					</div>
 
-					<div className="orbit reveal" aria-hidden="true">
-						<svg className="orbit__links" viewBox="0 0 620 420" preserveAspectRatio="none">
-							<path d="M196 48C300 70 440 150 556 198" />
-							<path d="M196 207C300 207 440 209 556 210" />
-							<path d="M196 366C300 344 440 268 556 224" />
+					<div className="eco__hub reveal" aria-hidden="true">
+						<svg className="orbit__links" viewBox="0 0 760 560" preserveAspectRatio="none">
+							<path d="M214 118C340 118 372 210 380 262" />
+							<path d="M214 268C310 268 350 268 380 268" />
+							<path d="M214 418C340 418 372 326 380 274" />
+							<path d="M546 118C420 118 388 210 380 262" />
+							<path d="M546 268C450 268 410 268 380 268" />
+							<path d="M546 418C420 418 388 326 380 274" />
 						</svg>
-						{[
-							["a", "研究", "网页检索、分析与摘要", <><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18" /></>],
-							["b", "数据智能", "查询、可视化与洞察提取", <><path d="M4 20V6" /><path d="M10 20v-8" /><path d="M16 20V9" /><path d="M22 20v-4" /></>],
-							["c", "自动化", "工作流、调度与动作执行", <><path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z" /></>],
-						].map(([slot, name, desc, icon]) => (
-							<div className={`orbit__node orbit__node--${slot as string}`} key={name as string}>
-								<span className="orbit__ico">
-									<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-										{icon as React.ReactNode}
-									</svg>
-								</span>
-								<span className="orbit__name">{name as string}</span>
-								<span className="orbit__desc">{desc as string}</span>
-							</div>
-						))}
-						<div className="orbit__core">
-							<span className="orbit__ring">
-								<img src="/banner-rounded.png" width="66" height="66" alt="" />
+
+						<ul className="hub-col hub-col--left">
+							{SKILL_NODES.map(([kind, name, desc]) => (
+								<li className={`hub-node hub-node--${kind}`} key={name}>
+									<span className="hub-node__ico">
+										<svg
+											width="14"
+											height="14"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="1.6"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										>
+											<circle cx="12" cy="12" r="9" />
+											<path d="M3 12h18" />
+										</svg>
+									</span>
+									<span className="hub-node__text">
+										<span className="hub-node__name">{name}</span>
+										<span className="hub-node__desc">{desc}</span>
+									</span>
+								</li>
+							))}
+						</ul>
+
+						<div className="hub-core">
+							<span className="hub-core__ring">
+								<img src="/mascot/icon.webp" width="132" height="132" alt="" />
 							</span>
-							<span className="orbit__pill">
+							<span className="hub-core__pill">
 								<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
 									<path d="m20 6-11 11-5-5" />
 								</svg>
 								Astravia
 							</span>
-							<span className="orbit__core-note">安全 · 私有 · 属于你</span>
+							<span className="hub-core__note">安全 · 私有 · 属于你</span>
 						</div>
+
+						<ul className="hub-col hub-col--right">
+							{PLUGIN_NODES.map(([kind, name, desc]) => (
+								<li className={`hub-node hub-node--${kind}`} key={name}>
+									<span className="hub-node__ico">
+										<svg
+											width="14"
+											height="14"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="1.6"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										>
+											<rect x="3" y="3" width="7.5" height="7.5" rx="2" />
+											<rect x="13.5" y="3" width="7.5" height="7.5" rx="2" />
+											<rect x="3" y="13.5" width="7.5" height="7.5" rx="2" />
+											<rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2" />
+										</svg>
+									</span>
+									<span className="hub-node__text">
+										<span className="hub-node__name">{name}</span>
+										<span className="hub-node__desc">{desc}</span>
+									</span>
+								</li>
+							))}
+						</ul>
 					</div>
+				</div>
+
+				<div className="eco-tools reveal">
+					<p className="eco-tools__label">连接工具</p>
+					<ul className="eco-tools__list">
+						{PLUGINS.map((plugin) => (
+							<li key={plugin.alt}>
+								<img src={plugin.src} width="22" height="22" alt={plugin.alt} loading="lazy" />
+							</li>
+						))}
+					</ul>
 				</div>
 
 				<div className="eco-rail reveal">
 					<article className="rail-panel rail-panel--wide">
 						<div className="rail-panel__copy">
-							<div className="rail-panel__head">
-								<span className="rail-panel__ico" aria-hidden="true">
-									<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-										<rect x="3" y="3" width="18" height="18" rx="3" />
-										<path d="M8 12h8" />
-										<path d="M12 8v8" />
-									</svg>
-								</span>
-								<span className="rail-panel__num">01</span>
-							</div>
+							<span className="rail-panel__ico" aria-hidden="true">
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+									<rect x="3" y="3" width="18" height="18" rx="4" />
+									<path d="M8 12h8" />
+									<path d="M12 8v8" />
+								</svg>
+							</span>
+							<span className="rail-panel__num">01</span>
 							<h3 className="rail-panel__title">构建技能</h3>
 							<p className="rail-panel__desc">按业务领域打造定制能力。</p>
 						</div>
@@ -661,47 +704,56 @@ function Ecosystem() {
 
 					<article className="rail-panel">
 						<div className="rail-panel__head">
-							<span className="rail-panel__num">02</span>
 							<span className="rail-panel__ico" aria-hidden="true">
-								<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
 									<rect x="3" y="3" width="7.5" height="7.5" rx="2" />
 									<rect x="13.5" y="3" width="7.5" height="7.5" rx="2" />
 									<rect x="3" y="13.5" width="7.5" height="7.5" rx="2" />
 									<rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2" />
 								</svg>
 							</span>
+							<span className="rail-panel__num">02</span>
 						</div>
 						<h3 className="rail-panel__title">用插件扩展</h3>
 						<p className="rail-panel__desc">即刻安装生态中的开源插件。</p>
+						<ul className="rail-stack" aria-hidden="true">
+							<li>
+								<i /> Git
+							</li>
+							<li>
+								<i /> 浏览器
+							</li>
+							<li>
+								<i /> 图表
+							</li>
+						</ul>
 					</article>
 
 					<article className="rail-panel">
 						<div className="rail-panel__head">
-							<span className="rail-panel__num">03</span>
 							<span className="rail-panel__ico" aria-hidden="true">
-								<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
 									<circle cx="12" cy="12" r="9" />
 									<path d="M3 12h18" />
 									<path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18" />
 								</svg>
 							</span>
+							<span className="rail-panel__num">03</span>
 						</div>
 						<h3 className="rail-panel__title">连接工具</h3>
 						<p className="rail-panel__desc">把数据、应用与服务汇入同一工作区。</p>
-					</article>
-				</div>
-
-				<div className="plugin-strip reveal">
-					<p className="plugin-strip__label">
-						预装插件<span>11 个 · 与第三方插件同一套 API</span>
-					</p>
-					<ul className="plugin-strip__list">
-						{PLUGINS.map((plugin) => (
-							<li key={plugin.alt}>
-								<img src={plugin.src} width="30" height="30" alt={plugin.alt} loading="lazy" />
+						<ul className="rail-stack" aria-hidden="true">
+							<li>
+								<i /> MCP
 							</li>
-						))}
-					</ul>
+							<li>
+								<i /> 数据库
+							</li>
+							<li>
+								<i /> 内部系统
+							</li>
+						</ul>
+					</article>
 				</div>
 
 				<ul className="trust-strip reveal">
@@ -710,24 +762,10 @@ function Ecosystem() {
 							<rect x="4" y="10" width="16" height="11" rx="2.4" />
 							<path d="M8 10V7a4 4 0 0 1 8 0v3" />
 						</svg>
-						默认隐私。数据与扩展由你掌控。
+						默认隐私，数据与扩展由你掌控。
 					</li>
-					<li>
-						<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-							<path d="m8 6-6 6 6 6" />
-							<path d="m16 6 6 6-6 6" />
-						</svg>
-						开放标准，设计灵活。
-					</li>
-					<li>
-						<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-							<path d="M4 20h16" />
-							<path d="M6 16V8" />
-							<path d="M12 16V4" />
-							<path d="M18 16v-6" />
-						</svg>
-						为规模而建。
-					</li>
+					<li>开放标准，设计灵活。</li>
+					<li>为规模而建。</li>
 				</ul>
 			</div>
 		</section>
@@ -821,7 +859,7 @@ function KnowledgePanel({ id }: { id: string }) {
 			</div>
 			<div className="answer-mock">
 				<div className="answer-mock__who">
-					<img src="/banner-rounded.png" width="18" height="18" alt="" />
+					<img src="/mascot/icon.webp" width="18" height="18" alt="" />
 					<span>Astravia</span>
 				</div>
 				<p className="answer-mock__text">
@@ -838,6 +876,14 @@ function KnowledgePanel({ id }: { id: string }) {
 	);
 }
 
+const KB_FILES = [
+	["PDF", "产品简版.pdf", "PDF · 3.2 MB"],
+	["DOC", "工程笔记", "Word · 12 页"],
+	["CSV", "客户反馈.csv", "CSV · 8.4 MB"],
+	["MD", "支持文档", "Markdown · 自建"],
+	["PDF", "研究报告.pdf", "PDF · 11 MB"],
+];
+
 function Knowledge() {
 	const [active, setActive] = useState("put");
 
@@ -847,10 +893,12 @@ function Knowledge() {
 				<div className="kb__head">
 					<div className="reveal">
 						<p className="eyebrow">Astravia 知识库</p>
-						<h2 className="display display--md">
+						<h2 className="display display--md kb__title">
 							你已有的资料，
 							<br />
-							变成可长期使用的知识。
+							变成可长期
+							<br />
+							使用的知识。
 						</h2>
 						<p className="lede">
 							把文档原样放进来即可。Astravia 会整理成条理清楚、互相关联的知识库，智能体真正用得上——你加得越多，它越得力。
@@ -861,21 +909,24 @@ function Knowledge() {
 							<li>越用越厚</li>
 						</ul>
 					</div>
-					<div className="kb__stack reveal" aria-hidden="true">
-						{[
-							["PDF", "产品简版.pdf", "PDF · 3.2 MB"],
-							["DOC", "工程笔记", "Word · 12 页"],
-							["CSV", "客户反馈.csv", "CSV · 8.4 MB"],
-							["MD", "支持文档", "Markdown · 自建"],
-						].map(([label, name, meta]) => (
-							<div className="stack-card" key={name}>
-								<span className="stack-card__ico">{label}</span>
-								<span className="stack-card__text">
-									<span className="stack-card__name">{name}</span>
-									<span className="stack-card__meta">{meta}</span>
-								</span>
-							</div>
-						))}
+					<div className="kb__aside reveal">
+						<div className="kb-card" aria-hidden="true">
+							<p className="kb-card__label">你手头的文件</p>
+							<ul className="kb-card__list">
+								{KB_FILES.map(([kind, name, meta]) => (
+									<li className="kb-card__row" key={name}>
+										<span className={`kb-card__ico kb-card__ico--${kind.toLowerCase()}`}>{kind}</span>
+										<span className="kb-card__text">
+											<span className="kb-card__name">{name}</span>
+											<span className="kb-card__meta">{meta}</span>
+										</span>
+									</li>
+								))}
+							</ul>
+						</div>
+						<figure className="kb__mascot">
+							<img src="/mascot/laptop.webp" width="560" height="560" alt="" loading="lazy" decoding="async" />
+						</figure>
 					</div>
 				</div>
 
@@ -945,12 +996,11 @@ function Faq() {
 	return (
 		<section className="band" data-section="faq">
 			<div className="wrap">
-				<SectionHead
-					center
-					eyebrow="问问 Astravia"
-					title="开始使用前，人们最关心什么？"
-					sub="关于开源、隐私、能力与插件的真实问题，用产品本身来回答。"
-				/>
+				<header className="section-head section-head--center reveal">
+					<p className="eyebrow">问问 Astravia</p>
+					<h2 className="display display--md">开始使用前，人们最关心什么？</h2>
+					<p className="lede">关于开源、隐私、能力与插件的真实问题，用产品本身来回答。</p>
+				</header>
 
 				<div className="faq-layout">
 					<div className="faq-list" id="faqList" role="listbox" aria-label="产品常见问题">
@@ -971,15 +1021,19 @@ function Faq() {
 
 					<div className="chat" aria-live="polite">
 						<div className="chat__bar">
+							<span className="window__dots">
+								<i />
+								<i />
+								<i />
+							</span>
 							<span className="chat__title">认识 Astravia</span>
 							<em className="chat__sub">Astravia · 问答会话</em>
-							<span className="chat__state">正在回答…</span>
 						</div>
 						<div className="chat__body">
 							<p className="chat__q">{current.q}</p>
 							<div className="chat__answer">
 								<div className="chat__who">
-									<img src="/banner-rounded.png" width="20" height="20" alt="" />
+									<img src="/mascot/icon.webp" width="20" height="20" alt="" />
 									<span>ASTRAVIA</span>
 								</div>
 								<p className="chat__text">{current.a}</p>
@@ -996,35 +1050,94 @@ function Faq() {
 	);
 }
 
-/* ---------- 首页 ---------- */
+/* ---------- 收尾 ---------- */
+
+function Closing() {
+	return (
+		<section className="close-band" data-section="closing">
+			<div className="closer__glow" aria-hidden="true" />
+			<div className="wrap close-band__inner close-band__inner--split">
+				<div className="close-copy reveal">
+					<h2 className="display display--md">你好，我叫毛毛虫。</h2>
+					<p className="lede">
+						我是住在你电脑里的 AI 伙伴。在你自己的机器上开始——把想法、资料与目标，一步步变成真正可交付的结果。
+					</p>
+					<div className="close-actions">
+						<Link to="/download" className="btn btn--solid btn--lg">
+							<Icon.Download />
+							<span>下载客户端</span>
+						</Link>
+						<ExternalLink href="https://github.com/maomaochong-ai/open-astravia" className="link-arrow">
+							在 GitHub 上探索
+							<span>
+								<Icon.GitHub size={14} />
+							</span>
+						</ExternalLink>
+					</div>
+				</div>
+
+				<ul className="collage" aria-hidden="true">
+					{COLLAGE.map((frame) => (
+						<li className={`collage__frame collage__frame--${frame.slot}`} key={frame.slot}>
+							<img src={frame.src} width="520" height="520" alt="" decoding="async" />
+						</li>
+					))}
+				</ul>
+			</div>
+		</section>
+	);
+}
+
+/* ---------- 应用截图（一等公民） ----------
+   真实界面在首屏之后立刻出场，深浅两套各自一张，切主题时同步换。 */
+function AppShot() {
+	const { theme } = useTheme();
+	const shot = theme === "dark" ? "/app/app-dark.webp" : "/app/app-light.webp";
+
+	return (
+		<section className="appshot" data-section="app">
+			<div className="appshot__glow" aria-hidden="true" />
+			<div className="wrap">
+				<header className="appshot__head reveal">
+					<p className="eyebrow">真实界面</p>
+					<h2 className="display display--md">左边是会话，右边是你正在做的事</h2>
+					<p className="lede">
+						不是渲染图：下载客户端看到的就是这个样子。会话、任务、文件与工具面板在同一个窗口里，深浅两套主题都自带。
+					</p>
+				</header>
+
+				<figure className="appshot__frame reveal">
+					<img
+						className="appshot__img"
+						src={shot}
+						width="2400"
+						height="1502"
+						alt="Astravia 桌面应用真实界面：左侧会话与项目导航，右侧工作区与工具面板"
+						decoding="async"
+					/>
+				</figure>
+
+				<ul className="appshot__facts reveal">
+					<li>同一个窗口：会话 / 文件 / 任务 / 面板</li>
+					<li>深浅主题随系统切换</li>
+					<li>全部在本机运行</li>
+				</ul>
+			</div>
+		</section>
+	);
+}
 
 export function HomePage() {
 	return (
 		<>
 			<Hero />
+			<AppShot />
 			<Privacy />
 			<Journey />
 			<Ecosystem />
 			<Knowledge />
 			<Faq />
-			<section className="close-band">
-				<div className="closer__glow" aria-hidden="true" />
-				<div className="wrap close-band__inner">
-					<h2 className="display display--md reveal">今天就把它装到自己机器上</h2>
-					<p className="lede reveal">双击即装。没有账号，没有试用期，没有额度。</p>
-					<div className="close-band__actions reveal">
-						<Link to="/download" className="btn btn--solid btn--lg">
-							下载客户端
-						</Link>
-						<ExternalLink href="https://github.com/maomaochong-ai/open-astravia" className="link-arrow">
-							看源码
-							<span>
-								<Icon.Arrow />
-							</span>
-						</ExternalLink>
-					</div>
-				</div>
-			</section>
+			<Closing />
 		</>
 	);
 }

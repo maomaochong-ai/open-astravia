@@ -10,6 +10,7 @@ const SECTIONS = [
 			"只靠一次问答或一段脚本解决不了这类问题。团队把注意力放在 Agent Loop 上——工具调用、上下文管理、长任务持续运行、过程可观测、失败可回滚，这些才是让智能体真正干完活的部件。",
 			"这些能力后来被整理成一套桌面工作台，也就是你现在看到的 Astravia。",
 		],
+		quote: "智能体的价值不在于展示它能回答什么，而在于真正完成工作中的复杂问题，并稳定地交付结果。",
 	},
 	{
 		num: "02",
@@ -19,6 +20,7 @@ const SECTIONS = [
 			"处理文档、分析数据、写代码、搭工作流，或者连接企业内部的模型、工具与知识——这些事都发生在同一个窗口里，会话、文件与产出留在同一份工作区记录中。",
 			"它可以跑在你指定的环境：连接自己的模型与端点，也可以离线运行。数据默认留在本机，没有遥测，也没有账号体系。",
 		],
+		quote: "你的数据，属于你。你的隐私，由你掌控。",
 	},
 	{
 		num: "03",
@@ -48,9 +50,9 @@ export function AboutPage() {
 				<div className="page-hero__glow" aria-hidden="true" />
 				<div className="wrap about-hero__inner">
 					<p className="eyebrow reveal">关于 Astravia</p>
-					<h1 className="display about-hero__title reveal">为真实工作而生的 AI Agent</h1>
+					<h1 className="display about-hero__title reveal">大家好，我叫毛毛虫。</h1>
 					<p className="about-hero__sub reveal">
-						我们相信，好的智能体不该只是一个聊天框。它应该能读你的文件、跑你的项目、交付可检查的结果，并且始终留在你能掌控的边界里。
+						我是住在你电脑里的 AI 伙伴。Astravia 是一个为真实工作而生的开源 AI Agent——我陪你完成各类真实任务，把想法、资料与目标，一步步变成真正可交付的结果。
 					</p>
 					<div className="about-hero__actions reveal">
 						<Link to="/download" className="btn btn--solid btn--lg">
@@ -79,9 +81,19 @@ export function AboutPage() {
 										{para}
 									</p>
 								))}
+								{section.quote ? <p className="story-quote">{section.quote}</p> : null}
 							</div>
 						</article>
 					))}
+				</div>
+			</section>
+
+			<section className="about-vision">
+				<div className="wrap">
+					<h2 className="display display--md about-vision__title reveal">千人千个 Agent。</h2>
+					<p className="lede reveal">
+						在这条通向 AI 未来的道路上，Astravia 希望与每一位用户、每一位开发者和每一家企业共同创造，也共同见证新的工作方式如何发生。
+					</p>
 				</div>
 			</section>
 

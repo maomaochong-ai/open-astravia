@@ -83,6 +83,17 @@ function useDownloadTarget(): DownloadTarget {
 	return target;
 }
 
+const PROVIDERS: [string, string][] = [
+	["openai", "OpenAI"],
+	["ollama", "Ollama"],
+	["kimi", "Kimi"],
+	["grok", "Grok"],
+	["mistral", "Mistral"],
+	["doubao", "豆包"],
+	["minimax", "MiniMax"],
+	["zai", "Z.ai"],
+];
+
 function Hero() {
 	const target = useDownloadTarget();
 	const [othersOpen, setOthersOpen] = useState(false);
@@ -92,14 +103,26 @@ function Hero() {
 			<div className="hero__grid" aria-hidden="true" />
 			<div className="page-hero__glow" aria-hidden="true" />
 			<div className="wrap dl-hero__inner">
+				{/* 服务商图标排成一道弧线压在标题上方：参考站用这组图标当首屏的唯一装饰 */}
+				<ul className="dl-arc" aria-label="支持的模型服务商">
+					{PROVIDERS.map(([file, alt]) => (
+						<li key={alt}>
+							<img src={`/download/${file}.webp`} width="30" height="30" alt={alt} loading="lazy" />
+						</li>
+					))}
+				</ul>
+
 				<h1 className="dl-hero__title reveal">下载</h1>
-				<p className="dl-hero__sub reveal">我们会检测你的设备并推荐合适的版本。点击即可下载，或通过箭头选择其他平台。</p>
+				<p className="dl-hero__sub reveal">
+					我们会检测你的设备并推荐合适的版本。点击即可下载，或通过箭头选择其他平台。
+				</p>
 
 				<div className="dl-hero__cta reveal">
 					<a className="dl-primary" id="dlPrimary" href={target.href} target="_blank" rel="noopener noreferrer">
+						<Icon.Download size={15} />
 						<span id="dlPrimaryText">{target.label}</span>
 						<span className="dl-primary__switch" aria-hidden="true">
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+							<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
 								<path d="M3 8h13l-3-3" />
 								<path d="M21 16H8l3 3" />
 							</svg>
@@ -134,23 +157,6 @@ function Hero() {
 						</ul>
 					</div>
 				</div>
-
-				<ul className="dl-hero__providers reveal" aria-label="支持的模型服务商">
-					{[
-						["openai", "OpenAI"],
-						["ollama", "Ollama"],
-						["kimi", "Kimi"],
-						["grok", "Grok"],
-						["mistral", "Mistral"],
-						["doubao", "豆包"],
-						["minimax", "MiniMax"],
-						["zai", "Z.ai"],
-					].map(([file, alt]) => (
-						<li key={alt}>
-							<img src={`/download/${file}.webp`} width="26" height="26" alt={alt} loading="lazy" />
-						</li>
-					))}
-				</ul>
 			</div>
 		</section>
 	);

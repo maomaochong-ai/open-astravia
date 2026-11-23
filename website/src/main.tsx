@@ -4,6 +4,7 @@ import "./style.css";
 
 import { Layout } from "./app/layout";
 import { useDocumentMeta, useRoutePath } from "./app/router";
+import { initTheme } from "./app/theme";
 import { AboutPage } from "./pages/about";
 import { DownloadPage } from "./pages/download";
 import { FeaturesPage } from "./pages/features";
@@ -18,6 +19,8 @@ function App() {
 
 	return <Layout>{page}</Layout>;
 }
+
+initTheme();
 
 const container = document.getElementById("root");
 if (!container) throw new Error("#root is missing from index.html");
