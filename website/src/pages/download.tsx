@@ -3,7 +3,9 @@ import { resolveDownloadTarget, type DownloadTarget } from "../lib/download-targ
 import { resolveMobileInstall, resolveMobilePlatform } from "../lib/mobile-install";
 import { Icon } from "../app/ui";
 
-export const DOWNLOAD_VERSION = "0.5.100";
+// 必须与 R2 上真实存在的 app/v<版本>/ 目录一致：先上传产物、再改这里；顺序反了
+// 用户点下载就是 404。
+export const DOWNLOAD_VERSION = "0.6.1";
 
 const BASE = `https://dl.astravia.dev/app/v${DOWNLOAD_VERSION}`;
 
