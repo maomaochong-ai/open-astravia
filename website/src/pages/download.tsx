@@ -3,7 +3,7 @@ import { resolveDownloadTarget, type DownloadTarget } from "../lib/download-targ
 import { resolveMobileInstall, resolveMobilePlatform } from "../lib/mobile-install";
 import { Icon } from "../app/ui";
 
-export const DOWNLOAD_VERSION = "0.5.100";
+export const DOWNLOAD_VERSION = "0.6.1";
 
 const BASE = `https://dl.astravia.dev/app/v${DOWNLOAD_VERSION}`;
 
