@@ -18,8 +18,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 这些用例读的是打包脚本本身，但其中几个需要仓库依赖：embed-exe-icon 用 resedit
+      # 改写 PE 资源，stage-dev-native-binaries 复用打包脚本的导出。没有依赖时它们会
+      # 以「找不到模块」失败，而不是报告真正的契约问题——所以先装依赖再跑。
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
       - name: Test packaging contract helpers
-        run: node --test apps/desktop/scripts/desktop-packaging-layout.test.mjs apps/desktop/scripts/electron-e2e-service-options.node-test.mjs apps/desktop/scripts/embed-exe-icon.node-test.mjs apps/desktop/scripts/packaged-e2e-binary.node-test.mjs apps/desktop/scripts/packaged-native-dependencies.test.mjs apps/desktop/scripts/windows-sandbox-packaging.test.mjs apps/desktop/scripts/windows-version-layout.node-test.mjs
+        run: >-
+          node --test
+          apps/desktop/scripts/desktop-packaging-layout.test.mjs
+          apps/desktop/scripts/electron-e2e-service-options.node-test.mjs
+          apps/desktop/scripts/embed-exe-icon.node-test.mjs
+          apps/desktop/scripts/packaged-e2e-binary.node-test.mjs
+          apps/desktop/scripts/packaged-native-dependencies.test.mjs
+          apps/desktop/scripts/stage-dev-native-binaries.node-test.mjs
+          apps/desktop/scripts/windows-sandbox-packaging.test.mjs
+          apps/desktop/scripts/windows-version-layout.node-test.mjs
 
   scope:
     name: Detect packaged smoke scope
